@@ -19,6 +19,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from "react";
+import { ask, message } from "@tauri-apps/plugin-dialog";
 import { HarnessIcon } from "../chrome/HarnessIcon";
 import { Popover } from "../chrome/Popover";
 import { Terminal } from "@xterm/xterm";
@@ -128,6 +129,7 @@ import {
   subscribeHarnessAvailability,
 } from "../lib/harness/availability";
 import { refreshHarnessCatalogs } from "../lib/harness/registry";
+import { installCodexBinary } from "../lib/harness/child";
 import {
   defaultModelId,
   getModelSnapshot,
@@ -2107,6 +2109,7 @@ function ProviderRow({
   const [inPicker, setInPicker] = useState(() =>
     isPickerProviderVisible(harness),
   );
+  const [installing, setInstalling] = useState(false);
 
   useEffect(() => {
     if (!available || hasLiveCatalog(harness)) return;
@@ -2116,6 +2119,32 @@ function ProviderRow({
   const onPickerVisible = (visible: boolean) => {
     savePickerProviderVisible(harness, visible);
     setInPicker(visible);
+  };
+
+  const onInstallCodex = async () => {
+    const confirmed = await ask(
+      "MonoCode will download and run OpenAI's official Codex installer, placing the CLI in ~/.monocode/bin. Continue?",
+      { title: "Install Codex CLI", kind: "info" },
+    );
+    if (!confirmed) return;
+    setInstalling(true);
+    try {
+      await installCodexBinary();
+      await probeHarnessAvailability({ force: true });
+      await refreshHarnessCatalogs(["codex"]);
+      await message(
+        "Codex CLI is installed. If you have not signed in before, run `codex` once in a terminal and choose Sign in with ChatGPT.",
+        { title: "Codex CLI installed", kind: "info" },
+      );
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      await message(`Couldn't install Codex CLI.\n\n${detail}`, {
+        title: "Codex CLI installation failed",
+        kind: "error",
+      });
+    } finally {
+      setInstalling(false);
+    }
   };
 
   return (
@@ -2152,6 +2181,11 @@ function ProviderRow({
             label: item.name,
           }))}
         />
+      ) : null}
+      {!available && harness === "codex" ? (
+        <SecondaryButton onClick={onInstallCodex} disabled={installing}>
+          {installing ? "Installing…" : "Install Codex"}
+        </SecondaryButton>
       ) : null}
       <SecondaryButton
         onClick={() => current && onDefault(harness, current.id)}
