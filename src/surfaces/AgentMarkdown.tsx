@@ -18,13 +18,19 @@ import {
   CodeBlock,
   Streamdown,
   defaultRehypePlugins,
+  defaultRemarkPlugins,
   useIsCodeFenceIncomplete,
   type Components,
 } from "streamdown";
 import type { PluggableList } from "unified";
 import { FileTypeIcon } from "../chrome/FileTypeIcon";
 import { createLazyMermaidPlugin } from "./mermaidPlugin";
-import { resolveWorkspacePath } from "../lib/paths";
+import {
+  isExtensionlessFileName,
+  resolveWorkspaceFileReference,
+} from "../lib/paths";
+import type { OpenFileFn } from "../lib/search";
+import { remarkWorkspaceFileLinks } from "../lib/markdownFileLinks";
 import { isAtxHeadingLine } from "../lib/markdownSource";
 import { useColorScheme } from "../hooks/useColorScheme";
 import { useLockOverscroll } from "../hooks/useLockOverscroll";
@@ -88,7 +94,7 @@ const INBOX_MEDIA_REHYPE_PLUGINS: PluggableList = [
 
 const FileOpenContext = createContext<{
   cwd?: string;
-  onOpenFile?: (path: string) => void;
+  onOpenFile?: OpenFileFn;
 }>({});
 
 const RemoteMediaContext = createContext(false);
@@ -158,7 +164,7 @@ function MarkdownLink({
 }: MarkdownLinkProps) {
   const allowRemoteMedia = useContext(RemoteMediaContext);
   const { cwd, onOpenFile } = useContext(FileOpenContext);
-  const filePath = href ? resolveWorkspacePath(href, cwd) : undefined;
+  const file = href ? resolveWorkspaceFileReference(href, cwd) : undefined;
   const label = textContent(children);
   if (allowRemoteMedia && href && isInboxMediaUrl(href)) {
     return <InboxMedia src={href} alt={label} />;
@@ -173,9 +179,9 @@ function MarkdownLink({
       onClick={(event) => {
         onClick?.(event);
         if (event.defaultPrevented) return;
-        if (filePath && onOpenFile) {
+        if (file && onOpenFile) {
           event.preventDefault();
-          onOpenFile(filePath);
+          onOpenFile(file.path, file.navigation);
           return;
         }
         if (href && /^https?:\/\//i.test(href)) {
@@ -211,9 +217,13 @@ function MarkdownCode({
     const text = textContent(children);
     const fileName = inlineFileName(text);
     const { cwd, onOpenFile } = useContext(FileOpenContext);
-    const filePath = fileName ? resolveWorkspacePath(text, cwd) : undefined;
+    const file = fileName
+      ? resolveWorkspaceFileReference(text, cwd)
+      : undefined;
     const open =
-      filePath && onOpenFile ? () => onOpenFile(filePath) : undefined;
+      file && onOpenFile
+        ? () => onOpenFile(file.path, file.navigation)
+        : undefined;
     return (
       <code
         {...props}
@@ -265,7 +275,9 @@ function MarkdownCode({
           <FileTypeIcon name={iconName} isDir={false} />
         </span>
       ) : null}
-      {fence.filePath ? <MarkdownCodePath path={fence.filePath} /> : null}
+      {fence.filePath ? (
+        <MarkdownCodePath path={fence.filePath} startLine={fence.startLine} />
+      ) : null}
       <CodeCopyButton code={code} />
       <CodeBlock
         className={className}
@@ -395,10 +407,17 @@ export const AgentMarkdown = memo(function AgentMarkdown({
   streaming?: boolean;
   className?: string;
   cwd?: string;
-  onOpenFile?: (path: string) => void;
+  onOpenFile?: OpenFileFn;
   allowRemoteMedia?: boolean;
 }) {
   const fileOpen = useMemo(() => ({ cwd, onOpenFile }), [cwd, onOpenFile]);
+  const remarkPlugins = useMemo<PluggableList>(
+    () => [
+      ...Object.values(defaultRemarkPlugins),
+      [remarkWorkspaceFileLinks, { cwd }],
+    ],
+    [cwd],
+  );
   const remoteMedia = !!allowRemoteMedia;
   return (
     <RemoteMediaContext.Provider value={remoteMedia}>
@@ -410,6 +429,7 @@ export const AgentMarkdown = memo(function AgentMarkdown({
           dir="auto"
           isAnimating={!!streaming}
           plugins={MARKDOWN_PLUGINS}
+          remarkPlugins={remarkPlugins}
           rehypePlugins={
             remoteMedia ? INBOX_MEDIA_REHYPE_PLUGINS : MARKDOWN_REHYPE_PLUGINS
           }
@@ -430,7 +450,7 @@ export const MarkdownPreview = memo(function MarkdownPreview({
   text: string;
   streaming?: boolean;
   cwd?: string;
-  onOpenFile?: (path: string) => void;
+  onOpenFile?: OpenFileFn;
 }) {
   const lockOverscroll = useLockOverscroll<HTMLDivElement>();
 
@@ -631,18 +651,24 @@ function parseCodeFence(
   return { language: raw, startLine: metaStartLine };
 }
 
-function MarkdownCodePath({ path }: { path: string }) {
+function MarkdownCodePath({ path, startLine }: {
+  path: string;
+  startLine?: number;
+}) {
   const { cwd, onOpenFile } = useContext(FileOpenContext);
-  const filePath = resolveWorkspacePath(path, cwd);
-  if (!filePath || !onOpenFile) {
+  const file = resolveWorkspaceFileReference(path, cwd);
+  if (!file || !onOpenFile) {
     return <span className="markdown-code-path">{path}</span>;
   }
   return (
     <button
       type="button"
       className="markdown-code-path markdown-code-path-link"
-      title={filePath}
-      onClick={() => onOpenFile(filePath)}
+      title={file.path}
+      onClick={() => onOpenFile(
+        file.path,
+        file.navigation ?? (startLine && startLine > 0 ? { line: startLine } : undefined),
+      )}
     >
       {path}
     </button>
@@ -675,17 +701,13 @@ function inlineFileName(value: string): string | undefined {
   const fileName = withoutLocation.split(/[/\\]/).filter(Boolean).pop();
   if (!fileName || !/^[\w@+().-]+$/.test(fileName)) return undefined;
 
-  const lower = fileName.toLowerCase();
-  if (
-    lower === "dockerfile" ||
-    lower === "makefile" ||
-    lower === "gemfile" ||
-    lower === "license"
-  ) {
+  if (isExtensionlessFileName(fileName)) {
     return fileName;
   }
 
-  const extension = fileName.split(".").pop();
+  const extension = fileName.includes(".")
+    ? fileName.split(".").pop()
+    : undefined;
   return extension && /^[a-z][a-z0-9+-]{0,11}$/i.test(extension)
     ? fileName
     : undefined;
