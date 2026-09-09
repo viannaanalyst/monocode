@@ -341,6 +341,10 @@ html.theme-light .composer-send:disabled {
   app-region: no-drag;
 }
 
+button:not(:disabled):not(.cursor-default):not(.cursor-not-allowed) {
+  cursor: pointer;
+}
+
 /* Window drag regions use a grab cursor; keep title-bar controls on the arrow. */
 header[data-tauri-drag-region] [data-tauri-drag-region="false"],
 header[data-tauri-drag-region] [data-tauri-drag-region="false"] *,
