@@ -228,7 +228,6 @@ import {
 import {
   applyPlaceSessionOnPane,
   filterTabsForProject,
-  findTabForProject,
   planWorkspaceTabClose,
   workspaceTabCwd,
 } from "./lib/workspaceTabGroups";
@@ -374,6 +373,12 @@ import {
   inFlightSnapshotKey,
   shouldWriteInFlightSnapshot,
 } from "./lib/inFlight";
+import {
+  isBlankSession,
+  planProjectReturn,
+  reconcileProjectReturn,
+  type ProjectReturnMemory,
+} from "./lib/projectReturn";
 import {
   collectWorkspaceSnapshot,
   workspaceSnapshotKey,
@@ -718,6 +723,22 @@ export default function App({
     if (!notesEnabled) setNotesViewOpen(false);
   }, [notesEnabled]);
 
+  const projectReturnRef = useRef<ProjectReturnMemory>(
+    resumed?.projectReturnMemory ?? new Map(),
+  );
+  const readProjectReturnMemory = useCallback(() => {
+    projectReturnRef.current = reconcileProjectReturn({
+      memory: projectReturnRef.current,
+      tabs: tabsRef.current,
+      sessions: sessionsRef.current,
+      activeTabId: activeTabIdRef.current,
+    });
+    return projectReturnRef.current;
+  }, []);
+  useEffect(() => {
+    readProjectReturnMemory();
+  }, [activeTabId, tabs, sessions, readProjectReturnMemory]);
+
   const tabVisitRef = useRef(emptyTabVisitHistory(activeTabId));
   const tabVisitFromHistoryRef = useRef(false);
   const [tabVisitNav, setTabVisitNav] = useState({
@@ -849,6 +870,7 @@ export default function App({
         tabsRef.current,
         activeTabIdRef.current,
         projectCwdRef.current,
+        readProjectReturnMemory(),
         "unload",
         projectTerminalsRef.current,
       ).finally(() => {
@@ -868,7 +890,7 @@ export default function App({
       cancelScheduledFlush(harnessFlush.current);
       harnessFlush.current = null;
     };
-  }, [resumed]);
+  }, [resumed, readProjectReturnMemory]);
 
   useEffect(() => {
     void probeHarnessAvailability();
@@ -1079,6 +1101,7 @@ export default function App({
       () => activeTabIdRef.current,
       () => projectCwdRef.current,
       () => projectTerminalsRef.current,
+      readProjectReturnMemory,
       flushHarnessEvents,
     );
     void getCurrentWindow()
@@ -1101,6 +1124,7 @@ export default function App({
           tabsRef.current,
           activeTabIdRef.current,
           projectCwdRef.current,
+          readProjectReturnMemory(),
           "unload",
           projectTerminalsRef.current,
         ).finally(() => {
@@ -1114,7 +1138,7 @@ export default function App({
       releaseQuit();
       unlistenClose?.();
     };
-  }, [flushHarnessEvents]);
+  }, [flushHarnessEvents, readProjectReturnMemory]);
 
   const refreshHistory = useCallback(async (cwd: string) => {
     if (!cwd || cwd === "~") return;
@@ -1272,6 +1296,12 @@ export default function App({
       sessions,
       activeTabId,
       projectCwd,
+      reconcileProjectReturn({
+        memory: projectReturnRef.current,
+        tabs,
+        sessions,
+        activeTabId,
+      }),
       projectTerminals,
     );
     const key = workspaceSnapshotKey(snapshot);
@@ -3312,26 +3342,30 @@ export default function App({
             (session) => session.id === activeWorkspace.focusedId,
           )
         : undefined;
-      const currentCwd =
-        current?.cwd ??
-        (activeWorkspace ? focusedFileTab(activeWorkspace)?.cwd : undefined);
-      if (currentCwd && sameProjectPath(currentCwd, normalized)) return;
-
-      if (current && isBlankSession(current)) {
-        onCwdChange(current.id, normalized);
-        return;
-      }
-
-      const match = findTabForProject(
-        tabsRef.current,
-        sessionsRef.current,
-        normalized,
-      );
-      if (match) {
-        setProjectCwd(normalized);
-        setRecents(rememberProject(normalized));
-        activateTab(match.id);
-        return;
+      const decision = planProjectReturn({
+        memory: readProjectReturnMemory(),
+        tabs: tabsRef.current,
+        sessions: sessionsRef.current,
+        activeTabId: activeTabIdRef.current,
+        projectPath: normalized,
+      });
+      switch (decision.action) {
+        case "keep":
+          return;
+        case "reuse-blank":
+          onCwdChange(decision.sessionId, normalized);
+          return;
+        case "activate":
+          setProjectCwd(normalized);
+          setRecents(rememberProject(normalized));
+          activateTab(decision.tabId);
+          return;
+        case "create":
+          break;
+        default: {
+          const exhaustive: never = decision;
+          return exhaustive;
+        }
       }
 
       const seed = current ?? sessionsRef.current[0];
@@ -3350,7 +3384,7 @@ export default function App({
       setActiveTabId(tab.id);
       setComposerFocused(true);
     },
-    [activateTab, appendTab, onCwdChange],
+    [activateTab, appendTab, onCwdChange, readProjectReturnMemory],
   );
 
   const pickProject = useCallback(async () => {
@@ -5856,11 +5890,6 @@ function lastUserBlockId(session: Session): string | undefined {
     if (session.blocks[i]?.role === "user") return session.blocks[i]?.id;
   }
   return undefined;
-}
-
-function isBlankSession(session: Session | undefined): boolean {
-  if (!session || session.busy) return false;
-  return !session.blocks.some((block) => block.role === "user");
 }
 
 function selectedChangePath(
