@@ -21,9 +21,13 @@ import {
 } from "react";
 import { ask, message } from "@tauri-apps/plugin-dialog";
 import { HarnessIcon } from "../chrome/HarnessIcon";
+<<<<<<< HEAD
 import { Popover } from "../chrome/Popover";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
+=======
+import { CustomModelsSection } from "../chrome/CustomModelsSection";
+>>>>>>> 98df676 (feat: add custom models for Codex and Claude Code)
 import { InboxProviderMark } from "../chrome/InboxProviderMark";
 import { RemoveProjectDialog } from "../chrome/RemoveProjectDialog";
 import { terminalTheme } from "./TerminalView";
@@ -144,6 +148,7 @@ import {
   savePickerProviderVisible,
   subscribeModels,
 } from "../lib/models";
+import { supportsCustomModels } from "../lib/customModels";
 import { prettyCwd, projectKey, projectName } from "../lib/paths";
 import { IS_MAC } from "../lib/platform";
 import {
@@ -294,6 +299,10 @@ export function SettingsView({
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
+      if (
+        event.target instanceof Element &&
+        event.target.closest("[data-custom-model-editor]")
+      ) return;
       event.preventDefault();
       event.stopPropagation();
       onCloseRef.current();
@@ -2035,7 +2044,11 @@ function KeybindingsPage() {
 }
 
 function ProvidersPage() {
-  useSyncExternalStore(subscribeModels, getModelSnapshot, getModelSnapshot);
+  const catalogVersion = useSyncExternalStore(
+    subscribeModels,
+    getModelSnapshot,
+    getModelSnapshot,
+  );
   useSyncExternalStore(
     subscribeHarnessAvailability,
     getHarnessAvailabilitySnapshot,
@@ -2043,6 +2056,11 @@ function ProvidersPage() {
   );
   const [choice, setChoice] = useState(loadLastModelChoice);
   const [defaultModels, setDefaultModels] = useState(loadDefaultModels);
+
+  useEffect(() => {
+    setChoice(loadLastModelChoice());
+    setDefaultModels(loadDefaultModels());
+  }, [catalogVersion]);
 
   useEffect(() => {
     void probeHarnessAvailability();
@@ -2103,6 +2121,7 @@ function ProviderRow({
   onModelChange: (harness: HarnessId, model: string) => void;
 }) {
   const models = modelsFor(harness);
+  const liveCatalog = hasLiveCatalog(harness);
   const available = isHarnessAvailable(harness);
   const current =
     models.length > 0 ? resolveModel(harness, selectedModel) : null;
@@ -2112,9 +2131,14 @@ function ProviderRow({
   const [installing, setInstalling] = useState(false);
 
   useEffect(() => {
-    if (!available || hasLiveCatalog(harness)) return;
+    if (
+      !available ||
+      liveCatalog ||
+      (!supportsCustomModels(harness) && models.length > 0)
+    )
+      return;
     void refreshHarnessCatalogs([harness]);
-  }, [available, harness]);
+  }, [available, harness, liveCatalog, models.length]);
 
   const onPickerVisible = (visible: boolean) => {
     savePickerProviderVisible(harness, visible);
@@ -2148,64 +2172,71 @@ function ProviderRow({
   };
 
   return (
-    <Row
-      label={
-        <span className="flex items-center gap-2">
-          <HarnessIcon harness={harness} className="size-4 shrink-0" />
-          {HARNESS_TITLE[harness]}
-          {isDefault ? (
-            <span className="rounded-full bg-content/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-content/60">
-              {t("Default")}
-            </span>
-          ) : null}
-        </span>
-      }
-      description={
-        available
-          ? t(
-              models.length === 1
-                ? "{count} model available."
-                : "{count} models available.",
-              { count: models.length },
-            )
-          : harnessUnavailableHint(harness)
-      }
-    >
-      {current ? (
-        <Select
-          label={t("{name} model", { name: HARNESS_TITLE[harness] })}
-          value={current.id}
-          onChange={(next) => onModelChange(harness, next)}
-          options={models.map((item) => ({
-            value: item.id,
-            label: item.name,
-          }))}
-        />
-      ) : null}
-      {!available && harness === "codex" ? (
-        <SecondaryButton onClick={onInstallCodex} disabled={installing}>
-          {installing ? "Installing…" : "Install Codex"}
-        </SecondaryButton>
-      ) : null}
-      <SecondaryButton
-        onClick={() => current && onDefault(harness, current.id)}
-        disabled={isDefault || !current}
+    <div className="border-b border-content/5 last:border-b-0">
+      <Row
+        label={
+          <span className="flex items-center gap-2">
+            <HarnessIcon harness={harness} className="size-4 shrink-0" />
+            {HARNESS_TITLE[harness]}
+            {isDefault ? (
+              <span className="rounded-full bg-content/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-content/60">
+                {t("Default")}
+              </span>
+            ) : null}
+          </span>
+        }
+        description={
+          available
+            ? t(
+                models.length === 1
+                  ? "{count} model available."
+                  : "{count} models available.",
+                { count: models.length },
+              )
+            : harnessUnavailableHint(harness)
+        }
       >
-        {isDefault ? t("Default") : t("Use by default")}
-      </SecondaryButton>
-      {available ? (
-        <div className="flex items-center gap-2">
-          <span className="text-[12px] text-content/50">{t("Show in picker")}</span>
-          <Toggle
-            label={t("Show {name} in the model picker", {
-              name: HARNESS_TITLE[harness],
-            })}
-            on={inPicker}
-            onChange={onPickerVisible}
+        {current ? (
+          <Select
+            label={t("{name} model", { name: HARNESS_TITLE[harness] })}
+            value={current.id}
+            onChange={(next) => onModelChange(harness, next)}
+            options={models.map((item) => ({
+              value: item.id,
+              label: item.name,
+            }))}
           />
-        </div>
+        ) : null}
+        {!available && harness === "codex" ? (
+          <SecondaryButton onClick={onInstallCodex} disabled={installing}>
+            {installing ? "Installing…" : "Install Codex"}
+          </SecondaryButton>
+        ) : null}
+        <SecondaryButton
+          onClick={() => current && onDefault(harness, current.id)}
+          disabled={isDefault || !current}
+        >
+          {isDefault ? t("Default") : t("Use by default")}
+        </SecondaryButton>
+        {available ? (
+          <div className="flex items-center gap-2">
+            <span className="text-[12px] text-content/50">
+              {t("Show in picker")}
+            </span>
+            <Toggle
+              label={t("Show {name} in the model picker", {
+                name: HARNESS_TITLE[harness],
+              })}
+              on={inPicker}
+              onChange={onPickerVisible}
+            />
+          </div>
+        ) : null}
+      </Row>
+      {supportsCustomModels(harness) ? (
+        <CustomModelsSection harness={harness} />
       ) : null}
-    </Row>
+    </div>
   );
 }
 

@@ -215,6 +215,10 @@ export function ModelPicker({
     if (open) search.current?.focus();
   }, [open]);
 
+  useEffect(() => {
+    if (open) setFavorites(loadFavoriteModels());
+  }, [open, catalogVersion]);
+
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
     const pool =
@@ -229,7 +233,7 @@ export function ModelPicker({
     if (!needle) return pool;
     return pool.filter((item) => {
       const hay =
-        `${item.name} ${HARNESS_TITLE[item.harness]} ${HARNESS_LABEL[item.harness]}`.toLowerCase();
+        `${item.name} ${item.nativeId ?? ""} ${HARNESS_TITLE[item.harness]} ${HARNESS_LABEL[item.harness]}`.toLowerCase();
       return hay.includes(needle);
     });
     // Catalog, install probes, and picker-visibility all feed this list:
@@ -539,7 +543,11 @@ function ModelList({
               aria-disabled={disabled}
               disabled={disabled}
               title={
-                disabled ? harnessUnavailableHint(item.harness) : undefined
+                disabled
+                  ? harnessUnavailableHint(item.harness)
+                  : item.isCustom
+                    ? item.nativeId
+                    : undefined
               }
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
@@ -561,7 +569,7 @@ function ModelList({
                   />
                   <span className="truncate">
                     {HARNESS_TITLE[item.harness]} ·{" "}
-                    {HARNESS_LABEL[item.harness]}
+                    {item.isCustom ? "Custom" : HARNESS_LABEL[item.harness]}
                   </span>
                 </span>
               </span>
