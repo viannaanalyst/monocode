@@ -12,7 +12,7 @@ export function browserMcpServers(cwd: string): Array<{
   name: string;
   command: string;
   args: string[];
-  env: Record<string, string>;
+  env: Array<{ name: string; value: string }>;
 }> {
   if (!cwd.trim()) return [];
   return [
@@ -20,7 +20,7 @@ export function browserMcpServers(cwd: string): Array<{
       name: "monocode-browser",
       command: "node",
       args: [browserMcpScriptPath(cwd)],
-      env: { MONOCODE_BROWSER_CWD: cwd },
+      env: [{ name: "MONOCODE_BROWSER_CWD", value: cwd }],
     },
   ];
 }
@@ -70,7 +70,7 @@ let nextId = 1;
 
 function send(msg) {
   const json = JSON.stringify(msg);
-  stdout.write("Content-Length: " + Buffer.byteLength(json) + "\\r\\n\\r\\n" + json);
+  stdout.write(json + "\\n");
 }
 
 async function callTool(name, args = {}) {

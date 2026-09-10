@@ -119,7 +119,7 @@ let nextId = 1;
 
 function send(msg) {
   const json = JSON.stringify(msg);
-  stdout.write(`Content-Length: ${Buffer.byteLength(json)}\r\n\r\n${json}`);
+  stdout.write(`${json}\n`);
 }
 
 async function callTool(name, args = {}) {

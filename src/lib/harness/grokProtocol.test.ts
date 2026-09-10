@@ -85,7 +85,7 @@ describe("grok protocol", () => {
         name: "monocode-browser",
         command: "node",
         args: ["/repo/.monocode-browser-mcp.mjs"],
-        env: { MONOCODE_BROWSER_CWD: "/repo" },
+        env: [{ name: "MONOCODE_BROWSER_CWD", value: "/repo" }],
       },
     ];
     expect(grokSessionNewParams("/repo", "supervised")).toEqual({
