@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import { notifySession, pendingInputNotifications } from "../lib/notifications";
+import { playCue } from "../lib/sounds";
 import type { Session } from "../lib/session";
 
 export function useInputNotifications(
@@ -23,10 +24,12 @@ export function useInputNotifications(
       // Coalesce this render's banners per session, but leave other requests
       // eligible for the next update (including resolution of the first one).
       notified.add(key);
-      void notifySession(
-        session,
-        event,
-        session.id === activeSessionId,
+      // When the OS banner is suppressed (the pending request is on screen),
+      // still play the chosen notification sound so the user hears it.
+      void notifySession(session, event, session.id === activeSessionId).then(
+        (sent) => {
+          if (!sent) playCue("approvalNeeded");
+        },
       );
     }
   }, [activeSessionId, inputNotifications]);
