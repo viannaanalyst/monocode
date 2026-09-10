@@ -2125,12 +2125,9 @@ function ProviderRow({
   const [inPicker, setInPicker] = useState(() =>
     isPickerProviderVisible(harness),
   );
-<<<<<<< HEAD
   const [installing, setInstalling] = useState(false);
-=======
   const needsCatalogRefresh =
     supportsCustomModels(harness) || models.length === 0;
->>>>>>> 7ee52aa (Stop catalog probes from rerunning when custom models change.)
 
   useEffect(() => {
     if (!available || liveCatalog || !needsCatalogRefresh) return;
