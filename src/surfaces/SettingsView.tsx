@@ -1672,7 +1672,6 @@ function VoicePage() {
 
   return (
     <>
-      <Heading title={t("Voice input")} first />
       <Row
         label={t("Enable dictation")}
         description={t("Show a microphone button in the composer.")}
@@ -1738,6 +1737,7 @@ function VoicePage() {
         <input
           type="text"
           value={prompt}
+          aria-label={t("Context prompt")}
           onChange={(event) => setPrompt(event.target.value)}
           onBlur={() => saveVoicePrompt(prompt)}
           className="w-64 rounded-md border border-content/10 bg-content/5 px-2 py-1 text-[12px] text-content outline-none"
@@ -1755,6 +1755,7 @@ function VoicePage() {
           <input
             type="password"
             value={keyDraft}
+            aria-label={t("OpenAI API key")}
             placeholder={hasKey ? "••••••••" : "sk-…"}
             onChange={(event) => setKeyDraft(event.target.value)}
             className="w-48 rounded-md border border-content/10 bg-content/5 px-2 py-1 text-[12px] text-content outline-none"
