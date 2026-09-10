@@ -18,8 +18,10 @@ mod project_logo;
 mod pty;
 mod rate_limits;
 mod search;
+mod secrets;
 mod session_store;
 mod skills;
+mod transcribe;
 mod window;
 mod window_transfer;
 #[cfg(windows)]
@@ -345,6 +347,10 @@ pub fn run() {
             project_logo::save_project_logo,
             project_logo::remove_project_logo,
             project_logo::forget_logo_file,
+            secrets::voice_set_api_key,
+            secrets::voice_clear_api_key,
+            secrets::voice_has_api_key,
+            transcribe::transcribe_audio,
         ])
         .build(tauri::generate_context!())
         .expect("error while building MonoCode");
