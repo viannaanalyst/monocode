@@ -1,55 +1,45 @@
 import type { ComponentType } from "react";
-import Claude from "@lobehub/icons/es/Claude/components/Mono";
-import DeepSeek from "@lobehub/icons/es/DeepSeek/components/Mono";
-import Gemini from "@lobehub/icons/es/Gemini/components/Mono";
+import Claude from "@lobehub/icons/es/Claude/components/Color";
+import DeepSeek from "@lobehub/icons/es/DeepSeek/components/Color";
+import Gemini from "@lobehub/icons/es/Gemini/components/Color";
 import Groq from "@lobehub/icons/es/Groq/components/Mono";
-import Kimi from "@lobehub/icons/es/Kimi/components/Mono";
-import Meta from "@lobehub/icons/es/Meta/components/Mono";
-import Minimax from "@lobehub/icons/es/Minimax/components/Mono";
-import Mistral from "@lobehub/icons/es/Mistral/components/Mono";
-import OpenAI from "@lobehub/icons/es/OpenAI/components/Mono";
-import OpenRouter from "@lobehub/icons/es/OpenRouter/components/Mono";
-import Perplexity from "@lobehub/icons/es/Perplexity/components/Mono";
-import Qwen from "@lobehub/icons/es/Qwen/components/Mono";
+import Kimi from "@lobehub/icons/es/Kimi/components/Color";
+import Meta from "@lobehub/icons/es/Meta/components/Color";
+import Minimax from "@lobehub/icons/es/Minimax/components/Color";
+import Mistral from "@lobehub/icons/es/Mistral/components/Color";
+import OpenRouter from "@lobehub/icons/es/OpenRouter/components/Color";
+import Perplexity from "@lobehub/icons/es/Perplexity/components/Color";
+import Qwen from "@lobehub/icons/es/Qwen/components/Color";
 import XAI from "@lobehub/icons/es/XAI/components/Mono";
-import Zhipu from "@lobehub/icons/es/Zhipu/components/Mono";
+import Zhipu from "@lobehub/icons/es/Zhipu/components/Color";
+import codexMark from "../assets/providers/codex.svg";
 import type { AgentModel } from "../lib/models";
 import { HarnessIcon } from "./HarnessIcon";
 
-/**
- * Brand marks keyed by vendor. We deep-import only the `Mono` glyph (an
- * `currentColor` SVG) so the heavy Avatar/Color wrappers and their `@lobehub/ui`
- * peer never enter the bundle.
- */
-const BRANDS: {
-  key: string;
-  test: RegExp;
-  Icon: ComponentType<{ size?: number | string; className?: string }>;
-}[] = [
-  { key: "deepseek", test: /deepseek/, Icon: DeepSeek },
-  {
-    key: "openai",
-    test: /\b(gpt|chatgpt|codex|o1|o3|o4)\b/,
-    Icon: OpenAI,
-  },
-  { key: "claude", test: /claude|sonnet|opus|haiku|fable|anthropic/, Icon: Claude },
-  { key: "gemini", test: /gemini/, Icon: Gemini },
-  { key: "xai", test: /grok|xai/, Icon: XAI },
-  { key: "zhipu", test: /\bglm\b|zhipu|chatglm/, Icon: Zhipu },
-  { key: "kimi", test: /kimi|moonshot/, Icon: Kimi },
-  { key: "qwen", test: /qwen|alibaba/, Icon: Qwen },
-  { key: "minimax", test: /minimax/, Icon: Minimax },
-  { key: "mistral", test: /mistral|mixtral/, Icon: Mistral },
-  { key: "meta", test: /llama|\bmeta\b/, Icon: Meta },
-  { key: "perplexity", test: /perplexity|sonar/, Icon: Perplexity },
-  { key: "openrouter", test: /openrouter/, Icon: OpenRouter },
-  { key: "groq", test: /groq/, Icon: Groq },
-];
+type LobeIcon = ComponentType<{ size?: number | string; className?: string }>;
 
-function brandIcon(model: AgentModel) {
-  const hay = `${model.name} ${model.id} ${model.nativeId ?? ""}`.toLowerCase();
-  return BRANDS.find((brand) => brand.test.test(hay))?.Icon ?? null;
-}
+/**
+ * Brand marks keyed by vendor. We deep-import the glyph components (colored
+ * `Color` where a brand palette exists, monochrome `Mono` otherwise) so the
+ * heavy Avatar/Combine wrappers and their `@lobehub/ui` peer stay out of the
+ * bundle. OpenAI reuses the Codex mark the app already ships.
+ */
+const BRANDS: { test: RegExp; Icon?: LobeIcon; image?: string }[] = [
+  { test: /deepseek/, Icon: DeepSeek },
+  { test: /\b(gpt|chatgpt|codex|o1|o3|o4)\b/, image: codexMark },
+  { test: /claude|sonnet|opus|haiku|fable|anthropic/, Icon: Claude },
+  { test: /gemini/, Icon: Gemini },
+  { test: /grok|xai/, Icon: XAI },
+  { test: /\bglm\b|zhipu|chatglm/, Icon: Zhipu },
+  { test: /kimi|moonshot/, Icon: Kimi },
+  { test: /qwen|alibaba/, Icon: Qwen },
+  { test: /minimax/, Icon: Minimax },
+  { test: /mistral|mixtral/, Icon: Mistral },
+  { test: /llama|\bmeta\b/, Icon: Meta },
+  { test: /perplexity|sonar/, Icon: Perplexity },
+  { test: /openrouter/, Icon: OpenRouter },
+  { test: /groq/, Icon: Groq },
+];
 
 /** The model vendor's mark, falling back to the harness icon. */
 export function ModelBrandIcon({
@@ -59,8 +49,20 @@ export function ModelBrandIcon({
   model: AgentModel;
   className?: string;
 }) {
-  const Icon = brandIcon(model);
-  if (!Icon) return <HarnessIcon harness={model.harness} className={className} />;
+  const hay = `${model.name} ${model.id} ${model.nativeId ?? ""}`.toLowerCase();
+  const brand = BRANDS.find((entry) => entry.test.test(hay));
+  if (!brand) return <HarnessIcon harness={model.harness} className={className} />;
+  if (brand.image) {
+    return (
+      <img
+        src={brand.image}
+        alt=""
+        aria-hidden
+        className={`shrink-0 object-contain ${className}`}
+      />
+    );
+  }
+  const Icon = brand.Icon!;
   return (
     <span
       aria-hidden
