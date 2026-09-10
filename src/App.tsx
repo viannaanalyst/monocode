@@ -279,7 +279,6 @@ import { liveAgentsFromSessions } from "./lib/liveAgents";
 import { hiddenApprovalNotices } from "./lib/approvalToast";
 import { nextUnseenFinishedSessions } from "./lib/sessionDone";
 import {
-  isWindowFocused,
   loadNotificationsEnabled,
   NOTIFICATION_CLICK_EVENT,
   notifySession,
