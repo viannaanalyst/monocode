@@ -45,6 +45,29 @@ describe("tooltipText", () => {
     expect(isTooltipTarget(ariaDisabled)).toBe(false);
     expect(isTooltipTarget(empty)).toBe(false);
   });
+
+  it("rejects a labeled button inside a disabled fieldset", () => {
+    const fieldset = document.createElement("fieldset");
+    fieldset.disabled = true;
+    const button = document.createElement("button");
+    button.setAttribute("aria-label", "Settings");
+    fieldset.append(button);
+
+    expect(isTooltipTarget(button)).toBe(false);
+  });
+
+  it("rejects inputs even when they have role button and a label", () => {
+    const input = document.createElement("input");
+    input.setAttribute("role", "button");
+    input.setAttribute("aria-label", "Run");
+    const disabledInput = document.createElement("input");
+    disabledInput.disabled = true;
+    disabledInput.setAttribute("role", "button");
+    disabledInput.setAttribute("aria-label", "Run disabled");
+
+    expect(isTooltipTarget(input)).toBe(false);
+    expect(isTooltipTarget(disabledInput)).toBe(false);
+  });
 });
 
 describe("tooltipPosition", () => {

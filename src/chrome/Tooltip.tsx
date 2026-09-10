@@ -18,7 +18,13 @@ export function isTooltipTarget(element: Element): element is HTMLElement {
   if (element.getAttribute("aria-disabled")?.toLowerCase() === "true") {
     return false;
   }
-  if (element instanceof HTMLButtonElement && element.disabled) return false;
+  if (element instanceof HTMLInputElement) return false;
+  if (
+    element.matches(":disabled") ||
+    element.closest("fieldset:disabled") !== null
+  ) {
+    return false;
+  }
 
   const isButton =
     element instanceof HTMLButtonElement ||
