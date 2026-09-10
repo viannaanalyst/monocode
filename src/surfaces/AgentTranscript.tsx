@@ -61,6 +61,7 @@ import {
   type ToolPreview,
 } from "../lib/session";
 import { HarnessIcon } from "../chrome/HarnessIcon";
+import { ModelBrandMark } from "../chrome/ModelBrandIcon";
 import { useLockOverscroll } from "../hooks/useLockOverscroll";
 import { useTranscriptLayout } from "../hooks/useTranscriptLayout";
 import { useTranscriptAnchor } from "../hooks/useTranscriptAnchor";
@@ -483,6 +484,7 @@ function AgentTranscriptComponent({
                 title={foldTitle}
                 kind={workKind(folded)}
                 harness={turnHarness}
+                modelName={modelName}
                 live={live}
                 expandable={!!fold}
                 open={workOpen && !!fold}
@@ -687,7 +689,11 @@ function TurnDuration({
           {dot}
           <span className="flex min-w-0 items-center gap-1.5">
             {harness ? (
-              <HarnessIcon harness={harness} className="size-3.5 shrink-0" />
+              <ModelBrandMark
+                text={modelName ?? ""}
+                harness={harness}
+                className="size-3.5 shrink-0"
+              />
             ) : null}
             <span className="min-w-0 truncate" title={label}>
               {label}
@@ -1123,6 +1129,7 @@ function WorkFoldLine({
   title,
   kind,
   harness,
+  modelName,
   live = false,
   expandable,
   open,
@@ -1131,6 +1138,7 @@ function WorkFoldLine({
   title: ReactNode;
   kind: ActivityPhaseKind;
   harness?: HarnessId;
+  modelName?: string;
   live?: boolean;
   expandable: boolean;
   open: boolean;
@@ -1148,7 +1156,8 @@ function WorkFoldLine({
       ) : (
         <>
           {harness ? (
-            <HarnessIcon
+            <ModelBrandMark
+              text={modelName ?? ""}
               harness={harness}
               className={`size-3.5 shrink-0 ${expandable ? "group-hover:opacity-0" : ""}`}
             />

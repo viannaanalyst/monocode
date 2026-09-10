@@ -14,6 +14,7 @@ import XAI from "@lobehub/icons/es/XAI/components/Mono";
 import Zhipu from "@lobehub/icons/es/Zhipu/components/Color";
 import codexMark from "../assets/providers/codex.svg";
 import type { AgentModel } from "../lib/models";
+import type { HarnessId } from "../lib/session";
 import { HarnessIcon } from "./HarnessIcon";
 
 type LobeIcon = ComponentType<{ size?: number | string; className?: string }>;
@@ -41,17 +42,23 @@ const BRANDS: { test: RegExp; Icon?: LobeIcon; image?: string }[] = [
   { test: /groq/, Icon: Groq },
 ];
 
-/** The model vendor's mark, falling back to the harness icon. */
-export function ModelBrandIcon({
-  model,
+/** The model vendor's mark from free text, falling back to the harness icon. */
+export function ModelBrandMark({
+  text,
+  harness,
   className = "size-3.5",
 }: {
-  model: AgentModel;
+  text: string;
+  harness?: HarnessId;
   className?: string;
 }) {
-  const hay = `${model.name} ${model.id} ${model.nativeId ?? ""}`.toLowerCase();
+  const hay = text.toLowerCase();
   const brand = BRANDS.find((entry) => entry.test.test(hay));
-  if (!brand) return <HarnessIcon harness={model.harness} className={className} />;
+  if (!brand) {
+    return harness ? (
+      <HarnessIcon harness={harness} className={className} />
+    ) : null;
+  }
   if (brand.image) {
     return (
       <img
@@ -70,5 +77,22 @@ export function ModelBrandIcon({
     >
       <Icon size="100%" />
     </span>
+  );
+}
+
+/** The model vendor's mark, falling back to the harness icon. */
+export function ModelBrandIcon({
+  model,
+  className = "size-3.5",
+}: {
+  model: AgentModel;
+  className?: string;
+}) {
+  return (
+    <ModelBrandMark
+      text={`${model.name} ${model.id} ${model.nativeId ?? ""}`}
+      harness={model.harness}
+      className={className}
+    />
   );
 }
