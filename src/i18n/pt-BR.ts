@@ -740,6 +740,9 @@ export const PT_BR: Record<string, string> = {
   "File tab actions": "Ações da aba",
   "Image preview: {name}": "Prévia da imagem: {name}",
   "Close image preview": "Fechar prévia da imagem",
+  Dictate: "Ditar",
+  "Stop recording": "Parar gravação",
+  "Transcribing…": "Transcrevendo…",
   "Voice input": "Entrada por voz",
   "Dictate prompts with OpenAI transcription.":
     "Dite prompts com a transcrição da OpenAI.",

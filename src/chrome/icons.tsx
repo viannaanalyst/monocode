@@ -83,6 +83,7 @@ import SidebarRight01Icon from "@hugeicons/core-free-icons/SidebarRight01Icon";
 import SparklesIcon from "@hugeicons/core-free-icons/SparklesIcon";
 import SquareIcon from "@hugeicons/core-free-icons/SquareIcon";
 import SquareLock02Icon from "@hugeicons/core-free-icons/SquareLock02Icon";
+import SquareStopIcon from "@hugeicons/core-free-icons/SquareStopIcon";
 import SquareUnlock01Icon from "@hugeicons/core-free-icons/SquareUnlock01Icon";
 import StarIcon from "@hugeicons/core-free-icons/StarIcon";
 import Tick02Icon from "@hugeicons/core-free-icons/Tick02Icon";
@@ -233,6 +234,7 @@ export const SlidersHorizontal = wrap(
 export const Sparkles = wrap(SparklesIcon, "Sparkles");
 export const Square = wrap(SquareIcon, "Square");
 export const SquarePlus = wrap(AddSquareIcon, "SquarePlus");
+export const SquareStop = wrap(SquareStopIcon, "SquareStop");
 export const Star = wrap(StarIcon, "Star");
 export const StickyNote = wrap(Note01Icon, "StickyNote");
 export const Terminal = wrap(ComputerTerminal01Icon, "Terminal");

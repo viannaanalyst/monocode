@@ -61,5 +61,9 @@ export function useDictation({ enabled, getOptions, onText, onError }: Options) 
     else if (controller.state === "idle") void controller.start();
   }, []);
 
-  return { state, elapsedMs, toggle };
+  const cancel = useCallback(() => {
+    controllerRef.current?.cancel();
+  }, []);
+
+  return { state, elapsedMs, toggle, cancel };
 }

@@ -5,11 +5,14 @@ import {
   CornerDownRight,
   FilePlus,
   ListEnd,
+  Loader,
+  Mic,
   Pause,
   Pencil,
   Play,
   Plus,
   Square,
+  SquareStop,
   StickyNote,
   Trash2,
   X,
@@ -106,6 +109,10 @@ import {
   COMPOSER_RUNNER_CHANGE_EVENT,
   loadComposerRunner,
   loadNotesEnabled,
+  loadVoiceEnabled,
+  loadVoiceLanguage,
+  loadVoiceModel,
+  loadVoicePrompt,
   subscribeNotesEnabled,
 } from "../lib/settings";
 import {
@@ -122,6 +129,8 @@ import { useComposerSkills } from "./useComposerSkills";
 import { Popover } from "./Popover";
 import { consumePlanCommand, PLAN_COMMAND } from "../lib/plan";
 import { COMPACT_COMMAND, isCompactCommand } from "../lib/compact";
+import { insertAtCursor } from "../lib/transcribe";
+import { useDictation } from "../hooks/useDictation";
 import { t } from "../i18n";
 
 
@@ -710,6 +719,35 @@ export function Composer({
     setMention(token ? null : mentionTokenAt(el.value, cursor));
   };
 
+  const [voiceEnabled, setVoiceEnabled] = useState(loadVoiceEnabled);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  useEffect(() => {
+    const onStorage = () => setVoiceEnabled(loadVoiceEnabled());
+    window.addEventListener("focus", onStorage);
+    return () => window.removeEventListener("focus", onStorage);
+  }, []);
+
+  const dictation = useDictation({
+    enabled: voiceEnabled,
+    getOptions: () => ({
+      model: loadVoiceModel(),
+      language: loadVoiceLanguage(),
+      prompt: loadVoicePrompt(),
+    }),
+    onText: (text) => {
+      const el = ref.current;
+      if (!el) return;
+      const next = insertAtCursor(el, text);
+      resizeTextarea(el);
+      setDraft(next);
+      onDraftChange?.(next);
+      syncHasValue(next, attachmentsRef.current);
+      syncTokensFromTextarea(el);
+      el.focus();
+    },
+    onError: (message) => setVoiceError(message),
+  });
+
   useEffect(() => {
     const el = ref.current;
     if (!el || !quoteRequest) return;
@@ -947,6 +985,12 @@ export function Composer({
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (isImeComposition(e.nativeEvent)) return;
     if (creatingSkill) return;
+
+    if (e.key === "Escape" && dictation.state === "recording") {
+      e.preventDefault();
+      dictation.cancel();
+      return;
+    }
 
     if (mentionOpen) {
       if (e.key === "ArrowDown") {
@@ -1398,6 +1442,48 @@ export function Composer({
             </div>
 
             <div className="flex shrink-0 items-center gap-1">
+              {voiceEnabled ? (
+                <button
+                  type="button"
+                  title={
+                    dictation.state === "recording"
+                      ? t("Stop recording")
+                      : dictation.state === "transcribing"
+                        ? t("Transcribing…")
+                        : t("Dictate")
+                  }
+                  aria-label={
+                    dictation.state === "recording"
+                      ? t("Stop recording")
+                      : dictation.state === "transcribing"
+                        ? t("Transcribing…")
+                        : t("Dictate")
+                  }
+                  disabled={dictation.state === "transcribing" || busy}
+                  onClick={() => {
+                    setVoiceError(null);
+                    dictation.toggle();
+                  }}
+                  className={`grid size-6.5 shrink-0 place-items-center rounded-md ${
+                    dictation.state === "recording"
+                      ? "bg-red-500/90 text-white hover:bg-red-500"
+                      : "bg-content/10 text-content/50 hover:bg-content/15 hover:text-content"
+                  } disabled:opacity-40`}
+                >
+                  {dictation.state === "recording" ? (
+                    <span className="flex items-center gap-1">
+                      <SquareStop className="size-3.5" />
+                      <span className="font-mono text-[10px] tabular-nums">
+                        {Math.floor(dictation.elapsedMs / 1000)}s
+                      </span>
+                    </span>
+                  ) : dictation.state === "transcribing" ? (
+                    <Loader className="size-3.5 animate-spin" />
+                  ) : (
+                    <Mic className="size-3.5" />
+                  )}
+                </button>
+              ) : null}
               <ComposerAction
                 busy={busy}
                 hasValue={hasValue}
@@ -1407,6 +1493,9 @@ export function Composer({
             </div>
           </div>
         </div>
+        {voiceError ? (
+          <p className="px-3 pb-1 text-[11px] text-red-400">{voiceError}</p>
+        ) : null}
         {runnerLive && runnerEnabled ? (
           <ComposerRunner
             boxRef={boxRef}
