@@ -820,7 +820,7 @@ function CodeMirrorEditor({
     return () => {
       cancelled = true;
     };
-  }, [navigation]);
+  }, [navigation, value]);
 
   useEffect(() => {
     if (!active) return;
