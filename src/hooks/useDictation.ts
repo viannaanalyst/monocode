@@ -37,7 +37,8 @@ export function useDictation({ enabled, getOptions, onText, onError }: Options) 
   }
 
   useEffect(() => {
-    return () => controllerRef.current?.dispose();
+    const controller = controllerRef.current;
+    return () => controller?.cancel();
   }, []);
 
   useEffect(() => {
