@@ -1,8 +1,9 @@
-import { GitCompare, GripVertical, Terminal, X } from "./icons";
+import { GitCompare, Globe, GripVertical, Plus, Terminal, X } from "./icons";
 import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { basename } from "../lib/fs";
 import {
+  isBrowserTab,
   isChangesTab,
   isCommitTab,
   isPlanTab,
@@ -13,10 +14,13 @@ import {
   type FilePaneTab,
 } from "../lib/layout";
 import { releaseNotesTitle } from "../lib/releaseNotes";
+import { browserFaviconUrl, browserTabLabel } from "../lib/browserUrl";
 import { terminalTabLabel } from "../lib/terminalTab";
 import { useLockOverscroll } from "../hooks/useLockOverscroll";
 import { useSortable } from "../hooks/useSortable";
 import { FileTypeIcon } from "./FileTypeIcon";
+import { t } from "../i18n";
+
 
 type Props = {
   files: FilePaneTab[];
@@ -27,6 +31,7 @@ type Props = {
   onCloseFile: (fileId: string) => void;
   onReorder: (ids: string[]) => void;
   onPaneDragStart?: (event: ReactPointerEvent<HTMLElement>) => void;
+  onNewTab?: () => void;
   label?: string;
   trailing?: ReactNode;
 };
@@ -36,6 +41,7 @@ export type SurfaceTabPresentation = {
   label: string;
   iconName: string;
   tooltip: string;
+  favicon?: string | null;
 };
 
 export function surfaceTabPresentation(
@@ -54,18 +60,18 @@ export function surfaceTabPresentation(
   if (isChangesTab(file)) {
     return {
       name: "Changes",
-      label: "Changes",
+      label: t("Changes"),
       iconName: "CHANGES",
-      tooltip: "Working tree changes",
+      tooltip: t("Working tree changes"),
     };
   }
 
   if (isSessionChangesTab(file)) {
     return {
       name: "Session Changes",
-      label: "Session Changes",
+      label: t("Session Changes"),
       iconName: "CHANGES",
-      tooltip: "Changes captured for this session only",
+      tooltip: t("Changes captured for this session only"),
     };
   }
 
@@ -79,23 +85,36 @@ export function surfaceTabPresentation(
     };
   }
 
+  if (isBrowserTab(file)) {
+    const name = file.browserTitle?.trim()
+      ? browserTabLabel(file.path, file.browserTitle)
+      : t(browserTabLabel(file.path));
+    return {
+      name,
+      label: name,
+      iconName: "BROWSER",
+      tooltip: file.path === "about:blank" ? name : file.path,
+      favicon: browserFaviconUrl(file.path),
+    };
+  }
+
   const review = isReviewTab(file);
   const terminal = isTerminalTab(file);
   const name = isPlanTab(file)
-    ? file.plan.title.trim() || "Plan"
+    ? file.plan.title.trim() || t("Plan")
     : terminal
       ? terminalTabLabel(file)
       : basename(file.path);
   return {
     name,
-    label: review ? `${name} (Working Tree)` : name,
+    label: review ? `${name} (${t("Working Tree")})` : name,
     iconName: isPlanTab(file) ? "plan.md" : name,
     tooltip: isPlanTab(file)
       ? name
       : terminal
         ? `${name} — ${file.cwd}`
         : review
-          ? `${file.path} (Working Tree)`
+          ? `${file.path} (${t("Working Tree")})`
           : file.path,
   };
 }
@@ -103,7 +122,7 @@ export function surfaceTabPresentation(
 /** Tab tooltip: the path, then what is wrong with it. */
 export function appendProblems(title: string, errors: number): string {
   if (!errors) return title;
-  return `${title} — ${errors} ${errors === 1 ? "problem" : "problems"}`;
+  return `${title} — ${t(errors === 1 ? "{count} problem" : "{count} problems", { count: errors })}`;
 }
 
 export function SurfaceTabs({
@@ -115,14 +134,16 @@ export function SurfaceTabs({
   onCloseFile,
   onReorder,
   onPaneDragStart,
-  label = "Open files",
+  onNewTab,
+  label = t("Open files"),
   trailing,
 }: Props) {
   const lockOverscroll = useLockOverscroll<HTMLDivElement>();
   const activeTabRef = useRef<HTMLDivElement | null>(null);
   const fileIds = files.map((file) => file.id);
   const sortable = useSortable(fileIds, onReorder);
-  const canDrag = files.length > 1;
+  const browserOnly = files.length > 0 && files.every(isBrowserTab);
+  const canDrag = files.length > 1 && !browserOnly;
 
   useLayoutEffect(() => {
     if (sortable.draggingId) return;
@@ -133,18 +154,20 @@ export function SurfaceTabs({
   }, [activeFileId, sortable.draggingId]);
 
   return (
-    <div className="flex h-9 min-w-0 shrink-0 border-b border-content/10 bg-content/2">
+    <div className={`flex min-w-0 shrink-0 border-b border-content/10 bg-content/2 ${
+      browserOnly ? "h-8" : "h-9"
+    }`}>
       <div
         ref={lockOverscroll}
         role="tablist"
         aria-label={label}
         className="scrollbar-none flex min-w-0 flex-1 overflow-x-auto overscroll-none"
       >
-      {onPaneDragStart ? (
+      {onPaneDragStart && !browserOnly ? (
         <div
           role="button"
-          title="Drag to reorder pane"
-          aria-label="Drag to reorder pane"
+          title={t("Drag to reorder pane")}
+          aria-label={t("Drag to reorder pane")}
           tabIndex={-1}
           className="grid h-full w-5 shrink-0 cursor-grab place-items-center text-content/35 hover:bg-content/5 hover:text-content/70 active:cursor-grabbing touch-none"
           onPointerDown={(event) => {
@@ -165,14 +188,18 @@ export function SurfaceTabs({
         const commit = isCommitTab(file);
         const review = isReviewTab(file) && !changes;
         const terminal = isTerminalTab(file);
-        const { label, iconName, tooltip } = surfaceTabPresentation(file);
+        const browser = isBrowserTab(file);
+        const { label, iconName, tooltip, favicon } = surfaceTabPresentation(file);
+        const tabDraggable = canDrag && !browser;
         const dragging = sortable.draggingId === file.id;
         const showStart =
+          tabDraggable &&
           sortable.draggingId &&
           sortable.toIndex === index &&
           sortable.fromIndex !== null &&
           sortable.toIndex < sortable.fromIndex;
         const showEnd =
+          tabDraggable &&
           sortable.draggingId &&
           sortable.toIndex === index &&
           sortable.fromIndex !== null &&
@@ -184,10 +211,14 @@ export function SurfaceTabs({
               sortable.setItemRef(file.id, el);
               if (el && file.id === activeFileId) activeTabRef.current = el;
             }}
-            className={`group relative flex w-52 min-w-28 shrink touch-none items-stretch border-r border-content/10 ${
+            className={`group relative flex shrink items-stretch border-r border-content/10 ${
+              browser
+                ? "w-max min-w-[4.5rem] max-w-[8.5rem]"
+                : "w-52 min-w-28 touch-none"
+            } ${
               active ? "bg-content/8" : "hover:bg-content/5"
             } ${dragging ? "opacity-40" : ""} ${
-              canDrag ? "cursor-grab active:cursor-grabbing" : ""
+              tabDraggable ? "cursor-grab touch-none active:cursor-grabbing" : "cursor-pointer"
             }`}
             onPointerDown={(event) => {
               if (event.button !== 0) return;
@@ -197,7 +228,7 @@ export function SurfaceTabs({
                 return;
               }
               onSelectFile(file.id);
-              sortable.onItemPointerDown(file.id, event);
+              if (tabDraggable) sortable.onItemPointerDown(file.id, event);
             }}
           >
             {showStart ? (
@@ -215,14 +246,18 @@ export function SurfaceTabs({
                 if (sortable.consumeClick()) return;
                 onSelectFile(file.id);
               }}
-              className={`flex min-w-0 flex-1 items-center gap-1.5 px-3 pr-8 text-left text-[12px] ${
-                canDrag ? "cursor-grab active:cursor-grabbing" : ""
+              className={`flex min-w-0 flex-1 items-center gap-1.5 text-left text-[12px] ${
+                browser ? "px-1.5 pr-5" : "px-3 pr-8"
+              } ${
+                tabDraggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
               } ${
                 active ? "text-content" : "text-content/55 hover:text-content"
               }`}
             >
               {terminal ? (
                 <Terminal className="size-3.5 shrink-0" strokeWidth={1.75} />
+              ) : browser ? (
+                <BrowserFavicon key={favicon ?? "globe"} url={favicon} />
               ) : changes || commit ? (
                 <GitCompare className="size-3.5 shrink-0" strokeWidth={1.75} />
               ) : (
@@ -242,22 +277,22 @@ export function SurfaceTabs({
               {dirty ? (
                 <span
                   className="size-1.5 shrink-0 rounded-full bg-content/75"
-                  title="Unsaved changes"
-                  aria-label="Unsaved changes"
+                  title={t("Unsaved changes")}
+                  aria-label={t("Unsaved changes")}
                 />
               ) : null}
             </button>
             <button
               type="button"
-              title={`Close ${label}`}
-              aria-label={`Close ${label}`}
+              title={t("Close {name}", { name: label })}
+              aria-label={t("Close {name}", { name: label })}
               data-no-drag
               onPointerDown={(event) => event.stopPropagation()}
               onClick={(event) => {
                 event.stopPropagation();
                 onCloseFile(file.id);
               }}
-              className={`absolute right-1.5 top-1/2 grid size-5 -translate-y-1/2 place-items-center rounded text-content/50 hover:bg-content/10 hover:text-content ${
+              className={`absolute right-1.5 top-1/2 grid size-5 -translate-y-1/2 cursor-pointer place-items-center rounded text-content/50 hover:bg-content/10 hover:text-content [&_*]:pointer-events-none ${
                 active ? "opacity-100" : "opacity-0 group-hover:opacity-100"
               }`}
             >
@@ -266,7 +301,19 @@ export function SurfaceTabs({
           </div>
         );
       })}
-      {onPaneDragStart ? (
+      {onNewTab ? (
+        <button
+          type="button"
+          title={t("New tab")}
+          aria-label={t("New tab")}
+          data-no-drag
+          onClick={onNewTab}
+          className="grid h-full w-8 shrink-0 cursor-pointer place-items-center text-content/45 hover:bg-content/8 hover:text-content [&_*]:pointer-events-none"
+        >
+          <Plus className="size-3.5" strokeWidth={1.75} />
+        </button>
+      ) : null}
+      {onPaneDragStart && !browserOnly ? (
         <div
           className="min-w-4 flex-1 cursor-grab active:cursor-grabbing"
           onPointerDown={(event) => {
@@ -279,5 +326,22 @@ export function SurfaceTabs({
       </div>
       {trailing}
     </div>
+  );
+}
+
+function BrowserFavicon({ url }: { url?: string | null }) {
+  const [failed, setFailed] = useState(false);
+  if (!url || failed) {
+    return <Globe className="size-3.5 shrink-0" strokeWidth={1.75} />;
+  }
+  return (
+    <img
+      src={url}
+      alt=""
+      width={14}
+      height={14}
+      className="size-3.5 shrink-0 rounded-[3px]"
+      onError={() => setFailed(true)}
+    />
   );
 }

@@ -1,5 +1,6 @@
 use tauri::Manager;
 
+mod browser;
 mod chat_background;
 mod checkpoint;
 mod cursor_store;
@@ -198,6 +199,11 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             default_cwd,
             home_dir,
+            browser::browser_eval,
+            browser::browser_eval_js,
+            browser::browser_url,
+            browser::browser_reload,
+            browser::browser_screenshot_rect,
             notifications::notification_permission,
             notifications::request_notification_permission,
             notifications::show_notification,
@@ -325,6 +331,7 @@ pub fn run() {
             set_window_background_blur,
             set_dock_badge,
             open_new_window,
+            menu::set_menu_locale,
             window::hide_window,
             window::destroy_window,
             window::confirm_quit,

@@ -1,6 +1,7 @@
 import { nativeModelId } from "../models";
 import type { RuntimeMode } from "../session";
 import { promptBlocks } from "../attachments";
+import { browserMcpServers } from "../browserMcp";
 import { isTaskListToolName, taskListFromToolInput } from "../taskList";
 import { AcpClient, type AcpHandlers } from "./acp";
 import {
@@ -296,7 +297,7 @@ async function ensureLive(input: SendTurnInput): Promise<Live> {
         setup = await acp.request<SessionSetupResult>("session/load", {
           sessionId: resume.acpSessionId,
           cwd: input.cwd,
-          mcpServers: [],
+          mcpServers: browserMcpServers(input.cwd),
         });
         acpSessionId = resume.acpSessionId;
         didLoad = true;
@@ -312,7 +313,7 @@ async function ensureLive(input: SendTurnInput): Promise<Live> {
     if (!acpSessionId) {
       setup = await acp.request<SessionSetupResult>("session/new", {
         cwd: input.cwd,
-        mcpServers: [],
+        mcpServers: browserMcpServers(input.cwd),
       });
       acpSessionId = setup.sessionId?.trim();
     }

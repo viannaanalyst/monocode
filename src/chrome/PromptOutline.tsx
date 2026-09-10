@@ -22,6 +22,8 @@ import {
 } from "../lib/promptOutline";
 import type { Block } from "../lib/session";
 import { Popover } from "./Popover";
+import { t } from "../i18n";
+
 
 const OPEN_DELAY_MS = 25;
 const SCROLL_INSET_PX = 8;
@@ -247,7 +249,7 @@ export function PromptOutline({
     <div
       ref={rail}
       role="toolbar"
-      aria-label="Prompts"
+      aria-label={t("Prompts")}
       aria-orientation="vertical"
       style={{ width: BAR_WIDTH_LIFTED_PX }}
       onMouseEnter={() => {
@@ -309,7 +311,7 @@ export function PromptOutline({
           gap={10}
           width={POPOVER_WIDTH}
           onDismiss={close}
-          aria-label="Prompt preview"
+          aria-label={t("Prompt preview")}
           className="pointer-events-none flex flex-col gap-1.5 p-3 font-sans"
         >
           <p className="line-clamp-2 text-sm leading-snug text-content">

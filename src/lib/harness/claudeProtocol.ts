@@ -895,6 +895,7 @@ export function toolKindFromName(toolName: string): string {
   }
   if (normalized === "skill" || normalized === "skills") return "skill";
   if (isAgentToolName(toolName)) return "agent";
+  if (normalized.startsWith("browser")) return "browser";
   return toolName;
 }
 

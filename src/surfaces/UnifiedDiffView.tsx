@@ -30,7 +30,9 @@ import {
   type UnifiedBlock,
   type UnifiedLine,
 } from "../lib/unifiedDiff";
+import { t } from "../i18n";
 import {
+
   flattenVisibleRows,
   layoutRows,
   UNIFIED_FOLD_PX,
@@ -174,7 +176,7 @@ export function UnifiedDiffView({
 
   if (files.length === 0) {
     return (
-      <p className="px-4 py-6 text-[13px] text-content/45">No file changes</p>
+      <p className="px-4 py-6 text-[13px] text-content/45">{t("No file changes")}</p>
     );
   }
 
@@ -201,8 +203,8 @@ export function UnifiedDiffView({
         <span className="ml-auto flex items-center gap-0.5">
           <button
             type="button"
-            title="Expand all files"
-            aria-label="Expand all files"
+            title={t("Expand all files")}
+            aria-label={t("Expand all files")}
             onClick={() => setOpen(new Set(files.map((file) => file.id)))}
             className="grid size-7 place-items-center rounded-md text-content/45 hover:bg-content/10 hover:text-content"
           >
@@ -210,8 +212,8 @@ export function UnifiedDiffView({
           </button>
           <button
             type="button"
-            title="Collapse all files"
-            aria-label="Collapse all files"
+            title={t("Collapse all files")}
+            aria-label={t("Collapse all files")}
             disabled={open.size === 0}
             onClick={() => setOpen(new Set())}
             className="grid size-7 place-items-center rounded-md text-content/45 hover:bg-content/10 hover:text-content disabled:opacity-40"
@@ -394,7 +396,7 @@ const FileSection = memo(function FileSection({
         </button>
         {file.canDiscard && onDiscardFile ? (
           <IconButton
-            title="Discard file"
+            title={t("Discard file")}
             disabled={busy}
             onClick={() => onDiscardFile(file.id)}
           >
@@ -404,8 +406,8 @@ const FileSection = memo(function FileSection({
         {file.canStage && onStageFile ? (
           <button
             type="button"
-            title="Stage file"
-            aria-label="Stage file"
+            title={t("Stage file")}
+            aria-label={t("Stage file")}
             disabled={busy}
             onClick={() => onStageFile(file.id)}
             className="grid size-4 place-items-center rounded-[3px] bg-content text-background-base hover:opacity-80 disabled:opacity-40"
@@ -497,10 +499,10 @@ function FileBody({
   onReveal: (foldId: string, direction: "up" | "down" | "all") => void;
   onStageHunk?: (id: string, pos: number) => void;
 }) {
-  if (file.binary) return <EmptyBody>Binary file changed</EmptyBody>;
-  if (file.tooLarge) return <EmptyBody>Diff is too large to display</EmptyBody>;
+  if (file.binary) return <EmptyBody>{t("Binary file changed")}</EmptyBody>;
+  if (file.tooLarge) return <EmptyBody>{t("Diff is too large to display")}</EmptyBody>;
   if (file.emptyMessage) return <EmptyBody>{file.emptyMessage}</EmptyBody>;
-  if (file.blocks.length === 0) return <EmptyBody>No textual diff</EmptyBody>;
+  if (file.blocks.length === 0) return <EmptyBody>{t("No textual diff")}</EmptyBody>;
 
   return (
     <VirtualRows
@@ -860,8 +862,8 @@ function FoldBar({
     >
       <button
         type="button"
-        title="Expand upward"
-        aria-label="Expand unmodified lines upward"
+        title={t("Expand upward")}
+        aria-label={t("Expand unmodified lines upward")}
         onClick={() => onReveal("up")}
         className="grid size-5 place-items-center rounded text-content/40 hover:bg-content/10 hover:text-content"
       >
@@ -869,8 +871,8 @@ function FoldBar({
       </button>
       <button
         type="button"
-        title="Expand downward"
-        aria-label="Expand unmodified lines downward"
+        title={t("Expand downward")}
+        aria-label={t("Expand unmodified lines downward")}
         onClick={() => onReveal("down")}
         className="grid size-5 place-items-center rounded text-content/40 hover:bg-content/10 hover:text-content"
       >
@@ -952,8 +954,8 @@ const DiffLineRow = memo(function DiffLineRow({
         {onComment ? (
           <button
             type="button"
-            title={`Comment on line ${number ?? ""}`.trim()}
-            aria-label={`Comment on line ${number ?? ""}`.trim()}
+            title={t("Comment on line {n}", { n: number ?? "" }).trim()}
+            aria-label={t("Comment on line {n}", { n: number ?? "" }).trim()}
             onClick={(event) =>
               onComment(event.currentTarget.getBoundingClientRect())
             }
@@ -969,8 +971,8 @@ const DiffLineRow = memo(function DiffLineRow({
         {onStage ? (
           <button
             type="button"
-            title="Stage hunk"
-            aria-label="Stage hunk"
+            title={t("Stage hunk")}
+            aria-label={t("Stage hunk")}
             onClick={onStage}
             className={`absolute top-0.5 left-full z-10 ml-0.5 grid size-4 place-items-center rounded-[3px] bg-white text-[11px] font-bold text-black ${
               hovered ? "opacity-100" : "pointer-events-none opacity-0"

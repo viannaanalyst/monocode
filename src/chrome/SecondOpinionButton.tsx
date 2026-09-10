@@ -37,6 +37,8 @@ import { secondOpinionTargets } from "../lib/secondOpinion";
 import { HARNESS_TITLE, type HarnessId } from "../lib/session";
 import { HarnessIcon } from "./HarnessIcon";
 import { Popover } from "./Popover";
+import { t } from "../i18n";
+
 
 type Props = {
   from: HarnessId;
@@ -69,9 +71,9 @@ export function HandoffButton({
       from={from}
       onPick={onPick}
       icon={Replace}
-      title="Handoff"
+      title={t("Handoff")}
       disabledTitle="Install another provider to hand off"
-      description="Hand this session to another agent to continue the work."
+      description={t("Hand this session to another agent to continue the work.")}
       menuLabel="Hand this session to another agent"
     />
   );
@@ -94,9 +96,9 @@ export function BuildTargetButton({
       fromModel={model}
       onPick={onPick}
       icon={ChevronDown}
-      title="Build with another model"
+      title={t("Build with another model")}
       disabledTitle="No build providers are available"
-      description="Choose the model and provider that should build this plan."
+      description={t("Choose the model and provider that should build this plan.")}
       menuLabel="Build this plan with another model or provider"
       includeCurrent
       disabled={disabled}
@@ -383,7 +385,9 @@ export function SecondOpinionButton({
               maxHeight={SUBMENU_MAX_HEIGHT}
               layer={LAYER.submenu}
               role="menu"
-              aria-label={`${HARNESS_TITLE[activeHarness]} models`}
+              aria-label={t("{harness} models", {
+                harness: HARNESS_TITLE[activeHarness],
+              })}
               onMouseEnter={() => setInSubmenu(true)}
               data-provider-target
               className="overflow-y-auto overscroll-none p-1"

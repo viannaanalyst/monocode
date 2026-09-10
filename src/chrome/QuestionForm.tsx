@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Check, MessageSquare } from "./icons";
+import { t } from "../i18n";
 import {
+
   CUSTOM_OPTION_ID,
   buildQuestionReply,
   isOtherOption,
@@ -175,13 +177,13 @@ function QuestionFields({
         {question.prompt}
       </p>
       {question.multiSelect ? (
-        <p className="mt-0.5 text-[11px] text-content/40">Select all that apply</p>
+        <p className="mt-0.5 text-[11px] text-content/40">{t("Select all that apply")}</p>
       ) : null}
       {options.length === 0 && question.allowCustom ? (
         <input
           value={custom}
           onChange={(event) => onCustom(event.target.value)}
-          placeholder="Type your answer"
+          placeholder={t("Type your answer")}
           className="mt-1.5 w-full rounded-md border border-content/15 bg-transparent px-2 py-1 text-[12px] text-content outline-none placeholder:text-content/35 focus:border-content/30"
         />
       ) : (
@@ -231,7 +233,7 @@ function QuestionFields({
                   <input
                     value={custom}
                     onChange={(event) => onCustom(event.target.value)}
-                    placeholder="Type your answer"
+                    placeholder={t("Type your answer")}
                     className="mt-1 w-full rounded-md border border-content/15 bg-transparent px-2 py-1 text-[12px] text-content outline-none placeholder:text-content/35 focus:border-content/30"
                     onClick={(event) => event.stopPropagation()}
                     onFocus={() => {
@@ -253,7 +255,7 @@ function displayOptions(question: UserQuestion): UserQuestion["options"] {
   if (question.options.some(isOtherOption) || !question.allowCustom) {
     return question.options;
   }
-  return [...question.options, { id: CUSTOM_OPTION_ID, label: "Other" }];
+  return [...question.options, { id: CUSTOM_OPTION_ID, label: t("Other") }];
 }
 
 function customOptionId(question: UserQuestion): string {

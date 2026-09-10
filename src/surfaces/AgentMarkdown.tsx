@@ -1,5 +1,6 @@
 import { code } from "@streamdown/code";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import {
   createContext,
   isValidElement,
@@ -31,6 +32,13 @@ import { copyText } from "../lib/clipboard";
 import { INBOX_MEDIA_PREFIXES, isInboxMediaUrl } from "../lib/inboxMedia";
 import { isNoteImagePath } from "../lib/noteImages";
 import { InboxMedia } from "./InboxMedia";
+import { t } from "../i18n";
+import {
+  isLocalhostUrl,
+  openInAppBrowser,
+} from "../lib/browserUrl";
+import { loadLocalhostInBrowser } from "../lib/settings";
+
 
 const MERMAID_BASE_CONFIG = {
   startOnLoad: false,
@@ -170,6 +178,15 @@ function MarkdownLink({
           onOpenFile(filePath);
           return;
         }
+        if (href && /^https?:\/\//i.test(href)) {
+          event.preventDefault();
+          if (loadLocalhostInBrowser() && isLocalhostUrl(href)) {
+            openInAppBrowser(href);
+            return;
+          }
+          void openUrl(href).catch(() => undefined);
+          return;
+        }
         if (!href || !/^https?:\/\//i.test(href)) {
           event.preventDefault();
         }
@@ -276,8 +293,8 @@ function CodeCopyButton({ code }: { code: string }) {
   return (
     <button
       type="button"
-      title={copied ? "Copied" : "Copy code"}
-      aria-label={copied ? "Copied" : "Copy code"}
+      title={copied ? t("Copied") : t("Copy code")}
+      aria-label={copied ? t("Copied") : t("Copy code")}
       className={`markdown-code-copy ${copied ? "is-copied" : ""}`}
       onClick={() => {
         void copyText(code.replace(/\r?\n$/, "")).then(

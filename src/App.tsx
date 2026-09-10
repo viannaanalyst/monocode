@@ -13,6 +13,7 @@ import {
 } from "react";
 import { Sidebar } from "./chrome/Sidebar";
 import { ApprovalToasts } from "./chrome/ApprovalToasts";
+import { BrowserAgentBridge } from "./chrome/BrowserAgentBridge";
 import { WhatsNewDialog } from "./chrome/WhatsNewDialog";
 import { TitleBar, type Tab as TitleTab } from "./chrome/TitleBar";
 import { TooltipLayer } from "./chrome/Tooltip";
@@ -38,6 +39,8 @@ import {
 } from "./lib/uiScale";
 import { runUpdateFlow } from "./lib/updater";
 import { displayAttachments, prepareAttachments } from "./lib/attachments";
+import { OPEN_IN_BROWSER_EVENT } from "./lib/browserUrl";
+import type { BrowserCardMeta } from "./lib/session";
 import {
   basename,
   notifyGitChanged,
@@ -58,6 +61,7 @@ import {
   firstLeafId,
   focusedFileTab,
   isolateTerminalPanes,
+  isBrowserTab,
   isFilesystemTab,
   isCommitTab,
   isTerminalTab,
@@ -66,6 +70,7 @@ import {
   movePane,
   neighborLeafId,
   newFileTab,
+  newBrowserTab,
   newPlanTab,
   newTab,
   newTerminalFile,
@@ -83,6 +88,7 @@ import {
   splitPane,
   surfacePanes,
   updateTerminalTab,
+  updateBrowserTab,
   withSurfacePanes,
   type EditorPane,
   type FilePaneTab,
@@ -369,7 +375,9 @@ import {
   workspaceSnapshotKey,
 } from "./lib/workspaceSnapshot";
 import type { InstalledUpdate } from "./lib/updateNotice";
+import { t } from "./i18n";
 import {
+
   bindResumedSessions,
   closeBusyWindow,
   hasInFlightSessions,
@@ -518,7 +526,7 @@ function filesInWorkspaceTabs(tabs: readonly WorkspaceTab[]): FilePaneTab[] {
 
 /** Native sheet. `window.confirm` is swallowed when a macOS menu accelerator fires. */
 function confirmDiscardUnsaved(message: string): Promise<boolean> {
-  return ask(message, { title: "MonoCode", kind: "warning" });
+  return ask(message, { title: t("MonoCode"), kind: "warning" });
 }
 
 function titleTabsEqual(a: TitleTab[], b: TitleTab[]): boolean {
@@ -1412,7 +1420,7 @@ export default function App({
     if (!document) {
       void message(
         "Release notes for this version are not available in this build.",
-        { title: "MonoCode" },
+        { title: t("MonoCode") },
       );
       return;
     }
@@ -1792,6 +1800,100 @@ export default function App({
     [],
   );
 
+  const openBrowserTab = useCallback(
+    (url = "about:blank") => {
+      const tab = tabsRef.current.find((entry) => entry.id === activeTabId);
+      if (!tab) return;
+      if (url !== "about:blank") {
+        for (const pane of tab.editorPanes) {
+          const blank = pane.files.find(
+            (file) => isBrowserTab(file) && file.path === "about:blank",
+          );
+          if (blank) {
+            setTabs((prev) =>
+              prev.map((entry) => {
+                if (entry.id !== tab.id) return entry;
+                return updateBrowserTab(
+                  {
+                    ...entry,
+                    focusedId: pane.id,
+                    editorPanes: entry.editorPanes.map((item) =>
+                      item.id === pane.id
+                        ? { ...item, activeFileId: blank.id }
+                        : item,
+                    ),
+                  },
+                  blank.id,
+                  url,
+                );
+              }),
+            );
+            setComposerFocused(false);
+            return;
+          }
+        }
+      }
+      const file = newBrowserTab(sidebarCwdRef.current || projectCwd, url);
+      setTabs((prev) =>
+        prev.map((entry) =>
+          entry.id === tab.id ? openEditorTab(entry, file) : entry,
+        ),
+      );
+      setComposerFocused(false);
+    },
+    [activeTabId, projectCwd],
+  );
+
+  const onNewBrowser = useCallback(() => {
+    openBrowserTab("about:blank");
+  }, [openBrowserTab]);
+
+  useEffect(() => {
+    const onOpen = (event: Event) => {
+      const url = (event as CustomEvent<string>).detail;
+      if (typeof url === "string" && url) openBrowserTab(url);
+    };
+    window.addEventListener(OPEN_IN_BROWSER_EVENT, onOpen);
+    return () => window.removeEventListener(OPEN_IN_BROWSER_EVENT, onOpen);
+  }, [openBrowserTab]);
+
+  const onBrowserTool = useCallback((card: BrowserCardMeta) => {
+    const sessionId = activeSessionIdRef.current;
+    if (!sessionId) return;
+    setSessions((prev) =>
+      prev.map((session) => {
+        if (session.id !== sessionId) return session;
+        return {
+          ...session,
+          blocks: [
+            ...session.blocks,
+            {
+              id: crypto.randomUUID(),
+              role: "tool",
+              text: "",
+              tool: {
+                title: `browser_${card.op}`,
+                kind: "browser",
+                status: card.ok ? "completed" : "error",
+                detail: card.url,
+              },
+              browserCard: card,
+            },
+          ],
+        };
+      }),
+    );
+  }, []);
+
+  const onBrowserUrlChange = useCallback(
+    (fileId: string, url: string, title?: string) => {
+      setTabs((prev) =>
+        prev.map((tab) => updateBrowserTab(tab, fileId, url, title)),
+      );
+    },
+    [],
+  );
+
   const onToggleRunningTerminal = useCallback(
     (fileId: string) => {
       const dock = projectTerminalsRef.current.find((entry) =>
@@ -1906,7 +2008,7 @@ export default function App({
       void (async () => {
         if (unsaved.length > 0) {
           const ok = await confirmDiscardUnsaved(
-            "Close this tab with unsaved files?",
+            t("Close this tab with unsaved files?"),
           );
           if (!ok) return;
         }
@@ -1965,7 +2067,7 @@ export default function App({
       void (async () => {
         if (unsaved.length > 0) {
           const ok = await confirmDiscardUnsaved(
-            "Close these tabs with unsaved files?",
+            t("Close these tabs with unsaved files?"),
           );
           if (!ok) return;
         }
@@ -2105,7 +2207,9 @@ export default function App({
       void (async () => {
         if (needsUnsavedConfirm) {
           const ok = await confirmDiscardUnsaved(
-            `Close ${basename(file.path)} without saving?`,
+            t("Close {name} without saving?", {
+              name: basename(file.path),
+            }),
           );
           if (!ok) return;
         }
@@ -2181,7 +2285,7 @@ export default function App({
         return;
       }
       void confirmDiscardUnsaved(
-        "Close this conversation with unsaved files?",
+        t("Close this conversation with unsaved files?"),
       ).then((ok) => ok && finishClear());
     },
     [tabs, persistSession, refreshHistory, sidebarCwd],
@@ -2850,7 +2954,11 @@ export default function App({
             if (
               unsaved &&
               !(await confirmDiscardUnsaved(
-                `${mode === "archive" ? "Archive" : "Delete"} this conversation with unsaved files?`,
+                t(
+                  mode === "archive"
+                    ? "Archive this conversation with unsaved files?"
+                    : "Delete this conversation with unsaved files?",
+                ),
               ))
             )
               return false;
@@ -2936,8 +3044,13 @@ export default function App({
         });
       } catch (error) {
         const detail = error instanceof Error ? error.message : String(error);
-        void message(`Could not ${mode} this conversation.\n\n${detail}`, {
-          title: "MonoCode",
+        void message(
+          t("Could not {mode} this conversation.\n\n{detail}", {
+            mode: t(mode),
+            detail,
+          }),
+          {
+          title: t("MonoCode"),
           kind: "error",
         });
         return false;
@@ -2969,9 +3082,11 @@ export default function App({
         return true;
       } catch (error) {
         void message(
-          `Could not unarchive this conversation.\n\n${String(error)}`,
+          t("Could not unarchive this conversation.\n\n{detail}", {
+            detail: String(error),
+          }),
           {
-            title: "MonoCode",
+            title: t("MonoCode"),
             kind: "error",
           },
         );
@@ -5296,6 +5411,7 @@ export default function App({
     onSecondOpinion,
     onHandoff,
     onNewTerminal: onNewTerminalInSession,
+    onBrowserUrlChange,
   };
 
   return (
@@ -5447,6 +5563,7 @@ export default function App({
             onSelect={activateTab}
             onNew={onNew}
             onNewTerminal={onNewTerminal}
+            onNewBrowser={onNewBrowser}
             onShowTerminal={onShowProjectTerminal}
             projectTerminalActive={
               !!currentProjectDock && currentProjectDock.pane.files.length > 0
@@ -5553,6 +5670,7 @@ export default function App({
                           onUpdatePlan={onUpdatePlan}
                           onMovePane={onMovePane}
                           onTerminalMetaChange={onTerminalMetaChange}
+                          onNewBrowser={onNewBrowser}
                         />
                       </div>
                     </div>
@@ -5671,6 +5789,13 @@ export default function App({
         onFocusSession={onOpenApprovalSession}
         onApproval={onApproval}
       />
+      {projectCwd ? (
+        <BrowserAgentBridge
+          cwd={projectCwd}
+          onEnsurePane={openBrowserTab}
+          onTool={onBrowserTool}
+        />
+      ) : null}
       {whatsNewVersion ? (
         <WhatsNewDialog
           version={whatsNewVersion}

@@ -5,6 +5,8 @@ import {
   type ContextUsage,
 } from "../lib/contextUsage";
 import { Popover } from "./Popover";
+import { t } from "../i18n";
+
 
 const SIZE = 14;
 const STROKE = 2;
@@ -53,8 +55,11 @@ export function ContextMeter({
       {onCompact ? (
         <button
           type="button"
-          title="Context usage"
-          aria-label={`${headline}, ${detail}. Open context actions`}
+          title={t("Context usage")}
+          aria-label={t("{headline}, {detail}. Open context actions", {
+            headline,
+            detail,
+          })}
           aria-expanded={actionsOpen}
           onClick={() => setOpen((value) => !value)}
           className="-m-1 grid rounded-sm p-1 outline-none focus-visible:ring-1 focus-visible:ring-accent"

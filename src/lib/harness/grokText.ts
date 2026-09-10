@@ -1,3 +1,4 @@
+import { browserMcpServers } from "../browserMcp";
 import { AcpClient } from "./acp";
 import {
   killChild,
@@ -180,7 +181,7 @@ async function startLive(cwd: string): Promise<LiveText> {
 async function openSession(session: LiveText, cwd: string): Promise<void> {
   const setup = await session.acp.request<{ sessionId?: string }>(
     "session/new",
-    { cwd, mcpServers: [] },
+    { cwd, mcpServers: browserMcpServers(cwd) },
     REQUEST_TIMEOUT_MS,
   );
   const acpSessionId = setup.sessionId?.trim();

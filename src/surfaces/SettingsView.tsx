@@ -101,6 +101,7 @@ import { refreshHarnessCatalogs } from "../lib/harness/registry";
 import {
   defaultModelId,
   getModelSnapshot,
+  hasLiveCatalog,
   isPickerProviderVisible,
   loadDefaultModels,
   loadLastModelChoice,
@@ -158,7 +159,13 @@ import {
   loadGridArcadeEnabled,
   loadLiveAgentsEnabled,
   loadNotesEnabled,
+  loadLocalhostInBrowser,
+  loadBrowserAgentEnabled,
+  loadBrowserAgentAllowlistText,
   saveClaudeHooks,
+  saveLocalhostInBrowser,
+  saveBrowserAgentEnabled,
+  saveBrowserAgentAllowlistText,
   saveComposerRunner,
   saveDiffViewer,
   saveFollowUpBehavior,
@@ -182,6 +189,14 @@ import {
   type NotificationPermission,
 } from "../lib/notifications";
 import {
+  LOCALES,
+  getLocale,
+  saveLocale,
+  t,
+  type Locale,
+} from "../i18n";
+import {
+
   installPendingUpdate,
   readAppVersion,
   runUpdateFlow,
@@ -234,7 +249,7 @@ export function SettingsView({
   return (
     <div
       role="region"
-      aria-label="Settings"
+      aria-label={t("Settings")}
       data-app-settings
       className="flex min-h-0 min-w-0 flex-1 flex-col text-content"
     >
@@ -244,7 +259,7 @@ export function SettingsView({
       >
         {IS_MAC && !besideRail ? <div className="w-[78px] shrink-0" /> : null}
         <div className="flex min-w-0 flex-1 items-center gap-2 px-3 text-[13px]">
-          <span className="shrink-0 text-content/45">Settings</span>
+          <span className="shrink-0 text-content/45">{t("Settings")}</span>
           <span aria-hidden className="shrink-0 text-content/25">
             /
           </span>
@@ -260,7 +275,7 @@ export function SettingsView({
             className="mr-2 flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-[12px] text-content/50 hover:bg-content/10 hover:text-content"
           >
             <RotateCcw className="size-3.5" strokeWidth={1.75} />
-            Restore defaults
+            {t("Restore defaults")}
           </button>
         ) : null}
         {IS_MAC ? null : <WindowControls />}
@@ -327,6 +342,15 @@ function GeneralPage({
   const [notificationPermission, setNotificationPermission] =
     useState<NotificationPermission>(cachedNotificationPermission);
   const [claudeHooks, setClaudeHooks] = useState(loadClaudeHooks);
+  const [localhostInBrowser, setLocalhostInBrowser] = useState(
+    loadLocalhostInBrowser,
+  );
+  const [browserAgentEnabled, setBrowserAgentEnabled] = useState(
+    loadBrowserAgentEnabled,
+  );
+  const [browserAllowlist, setBrowserAllowlist] = useState(
+    loadBrowserAgentAllowlistText,
+  );
 
   // The user may flip the switch in System Settings and come back: re-read
   // the OS state whenever the window regains focus while the toggle is on.
@@ -407,138 +431,203 @@ function GeneralPage({
     setClaudeHooks(next);
   };
 
+  const locale = getLocale();
+
   return (
     <>
       <Row
-        label="Transcript layout"
-        description="Full width keeps user prompts as a spanning card. Chat aligns them to the right with a max width, like a messaging app."
+        label={t("Language")}
+        description={t(
+          "The language of the interface. New strings from upstream stay in English until they are translated.",
+        )}
       >
         <Segmented
-          label="Transcript layout"
+          label={t("Language")}
+          value={locale}
+          options={LOCALES.map((item) => ({
+            value: item.id,
+            label: item.nativeLabel,
+          }))}
+          onChange={(next: Locale) => saveLocale(next)}
+        />
+      </Row>
+      <Row
+        label={t("Transcript layout")}
+        description={t("Full width keeps user prompts as a spanning card. Chat aligns them to the right with a max width, like a messaging app.")}
+      >
+        <Segmented
+          label={t("Transcript layout")}
           value={transcriptLayout}
           options={[
-            { value: "full", label: "Full width" },
-            { value: "chat", label: "Chat" },
+            { value: "full", label: t("Full width") },
+            { value: "chat", label: t("Chat") },
           ]}
           onChange={onTranscriptLayout}
         />
       </Row>
       <Row
-        label="Diff view"
-        description="Editor keeps working-tree changes in the file. Unified stacks every changed file in one review, with sticky headers and collapsed unchanged lines."
+        label={t("Diff view")}
+        description={t("Editor keeps working-tree changes in the file. Unified stacks every changed file in one review, with sticky headers and collapsed unchanged lines.")}
       >
         <Segmented
-          label="Diff view"
+          label={t("Diff view")}
           value={diffViewer}
           options={[
-            { value: "editor", label: "Editor" },
-            { value: "unified", label: "Unified" },
+            { value: "editor", label: t("Editor") },
+            { value: "unified", label: t("Unified") },
           ]}
           onChange={onDiffViewer}
         />
       </Row>
       <Row
-        label="Follow-up behavior"
-        description="Queue follow-ups until the active turn finishes, or steer the active turn immediately."
+        label={t("Follow-up behavior")}
+        description={t("Queue follow-ups until the active turn finishes, or steer the active turn immediately.")}
       >
         <Segmented
-          label="Follow-up behavior"
+          label={t("Follow-up behavior")}
           value={followUpBehavior}
           options={[
-            { value: "queue", label: "Queue" },
-            { value: "steer", label: "Steer" },
+            { value: "queue", label: t("Queue") },
+            { value: "steer", label: t("Steer") },
           ]}
           onChange={onFollowUpBehavior}
         />
       </Row>
       <Row
-        label="Anchor prompts to top"
-        description="When you send, the new prompt sits at the top of the transcript and the reply grows into the space below. Turn this off to keep the classic layout, with the latest message resting on the composer."
+        label={t("Anchor prompts to top")}
+        description={t("When you send, the new prompt sits at the top of the transcript and the reply grows into the space below. Turn this off to keep the classic layout, with the latest message resting on the composer.")}
       >
         <Toggle
-          label="Anchor prompts to top"
+          label={t("Anchor prompts to top")}
           on={transcriptAnchor}
           onChange={onTranscriptAnchor}
         />
       </Row>
       <Row
-        label="Composer mascot"
-        description="When a turn is running, the project mascot runs along the composer, bonks the scroll-to-latest button the first time, then jumps it, and sometimes grabs a coin."
+        label={t("Composer mascot")}
+        description={t("When a turn is running, the project mascot runs along the composer, bonks the scroll-to-latest button the first time, then jumps it, and sometimes grabs a coin.")}
       >
         <Toggle
-          label="Composer mascot"
+          label={t("Composer mascot")}
           on={composerRunner}
           onChange={onComposerRunner}
         />
       </Row>
       <Row
-        label="Empty session games"
-        description="Pac-man and snake idle on the empty-session grid. Hover the band to take control of whichever is on screen. Turn this off to keep the pane still."
+        label={t("Empty session games")}
+        description={t("Pac-man and snake idle on the empty-session grid. Hover the band to take control of whichever is on screen. Turn this off to keep the pane still.")}
       >
         <Toggle
-          label="Empty session games"
+          label={t("Empty session games")}
           on={gridArcadeEnabled}
           onChange={onGridArcadeEnabled}
         />
       </Row>
       <Row
-        label="Notes"
-        description="A global markdown notebook on the project rail. Save a finished turn from the transcript, then mention it later with @note or add it to chat. Turn this off to hide Notes from the UI."
+        label={t("Notes")}
+        description={t("A global markdown notebook on the project rail. Save a finished turn from the transcript, then mention it later with @note or add it to chat. Turn this off to hide Notes from the UI.")}
       >
-        <Toggle label="Notes" on={notesEnabled} onChange={onNotesEnabled} />
+        <Toggle label={t("Notes")} on={notesEnabled} onChange={onNotesEnabled} />
       </Row>
       <Row
-        label="Working agents"
-        description="When two or more chats are in flight, a card on the project rail lists them so you can jump across projects. Finished turns stay until you open that session. Turn this off to hide the card."
+        label={t("Working agents")}
+        description={t("When two or more chats are in flight, a card on the project rail lists them so you can jump across projects. Finished turns stay until you open that session. Turn this off to hide the card.")}
       >
         <Toggle
-          label="Working agents"
+          label={t("Working agents")}
           on={liveAgentsEnabled}
           onChange={onLiveAgentsEnabled}
         />
       </Row>
       <Row
-        label="Sounds"
-        description="Short cues when a turn finishes, a new inbox item appears on the project rail, or an update is available. Switches and Copy on a finished turn also play."
+        label={t("Sounds")}
+        description={t("Short cues when a turn finishes, a new inbox item appears on the project rail, or an update is available. Switches and Copy on a finished turn also play.")}
       >
-        <Toggle label="Sounds" on={soundsEnabled} onChange={onSoundsEnabled} />
+        <Toggle label={t("Sounds")} on={soundsEnabled} onChange={onSoundsEnabled} />
       </Row>
       <Row
-        label="Notifications"
-        description="Notify when an agent finishes or needs input in another session or while MonoCode is in the background. Click the notification to open that session."
+        label={t("Notifications")}
+        description={t("Notify when an agent finishes or needs input in another session or while MonoCode is in the background. Click the notification to open that session.")}
       >
         {notificationsEnabled && notificationPermission === "denied" ? (
           <NotificationsBlocked />
         ) : null}
         {notificationsEnabled && notificationPermission === "unsupported" ? (
           <span className="text-[12px] text-content/45">
-            Not available on this platform
+            {t("Not available on this platform")}
           </span>
         ) : null}
         <Toggle
-          label="Notifications"
+          label={t("Notifications")}
           on={notificationsEnabled}
           onChange={onNotificationsEnabled}
         />
       </Row>
       <Row
-        label="Claude Code hooks"
-        description="Run the hooks configured in your settings.json files — PreToolUse command rewrites, blocks, notifications, and the rest — just as the Claude Code CLI would. Turn this off if a hook is misbehaving and you need the session back. Takes effect on the next turn."
+        label={t("Claude Code hooks")}
+        description={t(
+          "Run the hooks configured in your settings.json files — PreToolUse command rewrites, blocks, notifications, and the rest — just as the Claude Code CLI would. Turn this off if a hook is misbehaving and you need the session back. Takes effect on the next turn.",
+        )}
       >
         <Toggle
-          label="Claude Code hooks"
+          label={t("Claude Code hooks")}
           on={claudeHooks}
           onChange={onClaudeHooks}
         />
       </Row>
 
-      <Heading title="GitLab" />
+      <Heading title={t("GitLab")} />
       <GitlabSettings />
 
-      <Heading title="Linear" />
+      <Heading title={t("Linear")} />
       <LinearSettings />
 
-      <Heading title="About" />
+      <Heading title={t("Browser")} />
+      <Row
+        label={t("Open localhost in Browser")}
+        description={t(
+          "Links to localhost in the transcript open the in-app browser pane instead of the system browser.",
+        )}
+      >
+        <Toggle
+          label={t("Open localhost in Browser")}
+          on={localhostInBrowser}
+          onChange={(next) => {
+            saveLocalhostInBrowser(next);
+            setLocalhostInBrowser(next);
+          }}
+        />
+      </Row>
+      <Row
+        label={t("Agent browser tools")}
+        description={t(
+          "Let agents control the in-app browser with MCP tools (browser_navigate, click, type) or /in-app-browser. Hosts not on the allowlist need your approval. Leave the list empty to allow localhost only, or add * to allow every host.",
+        )}
+      >
+        <Toggle
+          label={t("Agent browser tools")}
+          on={browserAgentEnabled}
+          onChange={(next) => {
+            saveBrowserAgentEnabled(next);
+            setBrowserAgentEnabled(next);
+          }}
+        />
+      </Row>
+      <Row label={t("Browser allowlist")}>
+        <textarea
+          value={browserAllowlist}
+          onChange={(event) => {
+            const next = event.target.value;
+            setBrowserAllowlist(next);
+            saveBrowserAgentAllowlistText(next);
+          }}
+          spellCheck={false}
+          placeholder="localhost"
+          className="h-16 w-56 resize-y rounded-md border border-content/10 bg-content/5 px-2 py-1.5 font-mono text-[11px] text-content outline-none"
+        />
+      </Row>
+
+      <Heading title={t("About")} />
       <UpdateRow onOpenWhatsNew={onOpenWhatsNew} />
     </>
   );
@@ -611,7 +700,7 @@ function GitlabSettings() {
             Connection
           </span>
         }
-        description="Connect GitLab.com or a self-managed GitLab instance. Use a personal access token with API access; the token is stored locally and Disconnect deletes it."
+        description={t("Connect GitLab.com or a self-managed GitLab instance. Use a personal access token with API access; the token is stored locally and Disconnect deletes it.")}
       >
         {connected ? (
           <div className="flex min-w-0 items-center gap-2">
@@ -622,7 +711,7 @@ function GitlabSettings() {
               onClick={() => void onDisconnect()}
               disabled={busy}
             >
-              Disconnect
+              {t("Disconnect")}
             </SecondaryButton>
           </div>
         ) : (
@@ -633,7 +722,7 @@ function GitlabSettings() {
                 value={url}
                 onChange={(event) => setUrl(event.target.value)}
                 placeholder="https://gitlab.com"
-                aria-label="GitLab URL"
+                aria-label={t("GitLab URL")}
                 autoComplete="url"
                 spellCheck={false}
                 className="min-w-0 flex-1 bg-transparent text-[12px] text-content outline-none placeholder:text-content/35"
@@ -648,7 +737,7 @@ function GitlabSettings() {
                   if (event.key === "Enter") void onSave();
                 }}
                 placeholder="glpat-…"
-                aria-label="GitLab access token"
+                aria-label={t("GitLab access token")}
                 autoComplete="off"
                 spellCheck={false}
                 className="min-w-0 flex-1 bg-transparent text-[12px] text-content outline-none placeholder:text-content/35"
@@ -658,7 +747,7 @@ function GitlabSettings() {
               onClick={() => void onSave()}
               disabled={busy || !token.trim()}
             >
-              {busy ? "Saving" : "Connect"}
+              {busy ? t("Saving") : t("Connect")}
             </SecondaryButton>
           </div>
         )}
@@ -761,11 +850,11 @@ function LinearSettings() {
             API key
           </span>
         }
-        description="Create a personal API key in Linear → Settings → Security & Access. Disconnect deletes it."
+        description={t("Create a personal API key in Linear → Settings → Security & Access. Disconnect deletes it.")}
       >
         {connected ? (
           <SecondaryButton onClick={() => void onDisconnect()} disabled={busy}>
-            Disconnect
+            {t("Disconnect")}
           </SecondaryButton>
         ) : (
           <div className="flex items-center gap-2">
@@ -778,7 +867,7 @@ function LinearSettings() {
                   if (event.key === "Enter") void onSave();
                 }}
                 placeholder="lin_api_…"
-                aria-label="Linear API key"
+                aria-label={t("Linear API key")}
                 autoComplete="off"
                 spellCheck={false}
                 className="min-w-0 flex-1 bg-transparent text-[12px] text-content outline-none placeholder:text-content/35"
@@ -788,7 +877,7 @@ function LinearSettings() {
               onClick={() => void onSave()}
               disabled={busy || !token.trim()}
             >
-              {busy ? "Saving" : "Connect"}
+              {busy ? t("Saving") : t("Connect")}
             </SecondaryButton>
           </div>
         )}
@@ -869,22 +958,26 @@ function UpdateRow({
 
   const status =
     snapshot.phase === "available"
-      ? `Version ${snapshot.availableVersion} is available.`
+      ? t("Version {version} is available.", {
+          version: snapshot.availableVersion ?? "",
+        })
       : snapshot.phase === "downloading"
-        ? `Downloading${snapshot.progress != null ? ` ${snapshot.progress}%` : "…"}`
+        ? snapshot.progress != null
+          ? t("Downloading {percent}%", { percent: snapshot.progress })
+          : t("Downloading…")
         : snapshot.phase === "checking"
-          ? "Checking for updates…"
+          ? t("Checking for updates…")
           : snapshot.phase === "current"
-            ? "You're on the latest version."
+            ? t("You're on the latest version.")
             : snapshot.phase === "error"
-              ? (snapshot.error ?? "Update check failed.")
-              : "MonoCode updates itself from the release feed.";
+              ? (snapshot.error ?? t("Update check failed."))
+              : t("MonoCode updates itself from the release feed.");
 
   return (
     <Row
       label={
         <span className="flex items-baseline gap-2">
-          Version
+          {t("Version")}
           <span className="font-mono text-[12px] text-content/45">
             {snapshot.currentVersion}
           </span>
@@ -907,7 +1000,7 @@ function UpdateRow({
           ) : (
             <RefreshCw className="size-3.5" strokeWidth={1.75} aria-hidden />
           )}
-          {hasUpdate ? "Download" : "Check for updates"}
+          {hasUpdate ? t("Download") : t("Check for updates")}
         </SecondaryButton>
       </div>
     </Row>
@@ -1082,30 +1175,29 @@ function AppearancePage({ appearance }: { appearance: AppearanceSettings }) {
   return (
     <>
       <Row
-        label="Theme"
-        description="System follows the OS appearance. Dark and light share the same tint, so the hue below applies to both."
+        label={t("Theme")}
+        description={t("System follows the OS appearance. Dark and light share the same tint, so the hue below applies to both.")}
       >
         <Segmented
-          label="Theme"
+          label={t("Theme")}
           value={appearance.themePreference}
           options={[
-            { value: "system", label: "System" },
-            { value: "dark", label: "Dark" },
-            { value: "light", label: "Light" },
+            { value: "system", label: t("System") },
+            { value: "dark", label: t("Dark") },
+            { value: "light", label: t("Light") },
           ]}
           onChange={appearance.onThemePreference}
         />
       </Row>
       <Row
-        label="Sidebar opacity"
+        label={t("Sidebar opacity")}
         description={
           glassDisabled
-            ? "Light mode always uses an opaque window. Your dark-mode value is preserved."
-            : "How much of the desktop shows through the sidebar and the project rail."
+            ? t("Light mode always uses an opaque window. Your dark-mode value is preserved.") : t("How much of the desktop shows through the sidebar and the project rail.")
         }
       >
         <Slider
-          label="Sidebar opacity"
+          label={t("Sidebar opacity")}
           value={percent}
           display={`${percent}%`}
           min={Math.round(SIDEBAR_OPACITY_MIN * 100)}
@@ -1115,15 +1207,14 @@ function AppearancePage({ appearance }: { appearance: AppearanceSettings }) {
         />
       </Row>
       <Row
-        label="Blur radius"
+        label={t("Blur radius")}
         description={
           glassDisabled
-            ? "Background blur is unavailable while light mode uses an opaque window."
-            : "Background blur behind the window. Higher values cost more to composite."
+            ? t("Background blur is unavailable while light mode uses an opaque window.") : t("Background blur behind the window. Higher values cost more to composite.")
         }
       >
         <Slider
-          label="Blur radius"
+          label={t("Blur radius")}
           value={appearance.blur}
           display={String(appearance.blur)}
           min={SIDEBAR_BLUR_MIN}
@@ -1132,9 +1223,9 @@ function AppearancePage({ appearance }: { appearance: AppearanceSettings }) {
           disabled={glassDisabled}
         />
       </Row>
-      <Row label="Hue" description="Base hue for accents and tinted surfaces.">
+      <Row label={t("Hue")} description={t("Base hue for accents and tinted surfaces.")}>
         <Slider
-          label="Hue"
+          label={t("Hue")}
           value={appearance.themeHue}
           display={`${appearance.themeHue}°`}
           min={THEME_HUE_MIN}
@@ -1145,11 +1236,11 @@ function AppearancePage({ appearance }: { appearance: AppearanceSettings }) {
         />
       </Row>
       <Row
-        label="Saturation"
-        description="How strongly the hue tints the interface. Zero keeps it neutral."
+        label={t("Saturation")}
+        description={t("How strongly the hue tints the interface. Zero keeps it neutral.")}
       >
         <Slider
-          label="Saturation"
+          label={t("Saturation")}
           value={appearance.themeSaturation}
           display={`${appearance.themeSaturation}%`}
           min={THEME_SATURATION_MIN}
@@ -1158,15 +1249,14 @@ function AppearancePage({ appearance }: { appearance: AppearanceSettings }) {
         />
       </Row>
       <Row
-        label="Main pane glass"
+        label={t("Main pane glass")}
         description={
           glassDisabled
-            ? "Main pane glass is unavailable while light mode uses an opaque window."
-            : "Extend the translucent treatment to the main pane behind sessions and editors."
+            ? t("Main pane glass is unavailable while light mode uses an opaque window.") : t("Extend the translucent treatment to the main pane behind sessions and editors.")
         }
       >
         <Toggle
-          label="Main pane glass"
+          label={t("Main pane glass")}
           on={appearance.bodyGlass}
           onChange={appearance.onBodyGlass}
           disabled={glassDisabled}
@@ -1174,11 +1264,11 @@ function AppearancePage({ appearance }: { appearance: AppearanceSettings }) {
       </Row>
       <ChatBackgroundCard appearance={appearance} />
       <Row
-        label="Interface scale"
-        description="Zoom the whole interface. You can also use Ctrl+=, Ctrl+-, and Ctrl+0 (Cmd on macOS)."
+        label={t("Interface scale")}
+        description={t("Zoom the whole interface. You can also use Ctrl+=, Ctrl+-, and Ctrl+0 (Cmd on macOS).")}
       >
         <Slider
-          label="Interface scale"
+          label={t("Interface scale")}
           value={Math.round(appearance.uiScale * 100)}
           display={`${Math.round(appearance.uiScale * 100)}%`}
           min={Math.round(UI_SCALE_MIN * 100)}
@@ -1206,10 +1296,10 @@ function ChatBackgroundCard({
       <div className="flex items-start gap-6">
         <div className="min-w-0 flex-1">
           <div className="text-[13px] font-medium text-content">
-            Chat background
+            {t("Chat background")}
           </div>
           <p className="mt-1 text-[12px] leading-relaxed text-content/45">
-            An image behind your chat panes. It stays on this device.
+            {t("An image behind your chat panes. It stays on this device.")}
           </p>
         </div>
         {hasImage ? (
@@ -1221,14 +1311,14 @@ function ChatBackgroundCard({
               {busy ? (
                 <Loader className="size-3.5 animate-spin" aria-hidden />
               ) : null}
-              Change
+              {t("Change")}
             </SecondaryButton>
             <SecondaryButton
               onClick={() => void appearance.onClearChatBackground()}
               disabled={busy}
               danger
             >
-              Remove
+              {t("Remove")}
             </SecondaryButton>
           </div>
         ) : null}
@@ -1245,7 +1335,7 @@ function ChatBackgroundCard({
               style={{ opacity: appearance.chatBackgroundOpacity }}
             />
             <span className="pointer-events-none absolute bottom-2 left-2 text-[11px] text-content/40">
-              Preview at {visibility}%
+              {t("Preview at {percent}%", { percent: visibility })}
             </span>
           </div>
         ) : (
@@ -1260,37 +1350,37 @@ function ChatBackgroundCard({
             ) : (
               <ImagePlus className="size-5" aria-hidden />
             )}
-            <span className="text-[12px]">Choose an image</span>
+            <span className="text-[12px]">{t("Choose an image")}</span>
           </button>
         )}
         {hasImage ? (
           <div className="border-t border-content/8">
             <div className="flex items-center justify-between gap-4 px-3 py-2.5">
               <div className="min-w-0">
-                <div className="text-[12px] text-content">Show on</div>
+                <div className="text-[12px] text-content">{t("Show on")}</div>
                 <p className="text-[11px] text-content/40">
-                  Empty sessions only, or every conversation.
+                  {t("Empty sessions only, or every conversation.")}
                 </p>
               </div>
               <Segmented
-                label="Show background on"
+                label={t("Show background on")}
                 value={appearance.chatBackgroundScope}
                 options={[
-                  { value: "empty", label: "Empty only" },
-                  { value: "all", label: "All sessions" },
+                  { value: "empty", label: t("Empty only") },
+                  { value: "all", label: t("All sessions") },
                 ]}
                 onChange={appearance.onChatBackgroundScope}
               />
             </div>
             <div className="flex items-center justify-between gap-4 border-t border-content/5 px-3 py-2.5">
               <div className="min-w-0">
-                <div className="text-[12px] text-content">Visibility</div>
+                <div className="text-[12px] text-content">{t("Visibility")}</div>
                 <p className="text-[11px] text-content/40">
-                  Keep it subtle so long conversations stay readable.
+                  {t("Keep it subtle so long conversations stay readable.")}
                 </p>
               </div>
               <Slider
-                label="Background visibility"
+                label={t("Background visibility")}
                 value={visibility}
                 display={`${visibility}%`}
                 min={Math.round(CHAT_BACKGROUND_OPACITY_MIN * 100)}
@@ -1318,15 +1408,15 @@ function KeybindingsPage() {
     <>
       <div className="flex items-center justify-end gap-3 pb-3">
         <span className="shrink-0 text-[12px] text-content/40 tabular-nums">
-          {rows.length} {rows.length === 1 ? "binding" : "bindings"}
+          {rows.length} {rows.length === 1 ? t("binding") : t("bindings")}
         </span>
         <label className="flex h-7 w-52 shrink-0 items-center gap-2 rounded-md border border-content/10 px-2 text-content/45 focus-within:border-content/20">
           <Search className="size-3.5 shrink-0" strokeWidth={1.75} />
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Filter"
-            aria-label="Filter keybindings"
+            placeholder={t("Filter")}
+            aria-label={t("Filter keybindings")}
             spellCheck={false}
             autoComplete="off"
             className="min-w-0 flex-1 bg-transparent text-[12px] text-content outline-none placeholder:text-content/35"
@@ -1336,13 +1426,13 @@ function KeybindingsPage() {
 
       <div className="overflow-hidden rounded-lg border border-content/10">
         <div className="flex items-center border-b border-content/10 bg-content/5 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-content/40">
-          <span className="min-w-0 flex-1">Command</span>
-          <span className="w-40 shrink-0">Keybinding</span>
-          <span className="w-28 shrink-0">When</span>
+          <span className="min-w-0 flex-1">{t("Command")}</span>
+          <span className="w-40 shrink-0">{t("Keybinding")}</span>
+          <span className="w-28 shrink-0">{t("When")}</span>
         </div>
         {rows.length === 0 ? (
           <p className="px-3 py-3 text-[12px] text-content/45">
-            No matching bindings
+            {t("No matching bindings")}
           </p>
         ) : (
           rows.map((row) => (
@@ -1350,12 +1440,12 @@ function KeybindingsPage() {
               key={`${row.command}-${row.keys}`}
               className="flex items-center border-b border-content/5 px-3 py-2 text-[12px] last:border-b-0"
             >
-              <span className="min-w-0 flex-1 truncate">{row.command}</span>
+              <span className="min-w-0 flex-1 truncate">{t(row.command)}</span>
               <span className="w-40 shrink-0 font-mono text-[12px] text-content/80">
                 {row.keys}
               </span>
               <span className="w-28 shrink-0 font-mono text-[11px] text-content/40">
-                {row.when}
+                {t(row.when)}
               </span>
             </div>
           ))
@@ -1402,11 +1492,9 @@ function ProvidersPage() {
   return (
     <>
       <p className="pb-2 text-[12px] leading-relaxed text-content/45">
-        A provider is listed as installed once its CLI is found on your PATH.
-        Uninstalled CLIs stay listed here but are omitted from the model picker.
-        Turn off Show in picker to hide an installed provider from those tabs.
-        The model beside each provider is what new conversations use when that
-        provider is selected; Use by default picks the provider itself.
+        {t(
+          "A provider is listed as installed once its CLI is found on your PATH. Uninstalled CLIs stay listed here but are omitted from the model picker. Turn off Show in picker to hide an installed provider from those tabs. The model beside each provider is what new conversations use when that provider is selected; Use by default picks the provider itself.",
+        )}
       </p>
       {HARNESSES.map((harness) => (
         <ProviderRow
@@ -1449,9 +1537,9 @@ function ProviderRow({
   );
 
   useEffect(() => {
-    if (!available || models.length > 0) return;
+    if (!available || hasLiveCatalog(harness)) return;
     void refreshHarnessCatalogs([harness]);
-  }, [available, harness, models.length]);
+  }, [available, harness]);
 
   const onPickerVisible = (visible: boolean) => {
     savePickerProviderVisible(harness, visible);
@@ -1466,20 +1554,25 @@ function ProviderRow({
           {HARNESS_TITLE[harness]}
           {isDefault ? (
             <span className="rounded-full bg-content/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-content/60">
-              Default
+              {t("Default")}
             </span>
           ) : null}
         </span>
       }
       description={
         available
-          ? `${models.length} ${models.length === 1 ? "model" : "models"} available.`
+          ? t(
+              models.length === 1
+                ? "{count} model available."
+                : "{count} models available.",
+              { count: models.length },
+            )
           : harnessUnavailableHint(harness)
       }
     >
       {current ? (
         <Select
-          label={`${HARNESS_TITLE[harness]} model`}
+          label={t("{name} model", { name: HARNESS_TITLE[harness] })}
           value={current.id}
           onChange={(next) => onModelChange(harness, next)}
           options={models.map((item) => ({
@@ -1492,13 +1585,15 @@ function ProviderRow({
         onClick={() => current && onDefault(harness, current.id)}
         disabled={isDefault || !current}
       >
-        {isDefault ? "Default" : "Use by default"}
+        {isDefault ? t("Default") : t("Use by default")}
       </SecondaryButton>
       {available ? (
         <div className="flex items-center gap-2">
-          <span className="text-[12px] text-content/50">Show in picker</span>
+          <span className="text-[12px] text-content/50">{t("Show in picker")}</span>
           <Toggle
-            label={`Show ${HARNESS_TITLE[harness]} in the model picker`}
+            label={t("Show {name} in the model picker", {
+              name: HARNESS_TITLE[harness],
+            })}
             on={inPicker}
             onChange={onPickerVisible}
           />
@@ -1561,7 +1656,7 @@ function ArchivePage({
 
   return (
     <>
-      <Heading title="Archived projects" first />
+      <Heading title={t("Archived projects")} first />
       {archivedProjects.length === 0 ? (
         <p className="py-3 text-[12px] text-content/45">
           Archive a project from the rail to keep its chats without listing it
@@ -1598,11 +1693,11 @@ function ArchivePage({
       )}
 
       <Row
-        label="Show archived in the sidebar"
-        description="Keep archived conversations listed alongside the active ones."
+        label={t("Show archived in the sidebar")}
+        description={t("Keep archived conversations listed alongside the active ones.")}
       >
         <Toggle
-          label="Show archived in the sidebar"
+          label={t("Show archived in the sidebar")}
           on={filters.showArchived}
           onChange={onShowArchived}
         />
@@ -1611,18 +1706,18 @@ function ArchivePage({
       <Heading
         title={
           looksLikeProject(cwd)
-            ? `Archived in ${projectName(cwd)}`
-            : "Archived conversations"
+            ? t("Archived in {project}", { project: projectName(cwd) })
+            : t("Archived conversations")
         }
       />
 
       {!looksLikeProject(cwd) ? (
         <p className="py-3 text-[12px] text-content/45">
-          Open a project to see its archived conversations.
+          {t("Open a project to see its archived conversations.")}
         </p>
       ) : archived.length === 0 ? (
         <p className="py-3 text-[12px] text-content/45">
-          No archived conversations in this project.
+          {t("No archived conversations in this project.")}
         </p>
       ) : (
         <div className="overflow-hidden rounded-lg border border-content/10">
@@ -1835,7 +1930,7 @@ function Slider({
 function NotificationsBlocked() {
   return (
     <span className="flex items-center gap-2 text-[12px] text-content/45">
-      Permission needed
+      {t("Permission needed")}
       {IS_MAC ? (
         <button
           type="button"
@@ -1844,7 +1939,7 @@ function NotificationsBlocked() {
           }}
           className="rounded-md border border-content/10 px-2 py-1 text-content/70 hover:bg-content/10 hover:text-content"
         >
-          Open System Settings
+          {t("Open System Settings")}
         </button>
       ) : null}
     </span>

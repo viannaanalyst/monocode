@@ -8,7 +8,9 @@ import {
   type IconComponent,
 } from "./icons";
 import { useLockOverscroll } from "../hooks/useLockOverscroll";
+import { t } from "../i18n";
 import {
+
   SETTINGS_SECTIONS,
   type SettingsSectionId,
 } from "../lib/settings";
@@ -35,13 +37,13 @@ export function SettingsNav({ section, onSelect, onClose }: Props) {
     <>
       <div
         ref={lockOverscroll}
-        aria-label="Settings"
+        aria-label={t("Settings")}
         className="flex min-h-0 flex-1 flex-col gap-px overflow-y-auto overscroll-none px-2 pb-2"
       >
         {SETTINGS_SECTIONS.map((item) => (
           <NavRow
             key={item.id}
-            label={item.label}
+            label={t(item.label)}
             icon={SECTION_ICONS[item.id]}
             active={item.id === section}
             onClick={() => onSelect(item.id)}
@@ -49,7 +51,7 @@ export function SettingsNav({ section, onSelect, onClose }: Props) {
         ))}
       </div>
       <div className="flex shrink-0 flex-col gap-px p-2">
-        <NavRow label="Back" icon={ArrowLeft} onClick={onClose} />
+        <NavRow label={t("Back")} icon={ArrowLeft} onClick={onClose} />
       </div>
     </>
   );
@@ -69,6 +71,8 @@ function NavRow({
   return (
     <button
       type="button"
+      title={label}
+      aria-label={label}
       onClick={onClick}
       aria-current={active ? "true" : undefined}
       className={`flex w-full items-center gap-2 rounded-md px-2 py-2 text-left ${

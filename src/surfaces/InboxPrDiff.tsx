@@ -3,6 +3,8 @@ import type { GithubPrDiff } from "../lib/githubTasks";
 import { mergePrDiff, parsePrPatch, type PrDiffFile } from "../lib/prDiff";
 import { blocksFromLines, type UnifiedLine } from "../lib/unifiedDiff";
 import { UnifiedDiffView, type UnifiedDiffFileModel } from "./UnifiedDiffView";
+import { t } from "../i18n";
+
 
 type Props = {
   diff: GithubPrDiff;
@@ -39,8 +41,7 @@ function toModel(file: PrDiffFile, truncated: boolean): UnifiedDiffFileModel {
     emptyMessage:
       !file.binary && file.lines.length === 0
         ? truncated
-          ? "Patch unavailable because this change is too large"
-          : "No textual diff"
+          ? "Patch unavailable because this change is too large" : t("No textual diff")
         : undefined,
     additions: file.additions,
     deletions: file.deletions,

@@ -42,6 +42,7 @@ import FolderAddIcon from "@hugeicons/core-free-icons/FolderAddIcon";
 import FolderOpenIcon from "@hugeicons/core-free-icons/FolderOpenIcon";
 import FolderTreeIcon from "@hugeicons/core-free-icons/FolderTreeIcon";
 import GaugeIcon from "@hugeicons/core-free-icons/GaugeIcon";
+import Globe02Icon from "@hugeicons/core-free-icons/Globe02Icon";
 import GitBranchIcon from "@hugeicons/core-free-icons/GitBranchIcon";
 import GitCompareIcon from "@hugeicons/core-free-icons/GitCompareIcon";
 import GitMergeIcon from "@hugeicons/core-free-icons/GitMergeIcon";
@@ -186,6 +187,7 @@ export const GitPullRequestDraft = wrap(
   GitPullRequestDraftIcon,
   "GitPullRequestDraft",
 );
+export const Globe = wrap(Globe02Icon, "Globe");
 export const GripVertical = wrap(DragDropVerticalIcon, "GripVertical");
 export const ImagePlus = wrap(ImageAdd01Icon, "ImagePlus");
 export const Inbox = wrap(InboxIcon, "Inbox");

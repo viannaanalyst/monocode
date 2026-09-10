@@ -14,6 +14,7 @@ import {
   type ModelSetting,
 } from "../lib/models";
 import type { HarnessId } from "../lib/session";
+import { t } from "../i18n";
 
 type Props = {
   harness: HarnessId;
@@ -105,8 +106,8 @@ function ToggleSetting({
   return (
     <button
       type="button"
-      title={setting.description ?? setting.label}
-      aria-label={setting.label}
+      title={t(setting.description ?? setting.label)}
+      aria-label={t(setting.label)}
       aria-pressed={on}
       onMouseDown={(e) => e.preventDefault()}
       onClick={() => onChange(on ? "false" : "true")}
@@ -117,7 +118,7 @@ function ToggleSetting({
       }`}
     >
       <Icon className="size-3.5 shrink-0" strokeWidth={1.75} />
-      <span className="text-[11px]">{setting.label}</span>
+      <span className="text-[11px]">{t(setting.label)}</span>
     </button>
   );
 }
@@ -190,8 +191,11 @@ function SelectSetting({
     <div ref={root} className="relative">
       <button
         type="button"
-        title={setting.description ?? setting.label}
-        aria-label={`${setting.label}: ${current?.label ?? value}`}
+        title={t(setting.description ?? setting.label)}
+        aria-label={t("{label}: {value}", {
+          label: t(setting.label),
+          value: t(current?.label ?? value),
+        })}
         aria-expanded={open}
         aria-haspopup="listbox"
         onMouseDown={(e) => e.preventDefault()}
@@ -210,7 +214,7 @@ function SelectSetting({
       >
         <Icon className="size-3.5 shrink-0" strokeWidth={1.75} />
         <span className="min-w-0 truncate text-[11px]">
-          {current?.label ?? setting.label}
+          {t(current?.label ?? setting.label)}
         </span>
         <ChevronDown
           className={`size-3 shrink-0 text-content/50 ${open ? "rotate-180" : ""}`}
@@ -225,7 +229,7 @@ function SelectSetting({
           autoFocus
           onDismiss={(reason) => dismiss(reason === "escape")}
           role="listbox"
-          aria-label={setting.label}
+          aria-label={t(setting.label)}
           data-model-settings
           tabIndex={-1}
           onKeyDown={onMenuKey}
@@ -249,7 +253,7 @@ function SelectSetting({
                     : "text-content hover:bg-content/5"
                 }`}
               >
-                {option.label}
+                {t(option.label)}
               </button>
             );
           })}

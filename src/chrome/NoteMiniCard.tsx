@@ -8,7 +8,9 @@ import {
   type NoteCardMeta,
 } from "../lib/notes";
 import { projectKey } from "../lib/paths";
+import { t } from "../i18n";
 import {
+
   loadTabGroupColors,
   loadTabGroupCustomColors,
   loadTabGroupMascots,
@@ -79,8 +81,10 @@ export function NoteMiniCard({ card, onDismiss, embedded = false }: Props) {
       {onDismiss ? (
         <button
           type="button"
-          title="Remove"
-          aria-label={`Remove note ${card.title || "Untitled"}`}
+          title={t("Remove")}
+          aria-label={t("Remove note {title}", {
+            title: card.title || t("Untitled"),
+          })}
           onClick={onDismiss}
           className="absolute right-1.5 top-1.5 grid size-5 place-items-center rounded text-content/40 hover:bg-content/10 hover:text-content"
         >

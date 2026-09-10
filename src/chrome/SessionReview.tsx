@@ -11,6 +11,8 @@ import { invalidateProjectFiles } from "../lib/fileIndex";
 import { invalidateWatchedFiles } from "../lib/fileWatch";
 import { basename, notifyGitChanged, subscribeGitChanged } from "../lib/fs";
 import { FileTypeIcon } from "./FileTypeIcon";
+import { t } from "../i18n";
+
 
 type Props = {
   sessionId: string;
@@ -120,7 +122,7 @@ export function SessionReview({
           {many ? (
             <button
               type="button"
-              title={expanded ? "Collapse files" : "Expand files"}
+              title={expanded ? t("Collapse files") : t("Expand files")}
               aria-expanded={expanded}
               onClick={() => setExpanded((open) => !open)}
               className="flex min-w-0 flex-1 items-center gap-1 py-0.5 text-left text-content/70 hover:text-content"
@@ -161,7 +163,7 @@ export function SessionReview({
             </button>
             <button
               type="button"
-              title="Keep all session changes"
+              title={t("Keep all session changes")}
               disabled={disabled}
               onClick={() => run("keep")}
               className="h-6 rounded-md px-1.5  text-[11px] text-content/55 hover:bg-content/10 hover:text-content disabled:opacity-40"
@@ -170,7 +172,7 @@ export function SessionReview({
             </button>
             <button
               type="button"
-              title="Review changes"
+              title={t("Review changes")}
               onClick={() => onOpenDiff(undefined, { sessionId, cwd })}
               className="h-6 rounded-md bg-content/15 px-2 text-[11px] text-content/80 hover:bg-content/20 hover:text-content"
             >

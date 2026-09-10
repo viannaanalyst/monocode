@@ -20,6 +20,8 @@ import { useLockOverscroll } from "../hooks/useLockOverscroll";
 import { useProjectBranchesState } from "../hooks/useProjectBranches";
 import { Popover } from "./Popover";
 import { SwitchBranchDialog } from "./SwitchBranchDialog";
+import { t } from "../i18n";
+
 
 type Props = {
   cwd: string;
@@ -335,7 +337,7 @@ export function BranchPicker({
             maxHeight={MENU_MAX_HEIGHT}
             onDismiss={(reason) => dismiss(reason === "escape")}
             role="dialog"
-            aria-label="Branch picker"
+            aria-label={t("Branch picker")}
             data-branch-picker
             className="flex flex-col overflow-hidden"
           >
@@ -345,8 +347,8 @@ export function BranchPicker({
                 ref={search}
                 type="text"
                 value={query}
-                placeholder="Search or create a branch..."
-                aria-label="Search or create a branch"
+                placeholder={t("Search or create a branch...")}
+                aria-label={t("Search or create a branch")}
                 spellCheck={false}
                 autoComplete="off"
                 autoCorrect="off"
@@ -365,7 +367,7 @@ export function BranchPicker({
               rows={rows}
               active={active}
               busy={busy}
-              emptyLabel={query.trim() ? "No matching branches" : "No branches"}
+              emptyLabel={query.trim() ? t("No matching branches") : t("No branches")}
               onActive={setActive}
               onPick={pick}
             />
@@ -413,7 +415,7 @@ function BranchList({
     <div
       ref={lockOverscroll}
       role="listbox"
-      aria-label="Branches"
+      aria-label={t("Branches")}
       className="min-h-0 flex-1 overflow-y-auto overscroll-none px-1.5 py-1.5"
     >
       {rows.map((row, index) => {

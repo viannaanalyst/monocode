@@ -13,6 +13,8 @@ import {
   type Skill,
 } from "../lib/skills";
 import { useLockOverscroll } from "../hooks/useLockOverscroll";
+import { t } from "../i18n";
+
 
 type Props = {
   skills: Skill[];
@@ -128,7 +130,7 @@ function SkillList({
   if (skills.length === 0) {
     return (
       <p className="px-3 py-2.5 text-[12px] text-content/50">
-        {query.trim() ? "No matching commands or skills" : "No commands yet"}
+        {query.trim() ? t("No matching commands or skills") : t("No commands yet")}
       </p>
     );
   }
@@ -137,7 +139,7 @@ function SkillList({
     <div
       ref={lockOverscroll}
       role="listbox"
-      aria-label="Commands and skills"
+      aria-label={t("Commands and skills")}
       onMouseMove={onListMouseMove}
       className="max-h-[min(240px,40vh)] overflow-y-auto overscroll-none px-1 py-1"
     >
@@ -232,7 +234,7 @@ function CreateSkillForm({
         value={name}
         spellCheck={false}
         placeholder="skill-name"
-        aria-label="Skill name"
+        aria-label={t("Skill name")}
         disabled={busy}
         onChange={(e) => setName(e.target.value)}
         onKeyDown={(e) => {
@@ -244,14 +246,14 @@ function CreateSkillForm({
       />
       <div className="mb-2 flex gap-1">
         <ScopeButton
-          label="Project"
+          label={t("Project")}
           hint=".agents/skills"
           selected={scope === "project"}
           disabled={!project || busy}
           onClick={() => setScope("project")}
         />
         <ScopeButton
-          label="Personal"
+          label={t("Personal")}
           hint="~/.agents/skills"
           selected={scope === "user"}
           disabled={busy}
@@ -279,7 +281,7 @@ function CreateSkillForm({
           disabled={!valid || busy}
           className="rounded-md bg-content/20 px-2 py-1 text-[12px] text-content disabled:opacity-40"
         >
-          {busy ? "Creating…" : "Create"}
+          {busy ? t("Creating…") : t("Create")}
         </button>
       </div>
     </form>

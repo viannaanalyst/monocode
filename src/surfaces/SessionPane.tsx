@@ -51,7 +51,9 @@ import {
   subscribeProjectChatBackground,
 } from "../lib/projectChatBackground";
 import { projectChatBackgroundSrc } from "../lib/chatBackground";
+import { t, withShortcut } from "../i18n";
 import {
+
   loadChatBackgroundPath,
   subscribeChatBackgroundPath,
 } from "../lib/appearance";
@@ -417,8 +419,8 @@ export const SessionPane = memo(function SessionPane({
           </span>
           <button
             type="button"
-            title={`Close Pane (${MOD}W)`}
-            aria-label="Close pane"
+            title={withShortcut("Close Pane", `${MOD}W`)}
+            aria-label={t("Close pane")}
             data-no-drag
             className="grid size-5 shrink-0 place-items-center rounded text-content/50 hover:bg-content/10 hover:text-content"
             onPointerDown={(e) => e.stopPropagation()}
@@ -436,7 +438,7 @@ export const SessionPane = memo(function SessionPane({
         {isEmpty ? (
           session.inboxAsk ? (
             <div className="scrollbar-none h-full min-h-0 overflow-y-auto">
-              <DiscussionEmpty message="Explore this item with your agent." />
+              <DiscussionEmpty message={t("Explore this item with your agent.")} />
             </div>
           ) : (
             <EmptySession
@@ -490,8 +492,8 @@ export const SessionPane = memo(function SessionPane({
               <div className="pointer-events-none absolute inset-x-0 bottom-2 z-30 flex justify-center">
                 <button
                   type="button"
-                  title="Jump to latest"
-                  aria-label="Jump to latest"
+                  title={t("Jump to latest")}
+                  aria-label={t("Jump to latest")}
                   data-jump-to-bottom
                   onClick={() => jumpToBottomRef.current?.()}
                   className="pointer-events-auto grid size-6 place-items-center rounded-md border border-content/15 bg-content/10 text-content shadow-md hover:bg-content/5 backdrop-blur-md"

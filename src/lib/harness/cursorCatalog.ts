@@ -255,6 +255,7 @@ function groupCliModels(
       settings.push({
         id: effortKeyFor(base),
         label: "Effort",
+        description: "Effort the model uses to generate its response.",
         kind: "select",
         value: canonical?.effort ?? efforts[0],
         options: efforts.map((value) => ({
@@ -279,6 +280,7 @@ function groupCliModels(
       settings.push({
         id: "fast",
         label: "Fast",
+        description: "Significantly faster but consumes more usage",
         kind: "toggle",
         value: canonical?.fast ? "true" : "false",
         options: [

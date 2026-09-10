@@ -195,5 +195,37 @@ describe("TitleBar terminal action", () => {
     );
     expect(terminalAction?.getAttribute("aria-disabled")).not.toBe("true");
     expect(terminalAction?.className).toContain("cursor-pointer");
+    expect(terminalAction?.className).toContain("[&_*]:pointer-events-none");
+  });
+
+  it("shows a browser action next to the terminal action", () => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    roots.push(root);
+
+    act(() => {
+      root.render(
+        createElement(TitleBar, {
+          tabs: [tab()],
+          activeId: "t1",
+          cwd: "/workspace/monocode",
+          onToggleSidebar: () => {},
+          onSelect: () => {},
+          onNew: () => {},
+          onNewTerminal: () => {},
+          onNewBrowser: () => {},
+          onClose: () => {},
+          onCloseMany: () => {},
+          onReorder: () => {},
+        }),
+      );
+    });
+
+    const browserAction = container.querySelector<HTMLButtonElement>(
+      '[aria-label="New Browser"]',
+    );
+    expect(browserAction).not.toBeNull();
+    expect(browserAction?.className).toContain("cursor-pointer");
   });
 });

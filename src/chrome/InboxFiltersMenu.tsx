@@ -12,6 +12,8 @@ import {
 import type { LinearTeam } from "../lib/linear";
 import { Popover } from "./Popover";
 import { ProjectLogoIcon } from "./ProjectLogoIcon";
+import { t } from "../i18n";
+
 
 export const INBOX_FILTER_MENU_WIDTH = 228;
 
@@ -37,10 +39,10 @@ type Props = {
 };
 
 const TIME_OPTIONS: { id: InboxTimeFilter; label: string }[] = [
-  { id: "all", label: "All time" },
-  { id: "today", label: "Today" },
-  { id: "7d", label: "Last 7 days" },
-  { id: "30d", label: "Last 30 days" },
+  { id: "all", label: t("All time") },
+  { id: "today", label: t("Today") },
+  { id: "7d", label: t("Last 7 days") },
+  { id: "30d", label: t("Last 30 days") },
 ];
 
 const KIND_OPTIONS: {
@@ -50,12 +52,12 @@ const KIND_OPTIONS: {
 }[] = [
   {
     id: "issue",
-    label: "Issues",
+    label: t("Issues"),
     icon: <CircleDot className="size-3.5 shrink-0" strokeWidth={1.75} />,
   },
   {
     id: "pr",
-    label: "Pull requests",
+    label: t("Pull requests"),
     icon: <GitPullRequest className="size-3.5 shrink-0" strokeWidth={1.75} />,
   },
 ];
@@ -130,43 +132,43 @@ export function InboxFiltersMenu({
       maxHeight={480}
       onDismiss={onClose}
       role="menu"
-      aria-label="Filter inbox"
+      aria-label={t("Filter inbox")}
       onContextMenu={(event) => event.preventDefault()}
       className="overflow-y-auto overscroll-none p-1"
     >
       <FilterItem
-        label="Assigned to me"
+        label={t("Assigned to me")}
         checked={filters.assignedToMe}
         onClick={toggleAssigned}
       />
 
-      <SectionLabel>Status</SectionLabel>
+      <SectionLabel>{t("Status")}</SectionLabel>
       <FilterItem
-        label="Open"
+        label={t("Open")}
         checked={filters.status.open}
         onClick={() => toggleStatus("open")}
       />
       {source !== "linear" ? (
         <FilterItem
-          label="Draft"
+          label={t("Draft")}
           checked={filters.status.draft}
           onClick={() => toggleStatus("draft")}
         />
       ) : null}
       <FilterItem
-        label="Closed"
+        label={t("Closed")}
         checked={filters.status.closed}
         onClick={() => toggleStatus("closed")}
       />
       {source !== "linear" ? (
         <FilterItem
-          label="Merged"
+          label={t("Merged")}
           checked={filters.status.merged}
           onClick={() => toggleStatus("merged")}
         />
       ) : null}
 
-      <SectionLabel>Time</SectionLabel>
+      <SectionLabel>{t("Time")}</SectionLabel>
       {TIME_OPTIONS.map((option) => (
         <FilterItem
           key={option.id}
@@ -178,7 +180,7 @@ export function InboxFiltersMenu({
 
       {source !== "linear" ? (
         <>
-          <SectionLabel>Type</SectionLabel>
+          <SectionLabel>{t("Type")}</SectionLabel>
           {KIND_OPTIONS.map((option) => (
             <FilterItem
               key={option.id}
@@ -197,7 +199,7 @@ export function InboxFiltersMenu({
 
       {source === "linear" && linearTeams.length > 0 ? (
         <>
-          <SectionLabel>Teams</SectionLabel>
+          <SectionLabel>{t("Teams")}</SectionLabel>
           {linearTeams.map((team) => (
             <FilterItem
               key={team.id}
@@ -211,7 +213,7 @@ export function InboxFiltersMenu({
 
       {source === "linear" && linearProjects.length > 0 ? (
         <>
-          <SectionLabel>Projects</SectionLabel>
+          <SectionLabel>{t("Projects")}</SectionLabel>
           {linearProjects.map((project) => (
             <FilterItem
               key={project.id}
@@ -225,7 +227,7 @@ export function InboxFiltersMenu({
 
       {source !== "linear" && projects.length > 0 ? (
         <>
-          <SectionLabel>Projects</SectionLabel>
+          <SectionLabel>{t("Projects")}</SectionLabel>
           {projects.map((project) => (
             <FilterItem
               key={project.path}

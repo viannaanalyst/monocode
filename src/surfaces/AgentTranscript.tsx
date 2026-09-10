@@ -11,6 +11,7 @@ import {
   Terminal,
   Wrench,
   X,
+  Globe,
 } from "../chrome/icons";
 import {
   memo,
@@ -53,6 +54,7 @@ import {
   hasPendingApproval,
   HARNESS_TITLE,
   type Block,
+  type BrowserCardMeta,
   type HarnessId,
   type PlanBuildTarget,
   type ToolPreview,
@@ -65,7 +67,9 @@ import { useTranscriptSelection } from "../hooks/useTranscriptSelection";
 import type { TranscriptLayout } from "../lib/appearance";
 import { AgentMarkdown } from "./AgentMarkdown";
 import { TranscriptSelectionMenu } from "./TranscriptSelectionMenu";
+import { t } from "../i18n";
 import {
+
   activityPhaseTitle,
   activityStillRunning,
   buildActivityPhases,
@@ -578,7 +582,7 @@ export const AgentTranscript = memo(
 function InitialThinking({ live }: { live: boolean }) {
   return (
     <div className="min-w-0 px-4 pt-3 pb-1 font-sans text-sm text-content/50">
-      {live ? <Shimmer duration={1.6}>Thinking…</Shimmer> : "Thinking…"}
+      {live ? <Shimmer duration={1.6}>{t("Thinking…")}</Shimmer> : "Thinking…"}
     </div>
   );
 }
@@ -721,8 +725,8 @@ function CopyTurnButton({ text }: { text: string }) {
   return (
     <button
       type="button"
-      title={copied ? "Copied" : "Copy response"}
-      aria-label={copied ? "Copied" : "Copy response"}
+      title={copied ? t("Copied") : t("Copy response")}
+      aria-label={copied ? t("Copied") : t("Copy response")}
       className="-ml-1 rounded-md p-1 text-content/40 hover:bg-content/8 hover:text-content/70"
       onClick={() => {
         playCue("copy");
@@ -765,8 +769,8 @@ function SaveNoteButton({
   return (
     <button
       type="button"
-      title={saved ? "Saved to Notes" : "Save as note"}
-      aria-label={saved ? "Saved to Notes" : "Save as note"}
+      title={saved ? t("Saved to Notes") : t("Save as note")}
+      aria-label={saved ? t("Saved to Notes") : t("Save as note")}
       className="rounded-md p-1 text-content/40 hover:bg-content/8 hover:text-content/70"
       onClick={() => {
         playCue("copy");
@@ -823,6 +827,10 @@ const TranscriptBlock = memo(function TranscriptBlock({
         stickyIndex={stickyIndex}
       />
     );
+  }
+
+  if (block.browserCard) {
+    return <BrowserActionCard card={block.browserCard} />;
   }
 
   if (block.role === "tool") {
@@ -1184,7 +1192,7 @@ function WorkFoldLine({
     <button
       type="button"
       aria-expanded={open}
-      aria-label={open ? "Hide the work" : "Show the work"}
+      aria-label={open ? t("Hide the work") : t("Show the work")}
       aria-live={live ? "polite" : undefined}
       onClick={onToggle}
       className={`group ${row}`}
@@ -1395,7 +1403,9 @@ function ActivityPhaseGroup({
         type="button"
         aria-expanded={open}
         aria-label={
-          open ? `Hide the steps for ${title}` : `Show the steps for ${title}`
+          open
+            ? t("Hide the steps for {title}", { title })
+            : t("Show the steps for {title}", { title })
         }
         onClick={() => setOverride(!open)}
         className="group flex w-full min-w-0 items-center gap-1.5 py-1 text-left"
@@ -1509,6 +1519,9 @@ function ActivityRow({
   onOpenFile?: (path: string) => void;
   onOpenDiff?: (path: string) => void;
 }) {
+  if (block.browserCard) {
+    return <BrowserActionCard card={block.browserCard} />;
+  }
   if (isThinkingBlock(block)) {
     return (
       <ActivityThinkingRow
@@ -1586,7 +1599,7 @@ function ActivityThinkingRow({
   if (!expandable) {
     return (
       <div
-        aria-label={`Thinking: ${text}`}
+        aria-label={t("Thinking: {text}", { text })}
         className="flex min-w-0 items-center gap-1.5 py-1"
       >
         {icon}
@@ -1600,7 +1613,9 @@ function ActivityThinkingRow({
       <button
         type="button"
         aria-expanded={open}
-        aria-label={open ? "Hide thinking" : `Show thinking: ${text}`}
+        aria-label={
+          open ? t("Hide thinking") : t("Show thinking: {text}", { text })
+        }
         onClick={() => setOpen((value) => !value)}
         className="group flex min-w-0 items-center gap-1.5 py-1 text-left"
       >
@@ -1653,7 +1668,7 @@ function ActivityNoteRow({
   if (!expandable) {
     return (
       <div
-        aria-label={`Agent said: ${text}`}
+        aria-label={t("Agent said: {text}", { text })}
         className="flex min-w-0 items-center gap-1.5 py-1"
       >
         {icon}
@@ -1669,7 +1684,9 @@ function ActivityNoteRow({
       <button
         type="button"
         aria-expanded={open}
-        aria-label={open ? "Hide the full note" : `Agent said: ${text}`}
+        aria-label={
+          open ? t("Hide the full note") : t("Agent said: {text}", { text })
+        }
         onClick={() => setOpen((value) => !value)}
         className="group flex min-w-0 items-center gap-1.5 py-1 text-left"
       >
@@ -1718,7 +1735,7 @@ function ActivityToolRow({
   return (
     <div className="flex min-w-0 flex-col">
       <div
-        aria-label={`Tool call: ${label}`}
+        aria-label={t("Tool call: {label}", { label })}
         className="flex min-w-0 items-center gap-1.5 py-1"
       >
         {bare ? null : <ActivityToolIcon state={state} live={live} />}
@@ -1832,7 +1849,7 @@ function workingVerb(
 ): string {
   if (done) return capitalized ? "Worked" : "worked";
   if (subagent) return capitalized ? "Subagent running" : "subagent running";
-  return capitalized ? "Working" : "working";
+  return capitalized ? t("Working") : "working";
 }
 
 function formatElapsed(elapsedMs: number | null): string | null {
@@ -1842,6 +1859,38 @@ function formatElapsed(elapsedMs: number | null): string | null {
   const minutes = Math.floor(totalSec / 60);
   const seconds = totalSec % 60;
   return seconds ? `${minutes}m ${seconds}s` : `${minutes}m`;
+}
+
+function BrowserActionCard({ card }: { card: BrowserCardMeta }) {
+  const title = t("Browser: {op}", { op: card.op });
+  return (
+    <div className="mx-4 my-1 overflow-hidden rounded-lg border border-content/10 bg-content/5">
+      <div className="flex items-center gap-2 px-3 py-2">
+        <Globe className="size-3.5 shrink-0 text-content/55" strokeWidth={1.75} />
+        <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-content">
+          {title}
+        </span>
+        <span
+          className={`text-[11px] ${card.ok ? "text-content/40" : "text-red-400/80"}`}
+        >
+          {card.ok ? t("Done") : t("Failed")}
+        </span>
+      </div>
+      {card.url ? (
+        <p className="truncate px-3 pb-1 text-[11px] text-content/45">{card.url}</p>
+      ) : null}
+      {card.summary && card.summary !== card.url ? (
+        <p className="truncate px-3 pb-2 text-[11px] text-content/45">{card.summary}</p>
+      ) : null}
+      {card.screenshot ? (
+        <img
+          src={card.screenshot}
+          alt=""
+          className="max-h-56 w-full border-t border-content/10 object-cover object-top"
+        />
+      ) : null}
+    </div>
+  );
 }
 
 function ToolCall({
@@ -1869,8 +1918,7 @@ function ToolCall({
     state === "accepted"
       ? "Accepted"
       : state === "rejected"
-        ? "Rejected"
-        : "Pending";
+        ? "Rejected" : t("Pending");
   const editTool = isEditTool(
     block.tool?.kind,
     block.text || block.tool?.title,
@@ -1905,7 +1953,10 @@ function ToolCall({
         <button
           type="button"
           aria-expanded={open}
-          aria-label={`${stateLabel} tool call: ${label}`}
+          aria-label={t("{state} tool call: {label}", {
+            state: stateLabel,
+            label,
+          })}
           onClick={() => setOpen((value) => !value)}
           className="flex w-full min-w-0 items-center gap-2 rounded-lg py-1.5 text-left"
         >
@@ -1924,7 +1975,10 @@ function ToolCall({
         </button>
       ) : (
         <div
-          aria-label={`${stateLabel} tool call: ${label}`}
+          aria-label={t("{state} tool call: {label}", {
+            state: stateLabel,
+            label,
+          })}
           className="flex w-full min-w-0 items-center gap-2"
         >
           <ToolCallIcon state={state} />
@@ -2125,7 +2179,9 @@ function HandoffDivider({ block }: { block: Block }) {
   if (!meta) return null;
 
   const preparing = meta.status === "preparing";
-  const label = preparing ? "Preparing a handoff" : HARNESS_TITLE[meta.to];
+  const label = preparing
+    ? t("Preparing a handoff")
+    : HARNESS_TITLE[meta.to];
 
   return (
     <div className="px-4 py-5">
@@ -2135,8 +2191,10 @@ function HandoffDivider({ block }: { block: Block }) {
           role="separator"
           aria-label={
             preparing
-              ? `Preparing a handoff to ${HARNESS_TITLE[meta.to]}`
-              : `Continued with ${label}`
+              ? t("Preparing a handoff to {name}", {
+                  name: HARNESS_TITLE[meta.to],
+                })
+              : t("Continued with {label}", { label })
           }
           className="flex max-w-[min(100%,20rem)] items-center gap-1.5 px-1.5 font-sans text-[12px] text-content/55"
         >

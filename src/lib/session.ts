@@ -117,6 +117,15 @@ export type ToolPreview = {
   output?: string;
 };
 
+export type BrowserCardMeta = {
+  op: string;
+  url?: string;
+  selector?: string;
+  ok: boolean;
+  summary?: string;
+  screenshot?: string;
+};
+
 export type AttachmentKind = "image" | "audio" | "file";
 
 export type Attachment = {
@@ -170,8 +179,9 @@ export type Block = {
   plan?: PlanBlockMeta;
   handoff?: HandoffMeta;
   secondOpinion?: SecondOpinionMeta;
-  /** Note chip shown on this user turn. Body is not stored; the harness already received it. */
   noteCard?: NoteCardMeta;
+  /** Compact in-app browser action shown in the transcript. */
+  browserCard?: BrowserCardMeta;
 };
 
 export type RuntimeMode =

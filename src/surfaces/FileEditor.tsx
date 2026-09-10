@@ -74,6 +74,8 @@ import {
 } from "./editorGit";
 import { editorLint } from "./editorLint";
 import { editorSearch } from "./editorSearch";
+import { t } from "../i18n";
+
 
 type EditorNavigationRequest = EditorNavigation & { token: number };
 
@@ -438,9 +440,9 @@ export function FileEditor({
           {relativePath}
         </span>
         {saveState.status === "saving" ? (
-          <span>Saving…</span>
+          <span>{t("Saving…")}</span>
         ) : saveState.status === "saved" ? (
-          <span>Saved</span>
+          <span>{t("Saved")}</span>
         ) : saveState.status === "error" ? (
           <span
             className="max-w-64 truncate text-red-400"
@@ -863,14 +865,14 @@ function DiffChunkNav({
     <header
       className="flex h-8 shrink-0 items-center justify-between gap-3 border-b border-content/10 px-3 pr-1"
       role="toolbar"
-      aria-label="Jump between changes"
+      aria-label={t("Jump between changes")}
     >
       <DiffChunkStat additions={additions} deletions={deletions} />
       <div className="flex items-center gap-0.5">
         <button
           type="button"
-          title="Previous change"
-          aria-label="Previous change"
+          title={t("Previous change")}
+          aria-label={t("Previous change")}
           disabled={total === 0 || index <= 0}
           onMouseDown={(event) => event.preventDefault()}
           onClick={onPrev}
@@ -883,8 +885,8 @@ function DiffChunkNav({
         </span>
         <button
           type="button"
-          title="Next change"
-          aria-label="Next change"
+          title={t("Next change")}
+          aria-label={t("Next change")}
           disabled={total === 0 || index >= total - 1}
           onMouseDown={(event) => event.preventDefault()}
           onClick={onNext}

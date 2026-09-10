@@ -4,6 +4,8 @@ import {
   type ReleaseNotesTabSource,
 } from "../lib/releaseNotes";
 import { AgentMarkdown } from "./AgentMarkdown";
+import { t } from "../i18n";
+
 
 export function ReleaseNotesSurface({
   source,
@@ -19,7 +21,7 @@ export function ReleaseNotesSurface({
       className="h-full overflow-y-auto overscroll-none"
     >
       <article
-        aria-label="Release notes"
+        aria-label={t("Release notes")}
         className="mx-auto w-full max-w-3xl px-8 py-10"
       >
         {markdown ? (

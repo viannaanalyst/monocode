@@ -6,6 +6,8 @@ import { formatFileSize, sniffImageMime } from "../lib/filePreview";
 import { watchFile } from "../lib/fileWatch";
 import { basename, readBinaryFile, revealPath } from "../lib/fs";
 import { displayPath } from "../lib/paths";
+import { t } from "../i18n";
+
 
 const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 16;
@@ -81,7 +83,7 @@ export function BinaryFileView({ path, cwd }: Props) {
   if (state.status === "loading") {
     return (
       <div className="grid h-full place-items-center text-[12px] text-content/45">
-        Opening {basename(path)}…
+        {t("Opening {name}…", { name: basename(path) })}
       </div>
     );
   }
@@ -91,7 +93,7 @@ export function BinaryFileView({ path, cwd }: Props) {
       <FileCard
         path={path}
         cwd={cwd}
-        title={`Couldn’t open ${basename(path)}`}
+        title={t("Couldn’t open {name}", { name: basename(path) })}
         detail={state.message}
         icon={<AlertCircle className="mx-auto mb-3 size-5 text-red-400" />}
         onRetry={reload}
@@ -105,7 +107,9 @@ export function BinaryFileView({ path, cwd }: Props) {
         path={path}
         cwd={cwd}
         title={basename(path)}
-        detail={`${formatFileSize(state.size)} · not a readable image`}
+        detail={t("{size} · not a readable image", {
+          size: formatFileSize(state.size),
+        })}
         icon={
           <div className="mx-auto mb-3 flex justify-center">
             <FileTypeIcon name={basename(path)} isDir={false} size={28} />
@@ -174,7 +178,7 @@ function ImageView({
         <span className="uppercase">{mime.replace(/^image\//, "")}</span>
         <span className="flex-1" />
         <ZoomButton
-          label="Zoom out"
+          label={t("Zoom out")}
           onClick={() =>
             setZoom((value) => clampZoom((value === "fit" ? 1 : value) / 1.5))
           }
@@ -183,14 +187,14 @@ function ImageView({
         </ZoomButton>
         <button
           type="button"
-          title="Fit to window"
+          title={t("Fit to window")}
           onClick={() => setZoom("fit")}
           className="w-11 rounded text-center tabular-nums hover:text-content"
         >
           {zoom === "fit" ? "Fit" : `${Math.round(zoom * 100)}%`}
         </button>
         <ZoomButton
-          label="Zoom in"
+          label={t("Zoom in")}
           onClick={() =>
             setZoom((value) => clampZoom((value === "fit" ? 1 : value) * 1.5))
           }

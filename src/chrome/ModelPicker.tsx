@@ -45,6 +45,8 @@ import { useLockOverscroll } from "../hooks/useLockOverscroll";
 import { HarnessIcon } from "./HarnessIcon";
 import { Popover } from "./Popover";
 import { MOD } from "../lib/platform";
+import { t } from "../i18n";
+
 
 type Props = {
   harness: HarnessId;
@@ -333,19 +335,19 @@ export function ModelPicker({
           onDismiss={() => dismiss(false)}
           dismissOnEscape={false}
           role="dialog"
-          aria-label="Model picker"
+          aria-label={t("Model picker")}
           data-model-picker
           className="flex flex-col overflow-hidden"
         >
           <nav
             role="tablist"
-            aria-label="Providers"
+            aria-label={t("Providers")}
             aria-keyshortcuts="ArrowLeft ArrowRight"
             aria-orientation="horizontal"
             className="flex w-full shrink-0 items-stretch border-b border-content/10"
           >
             <ProviderTabButton
-              title="Favorites"
+              title={t("Favorites")}
               selected={visibleTab === "favorites"}
               onSelect={() => selectTab("favorites")}
             >
@@ -375,8 +377,8 @@ export function ModelPicker({
                   ref={search}
                   type="text"
                   value={query}
-                  placeholder="Search models..."
-                  aria-label="Search models"
+                  placeholder={t("Search models...")}
+                  aria-label={t("Search models")}
                   className="min-w-0 flex-1 bg-transparent text-[12px] text-content outline-none placeholder:text-content/40"
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={onSearchKey}
@@ -390,13 +392,13 @@ export function ModelPicker({
               favorites={favorites}
               emptyLabel={
                 visibleTab === "favorites" && !query.trim()
-                  ? "No favorite models"
+                  ? t("No favorite models")
                   : visibleTab !== "favorites" &&
                       !isHarnessAvailable(visibleTab)
                     ? harnessUnavailableHint(visibleTab)
                     : visibleTab === "codex" && !query.trim()
-                      ? "Loading Codex models…"
-                      : "No matching models"
+                      ? t("Loading Codex models…")
+                      : t("No matching models")
               }
               onActive={setActive}
               onPick={pick}
@@ -507,7 +509,7 @@ function ModelList({
     <div
       ref={setListRef}
       role="listbox"
-      aria-label="Models"
+      aria-label={t("Models")}
       className="min-h-0 flex-1 overflow-y-auto overscroll-none px-1.5 pb-1.5"
     >
       {models.map((item, index) => {
@@ -570,9 +572,9 @@ function ModelList({
             </button>
             <button
               type="button"
-              title={favorited ? "Remove from favorites" : "Add to favorites"}
+              title={favorited ? t("Remove from favorites") : t("Add to favorites")}
               aria-label={
-                favorited ? "Remove from favorites" : "Add to favorites"
+                favorited ? t("Remove from favorites") : t("Add to favorites")
               }
               onMouseDown={(e) => e.preventDefault()}
               onClick={(e) => {

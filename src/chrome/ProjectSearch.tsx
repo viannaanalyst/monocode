@@ -19,6 +19,8 @@ import {
   type ProjectSearchMatch,
 } from "../lib/search";
 import { FileTypeIcon } from "./FileTypeIcon";
+import { t } from "../i18n";
+
 
 type Props = {
   cwd: string;
@@ -137,7 +139,7 @@ export function ProjectSearch({
 
   if (!cwd || cwd === "~") {
     return (
-      <p className="px-3 py-2 text-[12px] text-content/50">No project folder</p>
+      <p className="px-3 py-2 text-[12px] text-content/50">{t("No project folder")}</p>
     );
   }
 
@@ -147,8 +149,8 @@ export function ProjectSearch({
         <button
           type="button"
           onClick={onClose}
-          title="Back to files"
-          aria-label="Back to files"
+          title={t("Back to files")}
+          aria-label={t("Back to files")}
           className="grid size-7 shrink-0 place-items-center rounded-md text-content/50 hover:bg-content/10 hover:text-content"
         >
           <ChevronLeft className="size-4" strokeWidth={1.75} />
@@ -164,27 +166,27 @@ export function ProjectSearch({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={onQueryKeyDown}
-            placeholder="Search"
-            aria-label="Search"
+            placeholder={t("Search")}
+            aria-label={t("Search")}
             spellCheck={false}
             className="min-w-0 flex-1 bg-transparent py-1.5 text-[12px] text-content outline-none placeholder:text-content/35"
           />
           <Toggle
-            label="Match case"
+            label={t("Match case")}
             active={caseSensitive}
             onClick={() => setCaseSensitive((value) => !value)}
           >
             <CaseSensitive className="size-3.5" strokeWidth={1.75} />
           </Toggle>
           <Toggle
-            label="Match whole word"
+            label={t("Match whole word")}
             active={wholeWord}
             onClick={() => setWholeWord((value) => !value)}
           >
             <WholeWord className="size-3.5" strokeWidth={1.75} />
           </Toggle>
           <Toggle
-            label="Use regular expression"
+            label={t("Use regular expression")}
             active={regex}
             onClick={() => setRegex((value) => !value)}
           >
@@ -194,16 +196,16 @@ export function ProjectSearch({
         <input
           value={include}
           onChange={(event) => setInclude(event.target.value)}
-          placeholder="files to include"
-          aria-label="files to include"
+          placeholder={t("files to include")}
+          aria-label={t("files to include")}
           spellCheck={false}
           className="w-full rounded-md border border-content/10 bg-content/5 px-2 py-1.5 text-[11px] text-content outline-none placeholder:text-content/35"
         />
         <input
           value={exclude}
           onChange={(event) => setExclude(event.target.value)}
-          placeholder="files to exclude"
-          aria-label="files to exclude"
+          placeholder={t("files to exclude")}
+          aria-label={t("files to exclude")}
           spellCheck={false}
           className="w-full rounded-md border border-content/10 bg-content/5 px-2 py-1.5 text-[11px] text-content outline-none placeholder:text-content/35"
         />
@@ -213,7 +215,7 @@ export function ProjectSearch({
         {loading ? (
           <>
             <LoaderCircle className="size-3 animate-spin" strokeWidth={1.75} />
-            <span>Searching…</span>
+            <span>{t("Searching…")}</span>
           </>
         ) : error ? (
           <span className="text-red-400">{error}</span>
@@ -225,7 +227,7 @@ export function ProjectSearch({
             {truncated ? " (limited)" : ""}
           </span>
         ) : (
-          <span>Type to search across the project</span>
+          <span>{t("Type to search across the project")}</span>
         )}
       </div>
 

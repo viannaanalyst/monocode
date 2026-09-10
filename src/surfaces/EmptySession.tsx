@@ -7,6 +7,7 @@ import {
 } from "../lib/settings";
 import { useLockOverscroll } from "../hooks/useLockOverscroll";
 import { TerminalGridBackground } from "./TerminalGridBackground";
+import { t } from "../i18n";
 
 type Props = {
   cwd: string;
@@ -23,8 +24,8 @@ export function EmptySession({ cwd, composer, hasChatBackground }: Props) {
   );
   const project = looksLikeProject(cwd) ? basename(cwd) : null;
   const title = project
-    ? `What should we work on in ${project}?`
-    : "What should we work on?";
+    ? t("What should we work on in {project}?", { project })
+    : t("What should we work on?");
 
   return (
     <div

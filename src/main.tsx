@@ -1,6 +1,7 @@
 import React, { useLayoutEffect } from "react";
 import ReactDOM from "react-dom/client";
 import { listen } from "@tauri-apps/api/event";
+import { LocaleRoot } from "./i18n";
 import App from "./App";
 import { activateWindowAppearance, initAppearance } from "./lib/appearance";
 import { initSounds } from "./lib/sounds";
@@ -44,13 +45,15 @@ void loadBootWorkspace().then(
     ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
       <React.StrictMode>
         <BootGate>
-          <App
-            windowTransfer={windowTransfer}
-            resumed={resumed}
-            installedUpdate={installedUpdate}
-            history={history}
-            historyCwd={historyCwd}
-          />
+          <LocaleRoot>
+            <App
+              windowTransfer={windowTransfer}
+              resumed={resumed}
+              installedUpdate={installedUpdate}
+              history={history}
+              historyCwd={historyCwd}
+            />
+          </LocaleRoot>
         </BootGate>
       </React.StrictMode>,
     );

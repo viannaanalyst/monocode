@@ -8,6 +8,7 @@ import {
 } from "../lib/updater";
 import type { InstalledUpdate } from "../lib/updateNotice";
 import { UpdateRailCard } from "./UpdateRailCard";
+import { t } from "../i18n";
 
 // The sidebar row only earns its space when there is something to act on: an
 // update waiting to be installed, or one already downloading. Every other phase
@@ -114,8 +115,12 @@ export function SidebarUpdate({
   }, [busy, onSnapshot]);
 
   const label = busy
-    ? `Downloading${snapshot.progress != null ? ` ${snapshot.progress}%` : "…"}`
-    : `Update to ${snapshot.availableVersion}`;
+    ? snapshot.progress != null
+      ? t("Downloading {percent}%", { percent: snapshot.progress })
+      : t("Downloading…")
+    : t("Update to {version}", {
+        version: snapshot.availableVersion ?? "",
+      });
 
   return (
     <button

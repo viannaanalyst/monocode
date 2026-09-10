@@ -15,7 +15,9 @@ import {
   pickAndSaveProjectChatBackground,
   projectChatBackgroundSrc,
 } from "../lib/chatBackground";
+import { t } from "../i18n";
 import {
+
   clearProjectChatBackgroundSetting,
   loadProjectChatBackground,
   projectChatBackgroundRevision,
@@ -106,8 +108,8 @@ export function ProjectBackgroundDialog({ project, name, onClose }: Props) {
 
   return (
     <Modal
-      title="Background Image"
-      description={`Choose a background image for ${name}`}
+      title={t("Background Image")}
+      description={t("Choose a background image for {name}", { name })}
       size="sm"
       onClose={onClose}
     >
@@ -136,27 +138,29 @@ export function ProjectBackgroundDialog({ project, name, onClose }: Props) {
             {busy ? (
               <Loader className="size-3.5 animate-spin" aria-hidden />
             ) : null}
-            {path ? "Change image" : "Choose image"}
+            {path ? t("Change image") : t("Choose image")}
           </button>
           <p className="mt-1.5 text-[11px] leading-relaxed text-content/45">
             {path
-              ? "This image overrides the global background for this project."
-              : "This project currently follows the global Appearance setting."}
+              ? t("This image overrides the global background for this project.")
+              : t(
+                  "This project currently follows the global Appearance setting.",
+                )}
           </p>
           {error ? (
             <p className="mt-1.5 text-[12px] text-red-400">{error}</p>
           ) : null}
         </div>
 
-        <ProjectBackgroundRow label="Show on">
+        <ProjectBackgroundRow label={t("Show on")}>
           <div
             role="radiogroup"
-            aria-label="Show project background on"
+            aria-label={t("Show project background on")}
             className="grid w-44 grid-cols-2 gap-0.5 rounded-md border border-content/10 p-0.5 text-[12px]"
           >
             {[
-              { value: "empty" as const, label: "Empty only" },
-              { value: "all" as const, label: "All sessions" },
+              { value: "empty" as const, label: t("Empty only") },
+              { value: "all" as const, label: t("All sessions") },
             ].map((option) => (
               <button
                 key={option.value}
@@ -176,14 +180,14 @@ export function ProjectBackgroundDialog({ project, name, onClose }: Props) {
           </div>
         </ProjectBackgroundRow>
 
-        <ProjectBackgroundRow label="Visibility">
+        <ProjectBackgroundRow label={t("Visibility")}>
           <div className="flex w-56 items-center gap-3">
             <input
               type="range"
               min={Math.round(CHAT_BACKGROUND_OPACITY_MIN * 100)}
               max={Math.round(CHAT_BACKGROUND_OPACITY_MAX * 100)}
               value={Math.round(opacity * 100)}
-              aria-label="Project background visibility"
+              aria-label={t("Project background visibility")}
               className="sidebar-opacity-slider min-w-0 flex-1"
               onChange={(event) => updateOpacity(Number(event.target.value))}
             />

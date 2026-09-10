@@ -443,6 +443,8 @@ describe("helpers", () => {
     );
     expect(isTodoTool("TodoWrite")).toBe(true);
     expect(toolKindFromName("TodoWrite")).toBe("tasks");
+    expect(toolKindFromName("browser_navigate")).toBe("browser");
+    expect(toolKindFromName("browser_click")).toBe("browser");
     expect(
       taskListFromTodos({
         todos: [

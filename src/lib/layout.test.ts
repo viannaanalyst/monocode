@@ -5,6 +5,7 @@ import {
   isChangesTab,
   isCommitTab,
   isFilesystemTab,
+  isBrowserTab,
   isReleaseNotesTab,
   isReviewTab,
   isSessionChangesTab,
@@ -15,6 +16,7 @@ import {
   newChangesTab,
   newCommitTab,
   newFileTab,
+  newBrowserTab,
   newPlanTab,
   newReleaseNotesWorkspaceTab,
   newSessionChangesTab,
@@ -116,6 +118,11 @@ describe("editorTabKey", () => {
     expect(editorTabKey(terminal)).toBe(`terminal:${terminal.id}`);
     expect(isTerminalTab(terminal)).toBe(true);
     expect(isTerminalTab(newFileTab(path, cwd))).toBe(false);
+    const browser = newBrowserTab(cwd);
+    expect(isBrowserTab(browser)).toBe(true);
+    expect(isFilesystemTab(browser)).toBe(false);
+    expect(editorTabKey(browser)).toBe(`browser:${browser.id}`);
+    expect(editorTabKey(newBrowserTab(cwd))).not.toBe(editorTabKey(browser));
   });
 });
 

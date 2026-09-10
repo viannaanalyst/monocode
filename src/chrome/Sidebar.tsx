@@ -136,6 +136,8 @@ import { SessionFiltersMenu } from "./SessionFiltersMenu";
 import { SessionsEmpty } from "./SessionsEmpty";
 import { SidebarUpdateFooter } from "./SidebarUpdate";
 import { SourceControl } from "./SourceControl";
+import { t, withShortcut } from "../i18n";
+
 
 const MIN_WIDTH = 260;
 const MAX_WIDTH = 560;
@@ -663,9 +665,9 @@ function SidebarComponent({
     ? sessionFolders.find((folder) => folder.id === folderMenu.folderId)
     : undefined;
   const folderMenuItems: ExplorerMenuItem[] = [
-    { kind: "item", id: "rename", label: "Rename", shortcut: "F2" },
+    { kind: "item", id: "rename", label: t("Rename"), shortcut: "F2" },
     { kind: "sep" },
-    { kind: "item", id: "ungroup", label: "Ungroup" },
+    { kind: "item", id: "ungroup", label: t("Ungroup") },
   ];
   const sessionMenuItems: ExplorerMenuItem[] = [
     ...(onPinSession || onPinSessions
@@ -673,7 +675,7 @@ function SidebarComponent({
           {
             kind: "item" as const,
             id: "pin",
-            label: allMenuSessionsPinned ? "Unpin" : "Pin",
+            label: allMenuSessionsPinned ? t("Unpin") : t("Pin"),
           },
         ]
       : []),
@@ -682,18 +684,18 @@ function SidebarComponent({
           {
             kind: "item" as const,
             id: "rename",
-            label: "Rename",
+            label: t("Rename"),
             shortcut: "F2",
           },
         ]
       : []),
     { kind: "sep" as const },
-    { kind: "item" as const, id: "folder-new", label: "New folder" },
+    { kind: "item" as const, id: "folder-new", label: t("New folder") },
     ...(sessionFolders.length > 0 ? [{ kind: "sep" as const }] : []),
     ...sessionFolders.map((folder) => ({
       kind: "item" as const,
       id: `folder-add:${folder.id}`,
-      label: `Add to ${folder.name}`,
+      label: t("Add to {name}", { name: folder.name }),
       checked:
         menuSessionIds.length > 0 &&
         menuSessionIds.every((sessionId) =>
@@ -706,8 +708,7 @@ function SidebarComponent({
             kind: "item" as const,
             id: "folder-remove",
             label: multipleMenuSessions
-              ? "Remove from folders"
-              : "Remove from folder",
+              ? t("Remove from folders") : t("Remove from folder"),
           },
         ]
       : []),
@@ -722,7 +723,7 @@ function SidebarComponent({
                 {
                   kind: "item" as const,
                   id: "archive",
-                  label: allMenuSessionsArchived ? "Unarchive" : "Archive",
+                  label: allMenuSessionsArchived ? t("Unarchive") : t("Archive"),
                 },
               ]
             : []),
@@ -731,7 +732,7 @@ function SidebarComponent({
                 {
                   kind: "item" as const,
                   id: "delete",
-                  label: "Delete",
+                  label: t("Delete"),
                   shortcut: "⌫",
                   danger: true,
                 },
@@ -966,8 +967,8 @@ function SidebarComponent({
       ref={searchInputRef}
       type="text"
       value={searchQuery}
-      placeholder="Search conversations..."
-      aria-label="Search conversations"
+      placeholder={t("Search conversations...")}
+      aria-label={t("Search conversations")}
       spellCheck={false}
       autoComplete="off"
       autoCorrect="off"
@@ -1034,13 +1035,13 @@ function SidebarComponent({
             isChangesTab
               ? hasChangeStats
                 ? [
-                    "Changes",
+                    t("Changes"),
                     changeAdditions > 0 ? `+${changeAdditions}` : "",
                     changeDeletions > 0 ? `-${changeDeletions}` : "",
                   ]
                     .filter(Boolean)
                     .join(" ")
-                : "Changes"
+                : t("Changes")
               : undefined
           }
           data-tauri-drag-region="false"
@@ -1057,7 +1058,7 @@ function SidebarComponent({
           {isChangesTab && hasChangeStats ? (
             <DiffStat additions={changeAdditions} deletions={changeDeletions} />
           ) : (
-            <span className="block truncate">{TAB_LABELS[itemId]}</span>
+            <span className="block truncate">{t(TAB_LABELS[itemId])}</span>
           )}
         </button>
       </div>
@@ -1076,13 +1077,13 @@ function SidebarComponent({
             data-tauri-drag-region="deep"
           >
             <span className="min-w-0 flex-1 truncate text-sm font-medium leading-tight">
-              Workspace
+              {t("Workspace")}
             </span>
             <WorkspaceTitleActions onSearch={onGoToFile} onNew={onNew} />
           </div>
           <div
             role="tablist"
-            aria-label="Workspace"
+            aria-label={t("Workspace")}
             className="flex h-9 shrink-0 items-center gap-px border-b border-content/10 px-2"
           >
             {workspaceTabItems}
@@ -1124,7 +1125,7 @@ function SidebarComponent({
           ) : null}
           <div
             role="tablist"
-            aria-label="Workspace"
+            aria-label={t("Workspace")}
             className="flex h-9 shrink-0 items-center gap-px overflow-visible border-b border-content/10 px-2"
           >
             {workspaceTabItems}
@@ -1161,7 +1162,7 @@ function SidebarComponent({
             </div>
           ) : (
             <p className="px-3 py-2 text-[12px] text-content/50">
-              No project folder
+              {t("No project folder")}
             </p>
           )}
         </div>
@@ -1172,7 +1173,7 @@ function SidebarComponent({
               {sessionSearchInput}
             </div>
             <SessionsHeaderButton
-              label="Filter sessions"
+              label={t("Filter sessions")}
               active={filtersActive}
               open={!!filterMenu}
               hasPopup
@@ -1193,7 +1194,7 @@ function SidebarComponent({
         >
           {!cwd || cwd === "~" ? (
             <p className="px-3 py-2 text-[12px] text-content/50">
-              No project folder
+              {t("No project folder")}
             </p>
           ) : (
             <div>
@@ -1216,11 +1217,11 @@ function SidebarComponent({
                 narrowedByUser ? (
                   <p className="px-3 py-2 text-[12px] text-content/50">
                     {searchNarrowed
-                      ? "No matching sessions"
-                      : "No sessions match these filters"}
+                      ? t("No matching sessions")
+                      : t("No sessions match these filters")}
                   </p>
                 ) : (
-                  <SessionsEmpty message="Sessions you start will show up here" />
+                  <SessionsEmpty message={t("Sessions you start will show up here")} />
                 )
               ) : (
                 <ul className="flex flex-col gap-0.5 p-1.5">
@@ -1364,8 +1365,8 @@ function SidebarComponent({
                                       type="button"
                                       data-no-drag
                                       data-tauri-drag-region="false"
-                                      title="New session"
-                                      aria-label="New session"
+                                      title={t("New session")}
+                                      aria-label={t("New session")}
                                       onClick={() =>
                                         onNewInFolder(entry.folder.id)
                                       }
@@ -1376,7 +1377,7 @@ function SidebarComponent({
                                         strokeWidth={1.75}
                                       />
                                       <span className="text-[13px] font-semibold leading-snug">
-                                        New session
+                                        {t("New session")}
                                       </span>
                                     </button>
                                   </div>
@@ -1429,11 +1430,11 @@ function SidebarComponent({
             />
             <div className="flex shrink-0 flex-col gap-px p-2">
               <RailAction
-                label="Settings"
+                label={t("Settings")}
                 icon={Settings}
                 onClick={onOpenSettings}
                 shortcut={`${MOD},`}
-                ariaLabel={`Settings (${MOD},)`}
+                ariaLabel={withShortcut("Settings", `${MOD},`)}
               />
             </div>
           </>
@@ -1446,8 +1447,10 @@ function SidebarComponent({
           items={sessionMenuItems}
           ariaLabel={
             multipleMenuSessions
-              ? `${menuSessionIds.length} selected session actions`
-              : "Session actions"
+              ? t("{count} selected session actions", {
+                  count: menuSessionIds.length,
+                })
+              : t("Session actions")
           }
           onPick={onSessionMenuPick}
           onClose={closeSessionMenu}
@@ -1458,7 +1461,7 @@ function SidebarComponent({
           x={folderMenu.x}
           y={folderMenu.y}
           items={folderMenuItems}
-          ariaLabel="Folder actions"
+          ariaLabel={t("Folder actions")}
           width={260}
           header={
             <FolderColorSwatches
@@ -1485,7 +1488,7 @@ function SidebarComponent({
       <div
         role="separator"
         aria-orientation="vertical"
-        aria-label="Resize sidebar"
+        aria-label={t("Resize sidebar")}
         aria-valuenow={resize.width}
         aria-valuemin={MIN_WIDTH}
         aria-valuemax={MAX_WIDTH}
@@ -1658,7 +1661,7 @@ function SidebarProjectPicker({
         <button
           type="button"
           title={cwd}
-          aria-label={`Switch project, current project ${label}`}
+          aria-label={t("Switch project, current project {label}", { label })}
           aria-expanded={open}
           aria-haspopup="dialog"
           data-tauri-drag-region="false"
@@ -1709,14 +1712,14 @@ function SidebarProjectPicker({
             width={286}
             maxHeight={380}
             role="dialog"
-            aria-label="Project picker"
+            aria-label={t("Project picker")}
             onDismiss={() => closePicker()}
             onKeyDown={onPickerKeyDown}
             className="flex flex-col overflow-hidden"
           >
             <label className="flex h-11 shrink-0 items-center gap-2.5 border-b border-content/10 px-3 text-content/45 focus-within:text-content/70">
               <Search className="size-4 shrink-0" strokeWidth={1.75} />
-              <span className="sr-only">Search projects</span>
+              <span className="sr-only">{t("Search projects")}</span>
               <input
                 autoFocus
                 value={query}
@@ -1724,7 +1727,7 @@ function SidebarProjectPicker({
                   setQuery(event.target.value);
                   setActive(0);
                 }}
-                placeholder="Search projects..."
+                placeholder={t("Search projects...")}
                 className="min-w-0 flex-1 bg-transparent text-[13px] text-content outline-none placeholder:text-content/35"
               />
             </label>
@@ -1803,7 +1806,7 @@ function SidebarProjectPicker({
                   className="flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-[13px] text-content/75 hover:bg-content/8 hover:text-content"
                 >
                   <Plus className="size-4 shrink-0" strokeWidth={1.75} />
-                  <span>New project</span>
+                  <span>{t("New project")}</span>
                 </button>
               </div>
             ) : null}
@@ -1812,13 +1815,13 @@ function SidebarProjectPicker({
       </div>
       <div className="flex items-center ml-auto">
         {onNew ? (
-          <IconButton label={`New tab (${MOD}T)`} onClick={onNew}>
+          <IconButton label={withShortcut("New tab", `${MOD}T`)} onClick={onNew}>
             <Plus className="size-3.5" strokeWidth={1.75} />
           </IconButton>
         ) : null}
         {onSearch ? (
           <IconButton
-            label={`Search (${MOD}K)`}
+            label={withShortcut("Search", `${MOD}K`)}
             active={searchActive}
             onClick={onSearch}
           >
@@ -1827,7 +1830,7 @@ function SidebarProjectPicker({
         ) : null}
         {onOpenInbox ? (
           <IconButton
-            label={inboxUnseen ? "Inbox, new items" : "Inbox"}
+            label={inboxUnseen ? t("Inbox, new items") : t("Inbox")}
             active={inboxActive}
             onClick={onOpenInbox}
           >
@@ -1843,7 +1846,7 @@ function SidebarProjectPicker({
           </IconButton>
         ) : null}
         {onOpenNotes ? (
-          <IconButton label="Notes" active={notesActive} onClick={onOpenNotes}>
+          <IconButton label={t("Notes")} active={notesActive} onClick={onOpenNotes}>
             <StickyNote className="size-3.5" strokeWidth={1.75} />
           </IconButton>
         ) : null}
@@ -1866,12 +1869,12 @@ function WorkspaceTitleActions({
       data-tauri-drag-region="false"
     >
       {onSearch ? (
-        <IconButton label={`Go to File (${MOD}P)`} onClick={onSearch}>
+        <IconButton label={withShortcut("Go to File", `${MOD}P`)} onClick={onSearch}>
           <Search className="size-3.5" strokeWidth={1.75} />
         </IconButton>
       ) : null}
       {onNew ? (
-        <IconButton label={`New session (${MOD}T)`} onClick={onNew}>
+        <IconButton label={withShortcut("New session", `${MOD}T`)} onClick={onNew}>
           <Plus className="size-3.5" strokeWidth={1.75} />
         </IconButton>
       ) : null}
@@ -2197,17 +2200,17 @@ function SessionCard({
       {needsApproval ? (
         <>
           <CircleAlert className="size-3" strokeWidth={1.75} />
-          <span>Need approval</span>
+          <span>{t("Need approval")}</span>
         </>
       ) : busy ? (
         <>
           <TerminalSpinner className="inline-block w-3 select-none text-center text-[11px] leading-none text-accent" />
-          <span>Working...</span>
+          <span>{t("Working...")}</span>
         </>
       ) : done ? (
         <>
           <Check className="size-3" strokeWidth={2.25} />
-          <span>Done</span>
+          <span>{t("Done")}</span>
         </>
       ) : (
         <span>{time}</span>
@@ -2221,8 +2224,16 @@ function SessionCard({
       type="button"
       data-no-drag
       data-tauri-drag-region="false"
-      title={`Open ${linkedWorkItem.kind === "pr" ? "PR" : "issue"} #${linkedWorkItem.number} in Inbox (${MOD}-click for GitHub)`}
-      aria-label={`Open ${linkedWorkItem.kind === "pr" ? "PR" : "issue"} #${linkedWorkItem.number}`}
+      title={t(
+        linkedWorkItem.kind === "pr"
+          ? "Open PR #{n} in Inbox ({mod}-click for GitHub)"
+          : "Open issue #{n} in Inbox ({mod}-click for GitHub)",
+        { n: linkedWorkItem.number, mod: MOD },
+      )}
+      aria-label={t(
+        linkedWorkItem.kind === "pr" ? "Open PR #{n}" : "Open issue #{n}",
+        { n: linkedWorkItem.number },
+      )}
       onPointerDown={(event) => event.stopPropagation()}
       onClick={(event) => {
         event.preventDefault();
@@ -2368,7 +2379,7 @@ function SessionCard({
     window.addEventListener("keydown", onKey);
   };
 
-  const archiveLabel = session.archived ? "Unarchive" : "Archive";
+  const archiveLabel = session.archived ? t("Unarchive") : t("Archive");
 
   return (
     <div className="group relative">
@@ -2584,7 +2595,7 @@ function DiffStat({
 
   return (
     <span
-      title={`${label} uncommitted`}
+      title={t("{label} uncommitted", { label })}
       className="flex shrink-0 items-center gap-1.5 font-mono text-[11px] font-semibold tabular-nums"
     >
       {additions > 0 ? (
@@ -2605,7 +2616,7 @@ function formatGitLabel(repo?: string, branch?: string): string {
 function formatRelative(value: number, now: number): string {
   if (!Number.isFinite(value) || value <= 0) return "";
   const seconds = Math.max(0, Math.round((now - value) / 1000));
-  if (seconds < 60) return "now";
+  if (seconds < 60) return t("now");
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes}m`;
   const hours = Math.floor(minutes / 60);

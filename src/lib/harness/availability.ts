@@ -11,6 +11,7 @@ import {
   resolvePiBinary,
 } from "./child";
 import { isLiveHarness } from "./registry";
+import { t } from "../../i18n";
 
 export type HarnessAvailability = Record<HarnessId, boolean>;
 
@@ -82,7 +83,10 @@ export function isHarnessAvailable(id: HarnessId): boolean {
 export function harnessUnavailableHint(id: HarnessId): string {
   const { name, install } = CLI[id];
   const how = install ? ` (\`${install}\`)` : "";
-  return `${name} not found${how}. Install it, or restart MonoCode if it is already installed.`;
+  return t(
+    "{cli} not found{how}. Install it, or restart MonoCode if it is already installed.",
+    { cli: name, how },
+  );
 }
 
 export function probeHarnessAvailability(

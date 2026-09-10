@@ -290,7 +290,7 @@ html.theme-light .composer-send:disabled {
 
 .monocode-tooltip {
   position: fixed;
-  z-index: 100;
+  z-index: 200;
   max-width: min(20rem, calc(100vw - 1rem));
   padding: 0.375rem 0.5rem;
   border: 1px solid color-mix(in srgb, var(--color-content) 18%, transparent);
@@ -394,18 +394,25 @@ button:not(:disabled):not(.cursor-default):not(.cursor-not-allowed) {
   cursor: pointer;
 }
 
-/* Window drag regions use a grab cursor; keep title-bar controls on the arrow. */
-header[data-tauri-drag-region] [data-tauri-drag-region="false"],
-header[data-tauri-drag-region] [data-tauri-drag-region="false"] *,
+/* Window drag regions use a grab cursor; keep title-bar controls on the
+   pointer. Descendants must inherit: SVG glyphs are hollow, and a default
+   cursor on the icon made the pointer vanish in the middle of the control. */
+header[data-tauri-drag-region] [data-tauri-drag-region="false"]:not(button),
 header[data-tauri-drag-region] button {
   cursor: default !important;
 }
 
-header[data-tauri-drag-region] button:not(:disabled) {
+header[data-tauri-drag-region] button:not(:disabled):not([aria-disabled="true"]),
+header[data-tauri-drag-region] button:not(:disabled):not([aria-disabled="true"]) * {
   cursor: pointer !important;
 }
 
-header[data-tauri-drag-region] button[aria-disabled="true"] {
+header[data-tauri-drag-region] button svg {
+  pointer-events: none;
+}
+
+header[data-tauri-drag-region] button[aria-disabled="true"],
+header[data-tauri-drag-region] button[aria-disabled="true"] * {
   cursor: default !important;
 }
 

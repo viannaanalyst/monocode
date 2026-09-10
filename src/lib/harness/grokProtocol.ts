@@ -1,3 +1,4 @@
+import { browserMcpServers } from "../browserMcp";
 import { promptBlocks, type PromptContentBlock } from "../attachments";
 import type { AgentModel, ModelSetting, ModelSettingChoice } from "../models";
 import type { Attachment, RuntimeMode, ToolPreview } from "../session";
@@ -122,7 +123,10 @@ export function grokSessionNewParams(
   cwd: string,
   runtimeMode: RuntimeMode,
 ): Record<string, unknown> {
-  const params: Record<string, unknown> = { cwd, mcpServers: [] };
+  const params: Record<string, unknown> = {
+    cwd,
+    mcpServers: browserMcpServers(cwd),
+  };
   if (runtimeMode === "full-access") {
     params._meta = { yoloMode: true };
   } else if (runtimeMode === "auto") {

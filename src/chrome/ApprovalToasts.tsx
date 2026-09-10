@@ -9,6 +9,8 @@ import {
   type Session,
 } from "../lib/session";
 import { HarnessIcon } from "./HarnessIcon";
+import { t } from "../i18n";
+
 
 type Notice = PendingApprovalNotice & { session: Session };
 
@@ -76,7 +78,7 @@ function ApprovalToastCard({
           </span>
           <span className="flex shrink-0 items-center gap-1 text-[11px] text-amber-400">
             <CircleAlert className="size-3.5" strokeWidth={1.75} />
-            <span>{notice.kind === "question" ? "Question" : "Approval"}</span>
+            <span>{notice.kind === "question" ? t("Question") : t("Approval")}</span>
           </span>
         </span>
         <span className="line-clamp-3 text-[12px] leading-relaxed text-content/70">

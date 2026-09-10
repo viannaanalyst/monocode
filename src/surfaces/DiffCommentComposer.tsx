@@ -5,6 +5,8 @@ import { diffCommentLocation, formatDiffComment } from "../lib/diffComment";
 import { MOD } from "../lib/platform";
 import { requestAddToChat } from "../lib/quoteDraft";
 import type { UnifiedLine } from "../lib/unifiedDiff";
+import { t } from "../i18n";
+
 
 export type DiffCommentComposerTarget = {
   line: UnifiedLine;
@@ -38,7 +40,7 @@ export function DiffCommentComposer({
       width={320}
       onDismiss={onDismiss}
       role="dialog"
-      aria-label={`Comment on ${location}`}
+      aria-label={t("Comment on {location}", { location })}
       className="p-2"
     >
       <form
@@ -56,8 +58,8 @@ export function DiffCommentComposer({
           </span>
           <button
             type="button"
-            title="Cancel comment"
-            aria-label="Cancel comment"
+            title={t("Cancel comment")}
+            aria-label={t("Cancel comment")}
             onClick={onDismiss}
             className="grid size-5 shrink-0 place-items-center rounded text-content/45 hover:bg-content/10 hover:text-content"
           >
@@ -79,7 +81,7 @@ export function DiffCommentComposer({
               addToChat();
             }
           }}
-          placeholder="Leave a comment…"
+          placeholder={t("Leave a comment…")}
           className="max-h-40 min-h-18 w-full resize-y rounded-lg border border-content/10 bg-background-base/70 px-2.5 py-2 text-[13px] leading-5 text-content outline-none placeholder:text-content/35 focus:border-content/20"
         />
         <div className="mt-2 flex items-center justify-between gap-3">

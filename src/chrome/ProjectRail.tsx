@@ -74,12 +74,13 @@ import { Shimmer } from "../surfaces/Shimmer";
 import { TabGroupMenu, type TabGroupMenuExtraItem } from "./TabGroupMenu";
 import { TerminalSpinner } from "./TerminalSpinner";
 import type { SettingsSectionId } from "../lib/settings";
+import { t, withShortcut } from "../i18n";
 
-const REVEAL_LABEL = IS_MAC
-  ? "Reveal in Finder"
-  : IS_WIN
-    ? "Reveal in File Explorer"
-    : "Open Containing Folder";
+function revealLabel() {
+  if (IS_MAC) return t("Reveal in Finder");
+  if (IS_WIN) return t("Reveal in File Explorer");
+  return t("Open Containing Folder");
+}
 
 function projectMenuExtraItems(
   pinned: boolean,
@@ -88,18 +89,18 @@ function projectMenuExtraItems(
   const items: TabGroupMenuExtraItem[] = [
     {
       id: "background",
-      label: "Background image",
+      label: t("Background image"),
       icon: ImagePlus,
     },
     pinned
-      ? { id: "unpin", label: "Unpin project", icon: PinOff }
-      : { id: "pin", label: "Pin project", icon: Pin },
-    { id: "reveal", label: REVEAL_LABEL, icon: FolderOpen },
+      ? { id: "unpin", label: t("Unpin project"), icon: PinOff }
+      : { id: "pin", label: t("Pin project"), icon: Pin },
+    { id: "reveal", label: revealLabel(), icon: FolderOpen },
   ];
   if (canRemove) {
     items.push(
-      { id: "archive", label: "Archive", icon: Archive, sepBefore: true },
-      { id: "delete", label: "Delete", icon: Trash2, danger: true },
+      { id: "archive", label: t("Archive"), icon: Archive, sepBefore: true },
+      { id: "delete", label: t("Delete"), icon: Trash2, danger: true },
     );
   }
   return items;
@@ -369,7 +370,7 @@ export function ProjectRail({
   return (
     <nav
       ref={resize.setPaneRef}
-      aria-label="Projects"
+      aria-label={t("Projects")}
       className="sidebar-glass relative flex shrink-0 flex-col border-r border-content/10"
     >
       <div
@@ -398,29 +399,29 @@ export function ProjectRail({
         <>
           <div className="flex shrink-0 flex-col gap-px px-2 pb-2 pt-0.5">
             <RailSearch
-              label="Search"
+              label={t("Search")}
               icon={Search}
               onClick={onSearch}
               active={searchActive}
               shortcut={`${MOD}K`}
-              ariaLabel={`Search (${MOD}K)`}
+              ariaLabel={withShortcut("Search", `${MOD}K`)}
             />
             <div className="mt-0.5" />
             <RailAction
-              label="Inbox"
+              label={t("Inbox")}
               icon={Inbox}
               onClick={onOpenInbox}
               active={inboxActive}
               dot={inboxUnseen}
-              ariaLabel={inboxUnseen ? "Inbox, new items" : "Inbox"}
+              ariaLabel={inboxUnseen ? t("Inbox, new items") : t("Inbox")}
             />
             {notesEnabled ? (
               <RailAction
-                label="Notes"
+                label={t("Notes")}
                 icon={File}
                 onClick={onOpenNotes}
                 active={notesActive}
-                ariaLabel="Notes"
+                ariaLabel={t("Notes")}
               />
             ) : null}
           </div>
@@ -434,7 +435,7 @@ export function ProjectRail({
           >
             {sections.pinned.length > 0 ? (
               <ProjectSection
-                label="Pinned"
+                label={t("Pinned")}
                 items={sections.pinned}
                 cwd={cwd}
                 busy={busy}
@@ -454,9 +455,9 @@ export function ProjectRail({
             ) : null}
 
             <ProjectSection
-              label="Projects"
+              label={t("Projects")}
               items={sections.projects}
-              emptyLabel="No projects yet"
+              emptyLabel={t("No projects yet")}
               onAdd={onOpenProject}
               cwd={cwd}
               busy={busy}
@@ -490,11 +491,11 @@ export function ProjectRail({
           />
           <div className="flex shrink-0 flex-col gap-px p-2">
             <RailAction
-              label="Settings"
+              label={t("Settings")}
               icon={Settings}
               onClick={onOpenSettings}
               shortcut={`${MOD},`}
-              ariaLabel={`Settings (${MOD},)`}
+              ariaLabel={withShortcut("Settings", `${MOD},`)}
             />
           </div>
         </>
@@ -566,7 +567,7 @@ export function ProjectRail({
       <div
         role="separator"
         aria-orientation="vertical"
-        aria-label="Resize project sidebar"
+        aria-label={t("Resize project sidebar")}
         aria-valuenow={resize.width}
         aria-valuemin={PROJECT_RAIL_WIDTH_MIN}
         aria-valuemax={PROJECT_RAIL_WIDTH_MAX}
@@ -625,7 +626,7 @@ function LiveAgentsPreview({
     <div className="shrink-0 px-2">
       <div
         role="status"
-        aria-label="Working agents"
+        aria-label={t("Working agents")}
         className="overflow-hidden rounded-lg bg-content/5"
       >
         <div className="flex items-center gap-2 px-3.5 py-1.5">
@@ -672,7 +673,7 @@ function LiveAgentsPreview({
             ) : (
               <ChevronDown className="size-3" strokeWidth={1.75} />
             )}
-            {expanded ? "Show less" : `${extra} more`}
+            {expanded ? t("Show less") : t("{count} more", { count: extra })}
           </button>
         ) : null}
       </div>
@@ -711,9 +712,9 @@ function LiveAgentCard({
       ? formatLiveElapsed(agent.startedAt, now)
       : "";
   const activity = agent.needsApproval
-    ? "Need approval"
+    ? t("Need approval")
     : agent.done
-      ? "Done"
+      ? t("Done")
       : agent.activity;
   const live = !agent.needsApproval && !agent.done;
   const title = [agent.title, project, activity, elapsed]
@@ -828,8 +829,8 @@ function ProjectSection({
         {onAdd ? (
           <button
             type="button"
-            title="Open project"
-            aria-label="Open project"
+            title={t("Open project")}
+            aria-label={t("Open project")}
             onClick={onAdd}
             className="grid size-5 shrink-0 place-items-center rounded-md text-content/50 hover:bg-content/8 hover:text-content"
           >
@@ -1000,8 +1001,8 @@ function ProjectCard({
       <button
         type="button"
         data-no-drag
-        title="Project options"
-        aria-label="Project options"
+        title={t("Project options")}
+        aria-label={t("Project options")}
         aria-haspopup="menu"
         onPointerDown={(event) => event.stopPropagation()}
         onClick={(event) => {
@@ -1015,8 +1016,8 @@ function ProjectCard({
       <button
         type="button"
         data-no-drag
-        title={pinned ? "Unpin project" : "Pin project"}
-        aria-label={pinned ? "Unpin project" : "Pin project"}
+        title={pinned ? t("Unpin project") : t("Pin project")}
+        aria-label={pinned ? t("Unpin project") : t("Pin project")}
         onPointerDown={(event) => event.stopPropagation()}
         onClick={(event) => {
           event.stopPropagation();
@@ -1059,7 +1060,7 @@ function ProjectDiffStat({
 
   return (
     <span
-      title={`${label} uncommitted`}
+      title={t("{label} uncommitted", { label })}
       className="flex shrink-0 items-center gap-1 font-mono text-[11px] font-semibold tabular-nums"
     >
       {additions > 0 ? (

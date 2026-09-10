@@ -69,12 +69,14 @@ import { invalidateWatchedFiles } from "../lib/fileWatch";
 import { MOD } from "../lib/platform";
 import { applyProjectDiffStats } from "../hooks/useProjectDiffStats";
 import { useLockOverscroll } from "../hooks/useLockOverscroll";
+import { t, withShortcut } from "../i18n";
+
 
 const GIT_POLL_MS = 2000;
 
 function confirmNative(message: string, okLabel?: string): Promise<boolean> {
   return ask(message, {
-    title: "MonoCode",
+    title: t("MonoCode"),
     kind: "warning",
     ...(okLabel ? { okLabel } : {}),
   });
@@ -130,7 +132,7 @@ export function GitChangesPanel({
 
   if (!cwd || cwd === "~") {
     return (
-      <p className="px-3 py-2 text-[12px] text-content/50">No project folder</p>
+      <p className="px-3 py-2 text-[12px] text-content/50">{t("No project folder")}</p>
     );
   }
 
@@ -140,7 +142,7 @@ export function GitChangesPanel({
       className="flex h-full min-h-0 flex-1 flex-col overflow-hidden"
     >
       <header className="flex h-9 shrink-0 items-center gap-2 border-b border-content/10 px-3">
-        <span className="text-[12px] font-medium text-content">Changes</span>
+        <span className="text-[12px] font-medium text-content">{t("Changes")}</span>
         {index?.branch ? (
           <span className="ml-auto flex min-w-0 items-center gap-1 text-[11px] text-content/50">
             <GitBranch className="size-3 shrink-0" strokeWidth={1.75} />
@@ -317,8 +319,10 @@ function ChangedFiles({
     const branch = index.branch;
     return confirmNative(
       kind === "pr"
-        ? `Create a pull request from default branch "${branch}"?`
-        : `Push to default branch "${branch}"?`,
+        ? t("Create a pull request from default branch \"{branch}\"?", {
+            branch,
+          })
+        : t("Push to default branch \"{branch}\"?", { branch }),
     );
   };
 
@@ -332,9 +336,9 @@ function ChangedFiles({
       const untracked = file.status === "untracked";
       const ok = await confirmNative(
         untracked
-          ? `Delete untracked file ${name}?`
-          : `Discard changes in ${name}? This cannot be undone.`,
-        untracked ? "Delete" : "Discard",
+          ? t("Delete untracked file {name}?", { name })
+          : t("Discard changes in {name}? This cannot be undone.", { name }),
+        untracked ? t("Delete") : t("Discard"),
       );
       if (!ok) return;
     }
@@ -360,11 +364,18 @@ function ChangedFiles({
       const untrackedOnly = n === 1 && only?.status === "untracked";
       const ok = await confirmNative(
         untrackedOnly
-          ? `Delete untracked file ${basename(only.relative)}?`
+          ? t("Delete untracked file {name}?", {
+              name: basename(only.relative),
+            })
           : n === 1 && only
-            ? `Discard changes in ${basename(only.relative)}? This cannot be undone.`
-            : `Discard all unstaged changes in ${n} files? This cannot be undone.`,
-        untrackedOnly ? "Delete" : "Discard",
+            ? t("Discard changes in {name}? This cannot be undone.", {
+                name: basename(only.relative),
+              })
+            : t(
+                "Discard all unstaged changes in {count} files? This cannot be undone.",
+                { count: n },
+              ),
+        untrackedOnly ? t("Delete") : t("Discard"),
       );
       if (!ok) return;
     }
@@ -477,7 +488,7 @@ function ChangedFiles({
             ref={messageRef}
             rows={1}
             value={message}
-            placeholder={`Message (${MOD}↩ to commit)`}
+            placeholder={withShortcut("Message", `${MOD}↩ to commit`)}
             disabled={!canEditMessage}
             onChange={(event) => setMessage(event.target.value)}
             onKeyDown={(event) => {
@@ -494,8 +505,8 @@ function ChangedFiles({
           />
           <button
             type="button"
-            title="Generate commit message"
-            aria-label="Generate commit message"
+            title={t("Generate commit message")}
+            aria-label={t("Generate commit message")}
             disabled={!canGenerate}
             onClick={() => void generate()}
             className="absolute top-1 right-1 grid size-5 place-items-center rounded-md text-content bg-content/10 hover:bg-content/20 hover:text-content disabled:opacity-40"
@@ -520,8 +531,8 @@ function ChangedFiles({
 
           <button
             type="button"
-            title="Commit options"
-            aria-label="Commit options"
+            title={t("Commit options")}
+            aria-label={t("Commit options")}
             disabled={!canCommit}
             onClick={() => setMenuOpen((open) => !open)}
             className="grid h-7 w-7 shrink-0 place-items-center rounded-r-md border-l border-background-base/10 bg-content text-background-base disabled:opacity-40"
@@ -585,7 +596,7 @@ function ChangedFiles({
           <>
             {staged.length > 0 ? (
               <FileSection
-                title="Staged Changes"
+                title={t("Staged Changes")}
                 count={staged.length}
                 open={stagedExpanded}
                 onToggle={() => {
@@ -596,12 +607,12 @@ function ChangedFiles({
                 onToggleView={toggleView}
                 headerActions={[
                   {
-                    title: "Open All Changes",
+                    title: t("Open All Changes"),
                     icon: <FileDiff className="size-3.5" strokeWidth={1.75} />,
                     onClick: onOpenAllChanges,
                   },
                   {
-                    title: "Unstage All Changes",
+                    title: t("Unstage All Changes"),
                     icon: <Minus className="size-3.5" strokeWidth={1.75} />,
                     onClick: () => void runAll("unstage"),
                   },
@@ -621,7 +632,7 @@ function ChangedFiles({
             ) : null}
             {unstaged.length > 0 ? (
               <FileSection
-                title="Changes"
+                title={t("Changes")}
                 count={unstaged.length}
                 open={changesExpanded}
                 onToggle={() => {
@@ -632,17 +643,17 @@ function ChangedFiles({
                 onToggleView={toggleView}
                 headerActions={[
                   {
-                    title: "Open All Changes",
+                    title: t("Open All Changes"),
                     icon: <FileDiff className="size-3.5" strokeWidth={1.75} />,
                     onClick: onOpenAllChanges,
                   },
                   {
-                    title: "Discard All Changes",
+                    title: t("Discard All Changes"),
                     icon: <Undo2 className="size-3.5" strokeWidth={1.75} />,
                     onClick: () => void runAll("discard"),
                   },
                   {
-                    title: "Stage All Changes",
+                    title: t("Stage All Changes"),
                     icon: <Plus className="size-3.5" strokeWidth={1.75} />,
                     onClick: () => void runAll("stage"),
                   },
@@ -716,7 +727,9 @@ function cachedPr(
 
 function syncStatusLabel(index: GitDiffIndex): string {
   if (index.ahead > 0 && index.behind > 0) {
-    return `Diverged from ${index.upstream ?? "upstream"}`;
+    return t("Diverged from {upstream}", {
+      upstream: index.upstream ?? "upstream",
+    });
   }
   if (index.ahead > 0) {
     const n = index.ahead;
@@ -806,7 +819,7 @@ function GitSyncActions({
           ) : (
             <CloudUpload className="size-3.5 shrink-0" strokeWidth={1.75} />
           )}
-          <span className="min-w-0 truncate">Publish Branch</span>
+          <span className="min-w-0 truncate">{t("Publish Branch")}</span>
         </button>
       ) : canSync ? (
         <button
@@ -820,7 +833,7 @@ function GitSyncActions({
             className={`size-3.5 shrink-0 ${syncing ? "animate-spin" : ""}`}
             strokeWidth={1.75}
           />
-          <span className="min-w-0 truncate">Sync Changes</span>
+          <span className="min-w-0 truncate">{t("Sync Changes")}</span>
           {behind > 0 ? (
             <span className="shrink-0 tabular-nums text-content/55">
               ↓{behind}
@@ -916,7 +929,7 @@ function FileSection({
           </span>
         </button>
         <IconAction
-          title={view === "tree" ? "View as List" : "View as Tree"}
+          title={view === "tree" ? t("View as List") : t("View as Tree")}
           onClick={onToggleView}
         >
           {view === "tree" ? (
@@ -1206,7 +1219,7 @@ function ChangeRow({
         >
           {kind === "unstaged" ? (
             <IconAction
-              title="Discard Changes"
+              title={t("Discard Changes")}
               disabled={busy}
               onClick={() => onAction(file, "discard")}
             >
@@ -1215,7 +1228,7 @@ function ChangeRow({
           ) : null}
           {kind === "staged" ? (
             <IconAction
-              title="Unstage Changes"
+              title={t("Unstage Changes")}
               disabled={busy}
               onClick={() => onAction(file, "unstage")}
             >
@@ -1223,7 +1236,7 @@ function ChangeRow({
             </IconAction>
           ) : (
             <IconAction
-              title="Stage Changes"
+              title={t("Stage Changes")}
               disabled={busy}
               onClick={() => onAction(file, "stage")}
             >

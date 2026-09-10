@@ -15,6 +15,8 @@ import {
 } from "../lib/githubTasks";
 import { MOD } from "../lib/platform";
 import { AgentMarkdown } from "./AgentMarkdown";
+import { t, withShortcut } from "../i18n";
+
 
 export type InboxReplyTarget = {
   id: string;
@@ -78,20 +80,24 @@ export function InboxComments({
     (total, comment) => total + 1 + comment.replies.length,
     0,
   );
-  const label = count === 1 ? "1 comment" : `${count} comments`;
+  const label =
+    count === 1
+      ? t("1 comment")
+      : t("{count} comments", { count });
   const moreOn =
     provider === "linear"
       ? "Linear"
       : provider === "gitlab"
-        ? "GitLab"
-        : "GitHub";
+        ? t("GitLab") : "GitHub";
 
   return (
     <section className="flex flex-col gap-3 border-t border-content/10 pt-5">
       <div className="flex items-center gap-2 text-[12px] text-content/50">
         <h2 className="text-content/70">{label}</h2>
         {thread.truncated ? (
-          <span>Latest comments · more on {moreOn}</span>
+          <span>
+            {t("Latest comments · more on {provider}", { provider: moreOn })}
+          </span>
         ) : null}
         {loading ? (
           <LoaderCircle
@@ -181,8 +187,8 @@ export function InboxCommentForm({
           </span>
           <button
             type="button"
-            title="Cancel reply"
-            aria-label="Cancel reply"
+            title={t("Cancel reply")}
+            aria-label={t("Cancel reply")}
             onClick={onCancelReply}
             className="grid size-5 shrink-0 place-items-center rounded-md text-content/45 hover:bg-content/10 hover:text-content"
           >
@@ -197,7 +203,9 @@ export function InboxCommentForm({
           value={draft}
           disabled={posting}
           placeholder={
-            replyTo ? `Write a reply (${MOD}↩)` : `Leave a comment (${MOD}↩)`
+            replyTo
+              ? withShortcut("Write a reply", `${MOD}↩`)
+              : withShortcut("Leave a comment", `${MOD}↩`)
           }
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={onKeyDown}
@@ -209,7 +217,7 @@ export function InboxCommentForm({
             disabled={!canPost}
             className="inline-flex h-7 items-center rounded-md bg-content px-3 text-[12px] text-background-base hover:bg-content/80 disabled:cursor-default disabled:opacity-40"
           >
-            {posting ? "Posting..." : replyTo ? "Reply" : "Comment"}
+            {posting ? "Posting..." : replyTo ? t("Reply") : t("Comment")}
           </button>
         </div>
       </div>

@@ -4,6 +4,7 @@ import {
   newCommitTab,
   newReleaseNotesWorkspaceTab,
   newSessionChangesTab,
+  newBrowserTab,
 } from "../lib/layout";
 import { releaseNotesTitle } from "../lib/releaseNotes";
 import { appendProblems, surfaceTabPresentation } from "./SurfaceTabs";
@@ -58,6 +59,28 @@ describe("surfaceTabPresentation", () => {
       label: "Fix the graph",
       iconName: "CHANGES",
       tooltip: "abc1234 — Fix the graph",
+    });
+  });
+
+  it("labels a browser pane from its host", () => {
+    expect(
+      surfaceTabPresentation(newBrowserTab("/repo", "https://www.github.com")),
+    ).toEqual({
+      name: "github.com",
+      label: "github.com",
+      iconName: "BROWSER",
+      tooltip: "https://www.github.com",
+      favicon:
+        "https://www.google.com/s2/favicons?domain=www.github.com&sz=32",
+    });
+  });
+
+  it("labels a browser pane from the page title", () => {
+    const file = newBrowserTab("/repo", "https://www.google.com/");
+    file.browserTitle = "Google";
+    expect(surfaceTabPresentation(file)).toMatchObject({
+      name: "Google",
+      label: "Google",
     });
   });
 });

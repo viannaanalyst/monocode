@@ -416,7 +416,8 @@ function sanitizeFile(raw: unknown): FilePaneTab | null {
       releaseNotes != null ||
       commit != null ||
       value.changes === true ||
-      value.terminal === true)
+      value.terminal === true ||
+      value.browser === true)
   ) {
     return null;
   }
@@ -427,6 +428,7 @@ function sanitizeFile(raw: unknown): FilePaneTab | null {
       value.changes === true ||
       sessionChanges != null ||
       value.terminal === true ||
+      value.browser === true ||
       commit != null)
   ) {
     return null;
@@ -437,7 +439,8 @@ function sanitizeFile(raw: unknown): FilePaneTab | null {
       value.review === true ||
       value.changes === true ||
       sessionChanges != null ||
-      value.terminal === true)
+      value.terminal === true ||
+      value.browser === true)
   ) {
     return null;
   }
@@ -455,6 +458,12 @@ function sanitizeFile(raw: unknown): FilePaneTab | null {
       ? { changeKind: value.changeKind }
       : {}),
     ...(value.terminal === true ? { terminal: true } : {}),
+    ...(value.browser === true ? { browser: true } : {}),
+    ...(value.browser === true &&
+    typeof value.browserTitle === "string" &&
+    value.browserTitle.trim()
+      ? { browserTitle: value.browserTitle.trim() }
+      : {}),
   };
 }
 

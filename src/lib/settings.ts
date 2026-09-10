@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { ALT, IS_MAC, MOD, SHIFT } from "./platform";
 
 const SECTION_KEY = "monocode.settingsSection";
@@ -48,14 +49,14 @@ export function isSettingsSectionId(
 }
 
 export function settingsSectionLabel(id: SettingsSectionId): string {
-  return (
-    SETTINGS_SECTIONS.find((section) => section.id === id)?.label ?? "General"
+  return t(
+    SETTINGS_SECTIONS.find((section) => section.id === id)?.label ?? "General",
   );
 }
 
 export function settingsSectionDescription(id: SettingsSectionId): string {
-  return (
-    SETTINGS_SECTIONS.find((section) => section.id === id)?.description ?? ""
+  return t(
+    SETTINGS_SECTIONS.find((section) => section.id === id)?.description ?? "",
   );
 }
 
@@ -286,6 +287,81 @@ export function subscribeDiffViewer(onStoreChange: () => void) {
     window.removeEventListener(DIFF_VIEWER_CHANGE_EVENT, onStoreChange);
 }
 
+const LOCALHOST_IN_BROWSER_KEY = "monocode.localhostInBrowser";
+
+export const LOCALHOST_IN_BROWSER_DEFAULT = true;
+
+export function loadLocalhostInBrowser(): boolean {
+  try {
+    const raw = localStorage.getItem(LOCALHOST_IN_BROWSER_KEY);
+    if (raw == null) return LOCALHOST_IN_BROWSER_DEFAULT;
+    return raw === "1" || raw === "true";
+  } catch {
+    return LOCALHOST_IN_BROWSER_DEFAULT;
+  }
+}
+
+export function saveLocalhostInBrowser(value: boolean) {
+  try {
+    localStorage.setItem(LOCALHOST_IN_BROWSER_KEY, value ? "1" : "0");
+  } catch {
+    // private mode / quota
+  }
+}
+
+const BROWSER_AGENT_ENABLED_KEY = "monocode.browserAgentEnabled";
+
+export const BROWSER_AGENT_ENABLED_DEFAULT = true;
+
+export function loadBrowserAgentEnabled(): boolean {
+  try {
+    const raw = localStorage.getItem(BROWSER_AGENT_ENABLED_KEY);
+    if (raw == null) return BROWSER_AGENT_ENABLED_DEFAULT;
+    return raw === "1" || raw === "true";
+  } catch {
+    return BROWSER_AGENT_ENABLED_DEFAULT;
+  }
+}
+
+export function saveBrowserAgentEnabled(value: boolean) {
+  try {
+    localStorage.setItem(BROWSER_AGENT_ENABLED_KEY, value ? "1" : "0");
+  } catch {
+    // private mode / quota
+  }
+}
+
+const BROWSER_AGENT_ALLOWLIST_KEY = "monocode.browserAgentAllowlist";
+
+export function loadBrowserAgentAllowlist(): string[] {
+  try {
+    const raw = localStorage.getItem(BROWSER_AGENT_ALLOWLIST_KEY);
+    if (raw == null || raw.trim() === "") return [];
+    return raw
+      .split(/[\n,]/)
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+export function loadBrowserAgentAllowlistText(): string {
+  try {
+    return localStorage.getItem(BROWSER_AGENT_ALLOWLIST_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+export function saveBrowserAgentAllowlistText(value: string) {
+  try {
+    localStorage.setItem(BROWSER_AGENT_ALLOWLIST_KEY, value);
+  } catch {
+    // private mode / quota
+  }
+}
+
 const CLAUDE_HOOKS_KEY = "monocode.claudeHooks";
 
 export const CLAUDE_HOOKS_DEFAULT = true;
@@ -397,7 +473,9 @@ export function filterKeybindings(
   return rows.filter(
     (row) =>
       row.command.toLowerCase().includes(needle) ||
+      t(row.command).toLowerCase().includes(needle) ||
       row.keys.toLowerCase().includes(needle) ||
-      row.when.toLowerCase().includes(needle),
+      row.when.toLowerCase().includes(needle) ||
+      t(row.when).toLowerCase().includes(needle),
   );
 }

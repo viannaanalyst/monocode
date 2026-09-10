@@ -2,6 +2,8 @@ import { X } from "./icons";
 import { attachmentPreviewSrc } from "../lib/attachments";
 import type { Attachment } from "../lib/session";
 import { FileTypeIcon } from "./FileTypeIcon";
+import { t } from "../i18n";
+
 
 type Props = {
   attachment: Attachment;
@@ -38,8 +40,8 @@ export function AttachmentChip({ attachment, onRemove }: Props) {
       {onRemove ? (
         <button
           type="button"
-          title="Remove"
-          aria-label={`Remove ${attachment.name}`}
+          title={t("Remove")}
+          aria-label={t("Remove {name}", { name: attachment.name })}
           onClick={(e) => {
             e.stopPropagation();
             onRemove();

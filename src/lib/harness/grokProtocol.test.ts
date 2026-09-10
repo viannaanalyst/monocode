@@ -80,18 +80,26 @@ describe("grok protocol", () => {
   });
 
   it("sets yoloMode only for full access", () => {
+    const mcp = [
+      {
+        name: "monocode-browser",
+        command: "node",
+        args: ["/repo/.monocode-browser-mcp.mjs"],
+        env: { MONOCODE_BROWSER_CWD: "/repo" },
+      },
+    ];
     expect(grokSessionNewParams("/repo", "supervised")).toEqual({
       cwd: "/repo",
-      mcpServers: [],
+      mcpServers: mcp,
     });
     expect(grokSessionNewParams("/repo", "full-access")).toEqual({
       cwd: "/repo",
-      mcpServers: [],
+      mcpServers: mcp,
       _meta: { yoloMode: true },
     });
     expect(grokSessionNewParams("/repo", "auto")).toEqual({
       cwd: "/repo",
-      mcpServers: [],
+      mcpServers: mcp,
       _meta: { autoMode: true },
     });
   });

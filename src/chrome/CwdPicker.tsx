@@ -18,6 +18,8 @@ import { LAYER } from "../lib/layers";
 import { Popover } from "./Popover";
 import { ProjectLogoIcon } from "./ProjectLogoIcon";
 import { MOD } from "../lib/platform";
+import { t } from "../i18n";
+
 
 type Props = {
   cwd: string;
@@ -188,7 +190,7 @@ export function CwdPicker({
       <button
         type="button"
         title={cwd}
-        aria-label={`Project ${label}`}
+        aria-label={t("Project {label}", { label })}
         aria-expanded={open}
         aria-haspopup="menu"
         disabled={!enabled}
@@ -240,7 +242,7 @@ export function CwdPicker({
           ignore={SELF}
           onDismiss={(reason) => dismiss(reason === "escape")}
           role="menu"
-          aria-label="Project picker"
+          aria-label={t("Project picker")}
           data-cwd-picker
           className="flex flex-col overflow-hidden"
         >
@@ -319,7 +321,7 @@ export function CwdPicker({
                     : "text-content/80 hover:bg-content/5"
                 }`}
               >
-                <span className="text-[13px]">More Projects</span>
+                <span className="text-[13px]">{t("More Projects")}</span>
                 <ChevronRight
                   className="size-3.5 shrink-0"
                   strokeWidth={1.75}
@@ -344,7 +346,7 @@ export function CwdPicker({
                     : "text-content/80 hover:bg-content/5"
                 }`}
               >
-                <span className="text-[13px]">New terminal</span>
+                <span className="text-[13px]">{t("New terminal")}</span>
                 <span className="shrink-0 font-mono text-[11px] text-content/45">
                   {MOD}`
                 </span>
@@ -362,7 +364,7 @@ export function CwdPicker({
           maxHeight={SUBMENU_MAX_HEIGHT}
           layer={LAYER.submenu}
           role="menu"
-          aria-label="More projects"
+          aria-label={t("More projects")}
           data-cwd-submenu
           className="overflow-y-auto overscroll-none py-1"
           onMouseEnter={openMore}

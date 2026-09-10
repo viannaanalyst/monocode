@@ -9,6 +9,7 @@ import {
   tooltipPosition,
   tooltipText,
 } from "./Tooltip";
+import { resetLocaleForTests, saveLocale } from "../i18n";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -26,6 +27,7 @@ afterEach(() => {
   act(() => root.unmount());
   container.remove();
   vi.useRealTimers();
+  resetLocaleForTests();
 });
 
 function renderLayer() {
@@ -81,6 +83,16 @@ describe("tooltipText", () => {
     button.title = "New Terminal";
     button.setAttribute("aria-label", "Open terminal");
     expect(tooltipText(button)).toBe("New Terminal");
+  });
+
+  it("translates title and aria-label in Portuguese", () => {
+    saveLocale("pt-BR");
+    const button = document.createElement("button");
+    button.title = "New Terminal";
+    expect(tooltipText(button)).toBe("Novo terminal");
+    button.removeAttribute("title");
+    button.setAttribute("aria-label", "Settings");
+    expect(tooltipText(button)).toBe("Ajustes");
   });
 
   it("falls back to aria-label and ignores disabled controls", () => {
@@ -173,7 +185,19 @@ describe("tooltipPosition", () => {
         { width: 120, height: 28 },
         { width: 800, height: 768 },
       ),
-    ).toEqual({ left: 160, top: 132, placement: "bottom" });
+      ).toEqual({ left: 160, top: 132, placement: "bottom" });
+  });
+
+  it("places the tooltip above when asked", () => {
+    expect(
+      tooltipPosition(
+        new DOMRect(200, 100, 40, 24),
+        { width: 120, height: 28 },
+        { width: 800, height: 768 },
+        8,
+        "top",
+      ),
+    ).toEqual({ left: 160, top: 64, placement: "top" });
   });
 });
 

@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { t } from "../i18n";
 
 const VIEWPORT_INSET = 8;
 const TOOLTIP_DELAY_MS = 160;
@@ -15,14 +16,14 @@ type OpenTooltip = {
   anchor: DOMRect;
   label: string;
   target: HTMLElement;
+  prefer: "top" | "bottom" | "auto";
 };
 
 export function tooltipText(element: Element): string | null {
   const title = element.getAttribute("title")?.trim();
-  if (title) return title;
-
   const ariaLabel = element.getAttribute("aria-label")?.trim();
-  return ariaLabel || null;
+  const raw = title || ariaLabel || null;
+  return raw ? t(raw) : null;
 }
 
 function isTooltipControl(element: Element): element is HTMLElement {
@@ -60,6 +61,7 @@ export function tooltipPosition(
   tooltip: { width: number; height: number },
   viewport: { width: number; height: number },
   gap = VIEWPORT_INSET,
+  prefer: "top" | "bottom" | "auto" = "auto",
 ): { left: number; top: number; placement: "top" | "bottom" } {
   const maxLeft = Math.max(
     VIEWPORT_INSET,
@@ -69,12 +71,23 @@ export function tooltipPosition(
   const left = Math.min(maxLeft, Math.max(VIEWPORT_INSET, centeredLeft));
 
   const bottomTop = anchor.bottom + gap;
+  const topTop = anchor.top - tooltip.height - gap;
   const bottomFits =
     bottomTop + tooltip.height <= viewport.height - VIEWPORT_INSET;
-  const placement = bottomFits ? "bottom" : "top";
-  const preferredTop = bottomFits
-    ? bottomTop
-    : anchor.top - tooltip.height - gap;
+  const topFits = topTop >= VIEWPORT_INSET;
+  const placement =
+    prefer === "top"
+      ? topFits || !bottomFits
+        ? "top"
+        : "bottom"
+      : prefer === "bottom"
+        ? bottomFits || !topFits
+          ? "bottom"
+          : "top"
+        : bottomFits
+          ? "bottom"
+          : "top";
+  const preferredTop = placement === "bottom" ? bottomTop : topTop;
   const maxTop = Math.max(
     VIEWPORT_INSET,
     viewport.height - VIEWPORT_INSET - tooltip.height,
@@ -116,6 +129,8 @@ export function TooltipLayer({
         openTooltip.anchor,
         { width: bounds.width, height: bounds.height },
         { width: window.innerWidth, height: window.innerHeight },
+        VIEWPORT_INSET,
+        openTooltip.prefer,
       ),
     );
   }, [openTooltip]);
@@ -172,10 +187,14 @@ export function TooltipLayer({
           return;
         }
 
+        const preferAttr = target.getAttribute("data-tooltip-placement");
+        const prefer =
+          preferAttr === "top" || preferAttr === "bottom" ? preferAttr : "auto";
         setOpenTooltip({
           anchor: target.getBoundingClientRect(),
           label: labelRef.current,
           target,
+          prefer,
         });
       }, TOOLTIP_DELAY_MS);
     };

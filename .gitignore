@@ -53,3 +53,6 @@ lerna-debug.log*
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+.monocode-browser.json
+.monocode-browser-result.json
+.monocode-browser-mcp.mjs

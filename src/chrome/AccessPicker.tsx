@@ -12,6 +12,8 @@ import {
   type RuntimeMode,
 } from "../lib/session";
 import { Popover } from "./Popover";
+import { t } from "../i18n";
+
 
 type Props = {
   value: RuntimeMode;
@@ -75,8 +77,8 @@ export function AccessPicker({ value, onChange, onClose }: Props) {
     <div ref={root} className="relative">
       <button
         type="button"
-        title={RUNTIME_MODE_HINT[value]}
-        aria-label={RUNTIME_MODE_LABEL[value]}
+        title={t(RUNTIME_MODE_HINT[value])}
+        aria-label={t(RUNTIME_MODE_LABEL[value])}
         aria-expanded={open}
         aria-haspopup="listbox"
         onMouseDown={(e) => e.preventDefault()}
@@ -95,7 +97,7 @@ export function AccessPicker({ value, onChange, onClose }: Props) {
       >
         <Icon className="size-3.5 shrink-0" strokeWidth={1.75} />
         <span className="min-w-0 truncate text-[11px]">
-          {RUNTIME_MODE_LABEL[value]}
+          {t(RUNTIME_MODE_LABEL[value])}
         </span>
         <ChevronDown
           className={`size-3 shrink-0 text-content/50 ${open ? "rotate-180" : ""}`}
@@ -110,7 +112,7 @@ export function AccessPicker({ value, onChange, onClose }: Props) {
           autoFocus
           onDismiss={(reason) => dismiss(reason === "escape")}
           role="listbox"
-          aria-label="Access"
+          aria-label={t("Access")}
           data-access-picker
           tabIndex={-1}
           onKeyDown={onMenuKey}
@@ -141,10 +143,10 @@ export function AccessPicker({ value, onChange, onClose }: Props) {
                 />
                 <span className="min-w-0">
                   <span className="block text-[13px] font-medium leading-5">
-                    {RUNTIME_MODE_LABEL[mode]}
+                    {t(RUNTIME_MODE_LABEL[mode])}
                   </span>
                   <span className="mt-0.5 block text-[11px] leading-4 text-content/50">
-                    {RUNTIME_MODE_HINT[mode]}
+                    {t(RUNTIME_MODE_HINT[mode])}
                   </span>
                 </span>
               </button>

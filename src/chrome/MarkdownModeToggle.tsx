@@ -1,4 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { t } from "../i18n";
+
 
 export type MarkdownViewMode = "preview" | "source";
 
@@ -33,16 +35,16 @@ export function MarkdownModeToggle({ mode, onChange }: ToggleProps) {
   return (
     <div
       role="tablist"
-      aria-label="Markdown view"
+      aria-label={t("Markdown view")}
       className="flex rounded-md border border-content/10 bg-content/10 p-0.5 backdrop-blur-md"
     >
       <ModeTab
-        label="Preview"
+        label={t("Preview")}
         selected={mode === "preview"}
         onSelect={() => onChange("preview")}
       />
       <ModeTab
-        label="Source"
+        label={t("Source")}
         selected={mode === "source"}
         onSelect={() => onChange("source")}
       />

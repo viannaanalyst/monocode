@@ -20,7 +20,9 @@ import {
   type RateLimitWindow,
 } from "../lib/rateLimits";
 import { HARNESS_LABEL, HARNESS_TITLE, type HarnessId } from "../lib/session";
+import { t } from "../i18n";
 import {
+
   runningTerminalChipLabel,
   type RunningTerminal,
 } from "../lib/terminalTab";
@@ -153,8 +155,8 @@ export function UsageFooter({
             <button
               type="button"
               className="grid size-5 shrink-0 place-items-center rounded text-content/40 hover:bg-content/10 hover:text-content disabled:opacity-50"
-              aria-label="Refresh usage"
-              title="Refresh usage"
+              aria-label={t("Refresh usage")}
+              title={t("Refresh usage")}
               disabled={refreshing}
               onClick={() => void refresh(true)}
             >
@@ -256,7 +258,7 @@ function RunningTerminalChip({
           autoFocus
           onDismiss={() => setMenuOpen(false)}
           role="menu"
-          aria-label="Running terminals"
+          aria-label={t("Running terminals")}
           className="min-w-[12rem] p-1"
         >
           {terminals.map((terminal) => (

@@ -1,5 +1,7 @@
 import { X } from "./icons";
 import type { InstalledUpdate } from "../lib/updateNotice";
+import { t } from "../i18n";
+
 
 type Props = {
   update: InstalledUpdate | null;
@@ -39,7 +41,7 @@ export function UpdateRailCard({ update, onOpen, onDismiss }: Props) {
       </button>
       <button
         type="button"
-        aria-label="Dismiss update notification"
+        aria-label={t("Dismiss update notification")}
         onClick={onDismiss}
         className="absolute right-1 top-1 grid size-6 place-items-center rounded-md text-content/45 hover:bg-content/8 hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >

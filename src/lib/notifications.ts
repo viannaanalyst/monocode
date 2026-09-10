@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { t } from "../i18n";
 import { HARNESS_TITLE, sessionDisplayTitle, type Session } from "./session";
 import { loadSoundsEnabled } from "./sounds";
 
@@ -124,7 +125,9 @@ export function notificationText(
       return {
         title,
         subtitle,
-        body: clip(prompt || `${harness} has a question for you`),
+        body: clip(
+          prompt || t("{harness} has a question for you", { harness }),
+        ),
       };
     }
     const pending = [...session.blocks]
@@ -134,7 +137,11 @@ export function notificationText(
     return {
       title,
       subtitle,
-      body: clip(what ? `Approve: ${what}` : `${harness} needs your approval`),
+      body: clip(
+        what
+          ? t("Approve: {what}", { what })
+          : t("{harness} needs your approval", { harness }),
+      ),
     };
   }
   const reply = [...session.blocks]
@@ -143,7 +150,7 @@ export function notificationText(
   return {
     title,
     subtitle,
-    body: clip(reply?.text || `${harness} finished`),
+    body: clip(reply?.text || t("{harness} finished", { harness })),
   };
 }
 

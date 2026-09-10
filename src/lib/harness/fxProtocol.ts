@@ -437,6 +437,7 @@ function settingsFromJson(rec: Record<string, unknown>): ModelSetting[] {
     settings.push({
       id: "effort",
       label: "Effort",
+      description: "Effort the model uses to generate its response.",
       kind: "select",
       value: stringField(rec, "effort") ?? effortOptions[0]?.value ?? "auto",
       options: effortOptions,

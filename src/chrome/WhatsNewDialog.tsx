@@ -5,6 +5,8 @@ import {
 } from "../lib/releaseNotes";
 import { AgentMarkdown } from "../surfaces/AgentMarkdown";
 import { Modal } from "./Modal";
+import { t } from "../i18n";
+
 
 type Props = {
   version: string;
@@ -39,7 +41,7 @@ export function WhatsNewDialog({ version, onClose }: Props) {
   return (
     <Modal
       onClose={onClose}
-      title="What's new"
+      title={t("What's new")}
       description={`MonoCode ${version}${date ? ` · ${date}` : ""}`}
       size="md"
       className="h-[min(72vh,640px)]"

@@ -2,6 +2,8 @@ import { AiIdea, CircleDashed, PanelRight, Play } from "./icons";
 import { planSummary, planTitle } from "../lib/plan";
 import type { HarnessId, PlanBlockMeta, PlanBuildTarget } from "../lib/session";
 import { BuildTargetButton } from "./SecondOpinionButton";
+import { t } from "../i18n";
+
 
 type Props = {
   text: string;
@@ -82,8 +84,8 @@ export function PlanPreview({
               {onOpen ? (
                 <button
                   type="button"
-                  title="Open in pane"
-                  aria-label="Open plan in pane"
+                  title={t("Open in pane")}
+                  aria-label={t("Open plan in pane")}
                   className="flex h-6 shrink-0 items-center gap-1 rounded-md bg-content/8 px-2 font-sans text-[11px] text-content/70 hover:bg-content/12 hover:text-content"
                   onClick={onOpen}
                 >
@@ -95,7 +97,7 @@ export function PlanPreview({
                 <div className="flex items-center font-sans">
                   <button
                     type="button"
-                    title="Build this plan"
+                    title={t("Build this plan")}
                     disabled={buildDisabled}
                     className={`flex h-6 shrink-0 items-center gap-1 bg-content px-2 font-sans text-[11px] text-background-base hover:bg-content/90 disabled:cursor-not-allowed disabled:opacity-40 ${
                       harness ? "rounded-l-md" : "rounded-md"

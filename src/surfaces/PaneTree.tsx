@@ -120,6 +120,8 @@ type Shared = {
   onMovePane: (fromId: string, toId: string, edge: PaneEdge) => void;
   onNewTerminal: (sessionId: string) => void;
   onTerminalMetaChange?: (fileId: string, patch: TerminalMetaPatch) => void;
+  onBrowserUrlChange?: (fileId: string, url: string, title?: string) => void;
+  onNewBrowser?: () => void;
 };
 
 type Props = Shared & { layout: LayoutNode };
@@ -181,6 +183,8 @@ function PaneTreeComponent({
   onMovePane,
   onNewTerminal,
   onTerminalMetaChange,
+  onBrowserUrlChange,
+  onNewBrowser,
 }: Props) {
   const treeRef = useRef<HTMLDivElement>(null);
   const layoutRef = useRef(layout);
@@ -342,6 +346,8 @@ function PaneTreeComponent({
                 editorNavigation={editorNavigation}
                 onPaneDragStart={onPaneDragStart}
                 onTerminalMetaChange={onTerminalMetaChange}
+                onBrowserUrlChange={onBrowserUrlChange}
+                onNewBrowser={onNewBrowser}
               />
             ) : session ? (
               <SessionPane
