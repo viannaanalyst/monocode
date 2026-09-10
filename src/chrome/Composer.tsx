@@ -1460,6 +1460,7 @@ export function Composer({
                         : t("Dictate")
                   }
                   disabled={dictation.state === "transcribing" || busy}
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
                     setVoiceError(null);
                     dictation.toggle();
