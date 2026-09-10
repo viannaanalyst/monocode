@@ -900,7 +900,7 @@ function ProjectSection({
 }
 
 const nameClassName =
-  "min-w-0 flex-1 truncate text-sm font-medium leading-label";
+  "min-w-0 flex-1 truncate text-sm font-medium leading-tight";
 
 function ProjectCard({
   item,

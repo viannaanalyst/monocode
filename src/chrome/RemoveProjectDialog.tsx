@@ -74,7 +74,7 @@ export function RemoveProjectDialog({ name, path, onCancel, onConfirm }: Props) 
               )}
             </p>
           ) : null}
-          <p className="truncate text-[11px] leading-label text-content/40">
+          <p className="truncate text-[11px] leading-tight text-content/40">
             {prettyCwd(path)}
           </p>
         </div>
