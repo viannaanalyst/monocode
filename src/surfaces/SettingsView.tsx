@@ -21,13 +21,10 @@ import {
 } from "react";
 import { ask, message } from "@tauri-apps/plugin-dialog";
 import { HarnessIcon } from "../chrome/HarnessIcon";
-<<<<<<< HEAD
 import { Popover } from "../chrome/Popover";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
-=======
 import { CustomModelsSection } from "../chrome/CustomModelsSection";
->>>>>>> 98df676 (feat: add custom models for Codex and Claude Code)
 import { InboxProviderMark } from "../chrome/InboxProviderMark";
 import { RemoveProjectDialog } from "../chrome/RemoveProjectDialog";
 import { terminalTheme } from "./TerminalView";
@@ -2128,17 +2125,17 @@ function ProviderRow({
   const [inPicker, setInPicker] = useState(() =>
     isPickerProviderVisible(harness),
   );
+<<<<<<< HEAD
   const [installing, setInstalling] = useState(false);
+=======
+  const needsCatalogRefresh =
+    supportsCustomModels(harness) || models.length === 0;
+>>>>>>> 7ee52aa (Stop catalog probes from rerunning when custom models change.)
 
   useEffect(() => {
-    if (
-      !available ||
-      liveCatalog ||
-      (!supportsCustomModels(harness) && models.length > 0)
-    )
-      return;
+    if (!available || liveCatalog || !needsCatalogRefresh) return;
     void refreshHarnessCatalogs([harness]);
-  }, [available, harness, liveCatalog, models.length]);
+  }, [available, harness, liveCatalog, needsCatalogRefresh]);
 
   const onPickerVisible = (visible: boolean) => {
     savePickerProviderVisible(harness, visible);
