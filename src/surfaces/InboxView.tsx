@@ -318,7 +318,6 @@ export function InboxView({
 }: Props) {
   const [discussionOpen, setDiscussionOpen] = useState(false);
   const listLock = useLockOverscroll<HTMLDivElement>();
-  const detailLock = useLockOverscroll<HTMLDivElement>();
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
   const logos = useTabGroupLogos();
@@ -841,10 +840,7 @@ export function InboxView({
       <div className="flex min-h-0 min-w-0 flex-1">
         {list}
         <div className="relative flex min-h-0 min-w-0 flex-1">
-          <div
-            ref={detailLock}
-            className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-none"
-          >
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             <InboxDetailBody
               item={selected}
               cwd={cwd}
@@ -1124,6 +1120,7 @@ function InboxDetail({
         ? peekGithubWorkItemThread(item.projectPath, githubKind, item.number)
         : null;
   const [details, setDetails] = useState<GithubWorkItemDetails | null>(cached);
+  const bodyScroll = useLockOverscroll<HTMLDivElement>();
   const [loading, setLoading] = useState(cached == null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<"summary" | "code">("summary");
@@ -1443,8 +1440,9 @@ function InboxDetail({
   };
 
   return (
-    <div className={`mx-auto flex w-full flex-col gap-5 px-8 py-8 max-w-5xl`}>
-      <header className="flex flex-col gap-3">
+    <div className="flex h-full min-h-0 w-full flex-col">
+      <header className="shrink-0 border-b border-content/10 px-8 pt-8 pb-4">
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-3">
         <div className="flex items-center gap-2 text-[12px] text-content/50">
           <InboxProviderMark provider={item.provider} className="size-3.5" />
           <span>
@@ -1626,29 +1624,33 @@ function InboxDetail({
         {startError ? (
           <p className="text-[12px] text-red-400/90">{startError}</p>
         ) : null}
-      </header>
-      {isPr ? (
-        <div
-          role="tablist"
-          aria-label={
-            gitlab ? t("Merge request sections") : t("Pull request sections")
-          }
-          className="flex h-9 gap-4 items-stretch border-b border-content/10"
-        >
-          <InboxDetailTab
-            label={t("Summary")}
-            selected={tab === "summary"}
-            onSelect={() => setTab("summary")}
-          />
-          <InboxDetailTab
-            label={t("Code")}
-            selected={tab === "code"}
-            onSelect={() => setTab("code")}
-          />
+        {isPr ? (
+          <div
+            role="tablist"
+            aria-label={
+              gitlab ? t("Merge request sections") : t("Pull request sections")
+            }
+            className="flex h-9 items-stretch gap-4 border-b border-content/10"
+          >
+            <InboxDetailTab
+              label={t("Summary")}
+              selected={tab === "summary"}
+              onSelect={() => setTab("summary")}
+            />
+            <InboxDetailTab
+              label={t("Code")}
+              selected={tab === "code"}
+              onSelect={() => setTab("code")}
+            />
+          </div>
+        ) : null}
         </div>
-      ) : (
-        <div className="border-t border-content/10" />
-      )}
+      </header>
+      <div
+        ref={bodyScroll}
+        className="min-h-0 flex-1 overflow-y-auto overscroll-none"
+      >
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-8 py-6">
       {isPr && tab === "code" ? (
         diffLoading ? (
           <div className="flex justify-center py-10 text-content/40">
@@ -1702,6 +1704,8 @@ function InboxDetail({
           />
         </>
       )}
+        </div>
+      </div>
     </div>
   );
 }
