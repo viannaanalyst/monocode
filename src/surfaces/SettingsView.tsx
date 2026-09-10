@@ -166,6 +166,10 @@ import {
   loadLocalhostInBrowser,
   loadBrowserAgentEnabled,
   loadBrowserAgentAllowlistText,
+  loadVoiceEnabled,
+  loadVoiceLanguage,
+  loadVoiceModel,
+  loadVoicePrompt,
   saveClaudeHooks,
   saveLocalhostInBrowser,
   saveBrowserAgentEnabled,
@@ -176,12 +180,21 @@ import {
   saveGridArcadeEnabled,
   saveLiveAgentsEnabled,
   saveNotesEnabled,
+  saveVoiceEnabled,
+  saveVoiceLanguage,
+  saveVoiceModel,
+  saveVoicePrompt,
   settingsSectionDescription,
   settingsSectionLabel,
   type DiffViewer,
   type FollowUpBehavior,
   type SettingsSectionId,
 } from "../lib/settings";
+import {
+  voiceClearApiKey,
+  voiceHasApiKey,
+  voiceSetApiKey,
+} from "../lib/transcribe";
 import { loadSoundsEnabled, playCue, saveSoundsEnabled } from "../lib/sounds";
 import {
   cachedNotificationPermission,
@@ -304,6 +317,7 @@ export function SettingsView({
           ) : null}
           {section === "keybindings" ? <KeybindingsPage /> : null}
           {section === "providers" ? <ProvidersPage /> : null}
+          {section === "voice" ? <VoicePage /> : null}
           {section === "skills" ? <SkillsPage key={cwd} cwd={cwd} /> : null}
           {section === "archive" ? (
             <ArchivePage
@@ -1607,6 +1621,160 @@ function ProviderRow({
         </div>
       ) : null}
     </Row>
+  );
+}
+
+function VoicePage() {
+  const [enabled, setEnabled] = useState(loadVoiceEnabled);
+  const [model, setModel] = useState(loadVoiceModel);
+  const [language, setLanguage] = useState(loadVoiceLanguage);
+  const [prompt, setPrompt] = useState(loadVoicePrompt);
+  const [keyDraft, setKeyDraft] = useState("");
+  const [hasKey, setHasKey] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    void voiceHasApiKey()
+      .then(setHasKey)
+      .catch(() => setHasKey(false));
+  }, []);
+
+  const saveKey = () => {
+    if (!keyDraft.trim()) return;
+    setBusy(true);
+    setStatus(null);
+    void voiceSetApiKey(keyDraft)
+      .then(() => {
+        setKeyDraft("");
+        setHasKey(true);
+        setStatus(t("Key saved to the macOS Keychain."));
+      })
+      .catch((error: unknown) =>
+        setStatus(error instanceof Error ? error.message : String(error)),
+      )
+      .finally(() => setBusy(false));
+  };
+
+  const removeKey = () => {
+    setBusy(true);
+    setStatus(null);
+    void voiceClearApiKey()
+      .then(() => {
+        setHasKey(false);
+        setStatus(t("Key removed."));
+      })
+      .catch((error: unknown) =>
+        setStatus(error instanceof Error ? error.message : String(error)),
+      )
+      .finally(() => setBusy(false));
+  };
+
+  return (
+    <>
+      <Heading title={t("Voice input")} first />
+      <Row
+        label={t("Enable dictation")}
+        description={t("Show a microphone button in the composer.")}
+      >
+        <Toggle
+          label={t("Enable dictation")}
+          on={enabled}
+          onChange={(next) => {
+            setEnabled(next);
+            saveVoiceEnabled(next);
+          }}
+        />
+      </Row>
+      <Row
+        label={t("Model")}
+        description={t("Full is more accurate; mini is cheaper.")}
+      >
+        <Select
+          label={t("Model")}
+          value={model}
+          onChange={(value) => {
+            const next =
+              value === "gpt-4o-mini-transcribe"
+                ? "gpt-4o-mini-transcribe"
+                : "gpt-4o-transcribe";
+            setModel(next);
+            saveVoiceModel(next);
+          }}
+          options={[
+            { value: "gpt-4o-transcribe", label: "GPT-4o Transcribe" },
+            {
+              value: "gpt-4o-mini-transcribe",
+              label: "GPT-4o Mini Transcribe",
+            },
+          ]}
+        />
+      </Row>
+      <Row
+        label={t("Language")}
+        description={t("Auto lets OpenAI detect the language.")}
+      >
+        <Select
+          label={t("Language")}
+          value={language}
+          onChange={(value) => {
+            const next =
+              value === "pt" || value === "en" || value === "es" ? value : "auto";
+            setLanguage(next);
+            saveVoiceLanguage(next);
+          }}
+          options={[
+            { value: "auto", label: t("Auto") },
+            { value: "pt", label: "Português" },
+            { value: "en", label: "English" },
+            { value: "es", label: "Español" },
+          ]}
+        />
+      </Row>
+      <Row
+        label={t("Context prompt")}
+        description={t("Names and terms the transcription should expect.")}
+      >
+        <input
+          type="text"
+          value={prompt}
+          onChange={(event) => setPrompt(event.target.value)}
+          onBlur={() => saveVoicePrompt(prompt)}
+          className="w-64 rounded-md border border-content/10 bg-content/5 px-2 py-1 text-[12px] text-content outline-none"
+        />
+      </Row>
+      <Row
+        label={t("OpenAI API key")}
+        description={
+          hasKey
+            ? t("Saved in the macOS Keychain. The value is never shown again.")
+            : t("Stored in the macOS Keychain, never in this app's storage.")
+        }
+      >
+        <div className="flex items-center gap-2">
+          <input
+            type="password"
+            value={keyDraft}
+            placeholder={hasKey ? "••••••••" : "sk-…"}
+            onChange={(event) => setKeyDraft(event.target.value)}
+            className="w-48 rounded-md border border-content/10 bg-content/5 px-2 py-1 text-[12px] text-content outline-none"
+          />
+          <SecondaryButton onClick={saveKey} disabled={busy || !keyDraft.trim()}>
+            {t("Save")}
+          </SecondaryButton>
+          {hasKey ? (
+            <SecondaryButton onClick={removeKey} disabled={busy}>
+              {t("Remove")}
+            </SecondaryButton>
+          ) : null}
+        </div>
+      </Row>
+      {status ? (
+        <Row label={t("Status")} description={status}>
+          <span />
+        </Row>
+      ) : null}
+    </>
   );
 }
 

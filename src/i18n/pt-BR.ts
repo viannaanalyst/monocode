@@ -740,4 +740,26 @@ export const PT_BR: Record<string, string> = {
   "File tab actions": "Ações da aba",
   "Image preview: {name}": "Prévia da imagem: {name}",
   "Close image preview": "Fechar prévia da imagem",
+  "Voice input": "Entrada por voz",
+  "Dictate prompts with OpenAI transcription.":
+    "Dite prompts com a transcrição da OpenAI.",
+  "Enable dictation": "Ativar ditado",
+  "Show a microphone button in the composer.":
+    "Mostra um botão de microfone no compositor.",
+  "Full is more accurate; mini is cheaper.":
+    "O full é mais preciso; o mini é mais barato.",
+  "Auto lets OpenAI detect the language.":
+    "Automático deixa a OpenAI detectar o idioma.",
+  "Names and terms the transcription should expect.":
+    "Nomes e termos que a transcrição deve esperar.",
+  "Context prompt": "Prompt de contexto",
+  "OpenAI API key": "Chave de API da OpenAI",
+  "Saved in the macOS Keychain. The value is never shown again.":
+    "Salva no Keychain do macOS. O valor nunca é exibido de novo.",
+  "Stored in the macOS Keychain, never in this app's storage.":
+    "Guardada no Keychain do macOS, nunca no armazenamento do app.",
+  "Key saved to the macOS Keychain.": "Chave salva no Keychain do macOS.",
+  "Key removed.": "Chave removida.",
+  Model: "Modelo",
+  Save: "Salvar",
 };

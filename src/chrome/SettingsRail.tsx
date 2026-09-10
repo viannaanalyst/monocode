@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   Bot,
   Keyboard,
+  Mic,
   Palette,
   SlidersHorizontal,
   Sparkles,
@@ -21,6 +22,7 @@ const SECTION_ICONS: Record<SettingsSectionId, IconComponent> = {
   appearance: Palette,
   keybindings: Keyboard,
   providers: Bot,
+  voice: Mic,
   skills: Sparkles,
   archive: Archive,
 };

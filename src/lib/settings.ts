@@ -7,7 +7,13 @@ export type { VoiceModel };
 const SECTION_KEY = "monocode.settingsSection";
 
 export type SettingsSectionId =
-  "general" | "appearance" | "keybindings" | "providers" | "skills" | "archive";
+  | "general"
+  | "appearance"
+  | "keybindings"
+  | "providers"
+  | "voice"
+  | "skills"
+  | "archive";
 
 export const SETTINGS_SECTIONS: {
   id: SettingsSectionId;
@@ -35,6 +41,11 @@ export const SETTINGS_SECTIONS: {
     label: "Providers",
     description:
       "Agent CLIs MonoCode can drive, and the model new sessions start with.",
+  },
+  {
+    id: "voice",
+    label: "Voice input",
+    description: "Dictate prompts with OpenAI transcription.",
   },
   {
     id: "skills",
