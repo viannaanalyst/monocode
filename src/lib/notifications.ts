@@ -84,6 +84,11 @@ export function setWindowFocused(focused: boolean) {
   windowFocused = focused;
 }
 
+/** Whether the app window currently has focus (Tauri-tracked). */
+export function isWindowFocused(): boolean {
+  return windowFocused;
+}
+
 /**
  * A banner only earns its place while the user is looking elsewhere: another
  * app, or another session. The transcript already shows the change on the
@@ -175,14 +180,18 @@ export async function notifySession(
   session: Session,
   event: NotificationEvent,
   sessionVisible: boolean,
+  options?: { force?: boolean },
 ): Promise<boolean> {
   if (session.inboxAsk) return false;
-  const decision = shouldNotify({
-    enabled: loadNotificationsEnabled(),
-    permission,
-    windowFocused,
-    sessionVisible,
-  });
+  const decision = options?.force
+    ? loadNotificationsEnabled() &&
+      (permission === "granted" || permission === "prompt")
+    : shouldNotify({
+        enabled: loadNotificationsEnabled(),
+        permission,
+        windowFocused,
+        sessionVisible,
+      });
   if (!decision) return false;
   const { title, subtitle, body } = notificationText(session, event);
   try {

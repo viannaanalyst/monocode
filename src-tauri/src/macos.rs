@@ -559,8 +559,12 @@ fn relaunch_from_dev_bundle() -> Result<(), String> {
     // The linker's ad-hoc signature carries a `monocode-<hash>` identifier.
     // UNUserNotificationCenter refuses authorization, without prompting,
     // unless the signing identifier matches CFBundleIdentifier.
+    let entitlements = app.join("Contents/Resources/dev.entitlements");
+    std::fs::write(&entitlements, DEV_BUNDLE_ENTITLEMENTS).map_err(|e| e.to_string())?;
     let signed = Command::new("/usr/bin/codesign")
         .args(["--force", "--sign", "-", "--identifier", DEV_BUNDLE_ID])
+        .arg("--entitlements")
+        .arg(&entitlements)
         .arg(&app)
         .status()
         .map(|status| status.success())
@@ -591,6 +595,8 @@ fn write_dev_bundle_icons(app: &std::path::Path) -> Result<(), String> {
 /// Must match `CFBundleIdentifier` in `DEV_BUNDLE_PLIST` and tauri.conf.json.
 #[cfg(debug_assertions)]
 const DEV_BUNDLE_ID: &str = "com.monocode.desktop";
+#[cfg(debug_assertions)]
+const DEV_BUNDLE_ENTITLEMENTS: &str = include_str!("../Entitlements.plist");
 #[cfg(debug_assertions)]
 const DEV_ICNS: &[u8] = include_bytes!("../icons/icon.icns");
 #[cfg(debug_assertions)]
@@ -626,6 +632,8 @@ const DEV_BUNDLE_PLIST: &[u8] = br#"<?xml version="1.0" encoding="UTF-8"?>
 	<string>13.0</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>MonoCode uses the microphone to dictate prompts into the composer.</string>
 </dict>
 </plist>
 "#;

@@ -8,14 +8,35 @@ vi.mock("cuelume", () => ({
   play: (...args: unknown[]) => play(...args),
   setEnabled: (...args: unknown[]) => setEnabled(...args),
   setVolume: (...args: unknown[]) => setVolume(...args),
+  sounds: [
+    "chime",
+    "sparkle",
+    "droplet",
+    "bloom",
+    "whisper",
+    "tick",
+    "press",
+    "release",
+    "toggle",
+    "success",
+    "error",
+    "page",
+    "loading",
+    "ready",
+    "pulse",
+    "scan",
+    "arrival",
+  ],
 }));
 
 import {
   announceUpdateAvailable,
+  loadNotificationSound,
   loadSoundsEnabled,
   noteInboxUnseen,
   playCue,
   resetSoundCues,
+  saveNotificationSound,
   saveSoundsEnabled,
   SOUNDS_DEFAULT,
   SOUNDS_VOLUME,
@@ -122,5 +143,20 @@ describe("sounds", () => {
     expect(play).toHaveBeenCalledTimes(1);
     announceUpdateAvailable("0.2.1");
     expect(play).toHaveBeenCalledTimes(2);
+  });
+
+  it("uses the chosen notification sound for finished and approval cues", () => {
+    saveNotificationSound("bloom");
+    playCue("turnFinished");
+    expect(play).toHaveBeenLastCalledWith("bloom");
+    playCue("approvalNeeded");
+    expect(play).toHaveBeenLastCalledWith("bloom");
+    playCue("copy");
+    expect(play).toHaveBeenLastCalledWith("scan");
+  });
+
+  it("ignores an unknown stored notification sound", () => {
+    localStorage.setItem("monocode.notificationSound", "nope");
+    expect(loadNotificationSound()).toBe("success");
   });
 });

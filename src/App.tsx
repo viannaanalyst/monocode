@@ -278,6 +278,7 @@ import { liveAgentsFromSessions } from "./lib/liveAgents";
 import { hiddenApprovalNotices } from "./lib/approvalToast";
 import { nextUnseenFinishedSessions } from "./lib/sessionDone";
 import {
+  isWindowFocused,
   loadNotificationsEnabled,
   NOTIFICATION_CLICK_EVENT,
   notifySession,
@@ -720,6 +721,10 @@ export default function App({
     canForward: false,
   });
   const turnGen = useRef(new Map<string, number>());
+  // Threads whose handoff recap is actively being prepared right now. A
+  // "preparing" block with no entry here was orphaned (reload/superseded turn)
+  // and must be settled or it would block the composer forever.
+  const handoffPrepInFlight = useRef(new Set<string>());
   const lastPersisted = useRef(new Map<string, string>());
   const lastBoundProvider = useRef(new Map<string, string>());
   const lastPersistedUserBlock = useRef(new Map<string, string>());
@@ -1007,7 +1012,11 @@ export default function App({
           session,
           "needsInput",
           id === activeSessionIdRef.current,
+          { force: true },
         );
+        // The OS banner is silent while MonoCode is frontmost, so play the
+        // chosen cue here; when backgrounded, the banner's own sound covers it.
+        if (isWindowFocused()) playCue("approvalNeeded");
       }
     }
   }, [approvalSessionIds]);
@@ -3614,11 +3623,25 @@ export default function App({
     setComposerFocused(false);
   }, []);
 
+  const settleOrphanedHandoff = useCallback((sessionId: string) => {
+    if (handoffPrepInFlight.current.has(sessionId)) return;
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === sessionId && isPreparingHandoff(s)
+          ? completeHandoff(s, buildDeterministicHandoff(s))
+          : s,
+      ),
+    );
+  }, []);
+
   const onModelChange = useCallback(
     (sessionId: string, harness: HarnessId, model: string) => {
       const current = sessionsRef.current.find((s) => s.id === sessionId);
       if (!current) return;
-      if (isPreparingHandoff(current)) return;
+      if (isPreparingHandoff(current)) {
+        if (handoffPrepInFlight.current.has(sessionId)) return;
+        settleOrphanedHandoff(sessionId);
+      }
       const resolved = resolveModel(harness, model);
       if (current.modelSettings) {
         saveLastModelSettings(current.modelSettings, "fill");
@@ -3732,7 +3755,10 @@ export default function App({
       ) {
         return;
       }
-      if (isPreparingHandoff(current)) return;
+      if (isPreparingHandoff(current)) settleOrphanedHandoff(sessionId);
+      const preparingHandoff =
+        isPreparingHandoff(current) &&
+        handoffPrepInFlight.current.has(sessionId);
       const workCwd = sessionWorkCwd(current);
       const submittedText = intent === "build" ? "Build approved plan" : text;
       const rawCommand = isNativeCommandPrompt(submittedText, current.harness);
@@ -3745,12 +3771,16 @@ export default function App({
           ? current.pendingSwitch
           : null;
 
-      if (current.busy && !pendingSwitch) {
-        const followUpBehavior =
-          intent === "plan"
+      if ((current.busy && !pendingSwitch) || preparingHandoff) {
+        // A switch still preparing its recap has no incoming turn to steer, so
+        // a follow-up can only be queued — dropping it silently loses the text.
+        const followUpBehavior = preparingHandoff
+          ? "queue"
+          : intent === "plan"
             ? "queue"
             : (options?.followUpBehavior ?? loadFollowUpBehavior());
         if (followUpBehavior === "queue") {
+          if (options?.queuedMessageId) return;
           setSessions((prev) =>
             prev.map((s) =>
               s.id === sessionId
@@ -4001,6 +4031,7 @@ export default function App({
       }
 
       void (async () => {
+        if (pendingSwitch) handoffPrepInFlight.current.add(sessionId);
         let wrap = handoffCard
           ? {
               from: handoffCard.from,
@@ -4187,7 +4218,19 @@ export default function App({
           nudgeWatchedFiles();
           window.setTimeout(() => nudgeWatchedFiles(), 150);
         }
-      })();
+      })().finally(() => {
+        handoffPrepInFlight.current.delete(sessionId);
+        // If this turn was superseded before the incoming harness accepted it,
+        // the "preparing" divider would otherwise strand the composer forever.
+        if (!pendingSwitch) return;
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.id === sessionId && isPreparingHandoff(s)
+              ? completeHandoff(s, buildDeterministicHandoff(s))
+              : s,
+          ),
+        );
+      });
     },
     [enqueueHarnessEvent, flushHarnessEvents],
   );
@@ -4262,7 +4305,9 @@ export default function App({
     const scheduled = new Set<string>();
     for (const session of sessions) {
       const queued = session.queuedMessages ?? [];
-      if (session.busy || queued.length === 0) continue;
+      if (session.busy || isPreparingHandoff(session) || queued.length === 0) {
+        continue;
+      }
 
       if (session.queueStatus === "resuming") {
         setSessions((prev) =>

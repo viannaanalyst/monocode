@@ -507,6 +507,9 @@ const VOICE_PROMPT_KEY = "monocode.voicePrompt";
 
 export type VoiceLanguage = "auto" | "pt" | "en" | "es";
 
+/** Fired on `window` when the Voice input setting flips. */
+export const VOICE_ENABLED_CHANGE_EVENT = "monocode:voice-enabled-change";
+
 export const VOICE_ENABLED_DEFAULT = false;
 export const VOICE_MODEL_DEFAULT: VoiceModel = "gpt-4o-transcribe";
 export const VOICE_LANGUAGE_DEFAULT: VoiceLanguage = "auto";
@@ -534,6 +537,10 @@ export function saveVoiceEnabled(value: boolean) {
   } catch {
     // private mode / quota
   }
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent<boolean>(VOICE_ENABLED_CHANGE_EVENT, { detail: value }),
+  );
 }
 
 export function loadVoiceModel(): VoiceModel {

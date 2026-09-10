@@ -107,6 +107,7 @@ import { consumeQuoteRequest, type QuoteRequest } from "../lib/quoteDraft";
 import { useTabGroupLogos } from "../hooks/useTabGroupLogos";
 import {
   COMPOSER_RUNNER_CHANGE_EVENT,
+  VOICE_ENABLED_CHANGE_EVENT,
   loadComposerRunner,
   loadNotesEnabled,
   loadVoiceEnabled,
@@ -446,6 +447,7 @@ export function Composer({
   const highlightRef = useRef<HTMLDivElement>(null);
   const attachmentsRef = useRef<Attachment[]>([]);
   const consumedQuoteId = useRef<number | null>(null);
+  const dictationPointer = useRef(false);
   const slashRef = useRef<SlashToken | null>(null);
   const mentionRef = useRef<MentionToken | null>(null);
   const [draft, setDraft] = useState(initialDraft ?? "");
@@ -722,9 +724,10 @@ export function Composer({
   const [voiceEnabled, setVoiceEnabled] = useState(loadVoiceEnabled);
   const [voiceError, setVoiceError] = useState<string | null>(null);
   useEffect(() => {
-    const onStorage = () => setVoiceEnabled(loadVoiceEnabled());
-    window.addEventListener("focus", onStorage);
-    return () => window.removeEventListener("focus", onStorage);
+    const refresh = () => setVoiceEnabled(loadVoiceEnabled());
+    window.addEventListener(VOICE_ENABLED_CHANGE_EVENT, refresh);
+    return () =>
+      window.removeEventListener(VOICE_ENABLED_CHANGE_EVENT, refresh);
   }, []);
 
   const dictation = useDictation({
@@ -745,7 +748,12 @@ export function Composer({
       syncTokensFromTextarea(el);
       el.focus();
     },
-    onError: (message) => setVoiceError(message),
+    onError: (message) =>
+      setVoiceError(
+        message.includes("MISSING_KEY")
+          ? t("Add your OpenAI API key in Settings, under Voice input.")
+          : message,
+      ),
   });
 
   useEffect(() => {
@@ -1443,47 +1451,71 @@ export function Composer({
 
             <div className="flex shrink-0 items-center gap-1">
               {voiceEnabled ? (
-                <button
-                  type="button"
-                  title={
-                    dictation.state === "recording"
-                      ? t("Stop recording")
-                      : dictation.state === "transcribing"
+                dictation.state === "recording" ? (
+                  <div className="flex h-6.5 shrink-0 items-center gap-1.5 rounded-full bg-content/10 pl-2.5 pr-1 text-content/80">
+                    <DictationWaveform level={dictation.level} />
+                    <button
+                      type="button"
+                      title={t("Stop recording")}
+                      aria-label={t("Stop recording")}
+                      onPointerDown={(e) => {
+                        e.preventDefault();
+                        dictationPointer.current = true;
+                        setVoiceError(null);
+                        dictation.toggle();
+                      }}
+                      onClick={() => {
+                        if (dictationPointer.current) {
+                          dictationPointer.current = false;
+                          return;
+                        }
+                        setVoiceError(null);
+                        dictation.toggle();
+                      }}
+                      className="grid size-4.5 place-items-center rounded-full bg-content text-background-base transition-colors hover:bg-content/85"
+                    >
+                      <SquareStop className="size-2.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    title={
+                      dictation.state === "transcribing"
                         ? t("Transcribing…")
                         : t("Dictate")
-                  }
-                  aria-label={
-                    dictation.state === "recording"
-                      ? t("Stop recording")
-                      : dictation.state === "transcribing"
+                    }
+                    aria-label={
+                      dictation.state === "transcribing"
                         ? t("Transcribing…")
                         : t("Dictate")
-                  }
-                  disabled={dictation.state === "transcribing" || busy}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => {
-                    setVoiceError(null);
-                    dictation.toggle();
-                  }}
-                  className={`grid size-6.5 shrink-0 place-items-center rounded-md ${
-                    dictation.state === "recording"
-                      ? "bg-red-500/90 text-white hover:bg-red-500"
-                      : "bg-content/10 text-content/50 hover:bg-content/15 hover:text-content"
-                  } disabled:opacity-40`}
-                >
-                  {dictation.state === "recording" ? (
-                    <span className="flex items-center gap-1">
-                      <SquareStop className="size-3.5" />
-                      <span className="font-mono text-[10px] tabular-nums">
-                        {Math.floor(dictation.elapsedMs / 1000)}s
-                      </span>
-                    </span>
-                  ) : dictation.state === "transcribing" ? (
-                    <Loader className="size-3.5 animate-spin" />
-                  ) : (
-                    <Mic className="size-3.5" />
-                  )}
-                </button>
+                    }
+                    disabled={dictation.state === "transcribing" || busy}
+                    onPointerEnter={() => dictation.prewarm()}
+                    onPointerDown={(e) => {
+                      e.preventDefault();
+                      dictationPointer.current = true;
+                      setVoiceError(null);
+                      dictation.prewarm();
+                      dictation.toggle();
+                    }}
+                    onClick={() => {
+                      if (dictationPointer.current) {
+                        dictationPointer.current = false;
+                        return;
+                      }
+                      setVoiceError(null);
+                      dictation.toggle();
+                    }}
+                    className="grid size-6.5 shrink-0 place-items-center rounded-md bg-content/10 text-content/50 hover:bg-content/15 hover:text-content disabled:opacity-40"
+                  >
+                    {dictation.state === "transcribing" ? (
+                      <Loader className="size-3.5 animate-spin" />
+                    ) : (
+                      <Mic className="size-3.5" />
+                    )}
+                  </button>
+                )
               ) : null}
               <ComposerAction
                 busy={busy}
@@ -1575,6 +1607,28 @@ function MentionRuns({
         ),
       )}
     </>
+  );
+}
+
+const WAVEFORM_SHAPE = [0.5, 0.72, 0.9, 1, 0.9, 0.72, 0.5];
+
+function DictationWaveform({ level }: { level: number }) {
+  return (
+    <span
+      aria-hidden
+      className="flex h-4 items-center gap-[2px] text-content/70"
+    >
+      {WAVEFORM_SHAPE.map((shape, index) => {
+        const height = Math.max(2, Math.round(level * 16 * shape));
+        return (
+          <span
+            key={index}
+            className="w-[2px] rounded-full bg-current transition-[height] duration-75 ease-out"
+            style={{ height }}
+          />
+        );
+      })}
+    </span>
   );
 }
 

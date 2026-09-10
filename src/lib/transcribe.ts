@@ -55,7 +55,10 @@ export function insertAtCursor(
   const before = textarea.value.slice(0, start);
   const after = textarea.value.slice(end);
   const needsLeading = before.length > 0 && !/\s$/.test(before);
-  const next = `${before}${needsLeading ? " " : ""}${insertion}${after}`;
+  const needsTrailing = after.length > 0 && !/^\s/.test(after);
+  const next = `${before}${needsLeading ? " " : ""}${insertion}${
+    needsTrailing ? " " : ""
+  }${after}`;
   const caret = start + (needsLeading ? 1 : 0) + insertion.length;
   textarea.value = next;
   textarea.setSelectionRange(caret, caret);

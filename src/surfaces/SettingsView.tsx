@@ -195,7 +195,16 @@ import {
   voiceHasApiKey,
   voiceSetApiKey,
 } from "../lib/transcribe";
-import { loadSoundsEnabled, playCue, saveSoundsEnabled } from "../lib/sounds";
+import {
+  loadNotificationSound,
+  loadSoundsEnabled,
+  playCue,
+  previewSound,
+  saveNotificationSound,
+  saveSoundsEnabled,
+  SOUND_PALETTE,
+  type SoundName,
+} from "../lib/sounds";
 import {
   cachedNotificationPermission,
   loadNotificationsEnabled,
@@ -357,6 +366,9 @@ function GeneralPage({
     loadLiveAgentsEnabled,
   );
   const [soundsEnabled, setSoundsEnabled] = useState(loadSoundsEnabled);
+  const [notificationSound, setNotificationSound] = useState<SoundName>(
+    loadNotificationSound,
+  );
   const [notificationsEnabled, setNotificationsEnabled] = useState(
     loadNotificationsEnabled,
   );
@@ -438,6 +450,12 @@ function GeneralPage({
   const onSoundsEnabled = (next: boolean) => {
     saveSoundsEnabled(next);
     setSoundsEnabled(next);
+  };
+
+  const onNotificationSound = (next: SoundName) => {
+    saveNotificationSound(next);
+    setNotificationSound(next);
+    previewSound(next);
   };
 
   const onNotificationsEnabled = (next: boolean) => {
@@ -565,6 +583,20 @@ function GeneralPage({
         description={t("Short cues when a turn finishes, a new inbox item appears on the project rail, or an update is available. Switches and Copy on a finished turn also play.")}
       >
         <Toggle label={t("Sounds")} on={soundsEnabled} onChange={onSoundsEnabled} />
+      </Row>
+      <Row
+        label={t("Notification sound")}
+        description={t("Played when a turn finishes and when an approval is pending. Choosing one plays a preview.")}
+      >
+        <Select
+          label={t("Notification sound")}
+          value={notificationSound}
+          onChange={(value) => onNotificationSound(value as SoundName)}
+          options={SOUND_PALETTE.map((name) => ({
+            value: name,
+            label: name.charAt(0).toUpperCase() + name.slice(1),
+          }))}
+        />
       </Row>
       <Row
         label={t("Notifications")}

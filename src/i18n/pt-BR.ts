@@ -763,6 +763,11 @@ export const PT_BR: Record<string, string> = {
     "Guardada no Keychain do macOS, nunca no armazenamento do app.",
   "Key saved to the macOS Keychain.": "Chave salva no Keychain do macOS.",
   "Key removed.": "Chave removida.",
+  "Add your OpenAI API key in Settings, under Voice input.":
+    "Adicione sua chave de API da OpenAI em Configurações, em Entrada por voz.",
+  "Notification sound": "Som da notificação",
+  "Played when a turn finishes and when an approval is pending. Choosing one plays a preview.":
+    "Toca quando um turno termina e quando há uma aprovação pendente. Escolher um toca uma prévia.",
   Model: "Modelo",
   Save: "Salvar",
 };

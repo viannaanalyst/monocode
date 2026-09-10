@@ -82,6 +82,44 @@ describe("DictationController", () => {
     expect(deps.transcribe).not.toHaveBeenCalled();
   });
 
+  it("cancel during transcribing, then a new start, does not let the stale stop release the new stream or emit text", async () => {
+    const firstTrack = { stop: vi.fn() };
+    const firstStream = { getTracks: () => [firstTrack] } as unknown as MediaStream;
+    const secondTrack = { stop: vi.fn() };
+    const secondStream = { getTracks: () => [secondTrack] } as unknown as MediaStream;
+    const firstRecorder = fakeRecorder();
+    firstRecorder.stop = vi.fn();
+    const secondRecorder = fakeRecorder();
+    const createRecorder = vi
+      .fn()
+      .mockImplementationOnce(() => firstRecorder)
+      .mockImplementationOnce(() => secondRecorder);
+    const getUserMedia = vi
+      .fn()
+      .mockImplementationOnce(async () => firstStream)
+      .mockImplementationOnce(async () => secondStream);
+    const { controller, deps, text } = setup({ createRecorder, getUserMedia });
+
+    await controller.start();
+    expect(controller.state).toBe("recording");
+
+    const stopping = controller.stop();
+    expect(controller.state).toBe("transcribing");
+
+    controller.cancel();
+    await controller.start();
+    expect(controller.state).toBe("recording");
+
+    firstRecorder.emit("stop");
+    await stopping;
+
+    expect(controller.state).toBe("recording");
+    expect(firstTrack.stop).toHaveBeenCalled();
+    expect(secondTrack.stop).not.toHaveBeenCalled();
+    expect(deps.transcribe).not.toHaveBeenCalled();
+    expect(text).not.toHaveBeenCalled();
+  });
+
   it("passes the resolved mime type to createRecorder", async () => {
     const { controller, deps } = setup({ getMime: () => "audio/mp4" });
     await controller.start();
@@ -190,5 +228,35 @@ describe("DictationController", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("prewarm then start reuses one getUserMedia stream", async () => {
+    const { controller, deps } = setup();
+    await controller.prewarm();
+    await controller.start();
+    expect(deps.getUserMedia).toHaveBeenCalledOnce();
+    expect(controller.state).toBe("recording");
+  });
+
+  it("releasePrewarm stops the prewarmed tracks and clears the meter", async () => {
+    const track = { stop: vi.fn() };
+    const stream = { getTracks: () => [track] } as unknown as MediaStream;
+    const onStream = vi.fn();
+    const controller = new DictationController({
+      getUserMedia: vi.fn(async () => stream),
+      createRecorder: vi.fn(),
+      transcribe: vi.fn(),
+      now: () => 1000,
+      onText: vi.fn(),
+      onError: vi.fn(),
+      onStream,
+    } as never);
+
+    await controller.prewarm();
+    expect(onStream).toHaveBeenCalledWith(stream);
+    controller.releasePrewarm();
+    expect(track.stop).toHaveBeenCalled();
+    expect(onStream).toHaveBeenLastCalledWith(null);
+    expect(controller.state).toBe("idle");
   });
 });

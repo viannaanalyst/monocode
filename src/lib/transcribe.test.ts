@@ -34,6 +34,25 @@ describe("insertAtCursor", () => {
     expect(insertAtCursor(el, "that")).toBe("fix that bug");
   });
 
+  it("separates both sides of a mid-word insertion and lands the caret after it", () => {
+    const el = fakeTextarea("helloworld", 5);
+    expect(insertAtCursor(el, "there")).toBe("hello there world");
+    expect(el.selectionStart).toBe(11);
+    expect(el.selectionEnd).toBe(11);
+  });
+
+  it("adds a trailing space when the next character is not whitespace", () => {
+    const el = fakeTextarea("fix bug", 4);
+    expect(insertAtCursor(el, "the")).toBe("fix the bug");
+    expect(el.selectionStart).toBe(7);
+  });
+
+  it("does not add a trailing space before existing whitespace", () => {
+    const el = fakeTextarea("fix  bug", 4);
+    expect(insertAtCursor(el, "the")).toBe("fix the bug");
+    expect(el.selectionStart).toBe(7);
+  });
+
   it("ignores empty transcription", () => {
     const el = fakeTextarea("keep", 4);
     expect(insertAtCursor(el, "   ")).toBe("keep");

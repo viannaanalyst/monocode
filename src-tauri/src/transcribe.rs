@@ -12,7 +12,17 @@ fn new_boundary() -> String {
     format!("----MonoCodeBoundary{}{}", std::process::id(), nanos)
 }
 
+/// Removes characters that would let interpolated values break out of their
+/// multipart part or header line.
+fn sanitize(value: &str) -> String {
+    value
+        .chars()
+        .filter(|c| !matches!(c, '\r' | '\n' | '"'))
+        .collect()
+}
+
 fn push_text_part(body: &mut Vec<u8>, boundary: &str, name: &str, value: &str) {
+    let value = sanitize(value);
     body.extend_from_slice(
         format!(
             "--{boundary}\r\nContent-Disposition: form-data; name=\"{name}\"\r\n\r\n{value}\r\n"
@@ -38,6 +48,8 @@ fn build_multipart(
     if let Some(prompt) = prompt {
         push_text_part(&mut body, boundary, "prompt", prompt);
     }
+    let mime = sanitize(mime);
+    let filename = sanitize(filename);
     body.extend_from_slice(
         format!(
             "--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"{filename}\"\r\nContent-Type: {mime}\r\n\r\n"
@@ -135,9 +147,9 @@ pub async fn transcribe_audio(
     if audio.len() > MAX_AUDIO_BYTES {
         return Err("That recording is too long to transcribe.".to_string());
     }
-    let key = crate::secrets::read_api_key()?.ok_or_else(|| "MISSING_KEY".to_string())?;
 
     tauri::async_runtime::spawn_blocking(move || {
+        let key = crate::secrets::read_api_key()?.ok_or_else(|| "MISSING_KEY".to_string())?;
         upload_transcription(
             &key,
             &audio,
@@ -182,6 +194,43 @@ mod tests {
         let text = String::from_utf8_lossy(&body);
         assert!(!text.contains("name=\"language\""));
         assert!(!text.contains("name=\"prompt\""));
+    }
+
+    #[test]
+    fn multipart_strips_crlf_and_quotes_from_interpolated_values() {
+        let body = build_multipart(
+            "B",
+            "model",
+            None,
+            Some("line1\r\nline2\"quote"),
+            "audio/mp4\r\nX-Injected: 1",
+            "a\"b.m4a",
+            b"x",
+        );
+        let text = String::from_utf8_lossy(&body);
+        // The prompt cannot start a new header/part line.
+        assert!(text.contains("line1line2quote"));
+        assert!(!text.contains("line1\r\nline2"));
+        // The mime/filename headers cannot be split by an injected CRLF.
+        assert!(!text.contains("\r\nX-Injected"));
+        assert!(!text.contains("a\r\nb.m4a"));
+        assert!(text.contains("filename=\"ab.m4a\""));
+        assert!(text.ends_with("--B--\r\n"));
+    }
+
+    #[test]
+    fn status_errors_map_to_fixed_messages() {
+        assert_eq!(map_status_error(401), "OpenAI rejected the API key.");
+        assert_eq!(map_status_error(403), "OpenAI rejected the API key.");
+        assert_eq!(
+            map_status_error(413),
+            "That recording is too long to transcribe."
+        );
+        assert_eq!(
+            map_status_error(429),
+            "OpenAI rate limit reached. Try again in a moment."
+        );
+        assert_eq!(map_status_error(500), "OpenAI transcription failed (500).");
     }
 
     #[test]
