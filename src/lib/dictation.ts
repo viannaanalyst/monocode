@@ -1,3 +1,5 @@
+const STOP_TIMEOUT_MS = 5000;
+
 export type DictationState = "idle" | "recording" | "transcribing";
 
 export interface MediaRecorderLike {
@@ -25,6 +27,8 @@ export class DictationController {
   private chunks: Blob[] = [];
   private startedAt = 0;
   private cancelled = false;
+  private disposed = false;
+  private startToken = 0;
 
   constructor(private deps: DictationDeps) {}
 
@@ -50,9 +54,14 @@ export class DictationController {
   }
 
   async start(): Promise<void> {
-    if (this.currentState !== "idle") return;
+    if (this.currentState !== "idle" || this.disposed) return;
+    const token = ++this.startToken;
     try {
       const stream = await this.deps.getUserMedia({ audio: true });
+      if (this.disposed || token !== this.startToken) {
+        for (const track of stream.getTracks()) track.stop();
+        return;
+      }
       this.stream = stream;
       this.cancelled = false;
       this.chunks = [];
@@ -69,6 +78,7 @@ export class DictationController {
       this.startedAt = this.deps.now();
       this.setState("recording");
     } catch (cause) {
+      if (this.disposed || token !== this.startToken) return;
       this.releaseStream();
       this.setState("idle");
       this.deps.onError(
@@ -77,21 +87,48 @@ export class DictationController {
     }
   }
 
+  private finishRecording(recorder: MediaRecorderLike): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      let settled = false;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const settle = () => {
+        if (settled) return;
+        settled = true;
+        if (timer !== undefined) clearTimeout(timer);
+        resolve();
+      };
+      recorder.addEventListener("stop", settle);
+      recorder.addEventListener("error", settle);
+      try {
+        recorder.stop();
+      } catch (cause) {
+        reject(cause);
+        return;
+      }
+      if (!settled) timer = setTimeout(settle, STOP_TIMEOUT_MS);
+    });
+  }
+
   async stop(): Promise<void> {
     if (this.currentState !== "recording" || !this.recorder) return;
     const recorder = this.recorder;
     this.setState("transcribing");
-    const finished = new Promise<void>((resolve) => {
-      recorder.addEventListener("stop", () => resolve());
-    });
-    recorder.stop();
-    await finished;
+
+    let failed = false;
+    try {
+      await this.finishRecording(recorder);
+    } catch (cause) {
+      failed = true;
+      this.deps.onError(
+        cause instanceof Error ? cause.message : String(cause),
+      );
+    }
 
     const mime = recorder.mimeType || "audio/webm";
     const blob = new Blob(this.chunks, { type: mime });
     this.releaseStream();
 
-    if (this.cancelled) {
+    if (failed || this.cancelled) {
       this.setState("idle");
       return;
     }
@@ -109,6 +146,7 @@ export class DictationController {
   }
 
   cancel(): void {
+    this.startToken++;
     if (this.currentState === "idle") return;
     this.cancelled = true;
     if (this.currentState === "recording") this.recorder?.stop();
@@ -117,6 +155,7 @@ export class DictationController {
   }
 
   dispose(): void {
+    this.disposed = true;
     this.cancel();
   }
 }

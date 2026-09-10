@@ -87,4 +87,108 @@ describe("DictationController", () => {
     await controller.start();
     expect(deps.createRecorder).toHaveBeenCalledWith(expect.anything(), "audio/mp4");
   });
+
+  it("cancel during a pending getUserMedia stops the late stream", async () => {
+    const track = { stop: vi.fn() };
+    const stream = { getTracks: () => [track] } as unknown as MediaStream;
+    let resolveStream!: (stream: MediaStream) => void;
+    const pending = new Promise<MediaStream>((resolve) => {
+      resolveStream = resolve;
+    });
+    const { controller, recorder, deps } = setup({
+      getUserMedia: vi.fn(() => pending),
+    });
+
+    const started = controller.start();
+    controller.cancel();
+    resolveStream(stream);
+    await started;
+
+    expect(controller.state).toBe("idle");
+    expect(track.stop).toHaveBeenCalled();
+    expect(recorder.start).not.toHaveBeenCalled();
+    expect(deps.createRecorder).not.toHaveBeenCalled();
+  });
+
+  it("dispose during a pending getUserMedia stops the late stream and blocks restart", async () => {
+    const track = { stop: vi.fn() };
+    const stream = { getTracks: () => [track] } as unknown as MediaStream;
+    let resolveStream!: (stream: MediaStream) => void;
+    const pending = new Promise<MediaStream>((resolve) => {
+      resolveStream = resolve;
+    });
+    const { controller, deps } = setup({
+      getUserMedia: vi.fn(() => pending),
+    });
+
+    const started = controller.start();
+    controller.dispose();
+    resolveStream(stream);
+    await started;
+
+    expect(controller.state).toBe("idle");
+    expect(track.stop).toHaveBeenCalled();
+
+    await controller.start();
+    expect(controller.state).toBe("idle");
+    expect(deps.createRecorder).not.toHaveBeenCalled();
+  });
+
+  it("can start again after cancelling a pending start", async () => {
+    const firstTrack = { stop: vi.fn() };
+    const firstStream = { getTracks: () => [firstTrack] } as unknown as MediaStream;
+    const secondTrack = { stop: vi.fn() };
+    const secondStream = { getTracks: () => [secondTrack] } as unknown as MediaStream;
+    let resolveFirst!: (stream: MediaStream) => void;
+    const firstPending = new Promise<MediaStream>((resolve) => {
+      resolveFirst = resolve;
+    });
+    const getUserMedia = vi
+      .fn()
+      .mockImplementationOnce(() => firstPending)
+      .mockImplementationOnce(async () => secondStream);
+    const { controller, recorder } = setup({ getUserMedia });
+
+    const first = controller.start();
+    controller.cancel();
+    resolveFirst(firstStream);
+    await first;
+
+    await controller.start();
+    expect(controller.state).toBe("recording");
+    expect(firstTrack.stop).toHaveBeenCalled();
+    expect(recorder.start).toHaveBeenCalledOnce();
+  });
+
+  it("stop releases tracks even when the recorder never emits stop", async () => {
+    vi.useFakeTimers();
+    try {
+      const track = { stop: vi.fn() };
+      const stream = { getTracks: () => [track] } as unknown as MediaStream;
+      const recorder: MediaRecorderLike = {
+        mimeType: "audio/mp4",
+        start: vi.fn(),
+        stop: vi.fn(),
+        addEventListener: vi.fn(),
+      };
+      const controller = new DictationController({
+        getUserMedia: vi.fn(async () => stream),
+        createRecorder: vi.fn(() => recorder),
+        transcribe: vi.fn(async () => "olá mundo"),
+        now: () => 1000,
+        onText: vi.fn(),
+        onError: vi.fn(),
+      } as never);
+
+      await controller.start();
+      const stopping = controller.stop();
+      await vi.advanceTimersByTimeAsync(10_000);
+      await stopping;
+
+      expect(track.stop).toHaveBeenCalled();
+      expect(controller.state).toBe("idle");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
