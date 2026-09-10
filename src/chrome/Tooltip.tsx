@@ -25,7 +25,7 @@ export function tooltipText(element: Element): string | null {
   return ariaLabel || null;
 }
 
-export function isTooltipTarget(element: Element): element is HTMLElement {
+function isTooltipControl(element: Element): element is HTMLElement {
   if (!(element instanceof HTMLElement)) return false;
   if (element.getAttribute("aria-hidden")?.toLowerCase() === "true") {
     return false;
@@ -48,7 +48,11 @@ export function isTooltipTarget(element: Element): element is HTMLElement {
     element instanceof HTMLButtonElement ||
     element instanceof HTMLAnchorElement ||
     element.getAttribute("role") === "button";
-  return isButton && tooltipText(element) !== null;
+  return isButton;
+}
+
+export function isTooltipTarget(element: Element): element is HTMLElement {
+  return isTooltipControl(element) && tooltipText(element) !== null;
 }
 
 export function tooltipPosition(
@@ -98,6 +102,7 @@ export function TooltipLayer({
   const labelRef = useRef<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titlesRef = useRef(new WeakMap<HTMLElement, string>());
+  const suppressedTargetsRef = useRef(new Set<HTMLElement>());
 
   useLayoutEffect(() => {
     if (!openTooltip || !tooltipRef.current) {
@@ -127,21 +132,32 @@ export function TooltipLayer({
       if (!titlesRef.current.has(target)) return;
       target.setAttribute("title", titlesRef.current.get(target)!);
       titlesRef.current.delete(target);
+      suppressedTargetsRef.current.delete(target);
     };
 
-    const clearActiveTarget = (target: HTMLElement) => {
-      clearTimer();
-      setOpenTooltip(null);
-      restoreTitle(target);
-      if (activeTargetRef.current === target) {
-        activeTargetRef.current = null;
-        labelRef.current = null;
+    const restoreTitleWhenUnused = (target: HTMLElement) => {
+      if (
+        pointerTargetRef.current !== target &&
+        focusTargetRef.current !== target
+      ) {
+        restoreTitle(target);
       }
     };
 
-    const isDisabled = (target: HTMLElement) =>
-      target.matches(":disabled") ||
-      target.getAttribute("aria-disabled")?.toLowerCase() === "true";
+    const closeActiveTarget = (target: HTMLElement) => {
+      if (activeTargetRef.current !== target) return;
+      clearTimer();
+      setOpenTooltip((current) =>
+        current?.target === target ? null : current,
+      );
+      activeTargetRef.current = null;
+      labelRef.current = null;
+    };
+
+    const isOpenTargetValid = (target: HTMLElement) =>
+      target.isConnected &&
+      isTooltipControl(target) &&
+      Boolean(tooltipText(target) || titlesRef.current.get(target)?.trim());
 
     const openAfterDelay = (target: HTMLElement) => {
       clearTimer();
@@ -151,8 +167,8 @@ export function TooltipLayer({
           activeTargetRef.current === target &&
           (pointerTargetRef.current === target ||
             focusTargetRef.current === target);
-        if (!stillActive || isDisabled(target) || !labelRef.current) {
-          if (isDisabled(target)) clearActiveTarget(target);
+        if (!stillActive || !isOpenTargetValid(target) || !labelRef.current) {
+          if (!isOpenTargetValid(target)) closeActiveTarget(target);
           return;
         }
 
@@ -168,7 +184,7 @@ export function TooltipLayer({
       if (activeTargetRef.current === target) return;
 
       const previous = activeTargetRef.current;
-      if (previous) clearActiveTarget(previous);
+      if (previous) closeActiveTarget(previous);
 
       const label = tooltipText(target);
       if (!label || !isTooltipTarget(target)) return;
@@ -177,6 +193,7 @@ export function TooltipLayer({
       labelRef.current = label;
       if (target.hasAttribute("title")) {
         titlesRef.current.set(target, target.getAttribute("title") ?? "");
+        suppressedTargetsRef.current.add(target);
         target.removeAttribute("title");
       }
       openAfterDelay(target);
@@ -187,7 +204,10 @@ export function TooltipLayer({
       const target = eventTarget.closest<HTMLElement>(
         "button, a, [role=button]",
       );
-      return target && isTooltipTarget(target) ? target : null;
+      return target &&
+        (isTooltipTarget(target) || titlesRef.current.has(target))
+        ? target
+        : null;
     };
 
     const activeTargetFrom = (eventTarget: EventTarget | null) => {
@@ -203,18 +223,21 @@ export function TooltipLayer({
     };
 
     const release = (target: HTMLElement) => {
+      restoreTitleWhenUnused(target);
       if (
         pointerTargetRef.current !== target &&
         focusTargetRef.current !== target
       ) {
-        clearActiveTarget(target);
+        closeActiveTarget(target);
       }
     };
 
     const onPointerOver = (event: PointerEvent) => {
       const target = targetFrom(event.target);
       if (!target || pointerTargetRef.current === target) return;
+      const previous = pointerTargetRef.current;
       pointerTargetRef.current = target;
+      if (previous) release(previous);
       activate(target);
     };
 
@@ -228,7 +251,9 @@ export function TooltipLayer({
     const onFocusIn = (event: FocusEvent) => {
       const target = targetFrom(event.target);
       if (!target || focusTargetRef.current === target) return;
+      const previous = focusTargetRef.current;
       focusTargetRef.current = target;
+      if (previous) release(previous);
       activate(target);
     };
 
@@ -244,14 +269,35 @@ export function TooltipLayer({
     document.addEventListener("focusin", onFocusIn, true);
     document.addEventListener("focusout", onFocusOut, true);
 
+    const observer = new MutationObserver(() => {
+      const activeTarget = activeTargetRef.current;
+      if (activeTarget && !isOpenTargetValid(activeTarget)) {
+        closeActiveTarget(activeTarget);
+        restoreTitleWhenUnused(activeTarget);
+      }
+    });
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: [
+        "aria-disabled",
+        "aria-hidden",
+        "disabled",
+        "role",
+        "title",
+        "aria-label",
+      ],
+      childList: true,
+      subtree: true,
+    });
+
     return () => {
       document.removeEventListener("pointerover", onPointerOver, true);
       document.removeEventListener("pointerout", onPointerOut, true);
       document.removeEventListener("focusin", onFocusIn, true);
       document.removeEventListener("focusout", onFocusOut, true);
+      observer.disconnect();
       clearTimer();
-      const activeTarget = activeTargetRef.current;
-      if (activeTarget) restoreTitle(activeTarget);
+      for (const target of suppressedTargetsRef.current) restoreTitle(target);
     };
   }, []);
 

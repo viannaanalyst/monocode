@@ -46,6 +46,31 @@ function renderLayer() {
   return container.querySelector("button")!;
 }
 
+function renderTwoActions() {
+  act(() => {
+    root.render(
+      createElement(
+        TooltipLayer,
+        null,
+        createElement("button", { title: "Action A" }, "A"),
+        createElement("button", { title: "Action B" }, "B"),
+      ),
+    );
+  });
+
+  return container.querySelectorAll("button");
+}
+
+function dispatchWithRelatedTarget(
+  target: HTMLElement,
+  type: "pointerout" | "focusout",
+  relatedTarget: EventTarget | null,
+) {
+  const event = new Event(type, { bubbles: true });
+  Object.defineProperty(event, "relatedTarget", { value: relatedTarget });
+  target.dispatchEvent(event);
+}
+
 function tooltip() {
   return document.body.querySelector('[role="tooltip"]');
 }
@@ -199,5 +224,122 @@ describe("TooltipLayer", () => {
     act(() => button.dispatchEvent(new Event("pointerout", { bubbles: true })));
     expect(button.getAttribute("title")).toBe("New terminal");
     expect(button.getAttribute("aria-label")).toBe("Create terminal");
+  });
+
+  it("keeps A title suppressed when pointer remains on A and focus moves to B", () => {
+    const [actionA, actionB] = renderTwoActions();
+
+    act(() => {
+      actionA.dispatchEvent(new Event("pointerover", { bubbles: true }));
+      actionB.dispatchEvent(new Event("focusin", { bubbles: true }));
+    });
+
+    expect(actionA.getAttribute("title")).toBeNull();
+    expect(actionB.getAttribute("title")).toBeNull();
+
+    act(() => {
+      dispatchWithRelatedTarget(actionA, "pointerout", null);
+    });
+    expect(actionA.getAttribute("title")).toBe("Action A");
+    expect(actionB.getAttribute("title")).toBeNull();
+
+    act(() => {
+      dispatchWithRelatedTarget(actionB, "focusout", null);
+    });
+    expect(actionB.getAttribute("title")).toBe("Action B");
+  });
+
+  it("keeps A title suppressed when focus remains on A and pointer enters B", () => {
+    const [actionA, actionB] = renderTwoActions();
+
+    act(() => {
+      actionA.dispatchEvent(new Event("focusin", { bubbles: true }));
+      actionB.dispatchEvent(new Event("pointerover", { bubbles: true }));
+    });
+
+    expect(actionA.getAttribute("title")).toBeNull();
+    expect(actionB.getAttribute("title")).toBeNull();
+  });
+
+  it("closes an open tooltip when its target becomes aria-disabled", async () => {
+    const button = renderLayer();
+
+    act(() => {
+      button.dispatchEvent(new Event("pointerover", { bubbles: true }));
+      vi.advanceTimersByTime(160);
+    });
+    expect(tooltip()?.textContent).toBe("New terminal");
+
+    await act(async () => {
+      button.setAttribute("aria-disabled", "true");
+      await Promise.resolve();
+    });
+
+    expect(tooltip()).toBeNull();
+  });
+
+  it("closes an open tooltip when its target becomes disabled", async () => {
+    const button = renderLayer();
+
+    act(() => {
+      button.dispatchEvent(new Event("pointerover", { bubbles: true }));
+      vi.advanceTimersByTime(160);
+    });
+
+    await act(async () => {
+      button.disabled = true;
+      await Promise.resolve();
+    });
+
+    expect(tooltip()).toBeNull();
+    expect(button.getAttribute("title")).toBeNull();
+
+    act(() => {
+      dispatchWithRelatedTarget(button, "pointerout", null);
+    });
+    expect(button.getAttribute("title")).toBe("New terminal");
+  });
+
+  it("closes an open tooltip when its target becomes aria-hidden", async () => {
+    const button = renderLayer();
+
+    act(() => {
+      button.dispatchEvent(new Event("pointerover", { bubbles: true }));
+      vi.advanceTimersByTime(160);
+    });
+
+    await act(async () => {
+      button.setAttribute("aria-hidden", "true");
+      await Promise.resolve();
+    });
+
+    expect(tooltip()).toBeNull();
+  });
+
+  it("keeps the tooltip active when pointer moves to a descendant", () => {
+    act(() => {
+      root.render(
+        createElement(
+          TooltipLayer,
+          null,
+          createElement(
+            "button",
+            { title: "Nested action" },
+            createElement("span", null, "Nested"),
+          ),
+        ),
+      );
+    });
+    const button = container.querySelector("button")!;
+    const child = button.querySelector("span")!;
+
+    act(() => {
+      button.dispatchEvent(new Event("pointerover", { bubbles: true }));
+      dispatchWithRelatedTarget(button, "pointerout", child);
+      vi.advanceTimersByTime(160);
+    });
+
+    expect(tooltip()?.textContent).toBe("Nested action");
+    expect(button.getAttribute("title")).toBeNull();
   });
 });
