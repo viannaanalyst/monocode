@@ -163,6 +163,11 @@ export const PT_BR: Record<string, string> = {
   "Jump between changes": "Pular entre alterações",
   "Jump to latest": "Ir para o mais recente",
   "Keep all session changes": "Manter todas as alterações da sessão",
+  "Undo all session changes": "Desfazer todas as alterações da sessão",
+  "Undo is unavailable while another session is running in this project":
+    "Desfazer indisponível enquanto outra sessão está em execução neste projeto",
+  "Undo is unavailable because a file changed outside this session":
+    "Desfazer indisponível porque um arquivo mudou fora desta sessão",
   "Keep archived conversations listed alongside the active ones.":
     "Manter conversas arquivadas listadas junto das ativas.",
   Keybinding: "Atalho",
@@ -718,4 +723,21 @@ export const PT_BR: Record<string, string> = {
   Failed: "Falhou",
   Deny: "Negar",
   Allow: "Permitir",
+  "Open {name} full screen": "Abrir {name} em tela cheia",
+  "Changed {count} file": "Alterou {count} arquivo",
+  "Changed {count} files": "Alterou {count} arquivos",
+  Undo: "Desfazer",
+  Keep: "Manter",
+  Review: "Revisar",
+  "Keep all session changes and dismiss this card":
+    "Manter todas as alterações da sessão e dispensar este card",
+  "Show fewer files": "Mostrar menos arquivos",
+  "Show {count} more file": "Mostrar mais {count} arquivo",
+  "Show {count} more files": "Mostrar mais {count} arquivos",
+  "Shared file": "Arquivo compartilhado",
+  "Open in Default App": "Abrir no app padrão",
+  "Copy File Name": "Copiar nome do arquivo",
+  "File tab actions": "Ações da aba",
+  "Image preview: {name}": "Prévia da imagem: {name}",
+  "Close image preview": "Fechar prévia da imagem",
 };
