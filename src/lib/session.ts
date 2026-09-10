@@ -94,6 +94,15 @@ export type SecondOpinionMeta = {
   kind?: "handoff";
 };
 
+/** A mid-turn interjection the harness asked to surface, e.g. OMP advisor notes. */
+export type InterjectionSeverity = "nit" | "concern" | "blocker";
+
+export type InterjectionMeta = {
+  customType: string;
+  /** Highest severity among this interjection's retained notes, when any is known. */
+  severity?: InterjectionSeverity;
+};
+
 export type ToolPreviewKind = "read" | "write" | "shell" | "search";
 
 export type ToolPreviewLineKind = "add" | "del" | "context";
@@ -184,6 +193,8 @@ export type Block = {
   noteCard?: NoteCardMeta;
   /** Compact in-app browser action shown in the transcript. */
   browserCard?: BrowserCardMeta;
+  /** Mid-turn interjection chrome; system blocks only. Body lives in text. */
+  interjection?: InterjectionMeta;
 };
 
 export type RuntimeMode =
