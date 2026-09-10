@@ -1,7 +1,54 @@
 // @vitest-environment happy-dom
 
-import { describe, expect, it } from "vitest";
-import { isTooltipTarget, tooltipPosition, tooltipText } from "./Tooltip";
+import { act, createElement } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  isTooltipTarget,
+  TooltipLayer,
+  tooltipPosition,
+  tooltipText,
+} from "./Tooltip";
+
+let container: HTMLDivElement;
+let root: Root;
+
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+
+beforeEach(() => {
+  vi.useFakeTimers();
+  container = document.createElement("div");
+  document.body.append(container);
+  root = createRoot(container);
+});
+
+afterEach(() => {
+  act(() => root.unmount());
+  container.remove();
+  vi.useRealTimers();
+});
+
+function renderLayer() {
+  act(() => {
+    root.render(
+      createElement(
+        TooltipLayer,
+        null,
+        createElement(
+          "button",
+          { title: "New terminal", "aria-label": "Create terminal" },
+          "New",
+        ),
+      ),
+    );
+  });
+
+  return container.querySelector("button")!;
+}
+
+function tooltip() {
+  return document.body.querySelector('[role="tooltip"]');
+}
 
 describe("tooltipText", () => {
   it("prefers title over aria-label", () => {
@@ -102,5 +149,55 @@ describe("tooltipPosition", () => {
         { width: 800, height: 768 },
       ),
     ).toEqual({ left: 160, top: 132, placement: "bottom" });
+  });
+});
+
+describe("TooltipLayer", () => {
+  it("opens a hovered action after 160ms", () => {
+    const button = renderLayer();
+
+    act(() => {
+      button.dispatchEvent(new Event("pointerover", { bubbles: true }));
+      vi.advanceTimersByTime(159);
+    });
+    expect(tooltip()).toBeNull();
+
+    act(() => vi.advanceTimersByTime(1));
+    expect(tooltip()?.textContent).toBe("New terminal");
+  });
+
+  it("does not open when the pointer leaves before 160ms", () => {
+    const button = renderLayer();
+
+    act(() => {
+      button.dispatchEvent(new Event("pointerover", { bubbles: true }));
+      button.dispatchEvent(new Event("pointerout", { bubbles: true }));
+      vi.advanceTimersByTime(160);
+    });
+
+    expect(tooltip()).toBeNull();
+  });
+
+  it("opens a focused action after 160ms", () => {
+    const button = renderLayer();
+
+    act(() => {
+      button.dispatchEvent(new Event("focusin", { bubbles: true }));
+      vi.advanceTimersByTime(160);
+    });
+
+    expect(tooltip()?.textContent).toBe("New terminal");
+  });
+
+  it("restores the native title after leaving without changing aria-label", () => {
+    const button = renderLayer();
+
+    act(() => button.dispatchEvent(new Event("pointerover", { bubbles: true })));
+    expect(button.getAttribute("title")).toBeNull();
+    expect(button.getAttribute("aria-label")).toBe("Create terminal");
+
+    act(() => button.dispatchEvent(new Event("pointerout", { bubbles: true })));
+    expect(button.getAttribute("title")).toBe("New terminal");
+    expect(button.getAttribute("aria-label")).toBe("Create terminal");
   });
 });

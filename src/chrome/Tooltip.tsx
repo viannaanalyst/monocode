@@ -1,6 +1,21 @@
-import type { ReactElement, ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactElement,
+  type ReactNode,
+} from "react";
+import { createPortal } from "react-dom";
 
 const VIEWPORT_INSET = 8;
+const TOOLTIP_DELAY_MS = 160;
+
+type OpenTooltip = {
+  anchor: DOMRect;
+  label: string;
+  target: HTMLElement;
+};
 
 export function tooltipText(element: Element): string | null {
   const title = element.getAttribute("title")?.trim();
@@ -70,5 +85,200 @@ export function TooltipLayer({
 }: {
   children: ReactNode;
 }): ReactElement {
-  return <>{children}</>;
+  const [openTooltip, setOpenTooltip] = useState<OpenTooltip | null>(null);
+  const [position, setPosition] = useState<{
+    left: number;
+    top: number;
+    placement: "top" | "bottom";
+  } | null>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const activeTargetRef = useRef<HTMLElement | null>(null);
+  const pointerTargetRef = useRef<HTMLElement | null>(null);
+  const focusTargetRef = useRef<HTMLElement | null>(null);
+  const labelRef = useRef<string | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const titlesRef = useRef(new WeakMap<HTMLElement, string>());
+
+  useLayoutEffect(() => {
+    if (!openTooltip || !tooltipRef.current) {
+      setPosition(null);
+      return;
+    }
+
+    const bounds = tooltipRef.current.getBoundingClientRect();
+    setPosition(
+      tooltipPosition(
+        openTooltip.anchor,
+        { width: bounds.width, height: bounds.height },
+        { width: window.innerWidth, height: window.innerHeight },
+      ),
+    );
+  }, [openTooltip]);
+
+  useEffect(() => {
+    const clearTimer = () => {
+      if (timerRef.current !== null) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+
+    const restoreTitle = (target: HTMLElement) => {
+      if (!titlesRef.current.has(target)) return;
+      target.setAttribute("title", titlesRef.current.get(target)!);
+      titlesRef.current.delete(target);
+    };
+
+    const clearActiveTarget = (target: HTMLElement) => {
+      clearTimer();
+      setOpenTooltip(null);
+      restoreTitle(target);
+      if (activeTargetRef.current === target) {
+        activeTargetRef.current = null;
+        labelRef.current = null;
+      }
+    };
+
+    const isDisabled = (target: HTMLElement) =>
+      target.matches(":disabled") ||
+      target.getAttribute("aria-disabled")?.toLowerCase() === "true";
+
+    const openAfterDelay = (target: HTMLElement) => {
+      clearTimer();
+      timerRef.current = setTimeout(() => {
+        timerRef.current = null;
+        const stillActive =
+          activeTargetRef.current === target &&
+          (pointerTargetRef.current === target ||
+            focusTargetRef.current === target);
+        if (!stillActive || isDisabled(target) || !labelRef.current) {
+          if (isDisabled(target)) clearActiveTarget(target);
+          return;
+        }
+
+        setOpenTooltip({
+          anchor: target.getBoundingClientRect(),
+          label: labelRef.current,
+          target,
+        });
+      }, TOOLTIP_DELAY_MS);
+    };
+
+    const activate = (target: HTMLElement) => {
+      if (activeTargetRef.current === target) return;
+
+      const previous = activeTargetRef.current;
+      if (previous) clearActiveTarget(previous);
+
+      const label = tooltipText(target);
+      if (!label || !isTooltipTarget(target)) return;
+
+      activeTargetRef.current = target;
+      labelRef.current = label;
+      if (target.hasAttribute("title")) {
+        titlesRef.current.set(target, target.getAttribute("title") ?? "");
+        target.removeAttribute("title");
+      }
+      openAfterDelay(target);
+    };
+
+    const targetFrom = (eventTarget: EventTarget | null) => {
+      if (!(eventTarget instanceof Element)) return null;
+      const target = eventTarget.closest<HTMLElement>(
+        "button, a, [role=button]",
+      );
+      return target && isTooltipTarget(target) ? target : null;
+    };
+
+    const activeTargetFrom = (eventTarget: EventTarget | null) => {
+      const activeTarget = activeTargetRef.current;
+      if (
+        activeTarget &&
+        eventTarget instanceof Node &&
+        activeTarget.contains(eventTarget)
+      ) {
+        return activeTarget;
+      }
+      return targetFrom(eventTarget);
+    };
+
+    const release = (target: HTMLElement) => {
+      if (
+        pointerTargetRef.current !== target &&
+        focusTargetRef.current !== target
+      ) {
+        clearActiveTarget(target);
+      }
+    };
+
+    const onPointerOver = (event: PointerEvent) => {
+      const target = targetFrom(event.target);
+      if (!target || pointerTargetRef.current === target) return;
+      pointerTargetRef.current = target;
+      activate(target);
+    };
+
+    const onPointerOut = (event: PointerEvent) => {
+      const target = activeTargetFrom(event.target);
+      if (!target || target.contains(event.relatedTarget as Node | null)) return;
+      if (pointerTargetRef.current === target) pointerTargetRef.current = null;
+      release(target);
+    };
+
+    const onFocusIn = (event: FocusEvent) => {
+      const target = targetFrom(event.target);
+      if (!target || focusTargetRef.current === target) return;
+      focusTargetRef.current = target;
+      activate(target);
+    };
+
+    const onFocusOut = (event: FocusEvent) => {
+      const target = activeTargetFrom(event.target);
+      if (!target || target.contains(event.relatedTarget as Node | null)) return;
+      if (focusTargetRef.current === target) focusTargetRef.current = null;
+      release(target);
+    };
+
+    document.addEventListener("pointerover", onPointerOver, true);
+    document.addEventListener("pointerout", onPointerOut, true);
+    document.addEventListener("focusin", onFocusIn, true);
+    document.addEventListener("focusout", onFocusOut, true);
+
+    return () => {
+      document.removeEventListener("pointerover", onPointerOver, true);
+      document.removeEventListener("pointerout", onPointerOut, true);
+      document.removeEventListener("focusin", onFocusIn, true);
+      document.removeEventListener("focusout", onFocusOut, true);
+      clearTimer();
+      const activeTarget = activeTargetRef.current;
+      if (activeTarget) restoreTitle(activeTarget);
+    };
+  }, []);
+
+  return (
+    <>
+      {children}
+      {openTooltip &&
+        createPortal(
+          <div
+            ref={tooltipRef}
+            role="tooltip"
+            aria-hidden="true"
+            className={`monocode-tooltip pointer-events-none ${
+              position?.placement === "top"
+                ? "monocode-tooltip--top"
+                : "monocode-tooltip--bottom"
+            }`}
+            style={{
+              left: position?.left ?? 0,
+              top: position?.top ?? 0,
+              visibility: position ? "visible" : "hidden",
+            }}
+          >
+            {openTooltip.label}
+          </div>,
+          document.body,
+        )}
+    </>
+  );
 }
