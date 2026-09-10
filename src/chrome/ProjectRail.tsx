@@ -7,6 +7,7 @@ import {
   FolderOpen,
   ImagePlus,
   Inbox,
+  ListBullet,
   MoreHorizontal,
   Pin,
   PinOff,
@@ -122,6 +123,8 @@ type Props = {
   notesEnabled?: boolean;
   onOpenNotes?: () => void;
   notesActive?: boolean;
+  allSessionsActive?: boolean;
+  onOpenAllSessions?: () => void;
   onTogglePanel?: () => void;
   onSelectProject: (path: string) => void;
   onOpenProject: () => void;
@@ -155,6 +158,8 @@ export function ProjectRail({
   notesEnabled = true,
   onOpenNotes,
   notesActive = false,
+  allSessionsActive = false,
+  onOpenAllSessions,
   onTogglePanel,
   onSelectProject,
   onOpenProject,
@@ -422,6 +427,15 @@ export function ProjectRail({
                 onClick={onOpenNotes}
                 active={notesActive}
                 ariaLabel={t("Notes")}
+              />
+            ) : null}
+            {onOpenAllSessions ? (
+              <RailAction
+                label={t("All sessions")}
+                icon={ListBullet}
+                onClick={onOpenAllSessions}
+                active={allSessionsActive}
+                ariaLabel={t("All sessions")}
               />
             ) : null}
           </div>

@@ -155,3 +155,26 @@ export function historyWithLiveSessions(
   }
   return [...rows].sort(compareSessionSummaries);
 }
+
+/**
+ * Every project's rows in one list, newest first, with live sessions merged.
+ * Powers the "All sessions" scope; rows keep their own `cwd`, so opening one
+ * can switch the active project.
+ */
+export function allProjectsHistoryWithLiveSessions(
+  history: SessionSummary[],
+  sessions: Session[],
+): SessionSummary[] {
+  const inboxIds = new Set(
+    sessions.filter((session) => session.inboxAsk).map((session) => session.id),
+  );
+  let rows = history.filter((entry) => !inboxIds.has(entry.id));
+  for (const session of sessions) {
+    if (session.inboxAsk) continue;
+    const live = session.busy || sessionNeedsInput(session);
+    if (!shouldPersistSession(session) && !live) continue;
+    if (rows.some((row) => row.id === session.id)) continue;
+    rows = mergeHistorySummary(rows, summaryFromSession(session));
+  }
+  return [...rows].sort(compareSessionSummaries);
+}

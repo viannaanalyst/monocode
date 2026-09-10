@@ -364,6 +364,7 @@ import {
   mergeProjectHistorySummary,
   replaceProjectHistory,
   historyWithLiveSessions,
+  allProjectsHistoryWithLiveSessions,
   summaryFromSession,
 } from "./lib/sessionHistory";
 import {
@@ -633,6 +634,7 @@ export default function App({
   const [sidebarTab, setSidebarTab] = useState<SidebarTabId>(
     () => loadSidebarTabOrder()[0] ?? "sessions",
   );
+  const [allSessions, setAllSessions] = useState(false);
   const [filesSearchOpen, setFilesSearchOpen] = useState(false);
   const [searchFocusToken, setSearchFocusToken] = useState(0);
   const [searchViewOpen, setSearchViewOpen] = useState(false);
@@ -1168,6 +1170,45 @@ export default function App({
   useEffect(() => {
     void refreshHistory(sidebarCwd);
   }, [sidebarCwd, refreshHistory]);
+
+  // "All sessions" spans every project, so pull the recent projects' rows
+  // (visited projects are already cached in `history`).
+  useEffect(() => {
+    if (!allSessions) return;
+    let cancelled = false;
+    const paths = [
+      ...new Set(
+        [sidebarCwd, ...recents.map((entry) => entry.path)].filter(
+          (path): path is string => !!path && path !== "~",
+        ),
+      ),
+    ];
+    void Promise.all(
+      paths.map(async (path) => {
+        try {
+          return [path, await listSessionsByProject(path)] as const;
+        } catch {
+          return [path, [] as SessionSummary[]] as const;
+        }
+      }),
+    ).then((results) => {
+      if (cancelled) return;
+      setHistory((current) =>
+        results.reduce(
+          (acc, [path, rows]) => replaceProjectHistory(acc, path, rows),
+          current,
+        ),
+      );
+      setLoadedProjects((prev) => {
+        const next = new Set(prev);
+        for (const [path] of results) next.add(normalizeProjectPath(path));
+        return next;
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [allSessions, recents, sidebarCwd]);
 
   useEffect(() => {
     if (!inboxViewOpen) return;
@@ -3354,6 +3395,7 @@ export default function App({
 
   const onSelectProject = useCallback(
     (path: string) => {
+      setAllSessions(false);
       setSearchViewOpen(false);
       setInboxViewOpen(false);
       setNotesViewOpen(false);
@@ -4853,15 +4895,17 @@ export default function App({
 
   const sidebarHistory = useMemo(
     () =>
-      historyWithLiveSessions(history, sessions, sidebarCwd, {
-        ...(projectBranches?.current
-          ? { branch: projectBranches.current }
-          : {}),
-        ...(sidebarCwd && sidebarCwd !== "~"
-          ? { repo: projectName(sidebarCwd) }
-          : {}),
-      }),
-    [history, projectBranches, sessions, sidebarCwd],
+      allSessions
+        ? allProjectsHistoryWithLiveSessions(history, sessions)
+        : historyWithLiveSessions(history, sessions, sidebarCwd, {
+            ...(projectBranches?.current
+              ? { branch: projectBranches.current }
+              : {}),
+            ...(sidebarCwd && sidebarCwd !== "~"
+              ? { repo: projectName(sidebarCwd) }
+              : {}),
+          }),
+    [allSessions, history, projectBranches, sessions, sidebarCwd],
   );
   const inboxRelatedSessions = useMemo(() => {
     const byId = new Map<string, SessionSummary>();
@@ -5531,6 +5575,9 @@ export default function App({
         onOpenFilesSearch={onFindInProject}
         searchFocusToken={searchFocusToken}
         sessions={sidebarHistory}
+        showProject={allSessions}
+        allSessionsActive={allSessions}
+        onOpenAllSessions={() => setAllSessions((value) => !value)}
         busySessionIds={busySessionIds}
         approvalSessionIds={approvalSessionIds}
         activeSessionId={active?.id}

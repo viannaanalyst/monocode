@@ -171,6 +171,10 @@ type Props = {
   gitCwd?: string;
   open: boolean;
   sessions: SessionSummary[];
+  /** Show each session's project name (the "All sessions" scope). */
+  showProject?: boolean;
+  allSessionsActive?: boolean;
+  onOpenAllSessions?: () => void;
   busySessionIds: Set<string>;
   approvalSessionIds: Set<string>;
   activeSessionId?: string;
@@ -255,6 +259,9 @@ function SidebarComponent({
   gitCwd,
   open,
   sessions,
+  showProject = false,
+  allSessionsActive = false,
+  onOpenAllSessions,
   busySessionIds,
   approvalSessionIds,
   activeSessionId,
@@ -921,6 +928,7 @@ function SidebarComponent({
         needsApproval={approvalSessionIds.has(session.id)}
         dropTarget={isSessionDrop("session", session.id)}
         compact={compact}
+        showProject={showProject}
         now={now}
         onSelect={onSessionCardSelect}
         onOpenWorkItem={onOpenInboxItem}
@@ -1527,6 +1535,8 @@ function SidebarComponent({
           notesEnabled={notesEnabled}
           onOpenNotes={onOpenNotes}
           notesActive={notesActive}
+          allSessionsActive={allSessionsActive}
+          onOpenAllSessions={onOpenAllSessions}
           onTogglePanel={onToggleProjectRail}
           onSelectProject={onSelectProject}
           onOpenProject={onOpenProject}
@@ -2146,6 +2156,7 @@ function SessionCard({
   needsApproval,
   dropTarget,
   compact = false,
+  showProject = false,
   now,
   onSelect,
   onOpenWorkItem,
@@ -2166,6 +2177,7 @@ function SessionCard({
   needsApproval: boolean;
   dropTarget?: boolean;
   compact?: boolean;
+  showProject?: boolean;
   now: number;
   onSelect: (sessionId: string, event: { shiftKey: boolean }) => void;
   onOpenWorkItem?: (item: LinkedWorkItem) => void;
@@ -2425,6 +2437,9 @@ function SessionCard({
               />
               <span className="min-w-0 truncate text-[11px] text-content/50">
                 {model}
+                {showProject && session.cwd
+                  ? ` · ${projectName(session.cwd)}`
+                  : ""}
               </span>
             </span>
             <span className="flex shrink-0 items-center gap-1.5">
