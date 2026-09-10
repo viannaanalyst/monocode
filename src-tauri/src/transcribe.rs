@@ -148,7 +148,7 @@ pub async fn transcribe_audio(
         )
     })
     .await
-    .map_err(|error| error.to_string())?
+    .map_err(|error| crate::secrets::sanitize_error(error, "Transcription failed."))?
 }
 
 #[cfg(test)]
@@ -199,12 +199,13 @@ mod tests {
     }
 
     #[test]
-    fn status_messages_never_include_a_key() {
-        for status in [401u16, 403, 413, 429, 500] {
-            let message = map_status_error(status);
-            assert!(!message.contains("sk-"));
-            assert!(!message.contains("Bearer"));
-        }
+    fn error_sanitization_drops_key_material() {
+        let leaky = format!("keyring failed for Bearer {}", "sk-leak-canary");
+        let sanitized = crate::secrets::sanitize_error(leaky, "Could not read the API key.");
+        assert_eq!(sanitized, "Could not read the API key.");
+        assert!(!sanitized.contains("sk-leak-canary"));
+        assert!(!sanitized.contains("sk-"));
+        assert!(!sanitized.contains("Bearer"));
     }
 
     #[test]
