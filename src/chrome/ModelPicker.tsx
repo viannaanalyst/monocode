@@ -1,5 +1,6 @@
 import { ChevronDown, Search, Star } from "./icons";
 import {
+  Fragment,
   useEffect,
   useMemo,
   useRef,
@@ -459,6 +460,15 @@ function ProviderTabButton({
   );
 }
 
+/** The provider segment a model carries (OpenCode's `provider/model`). */
+function modelProvider(model: AgentModel): string | null {
+  if (model.isCustom) return null;
+  const native = model.nativeId;
+  if (!native) return null;
+  const slash = native.indexOf("/");
+  return slash > 0 ? native.slice(0, slash) : null;
+}
+
 function ModelList({
   models,
   active,
@@ -510,6 +520,8 @@ function ModelList({
     );
   }
 
+  let lastProvider: string | null = null;
+
   return (
     <div
       ref={setListRef}
@@ -523,11 +535,19 @@ function ModelList({
         const favorited = favorites.includes(item.id);
         const disabled = !isHarnessAvailable(item.harness);
         const shortcut = index < 9 && !disabled ? `${MOD}${index + 1}` : null;
+        const provider = modelProvider(item);
+        const header = provider && provider !== lastProvider ? provider : null;
+        if (provider) lastProvider = provider;
         return (
-          <div
-            key={item.id}
-            ref={highlighted ? activeRef : undefined}
-            onMouseEnter={() => onActive(index)}
+          <Fragment key={item.id}>
+            {header ? (
+              <div className="px-2.5 pb-0.5 pt-2 text-[10px] font-medium uppercase tracking-wide text-content/40">
+                {header}
+              </div>
+            ) : null}
+            <div
+              ref={highlighted ? activeRef : undefined}
+              onMouseEnter={() => onActive(index)}
             className={`flex w-full items-center gap-1 rounded-lg px-1 ${
               disabled
                 ? ""
@@ -569,7 +589,9 @@ function ModelList({
                   />
                   <span className="truncate">
                     {HARNESS_TITLE[item.harness]} ·{" "}
-                    {item.isCustom ? "Custom" : HARNESS_LABEL[item.harness]}
+                    {item.isCustom
+                      ? "Custom"
+                      : (provider ?? HARNESS_LABEL[item.harness])}
                   </span>
                 </span>
               </span>
@@ -602,7 +624,8 @@ function ModelList({
                 fill={favorited ? "currentColor" : "none"}
               />
             </button>
-          </div>
+            </div>
+          </Fragment>
         );
       })}
     </div>
