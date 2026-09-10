@@ -123,7 +123,7 @@ import {
 import { ColorPickerPopover, ColorSwatchRow } from "./ColorPickerPopover";
 import { ExplorerMenu, type ExplorerMenuItem } from "./ExplorerMenu";
 import { FileTree } from "./FileTree";
-import { HarnessIcon } from "./HarnessIcon";
+import { ModelBrandIcon } from "./ModelBrandIcon";
 import { ProjectRail } from "./ProjectRail";
 import { RailAction } from "./RailAction";
 import { TerminalSpinner } from "./TerminalSpinner";
@@ -2183,9 +2183,8 @@ function SessionCard({
   const title = sessionDisplayTitle(session.title, session.harness);
   const gitLabel = formatGitLabel(session.repo, session.branch);
   const time = formatRelative(session.updatedAt, now);
-  const model = compact
-    ? null
-    : resolveModel(session.harness, session.model).name;
+  const modelChoice = resolveModel(session.harness, session.model);
+  const model = compact ? null : modelChoice.name;
   const statusClass = needsApproval
     ? "text-amber-400"
     : busy
@@ -2420,8 +2419,8 @@ function SessionCard({
         {compact ? null : (
           <span className="relative flex items-center gap-2">
             <span className="flex min-w-0 flex-1 items-center gap-1.5">
-              <HarnessIcon
-                harness={session.harness}
+              <ModelBrandIcon
+                model={modelChoice}
                 className="size-3.5 shrink-0"
               />
               <span className="min-w-0 truncate text-[11px] text-content/50">
@@ -2471,8 +2470,8 @@ function SessionCard({
                 : ""
             }`}
           >
-            <HarnessIcon
-              harness={session.harness}
+            <ModelBrandIcon
+              model={modelChoice}
               className="size-3.5 shrink-0"
             />
           </span>
