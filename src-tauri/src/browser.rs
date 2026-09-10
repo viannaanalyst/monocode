@@ -4,10 +4,7 @@ use std::time::Duration;
 use base64::Engine;
 use tauri::Manager;
 
-fn webview(
-    app: &tauri::AppHandle,
-    label: &str,
-) -> Result<tauri::Webview<tauri::Wry>, String> {
+fn webview(app: &tauri::AppHandle, label: &str) -> Result<tauri::Webview<tauri::Wry>, String> {
     app.get_webview(label)
         .ok_or_else(|| format!("webview not found: {label}"))
 }
@@ -71,10 +68,8 @@ pub async fn browser_screenshot_rect(
         if width < 2.0 || height < 2.0 {
             return Err("browser pane is too small to capture".into());
         }
-        let path = std::env::temp_dir().join(format!(
-            "monocode-browser-{}.png",
-            std::process::id()
-        ));
+        let path =
+            std::env::temp_dir().join(format!("monocode-browser-{}.png", std::process::id()));
         let region = format!("{x},{y},{width},{height}");
         let path_str = path.to_str().ok_or("bad temp path")?;
         let status = std::process::Command::new("screencapture")

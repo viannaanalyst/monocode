@@ -107,7 +107,7 @@ async function handle(msg) {
     try {
       const result = await callTool(msg.params?.name, msg.params?.arguments ?? {});
       const image = result.screenshot && String(result.screenshot).startsWith("data:image")
-        ? result.screenshot.replace(/^data:image\\\\/png;base64,/, "")
+        ? result.screenshot.replace(/^data:image\\/png;base64,/, "")
         : null;
       const content = [{ type: "text", text: JSON.stringify({ ...result, screenshot: result.screenshot ? "[png]" : undefined }, null, 2) }];
       if (image) content.push({ type: "image", data: image, mimeType: "image/png" });
