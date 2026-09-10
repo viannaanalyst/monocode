@@ -123,9 +123,16 @@ export type InboxQuery = Omit<GithubWorkItemQuery, "kind"> & {
 
 export type InboxProviderErrors = Partial<Record<InboxProvider, string>>;
 
+export type InboxProviders = {
+  github: boolean;
+  linear: boolean;
+  gitlab: boolean;
+};
+
 export type InboxListResult = {
   items: InboxItem[];
   errors: InboxProviderErrors;
+  providers: InboxProviders;
 };
 
 const INBOX_CACHE_FRESH_MS = 30_000;
@@ -181,7 +188,11 @@ export function peekInboxList(
 ): InboxListResult | null {
   const key = inboxListCacheKey(projects, query);
   if (inboxListCache?.key !== key) return null;
-  return { items: inboxListCache.items, errors: inboxListCache.errors };
+  return {
+    items: inboxListCache.items,
+    errors: inboxListCache.errors,
+    providers: inboxListCache.providers,
+  };
 }
 
 export function peekInboxItems(
@@ -478,7 +489,13 @@ export async function listInboxItems(
 ): Promise<InboxListResult> {
   const key = inboxListCacheKey(projects, query);
   if (!options?.force && inboxListIsFresh(projects, query)) {
-    return peekInboxList(projects, query) ?? { items: [], errors: {} };
+    return (
+      peekInboxList(projects, query) ?? {
+        items: [],
+        errors: {},
+        providers: { github: false, linear: false, gitlab: false },
+      }
+    );
   }
   const pending = inboxListInflight.get(key);
   if (pending) return pending;
@@ -534,8 +551,16 @@ async function fetchInboxItems(
   const errors: InboxProviderErrors = {};
   if (github.error && grouped.length > 0) errors.github = github.error;
 
+  const linearOn = (await linearConnected()).connected;
+  const gitlabOn = (await gitlabConnected()).connected;
+  const providers: InboxProviders = {
+    github: grouped.length > 0,
+    linear: linearOn,
+    gitlab: gitlabOn,
+  };
+
   let linearItems: InboxItem[] = [];
-  if ((await linearConnected()).connected) {
+  if (linearOn) {
     try {
       linearItems = await fetchLinearInboxItems(query);
     } catch (error) {
@@ -544,7 +569,7 @@ async function fetchInboxItems(
   }
 
   let gitlabItems: InboxItem[] = [];
-  if ((await gitlabConnected()).connected) {
+  if (gitlabOn) {
     const gitlab = await fetchGitlabInboxItems(unique, query, preferredPaths);
     gitlabItems = gitlab.items;
     if (gitlab.error) errors.gitlab = gitlab.error;
@@ -556,6 +581,7 @@ async function fetchInboxItems(
       preferredPaths,
     ),
     errors,
+    providers,
   };
 }
 

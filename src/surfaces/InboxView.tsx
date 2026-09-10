@@ -345,6 +345,11 @@ export function InboxView({
   const [targetItem, setTargetItem] = useState<InboxItem | null>(null);
   const [filters, setFilters] = useState(loadInboxFilters);
   const [source, setSource] = useState(loadInboxSource);
+  const [providers, setProviders] = useState({
+    github: true,
+    linear: true,
+    gitlab: true,
+  });
   const [filterMenu, setFilterMenu] = useState<{ x: number; y: number } | null>(
     null,
   );
@@ -457,6 +462,7 @@ export function InboxView({
     if (cached) {
       setItems(cached.items);
       setProviderErrors(cached.errors);
+      setProviders(cached.providers);
       setLoading(false);
     }
     if (!force && cached && inboxListIsFresh(projects, fetchQuery)) {
@@ -474,6 +480,7 @@ export function InboxView({
         if (cancelled) return;
         setItems(next.items);
         setProviderErrors(next.errors);
+        setProviders(next.providers);
       })
       .catch((err: unknown) => {
         if (cancelled) return;
@@ -600,6 +607,16 @@ export function InboxView({
     saveInboxSource(next);
   };
 
+  // A source only deserves a tab when its provider is actually available, so
+  // the current selection falls back to the first connected provider.
+  useEffect(() => {
+    const order: InboxSource[] = ["github", "linear", "gitlab"];
+    const available = order.filter((provider) => providers[provider]);
+    if (available.length === 0 || providers[source]) return;
+    setSource(available[0]);
+    saveInboxSource(available[0]);
+  }, [providers, source]);
+
   const onFilterButtonClick = (event: ReactMouseEvent<HTMLButtonElement>) => {
     if (filterMenu) {
       setFilterMenu(null);
@@ -622,21 +639,27 @@ export function InboxView({
         aria-label={t("Inbox source")}
         className="flex h-9 shrink-0 items-center gap-px border-b border-content/10 px-2"
       >
-        <InboxSourceTab
-          source="github"
-          selected={source === "github"}
-          onSelect={onSourceChange}
-        />
-        <InboxSourceTab
-          source="linear"
-          selected={source === "linear"}
-          onSelect={onSourceChange}
-        />
-        <InboxSourceTab
-          source="gitlab"
-          selected={source === "gitlab"}
-          onSelect={onSourceChange}
-        />
+        {providers.github ? (
+          <InboxSourceTab
+            source="github"
+            selected={source === "github"}
+            onSelect={onSourceChange}
+          />
+        ) : null}
+        {providers.linear ? (
+          <InboxSourceTab
+            source="linear"
+            selected={source === "linear"}
+            onSelect={onSourceChange}
+          />
+        ) : null}
+        {providers.gitlab ? (
+          <InboxSourceTab
+            source="gitlab"
+            selected={source === "gitlab"}
+            onSelect={onSourceChange}
+          />
+        ) : null}
       </div>
       <div className="flex h-9 shrink-0 items-center gap-1 border-b border-content/10 px-2">
         <div className="relative flex h-7 min-w-0 flex-1 items-center">
