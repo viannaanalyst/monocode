@@ -1,6 +1,6 @@
 import { code } from "@streamdown/code";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { openPath, openUrl } from "@tauri-apps/plugin-opener";
 import {
   createContext,
   isValidElement,
@@ -24,6 +24,9 @@ import {
 } from "streamdown";
 import type { PluggableList } from "unified";
 import { FileTypeIcon } from "../chrome/FileTypeIcon";
+import { ExplorerMenu } from "../chrome/ExplorerMenu";
+import { revealPath } from "../lib/fs";
+import { IS_MAC, IS_WIN } from "../lib/platform";
 import { createLazyMermaidPlugin } from "./mermaidPlugin";
 import {
   isExtensionlessFileName,
@@ -151,6 +154,51 @@ const LANGUAGE_FILE_NAMES: Record<string, string> = {
   zsh: "code.sh",
 };
 
+/** Context menu for a file reference: open in the system default app or reveal it. */
+function revealFileLabel(): string {
+  if (IS_MAC) return t("Reveal in Finder");
+  if (IS_WIN) return t("Reveal in File Explorer");
+  return t("Open Containing Folder");
+}
+
+function FileReferenceMenu({
+  x,
+  y,
+  path,
+  navigation,
+  onOpenFile,
+  onClose,
+}: {
+  x: number;
+  y: number;
+  path: string;
+  navigation?: Parameters<OpenFileFn>[1];
+  onOpenFile?: OpenFileFn;
+  onClose: () => void;
+}) {
+  return (
+    <ExplorerMenu
+      x={x}
+      y={y}
+      ariaLabel={t("File actions")}
+      items={[
+        { kind: "item", id: "open", label: t("Open in Default App") },
+        { kind: "item", id: "reveal", label: revealFileLabel() },
+        ...(onOpenFile
+          ? [{ kind: "item" as const, id: "editor", label: t("Open in Editor") }]
+          : []),
+      ]}
+      onPick={(id) => {
+        if (id === "open") void openPath(path).catch(() => undefined);
+        else if (id === "reveal") void revealPath(path).catch(() => undefined);
+        else if (id === "editor") onOpenFile?.(path, navigation);
+        onClose();
+      }}
+      onClose={onClose}
+    />
+  );
+}
+
 type MarkdownLinkProps = ComponentProps<"a"> & { node?: unknown };
 
 function MarkdownLink({
@@ -166,40 +214,61 @@ function MarkdownLink({
   const { cwd, onOpenFile } = useContext(FileOpenContext);
   const file = href ? resolveWorkspaceFileReference(href, cwd) : undefined;
   const label = textContent(children);
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   if (allowRemoteMedia && href && isInboxMediaUrl(href)) {
     return <InboxMedia src={href} alt={label} />;
   }
 
   return (
-    <a
-      href={href}
-      className={`text-sky-400/90 hover:text-sky-300 hover:underline ${className ?? ""}`}
-      {...props}
-      dir={dir ?? "auto"}
-      onClick={(event) => {
-        onClick?.(event);
-        if (event.defaultPrevented) return;
-        if (file && onOpenFile) {
-          event.preventDefault();
-          onOpenFile(file.path, file.navigation);
-          return;
+    <>
+      <a
+        href={href}
+        className={`text-sky-400/90 hover:text-sky-300 hover:underline ${className ?? ""}`}
+        {...props}
+        dir={dir ?? "auto"}
+        onContextMenu={
+          file
+            ? (event) => {
+                event.preventDefault();
+                setMenu({ x: event.clientX, y: event.clientY });
+              }
+            : undefined
         }
-        if (href && /^https?:\/\//i.test(href)) {
-          event.preventDefault();
-          if (loadLocalhostInBrowser() && isLocalhostUrl(href)) {
-            openInAppBrowser(href);
+        onClick={(event) => {
+          onClick?.(event);
+          if (event.defaultPrevented) return;
+          if (file && onOpenFile) {
+            event.preventDefault();
+            onOpenFile(file.path, file.navigation);
             return;
           }
-          void openUrl(href).catch(() => undefined);
-          return;
-        }
-        if (!href || !/^https?:\/\//i.test(href)) {
-          event.preventDefault();
-        }
-      }}
-    >
-      {children}
-    </a>
+          if (href && /^https?:\/\//i.test(href)) {
+            event.preventDefault();
+            if (loadLocalhostInBrowser() && isLocalhostUrl(href)) {
+              openInAppBrowser(href);
+              return;
+            }
+            void openUrl(href).catch(() => undefined);
+            return;
+          }
+          if (!href || !/^https?:\/\//i.test(href)) {
+            event.preventDefault();
+          }
+        }}
+      >
+        {children}
+      </a>
+      {menu && file ? (
+        <FileReferenceMenu
+          x={menu.x}
+          y={menu.y}
+          path={file.path}
+          navigation={file.navigation}
+          onOpenFile={onOpenFile}
+          onClose={() => setMenu(null)}
+        />
+      ) : null}
+    </>
   );
 }
 
@@ -224,34 +293,55 @@ function MarkdownCode({
       file && onOpenFile
         ? () => onOpenFile(file.path, file.navigation)
         : undefined;
+    const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
     return (
-      <code
-        {...props}
-        dir="ltr"
-        className={`inline-flex items-center gap-1 rounded-md bg-content/8 px-1.5 min-h-6 max-w-full [overflow-wrap:anywhere] align-baseline font-mono text-[0.8em] text-content ${
-          open ? "cursor-pointer hover:text-sky-300 hover:underline" : ""
-        } ${className ?? ""}`}
-        role={open ? "link" : undefined}
-        tabIndex={open ? 0 : undefined}
-        onClick={open}
-        onKeyDown={
-          open
-            ? (event) => {
-                if (event.key === "Enter" || event.key === " ") {
+      <>
+        <code
+          {...props}
+          dir="ltr"
+          className={`inline-flex items-center gap-1 rounded-md bg-content/8 px-1.5 min-h-6 max-w-full [overflow-wrap:anywhere] align-baseline font-mono text-[0.8em] text-content ${
+            open ? "cursor-pointer hover:text-sky-300 hover:underline" : ""
+          } ${className ?? ""}`}
+          role={open ? "link" : undefined}
+          tabIndex={open ? 0 : undefined}
+          onClick={open}
+          onContextMenu={
+            file
+              ? (event) => {
                   event.preventDefault();
-                  open();
+                  setMenu({ x: event.clientX, y: event.clientY });
                 }
-              }
-            : undefined
-        }
-      >
-        {fileName ? (
-          <span aria-hidden="true">
-            <FileTypeIcon name={fileName} isDir={false} size={14} />
-          </span>
+              : undefined
+          }
+          onKeyDown={
+            open
+              ? (event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    open();
+                  }
+                }
+              : undefined
+          }
+        >
+          {fileName ? (
+            <span aria-hidden="true">
+              <FileTypeIcon name={fileName} isDir={false} size={14} />
+            </span>
+          ) : null}
+          {children}
+        </code>
+        {menu && file ? (
+          <FileReferenceMenu
+            x={menu.x}
+            y={menu.y}
+            path={file.path}
+            navigation={file.navigation}
+            onOpenFile={onOpenFile}
+            onClose={() => setMenu(null)}
+          />
         ) : null}
-        {children}
-      </code>
+      </>
     );
   }
 

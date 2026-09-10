@@ -768,6 +768,8 @@ export const PT_BR: Record<string, string> = {
   "Notification sound": "Som da notificação",
   "Played when a turn finishes and when an approval is pending. Choosing one plays a preview.":
     "Toca quando um turno termina e quando há uma aprovação pendente. Escolher um toca uma prévia.",
+  "Open in Editor": "Abrir no editor",
+  "File actions": "Ações do arquivo",
   Model: "Modelo",
   Save: "Salvar",
 };
