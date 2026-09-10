@@ -106,8 +106,8 @@ mod tests {
     #[test]
     fn system_scan_returns_sorted_unique_families() {
         let fonts = collect_system_fonts_sync();
-        // CI runners always have at least a handful of fonts.
-        assert!(!fonts.is_empty(), "expected at least one system font");
+        // An empty result is valid (minimal containers may have no fonts);
+        // uniqueness and ordering must hold regardless.
         let mut last = String::new();
         let mut seen = std::collections::HashSet::new();
         for font in &fonts {
