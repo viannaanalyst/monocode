@@ -1,5 +1,8 @@
 import { t } from "../i18n";
 import { ALT, IS_MAC, MOD, SHIFT } from "./platform";
+import type { VoiceModel } from "./transcribe";
+
+export type { VoiceModel };
 
 const SECTION_KEY = "monocode.settingsSection";
 
@@ -484,4 +487,90 @@ export function filterKeybindings(
       row.when.toLowerCase().includes(needle) ||
       t(row.when).toLowerCase().includes(needle),
   );
+}
+
+const VOICE_ENABLED_KEY = "monocode.voiceEnabled";
+const VOICE_MODEL_KEY = "monocode.voiceModel";
+const VOICE_LANGUAGE_KEY = "monocode.voiceLanguage";
+const VOICE_PROMPT_KEY = "monocode.voicePrompt";
+
+export type VoiceLanguage = "auto" | "pt" | "en" | "es";
+
+export const VOICE_ENABLED_DEFAULT = false;
+export const VOICE_MODEL_DEFAULT: VoiceModel = "gpt-4o-transcribe";
+export const VOICE_LANGUAGE_DEFAULT: VoiceLanguage = "auto";
+
+function isVoiceModel(value: unknown): value is VoiceModel {
+  return value === "gpt-4o-transcribe" || value === "gpt-4o-mini-transcribe";
+}
+
+function isVoiceLanguage(value: unknown): value is VoiceLanguage {
+  return value === "auto" || value === "pt" || value === "en" || value === "es";
+}
+
+export function loadVoiceEnabled(): boolean {
+  try {
+    const raw = localStorage.getItem(VOICE_ENABLED_KEY);
+    return raw === "1" || raw === "true";
+  } catch {
+    return VOICE_ENABLED_DEFAULT;
+  }
+}
+
+export function saveVoiceEnabled(value: boolean) {
+  try {
+    localStorage.setItem(VOICE_ENABLED_KEY, value ? "1" : "0");
+  } catch {
+    // private mode / quota
+  }
+}
+
+export function loadVoiceModel(): VoiceModel {
+  try {
+    const raw = localStorage.getItem(VOICE_MODEL_KEY);
+    return isVoiceModel(raw) ? raw : VOICE_MODEL_DEFAULT;
+  } catch {
+    return VOICE_MODEL_DEFAULT;
+  }
+}
+
+export function saveVoiceModel(value: VoiceModel) {
+  try {
+    localStorage.setItem(VOICE_MODEL_KEY, value);
+  } catch {
+    // private mode / quota
+  }
+}
+
+export function loadVoiceLanguage(): VoiceLanguage {
+  try {
+    const raw = localStorage.getItem(VOICE_LANGUAGE_KEY);
+    return isVoiceLanguage(raw) ? raw : VOICE_LANGUAGE_DEFAULT;
+  } catch {
+    return VOICE_LANGUAGE_DEFAULT;
+  }
+}
+
+export function saveVoiceLanguage(value: VoiceLanguage) {
+  try {
+    localStorage.setItem(VOICE_LANGUAGE_KEY, value);
+  } catch {
+    // private mode / quota
+  }
+}
+
+export function loadVoicePrompt(): string {
+  try {
+    return localStorage.getItem(VOICE_PROMPT_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+export function saveVoicePrompt(value: string) {
+  try {
+    localStorage.setItem(VOICE_PROMPT_KEY, value);
+  } catch {
+    // private mode / quota
+  }
 }

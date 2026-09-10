@@ -12,6 +12,10 @@ import {
   loadGridArcadeEnabled,
   loadLiveAgentsEnabled,
   loadNotesEnabled,
+  loadVoiceEnabled,
+  loadVoiceLanguage,
+  loadVoiceModel,
+  loadVoicePrompt,
   NOTES_ENABLED_DEFAULT,
   saveComposerRunner,
   saveDiffViewer,
@@ -19,6 +23,10 @@ import {
   saveGridArcadeEnabled,
   saveLiveAgentsEnabled,
   saveNotesEnabled,
+  saveVoiceEnabled,
+  saveVoiceLanguage,
+  saveVoiceModel,
+  saveVoicePrompt,
 } from "./settings";
 
 const KEY = "monocode.composerRunner";
@@ -195,5 +203,34 @@ describe("diff viewer setting", () => {
   it("ignores unknown stored values", () => {
     localStorage.setItem(DIFF_VIEWER_KEY, "split");
     expect(loadDiffViewer()).toBe("editor");
+  });
+});
+
+describe("voice settings", () => {
+  beforeEach(mockLocalStorage);
+
+  it("defaults to disabled with the full model", () => {
+    expect(loadVoiceEnabled()).toBe(false);
+    expect(loadVoiceModel()).toBe("gpt-4o-transcribe");
+    expect(loadVoiceLanguage()).toBe("auto");
+    expect(loadVoicePrompt()).toBe("");
+  });
+
+  it("round-trips values", () => {
+    saveVoiceEnabled(true);
+    saveVoiceModel("gpt-4o-mini-transcribe");
+    saveVoiceLanguage("pt");
+    saveVoicePrompt("termos do projeto");
+    expect(loadVoiceEnabled()).toBe(true);
+    expect(loadVoiceModel()).toBe("gpt-4o-mini-transcribe");
+    expect(loadVoiceLanguage()).toBe("pt");
+    expect(loadVoicePrompt()).toBe("termos do projeto");
+  });
+
+  it("rejects unknown model and language values", () => {
+    localStorage.setItem("monocode.voiceModel", "nope");
+    localStorage.setItem("monocode.voiceLanguage", "xx");
+    expect(loadVoiceModel()).toBe("gpt-4o-transcribe");
+    expect(loadVoiceLanguage()).toBe("auto");
   });
 });
