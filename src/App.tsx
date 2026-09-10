@@ -1382,9 +1382,27 @@ export default function App({
     );
   }, [sessions, tabs, persistSession, liveAgentsEnabled]);
 
-  const activateTab = useCallback((id: string) => {
-    setActiveTabId(id);
+  const activateTab = useCallback((id: string, paneId?: string) => {
     const tab = tabsRef.current.find((entry) => entry.id === id);
+    const nextFocusedId =
+      tab && paneId &&
+      (leafIds(tab.layout).includes(paneId) ||
+        tab.editorPanes.some((entry) => entry.id === paneId) ||
+        (tab.terminalPanes ?? []).some((entry) => entry.id === paneId))
+        ? paneId
+        : tab?.focusedId;
+
+    setActiveTabId(id);
+    if (tab && nextFocusedId && nextFocusedId !== tab.focusedId) {
+      setTabs((prev) =>
+        prev.map((entry) =>
+          entry.id === id
+            ? { ...entry, focusedId: nextFocusedId, diffFocused: false }
+            : entry,
+        ),
+      );
+    }
+
     if (tab) {
       const cwd = workspaceTabCwd(tab, sessionsRef.current);
       if (cwd && looksLikeProject(cwd)) {
@@ -1396,8 +1414,8 @@ export default function App({
       }
     }
     setComposerFocused(
-      !!tab &&
-        sessionsRef.current.some((session) => session.id === tab.focusedId),
+      !!nextFocusedId &&
+        sessionsRef.current.some((session) => session.id === nextFocusedId),
     );
   }, []);
 
@@ -3358,7 +3376,7 @@ export default function App({
         case "activate":
           setProjectCwd(normalized);
           setRecents(rememberProject(normalized));
-          activateTab(decision.tabId);
+          activateTab(decision.tabId, decision.paneId);
           return;
         case "create":
           break;
