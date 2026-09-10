@@ -34,6 +34,7 @@
     "@hugeicons/core-free-icons": "^4.3.0",
     "@hugeicons/react": "^1.1.10",
     "@lezer/highlight": "^1.2.3",
+    "@lobehub/icons": "^5.18.0",
     "@streamdown/code": "^1.1.1",
     "@streamdown/mermaid": "^1.0.2",
     "@tauri-apps/api": "^2",

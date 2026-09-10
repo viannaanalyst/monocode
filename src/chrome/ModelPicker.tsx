@@ -43,6 +43,7 @@ import {
 } from "../lib/session";
 import { useLockOverscroll } from "../hooks/useLockOverscroll";
 import { HarnessIcon } from "./HarnessIcon";
+import { ModelBrandIcon } from "./ModelBrandIcon";
 import { Popover } from "./Popover";
 import { MOD } from "../lib/platform";
 import { t } from "../i18n";
@@ -318,7 +319,7 @@ export function ModelPicker({
             : "bg-content/10 text-content hover:bg-content/15"
         }`}
       >
-        <HarnessIcon harness={current.harness} className="size-4 shrink-0" />
+        <ModelBrandIcon model={current} className="size-4 shrink-0" />
         <span className="min-w-0 truncate text-[11px]">{current.name}</span>
         <ChevronDown
           className={`size-3 shrink-0 text-content/50 ${open ? "rotate-180" : ""}`}
@@ -554,9 +555,9 @@ function ModelList({
                   {item.name}
                 </span>
                 <span className="mt-0.5 flex items-center gap-1 text-[11px] leading-4 text-content/50">
-                  <HarnessIcon
-                    harness={item.harness}
-                    className="size-3 shrink-0 opacity-80"
+                  <ModelBrandIcon
+                    model={item}
+                    className="size-3.5 shrink-0 opacity-80"
                   />
                   <span className="truncate">
                     {HARNESS_TITLE[item.harness]} ·{" "}
