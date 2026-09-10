@@ -1,11 +1,29 @@
-import { describe, expect, it } from "vitest";
+// @vitest-environment happy-dom
+
+import { act, createElement } from "react";
+import { createRoot } from "react-dom/client";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   tabCopy,
   tabStripOverflow,
+  TitleBar,
   titleTabContextCloseIds,
   titleTabClosable,
   type Tab,
 } from "./TitleBar";
+
+vi.mock("./WindowControls", () => ({ WindowControls: () => null }));
+
+const roots: ReturnType<typeof createRoot>[] = [];
+
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+
+afterEach(() => {
+  for (const root of roots.splice(0)) {
+    act(() => root.unmount());
+  }
+  document.body.replaceChildren();
+});
 
 function tab(overrides: Partial<Tab> = {}): Tab {
   return {
@@ -141,5 +159,41 @@ describe("titleTabContextCloseIds", () => {
     expect(titleTabContextCloseIds(tabs, "a", "left")).toEqual([]);
     expect(titleTabContextCloseIds(tabs, "d", "right")).toEqual([]);
     expect(titleTabContextCloseIds(tabs, "missing", "others")).toEqual([]);
+  });
+});
+
+describe("TitleBar terminal action", () => {
+  it("keeps its label and enabled pointer cursor when a callback is supplied", () => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    roots.push(root);
+
+    act(() => {
+      root.render(
+        createElement(TitleBar, {
+          tabs: [tab()],
+          activeId: "t1",
+          cwd: "/workspace/monocode",
+          onToggleSidebar: () => {},
+          onSelect: () => {},
+          onNew: () => {},
+          onNewTerminal: () => {},
+          onClose: () => {},
+          onCloseMany: () => {},
+          onReorder: () => {},
+        }),
+      );
+    });
+
+    const terminalAction = container.querySelector<HTMLButtonElement>(
+      '[aria-label="New Terminal (Ctrl+`)"]',
+    );
+    expect(terminalAction).not.toBeNull();
+    expect(terminalAction?.getAttribute("aria-label")).toBe(
+      "New Terminal (Ctrl+`)",
+    );
+    expect(terminalAction?.getAttribute("aria-disabled")).not.toBe("true");
+    expect(terminalAction?.className).toContain("cursor-pointer");
   });
 });

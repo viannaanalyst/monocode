@@ -420,12 +420,12 @@ export function IconButton({
       }}
       className={`grid size-6.5 place-items-center rounded-md ${
         disabled
-          ? "text-content/25"
+          ? "cursor-default text-content/25"
           : accent
-            ? "text-accent hover:bg-content/10"
+            ? "cursor-pointer text-accent hover:bg-content/10"
             : active
-              ? "text-content hover:bg-content/10"
-              : "text-content/50 hover:bg-content/10 hover:text-content"
+              ? "cursor-pointer text-content hover:bg-content/10"
+              : "cursor-pointer text-content/50 hover:bg-content/10 hover:text-content"
       }`}
     >
       {children}

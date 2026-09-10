@@ -15,6 +15,7 @@ import { Sidebar } from "./chrome/Sidebar";
 import { ApprovalToasts } from "./chrome/ApprovalToasts";
 import { WhatsNewDialog } from "./chrome/WhatsNewDialog";
 import { TitleBar, type Tab as TitleTab } from "./chrome/TitleBar";
+import { TooltipLayer } from "./chrome/Tooltip";
 import { MenuBar } from "./chrome/MenuBar";
 import { FilePicker } from "./chrome/FilePicker";
 import { UsageFooter } from "./chrome/UsageFooter";
@@ -5298,11 +5299,12 @@ export default function App({
   };
 
   return (
-    <div
-      className={`flex h-full text-content ${
-        HAS_NATIVE_GLASS ? "bg-background-base/40" : "bg-background-base"
-      }`}
-    >
+    <TooltipLayer>
+      <div
+        className={`flex h-full text-content ${
+          HAS_NATIVE_GLASS ? "bg-background-base/40" : "bg-background-base"
+        }`}
+      >
       <Sidebar
         cwd={sidebarCwd}
         gitCwd={gitCwd}
@@ -5675,7 +5677,8 @@ export default function App({
           onClose={() => setWhatsNewVersion(null)}
         />
       ) : null}
-    </div>
+      </div>
+    </TooltipLayer>
   );
 }
 

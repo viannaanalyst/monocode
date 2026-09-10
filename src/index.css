@@ -401,6 +401,14 @@ header[data-tauri-drag-region] button {
   cursor: default !important;
 }
 
+header[data-tauri-drag-region] button:not(:disabled) {
+  cursor: pointer !important;
+}
+
+header[data-tauri-drag-region] button[aria-disabled="true"] {
+  cursor: default !important;
+}
+
 .material-icon svg {
   display: block;
   width: 100%;
