@@ -19,11 +19,14 @@ export function isTooltipTarget(element: Element): element is HTMLElement {
     return false;
   }
   if (element instanceof HTMLInputElement) return false;
-  if (
-    element.matches(":disabled") ||
-    element.closest("fieldset:disabled") !== null
-  ) {
-    return false;
+  if (element.matches(":disabled")) return false;
+
+  const disabledFieldset = element.closest("fieldset:disabled");
+  if (disabledFieldset) {
+    const firstLegend = Array.from(disabledFieldset.children).find(
+      (child) => child.tagName === "LEGEND",
+    );
+    if (!firstLegend?.contains(element)) return false;
   }
 
   const isButton =

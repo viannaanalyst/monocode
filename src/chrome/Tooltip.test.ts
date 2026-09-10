@@ -56,6 +56,18 @@ describe("tooltipText", () => {
     expect(isTooltipTarget(button)).toBe(false);
   });
 
+  it("accepts a labeled button inside the first legend of a disabled fieldset", () => {
+    const fieldset = document.createElement("fieldset");
+    fieldset.disabled = true;
+    const legend = document.createElement("legend");
+    const button = document.createElement("button");
+    button.setAttribute("aria-label", "Settings");
+    legend.append(button);
+    fieldset.append(legend);
+
+    expect(isTooltipTarget(button)).toBe(true);
+  });
+
   it("rejects inputs even when they have role button and a label", () => {
     const input = document.createElement("input");
     input.setAttribute("role", "button");
