@@ -108,6 +108,7 @@ type Props = {
     requestId: number,
     reply: UserQuestionReply,
   ) => void;
+  onQuestionInteraction?: (sessionId: string, requestId: number) => void;
   onOpenFile: (path: string) => void;
   onOpenDiff: (
     path?: string,
@@ -165,6 +166,7 @@ export const SessionPane = memo(function SessionPane({
   onHandoffCardDismiss,
   onApproval,
   onQuestionReply,
+  onQuestionInteraction,
   onOpenFile,
   onOpenDiff,
   onOpenPlan,
@@ -322,6 +324,7 @@ export const SessionPane = memo(function SessionPane({
       onNoteCardDismiss={() => onNoteCardDismiss?.(session.id)}
       onHandoffCardDismiss={() => onHandoffCardDismiss?.(session.id)}
       onQuestionReply={replyQuestion}
+      onQuestionInteraction={(id) => onQuestionInteraction?.(session.id, id)}
       onFocus={() => onFocus(session.id)}
       onCwdChange={(cwd) => onCwdChange(session.id, cwd)}
       onBranchChange={() => onBranchChange(session.id)}
