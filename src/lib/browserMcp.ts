@@ -1,4 +1,5 @@
 import { joinPath } from "./paths";
+import { BROWSER_REQUEST_FILE, BROWSER_RESULT_FILE } from "./inAppBrowser";
 
 export const BROWSER_MCP_FILENAME = ".monocode-browser-mcp.mjs";
 
@@ -148,5 +149,37 @@ stdin.on("data", (chunk) => {
 export async function ensureBrowserMcpScript(cwd: string): Promise<void> {
   if (!cwd.trim()) return;
   const { writeTextFile } = await import("./fs");
-  await writeTextFile(browserMcpScriptPath(cwd), BROWSER_MCP_SCRIPT);
+  await Promise.all([
+    writeTextFile(browserMcpScriptPath(cwd), BROWSER_MCP_SCRIPT),
+    ensureGitExcluded(cwd),
+  ]);
+}
+
+/**
+ * Keep the browser scratch files out of the project's git status by adding
+ * them to `.git/info/exclude` (a local ignore, so the tracked `.gitignore` is
+ * never touched). No-op outside a plain git checkout.
+ */
+async function ensureGitExcluded(cwd: string): Promise<void> {
+  const entries = [
+    BROWSER_MCP_FILENAME,
+    BROWSER_REQUEST_FILE,
+    BROWSER_RESULT_FILE,
+  ];
+  const { readTextFile, writeTextFile } = await import("./fs");
+  const excludePath = joinPath(cwd, ".git/info/exclude");
+  let current: string;
+  try {
+    current = await readTextFile(excludePath);
+  } catch {
+    return;
+  }
+  const lines = current.split(/\r?\n/);
+  const missing = entries.filter((entry) => !lines.includes(entry));
+  if (missing.length === 0) return;
+  const separator = current.length === 0 || current.endsWith("\n") ? "" : "\n";
+  await writeTextFile(
+    excludePath,
+    `${current}${separator}# MonoCode browser tools\n${missing.join("\n")}\n`,
+  );
 }
