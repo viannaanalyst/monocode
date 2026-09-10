@@ -4,6 +4,7 @@ mod browser;
 mod chat_background;
 mod checkpoint;
 mod cursor_store;
+mod fonts;
 mod fs;
 mod gitlab;
 mod harness;
@@ -351,6 +352,7 @@ pub fn run() {
             secrets::voice_clear_api_key,
             secrets::voice_has_api_key,
             transcribe::transcribe_audio,
+            fonts::list_system_fonts,
         ])
         .build(tauri::generate_context!())
         .expect("error while building MonoCode");
