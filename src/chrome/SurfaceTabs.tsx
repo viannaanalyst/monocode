@@ -1,4 +1,7 @@
 import { openPath } from "@tauri-apps/plugin-opener";
+import { convertFileSrc } from "@tauri-apps/api/core";
+import { openInAppBrowser } from "../lib/browserUrl";
+import { isHtmlFilePath } from "../lib/fileKind";
 import { GitCompare, Globe, GripVertical, Plus, Terminal, X } from "./icons";
 import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { useLayoutEffect, useRef, useState } from "react";
@@ -71,6 +74,15 @@ export function surfaceTabMenuItems(file: FilePaneTab): ExplorerMenuItem[] {
   if (!isFilesystemTab(file) || isChangesTab(file)) return [close];
 
   return [
+    ...(isHtmlFilePath(file.path)
+      ? [
+          {
+            kind: "item" as const,
+            id: "open-browser",
+            label: t("Open in Browser"),
+          },
+        ]
+      : []),
     { kind: "item", id: "open-default", label: t("Open in Default App") },
     { kind: "item", id: "reveal", label: t(REVEAL_LABEL) },
     { kind: "sep" },
@@ -199,6 +211,11 @@ export function SurfaceTabs({
       return;
     }
     if (!isFilesystemTab(menuFile) || isChangesTab(menuFile)) return;
+
+    if (id === "open-browser") {
+      openInAppBrowser(convertFileSrc(menuFile.path));
+      return;
+    }
 
     let action: Promise<void>;
     switch (id) {

@@ -371,6 +371,7 @@ export const PT_BR: Record<string, string> = {
   "Remove #{tag}": "Remover #{tag}",
   "Keep this file": "Manter este arquivo",
   "Revert this file": "Reverter este arquivo",
+  "Open in Browser": "Abrir no navegador",
   "Run project script": "Rodar script do projeto",
   "Add scripts in .monocode/scripts.json":
     "Adicione scripts em .monocode/scripts.json",

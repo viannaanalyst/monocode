@@ -46,6 +46,7 @@ import { IS_MAC, IS_WIN } from "../lib/platform";
 import { InboxMedia } from "./InboxMedia";
 import { t } from "../i18n";
 import { isLocalhostUrl, openInAppBrowser } from "../lib/browserUrl";
+import { isHtmlFilePath } from "../lib/fileKind";
 import { loadLocalhostInBrowser } from "../lib/settings";
 
 const MERMAID_BASE_CONFIG = {
@@ -120,6 +121,7 @@ const REVEAL_LABEL = IS_MAC
     : "Open Containing Folder";
 
 function fileLinkMenuItems(
+  path: string,
   canOpenInMonoCode: boolean,
   canCopyRelativePath: boolean,
 ): ExplorerMenuItem[] {
@@ -130,6 +132,15 @@ function fileLinkMenuItems(
       label: t("Open in MonoCode"),
       disabled: !canOpenInMonoCode,
     },
+    ...(isHtmlFilePath(path)
+      ? [
+          {
+            kind: "item" as const,
+            id: "open-browser",
+            label: t("Open in Browser"),
+          },
+        ]
+      : []),
     { kind: "item", id: "open-default", label: t("Open in Default App") },
     { kind: "item", id: "reveal", label: t(REVEAL_LABEL) },
     { kind: "sep" },
@@ -501,6 +512,10 @@ export const AgentMarkdown = memo(function AgentMarkdown({
       else onOpenFile?.(path);
       return;
     }
+    if (id === "open-browser") {
+      openInAppBrowser(convertFileSrc(path));
+      return;
+    }
 
     let action: Promise<void>;
     switch (id) {
@@ -546,7 +561,7 @@ export const AgentMarkdown = memo(function AgentMarkdown({
             <ExplorerMenu
               x={fileMenu.x}
               y={fileMenu.y}
-              items={fileLinkMenuItems(!!onOpenFile, !!cwd)}
+              items={fileLinkMenuItems(fileMenu.path, !!onOpenFile, !!cwd)}
               ariaLabel={t("File link actions")}
               onPick={onFileMenuPick}
               onClose={() => setFileMenu(null)}
