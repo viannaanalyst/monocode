@@ -79,6 +79,9 @@ type Props = {
   onStageFile?: (id: string) => void;
   onDiscardFile?: (id: string) => void;
   onStageHunk?: (id: string, pos: number) => void;
+  /** Override the generic git wording for other review surfaces. */
+  stageTitle?: string;
+  discardTitle?: string;
 };
 
 export function UnifiedDiffView({
@@ -95,6 +98,8 @@ export function UnifiedDiffView({
   onStageFile,
   onDiscardFile,
   onStageHunk,
+  stageTitle,
+  discardTitle,
 }: Props) {
   const lockOverscroll = useLockOverscroll<HTMLDivElement>();
   const colorScheme = useColorScheme();
@@ -259,6 +264,8 @@ export function UnifiedDiffView({
               onStageFile={onStageFile}
               onDiscardFile={onDiscardFile}
               onStageHunk={onStageHunk}
+              stageTitle={stageTitle}
+              discardTitle={discardTitle}
               bindRef={bindFileRef}
             />
           ))}
@@ -287,6 +294,8 @@ type FileSectionProps = {
   onStageFile?: (id: string) => void;
   onDiscardFile?: (id: string) => void;
   onStageHunk?: (id: string, pos: number) => void;
+  stageTitle?: string;
+  discardTitle?: string;
   bindRef: (path: string, node: HTMLElement | null) => void;
 };
 
@@ -304,6 +313,8 @@ const FileSection = memo(function FileSection({
   onStageFile,
   onDiscardFile,
   onStageHunk,
+  stageTitle,
+  discardTitle,
   bindRef,
 }: FileSectionProps) {
   const Chevron = expanded ? ChevronDown : ChevronRight;
@@ -396,7 +407,7 @@ const FileSection = memo(function FileSection({
         </button>
         {file.canDiscard && onDiscardFile ? (
           <IconButton
-            title={t("Discard file")}
+            title={discardTitle ?? t("Discard file")}
             disabled={busy}
             onClick={() => onDiscardFile(file.id)}
           >
@@ -406,8 +417,8 @@ const FileSection = memo(function FileSection({
         {file.canStage && onStageFile ? (
           <button
             type="button"
-            title={t("Stage file")}
-            aria-label={t("Stage file")}
+            title={stageTitle ?? t("Stage file")}
+            aria-label={stageTitle ?? t("Stage file")}
             disabled={busy}
             onClick={() => onStageFile(file.id)}
             className="grid size-4 place-items-center rounded-[3px] bg-content text-background-base hover:opacity-80 disabled:opacity-40"
@@ -457,6 +468,8 @@ function equalFileSectionProps(
     previous.onStageFile === next.onStageFile &&
     previous.onDiscardFile === next.onDiscardFile &&
     previous.onStageHunk === next.onStageHunk &&
+    previous.stageTitle === next.stageTitle &&
+    previous.discardTitle === next.discardTitle &&
     previous.bindRef === next.bindRef
   );
 }

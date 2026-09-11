@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertCircle, Loader } from "../chrome/icons";
 import {
+  keepSessionChanges,
+  notifyReviewChanged,
   sessionCheckpointFileDiff,
   sessionCheckpointStatus,
   subscribeReviewChanged,
+  undoSessionChanges,
   type CheckpointFile,
 } from "../lib/checkpoint";
 import { forEachConcurrent } from "../lib/concurrent";
@@ -32,6 +35,7 @@ export function SessionChangesDiff({ cwd, sessionId, focusPath }: Props) {
   const [files, setFiles] = useState<CheckpointFile[] | null>(null);
   const [diffs, setDiffs] = useState<Map<string, LoadedDiff>>(new Map());
   const [error, setError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!cwd || cwd === "~" || !sessionId) {
@@ -131,9 +135,24 @@ export function SessionChangesDiff({ cwd, sessionId, focusPath }: Props) {
         additions: unified?.additions ?? file.additions,
         deletions: unified?.deletions ?? file.deletions,
         blocks: unified?.blocks ?? [],
+        canStage: true,
+        canDiscard: file.undoable,
       };
     });
   }, [diffs, files]);
+
+  const act = (relative: string, kind: "keep" | "undo") => {
+    if (busyId) return;
+    setBusyId(relative);
+    const op =
+      kind === "keep"
+        ? keepSessionChanges(sessionId, cwd, relative)
+        : undoSessionChanges(sessionId, cwd, relative);
+    void op
+      .then(() => notifyReviewChanged(sessionId))
+      .catch(() => undefined)
+      .finally(() => setBusyId(null));
+  };
 
   const totals = useMemo(
     () =>
@@ -179,7 +198,16 @@ export function SessionChangesDiff({ cwd, sessionId, focusPath }: Props) {
   }
 
   return (
-    <UnifiedDiffView files={models} focusPath={focusPath} totals={totals} />
+    <UnifiedDiffView
+      files={models}
+      focusPath={focusPath}
+      totals={totals}
+      busyId={busyId}
+      onStageFile={(id) => act(id, "keep")}
+      onDiscardFile={(id) => act(id, "undo")}
+      stageTitle={t("Keep this file")}
+      discardTitle={t("Revert this file")}
+    />
   );
 }
 

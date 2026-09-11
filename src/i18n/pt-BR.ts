@@ -364,6 +364,8 @@ export const PT_BR: Record<string, string> = {
   "Undo only the last response": "Desfazer apenas a última resposta",
   "Undo response": "Desfazer resposta",
   "Undoing…": "Desfazendo…",
+  "Keep this file": "Manter este arquivo",
+  "Revert this file": "Reverter este arquivo",
   "Run project script": "Rodar script do projeto",
   "Add scripts in .monocode/scripts.json":
     "Adicione scripts em .monocode/scripts.json",
