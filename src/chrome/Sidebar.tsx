@@ -1409,7 +1409,7 @@ function SidebarComponent({
                                       type="button"
                                       data-no-drag
                                       data-tauri-drag-region="false"
-                                      title={t("New session")}
+                                      data-no-tooltip
                                       aria-label={t("New session")}
                                       onClick={() =>
                                         onNewInFolder(entry.folder.id)
