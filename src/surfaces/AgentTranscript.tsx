@@ -901,9 +901,7 @@ function TurnDuration({
                 className="size-3.5 shrink-0"
               />
             ) : null}
-            <span className="min-w-0 truncate" title={label}>
-              {label}
-            </span>
+            <span className="min-w-0 truncate">{label}</span>
           </span>
         </>
       )}
@@ -942,7 +940,6 @@ function CopyTurnButton({ text }: { text: string }) {
   return (
     <button
       type="button"
-      title={copied ? t("Copied") : t("Copy response")}
       aria-label={copied ? t("Copied") : t("Copy response")}
       className="-ml-1 rounded-md p-1 text-content/40 hover:bg-content/8 hover:text-content/70"
       onClick={() => {
@@ -986,7 +983,6 @@ function SaveNoteButton({
   return (
     <button
       type="button"
-      title={saved ? t("Saved to Notes") : t("Save as note")}
       aria-label={saved ? t("Saved to Notes") : t("Save as note")}
       className="rounded-md p-1 text-content/40 hover:bg-content/8 hover:text-content/70"
       onClick={() => {
@@ -2421,7 +2417,6 @@ function ToolCallSummary({
                 ? `max-w-full bg-content/6 hover:bg-content/10 ${targetTone}`
                 : `flex-1 hover:underline ${targetTone}`
             }`}
-            title={preview?.path || target}
             onClick={(event) => {
               event.stopPropagation();
               openFile?.(filePath);
@@ -2437,7 +2432,6 @@ function ToolCallSummary({
                 ? `max-w-full bg-content/6 ${targetTone}`
                 : `flex-1 ${targetTone}`
             }`}
-            title={preview?.path || target}
           >
             <FileTypeIcon name={fileName} isDir={action === "List"} />
             <span className="min-w-0 truncate">{target}</span>
@@ -2446,7 +2440,6 @@ function ToolCallSummary({
       ) : (
         <span
           className={`flex min-w-0 flex-1 items-center gap-1.5 pl-1 ${targetTone}`}
-          title={target}
         >
           <span className="min-w-0 truncate">{target}</span>
         </span>

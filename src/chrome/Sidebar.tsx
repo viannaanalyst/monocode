@@ -41,7 +41,7 @@ import {
 } from "../lib/fs";
 import { IS_MAC, MOD } from "../lib/platform";
 import { resolveModel } from "../lib/models";
-import { prettyParent, projectKey, projectName } from "../lib/paths";
+import { prettyCwd, prettyParent, projectKey, projectName } from "../lib/paths";
 import { sessionDisplayTitle } from "../lib/session";
 import { nextUnseenFinishedSessions } from "../lib/sessionDone";
 import {
@@ -2486,6 +2486,10 @@ function SessionCard({
   const rawTitle = sessionDisplayTitle(session.title, session.harness);
   const title = rawTitle === "New session" ? t("New session") : rawTitle;
   const gitLabel = formatGitLabel(session.repo, session.branch);
+  // Organized hover: title, then branch, then the project folder.
+  const sessionTooltip = [title, gitLabel, session.cwd ? prettyCwd(session.cwd) : ""]
+    .filter(Boolean)
+    .join("\n");
   const time = formatRelative(session.updatedAt, now);
   const modelChoice = resolveModel(session.harness, session.model);
   const model = compact ? null : modelChoice.name;
@@ -2698,7 +2702,7 @@ function SessionCard({
       <div
         role="button"
         tabIndex={0}
-        title={title}
+        title={sessionTooltip}
         aria-current={isActive ? "true" : undefined}
         aria-pressed={isSelected}
         data-session-card={session.id}

@@ -958,7 +958,6 @@ function ProjectCard({
   const additions = stats?.additions ?? 0;
   const deletions = stats?.deletions ?? 0;
   const hasChanges = files > 0 || additions > 0 || deletions > 0;
-  const cardTitle = projectCardTitle(item.path, name, stats, busy);
   const cardAriaLabel = projectCardAriaLabel(name, stats, busy);
 
   return (
@@ -993,7 +992,7 @@ function ProjectCard({
       ) : null}
       <button
         type="button"
-        title={cardTitle}
+        data-no-tooltip
         aria-label={cardAriaLabel}
         aria-current={selected ? "true" : undefined}
         className="flex min-w-0 flex-1 cursor-default items-center gap-2 text-left group-hover:pr-6"
@@ -1081,18 +1080,8 @@ function ProjectDiffStat({
 }) {
   if (additions <= 0 && deletions <= 0) return null;
 
-  const label = [
-    additions > 0 ? `+${additions}` : "",
-    deletions > 0 ? `-${deletions}` : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
-
   return (
-    <span
-      title={t("{label} uncommitted", { label })}
-      className="flex shrink-0 items-center gap-1 font-mono text-[11px] font-semibold tabular-nums"
-    >
+    <span className="flex shrink-0 items-center gap-1 font-mono text-[11px] font-semibold tabular-nums">
       {additions > 0 ? (
         <span className="text-emerald-400">+{additions}</span>
       ) : null}
@@ -1101,31 +1090,6 @@ function ProjectDiffStat({
       ) : null}
     </span>
   );
-}
-
-function projectCardTitle(
-  path: string,
-  name: string,
-  stats: GitDiffStats | null,
-  busy: boolean,
-): string {
-  const parts = [name, path];
-  if (busy) parts.push("Working");
-  const files = stats?.files ?? 0;
-  const additions = stats?.additions ?? 0;
-  const deletions = stats?.deletions ?? 0;
-  if (files > 0 || additions > 0 || deletions > 0) {
-    parts.push(
-      [
-        files > 0 ? `${files} ${files === 1 ? "file" : "files"} changed` : "",
-        additions > 0 ? `+${additions}` : "",
-        deletions > 0 ? `-${deletions}` : "",
-      ]
-        .filter(Boolean)
-        .join(" "),
-    );
-  }
-  return parts.join("\n");
 }
 
 function projectCardAriaLabel(

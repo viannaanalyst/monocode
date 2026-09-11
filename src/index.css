@@ -320,7 +320,8 @@ html.theme-light .composer-send:disabled {
   font-family: var(--font-sans);
   font-size: 0.75rem;
   line-height: 1rem;
-  text-align: center;
+  white-space: pre-line;
+  text-align: left;
   overflow-wrap: anywhere;
   box-shadow: 0 4px 12px color-mix(in srgb, black 35%, transparent);
   opacity: 1;
