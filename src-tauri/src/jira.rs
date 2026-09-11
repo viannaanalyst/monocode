@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -213,7 +214,7 @@ pub async fn jira_issue_thread(app: AppHandle, id: String) -> Result<JiraIssueTh
             .and_then(Value::as_array)
             .cloned()
             .unwrap_or_default();
-        let comments = rows.iter().map(comment_from).collect();
+        let comments = nest_comments(&rows);
         Ok(JiraIssueThread {
             comments,
             truncated: false,
@@ -328,6 +329,44 @@ fn issue_from(config: &JiraConfig, row: &Value) -> JiraIssue {
     }
 }
 
+/// Nest replies under their parent when the provider reports `parentId`.
+fn nest_comments(rows: &[Value]) -> Vec<JiraIssueComment> {
+    let nodes: Vec<(Option<String>, JiraIssueComment)> = rows
+        .iter()
+        .map(|row| (string_field(row, "parentId"), comment_from(row)))
+        .collect();
+    let mut index: HashMap<&str, usize> = HashMap::new();
+    for (position, (_, comment)) in nodes.iter().enumerate() {
+        if !comment.id.is_empty() {
+            index.insert(comment.id.as_str(), position);
+        }
+    }
+    let mut children: Vec<Vec<usize>> = vec![Vec::new(); nodes.len()];
+    let mut roots: Vec<usize> = Vec::new();
+    for (position, (parent, _)) in nodes.iter().enumerate() {
+        match parent.as_deref().and_then(|id| index.get(id).copied()) {
+            Some(parent_index) => children[parent_index].push(position),
+            None => roots.push(position),
+        }
+    }
+    fn build(
+        position: usize,
+        nodes: &[(Option<String>, JiraIssueComment)],
+        children: &[Vec<usize>],
+    ) -> JiraIssueComment {
+        let mut comment = nodes[position].1.clone();
+        comment.replies = children[position]
+            .iter()
+            .map(|&child| build(child, nodes, children))
+            .collect();
+        comment
+    }
+    roots
+        .iter()
+        .map(|&position| build(position, &nodes, &children))
+        .collect()
+}
+
 fn comment_from(row: &Value) -> JiraIssueComment {
     let author = row.get("author").cloned().unwrap_or(Value::Null);
     JiraIssueComment {
@@ -433,10 +472,28 @@ fn string_field(value: &Value, key: &str) -> Option<String> {
         .map(|text| text.trim().to_string())
 }
 
-/// Flatten Atlassian Document Format into readable plain text.
+/// Convert Atlassian Document Format into Markdown so the transcript renderer
+/// keeps headings, lists, code, links, and emphasis.
 fn adf_to_text(value: &Value) -> String {
     let mut out = String::new();
     adf_walk(value, &mut out);
+    collapse_blank_lines(out.trim())
+}
+
+fn collapse_blank_lines(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut newlines = 0;
+    for ch in text.chars() {
+        if ch == '\n' {
+            newlines += 1;
+            if newlines > 2 {
+                continue;
+            }
+        } else {
+            newlines = 0;
+        }
+        out.push(ch);
+    }
     out.trim().to_string()
 }
 
@@ -448,54 +505,174 @@ fn adf_walk(value: &Value, out: &mut String) {
                 adf_walk(item, out);
             }
         }
-        Value::Object(record) => {
-            let kind = record.get("type").and_then(Value::as_str).unwrap_or("");
-            let children = record.get("content").cloned().unwrap_or(Value::Null);
-            match kind {
-                "text" => {
-                    if let Some(text) = record.get("text").and_then(Value::as_str) {
-                        out.push_str(text);
-                    }
-                }
-                "hardBreak" => out.push('\n'),
-                "paragraph" => {
-                    adf_walk(&children, out);
-                    out.push('\n');
-                }
-                "heading" => {
-                    let level = record
-                        .get("attrs")
-                        .and_then(|attrs| attrs.get("level"))
-                        .and_then(Value::as_u64)
-                        .unwrap_or(1);
-                    out.push_str(&"#".repeat(level.max(1) as usize));
-                    out.push(' ');
-                    adf_walk(&children, out);
-                    out.push('\n');
-                }
-                "listItem" => {
-                    out.push_str("- ");
-                    adf_walk(&children, out);
-                }
-                "codeBlock" => {
-                    out.push_str("```\n");
-                    adf_walk(&children, out);
-                    if !out.ends_with('\n') {
-                        out.push('\n');
-                    }
-                    out.push_str("```\n");
-                }
-                "blockquote" => {
-                    out.push_str("> ");
-                    adf_walk(&children, out);
-                }
-                "rule" => out.push_str("---\n"),
-                "bulletList" | "orderedList" | "doc" => adf_walk(&children, out),
-                _ => adf_walk(&children, out),
-            }
-        }
+        Value::Object(record) => adf_node(record, out),
         _ => {}
     }
+}
+
+fn adf_node(record: &serde_json::Map<String, Value>, out: &mut String) {
+    let kind = record.get("type").and_then(Value::as_str).unwrap_or("");
+    let children = record.get("content").cloned().unwrap_or(Value::Null);
+    let attrs = record.get("attrs").cloned().unwrap_or(Value::Null);
+    match kind {
+        "text" => out.push_str(&adf_text(record)),
+        "hardBreak" => out.push('\n'),
+        "paragraph" => {
+            adf_walk(&children, out);
+            out.push_str("\n\n");
+        }
+        "heading" => {
+            let level = attrs
+                .get("level")
+                .and_then(Value::as_u64)
+                .unwrap_or(1)
+                .clamp(1, 6);
+            out.push_str(&"#".repeat(level as usize));
+            out.push(' ');
+            adf_walk(&children, out);
+            out.push_str("\n\n");
+        }
+        "bulletList" => adf_list(record, out, false),
+        "orderedList" => adf_list(record, out, true),
+        "codeBlock" => {
+            let language = attrs.get("language").and_then(Value::as_str).unwrap_or("");
+            out.push_str("```");
+            out.push_str(language);
+            out.push('\n');
+            adf_walk(&children, out);
+            if !out.ends_with('\n') {
+                out.push('\n');
+            }
+            out.push_str("```\n\n");
+        }
+        "blockquote" => {
+            let mut inner = String::new();
+            adf_walk(&children, &mut inner);
+            for line in inner.trim_end().lines() {
+                out.push_str("> ");
+                out.push_str(line);
+                out.push('\n');
+            }
+            out.push('\n');
+        }
+        "rule" => out.push_str("---\n\n"),
+        "mention" => {
+            out.push('@');
+            out.push_str(
+                attrs
+                    .get("text")
+                    .or_else(|| attrs.get("displayName"))
+                    .and_then(Value::as_str)
+                    .unwrap_or(""),
+            );
+        }
+        "emoji" => out.push_str(
+            attrs
+                .get("text")
+                .or_else(|| attrs.get("shortName"))
+                .and_then(Value::as_str)
+                .unwrap_or(""),
+        ),
+        "inlineCard" | "blockCard" | "embedCard" => {
+            if let Some(url) = attrs.get("url").and_then(Value::as_str) {
+                out.push_str(url);
+            } else {
+                adf_walk(&children, out);
+            }
+        }
+        "table" => adf_table(&children, out),
+        _ => adf_walk(&children, out),
+    }
+}
+
+fn adf_list(record: &serde_json::Map<String, Value>, out: &mut String, ordered: bool) {
+    let Some(items) = record.get("content").and_then(Value::as_array) else {
+        return;
+    };
+    for (index, item) in items.iter().enumerate() {
+        let marker = if ordered {
+            format!("{}. ", index + 1)
+        } else {
+            "- ".to_string()
+        };
+        let mut inner = String::new();
+        adf_walk(item, &mut inner);
+        let mut lines = inner.trim_end().lines();
+        if let Some(first) = lines.next() {
+            out.push_str(&marker);
+            out.push_str(first);
+            out.push('\n');
+        }
+        for line in lines {
+            out.push_str("  ");
+            out.push_str(line);
+            out.push('\n');
+        }
+    }
+    out.push('\n');
+}
+
+fn adf_table(content: &Value, out: &mut String) {
+    let Some(rows) = content.as_array() else {
+        return;
+    };
+    for row in rows {
+        let Some(cells) = row.get("content").and_then(Value::as_array) else {
+            continue;
+        };
+        out.push('|');
+        for cell in cells {
+            let mut inner = String::new();
+            adf_walk(cell, &mut inner);
+            out.push(' ');
+            out.push_str(&inner.trim().replace('\n', " "));
+            out.push_str(" |");
+        }
+        out.push('\n');
+    }
+    out.push('\n');
+}
+
+fn adf_text(record: &serde_json::Map<String, Value>) -> String {
+    let mut text = record
+        .get("text")
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .to_string();
+    let Some(marks) = record.get("marks").and_then(Value::as_array) else {
+        return text;
+    };
+    let has = |name: &str| {
+        marks
+            .iter()
+            .any(|mark| mark.get("type").and_then(Value::as_str) == Some(name))
+    };
+    if has("code") {
+        text = format!("`{text}`");
+    }
+    if has("strong") {
+        text = format!("**{text}**");
+    }
+    if has("em") {
+        text = format!("*{text}*");
+    }
+    if has("strike") {
+        text = format!("~~{text}~~");
+    }
+    if let Some(link) = marks
+        .iter()
+        .find(|mark| mark.get("type").and_then(Value::as_str) == Some("link"))
+    {
+        let href = link
+            .get("attrs")
+            .and_then(|attrs| attrs.get("href"))
+            .and_then(Value::as_str)
+            .unwrap_or("");
+        if !href.is_empty() {
+            text = format!("[{text}]({href})");
+        }
+    }
+    text
 }
 
 fn adf_paragraph(text: &str) -> Value {
@@ -647,6 +824,37 @@ mod tests {
         let text = adf_to_text(&doc);
         assert!(text.contains("Hello"));
         assert!(text.contains("- First"));
+    }
+
+    #[test]
+    fn adf_keeps_formatting_as_markdown() {
+        let doc = json!({
+            "type": "doc",
+            "content": [
+                { "type": "heading", "attrs": { "level": 2 }, "content": [{ "type": "text", "text": "Title" }] },
+                { "type": "paragraph", "content": [
+                    { "type": "text", "text": "bold", "marks": [{ "type": "strong" }] },
+                    { "type": "text", "text": " and " },
+                    { "type": "text", "text": "link", "marks": [{ "type": "link", "attrs": { "href": "https://x" } }] }
+                ] }
+            ]
+        });
+        let text = adf_to_text(&doc);
+        assert!(text.contains("## Title"), "{text}");
+        assert!(text.contains("**bold**"), "{text}");
+        assert!(text.contains("[link](https://x)"), "{text}");
+    }
+
+    #[test]
+    fn nest_comments_groups_replies() {
+        let rows = vec![
+            json!({ "id": "1", "body": { "type": "doc", "content": [] } }),
+            json!({ "id": "2", "parentId": "1", "body": { "type": "doc", "content": [] } }),
+        ];
+        let comments = nest_comments(&rows);
+        assert_eq!(comments.len(), 1);
+        assert_eq!(comments[0].replies.len(), 1);
+        assert_eq!(comments[0].replies[0].id, "2");
     }
 
     #[test]
