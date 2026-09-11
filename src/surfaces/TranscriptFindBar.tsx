@@ -35,10 +35,10 @@ export function TranscriptFindBar({
   return (
     <div
       role="search"
-      className="absolute right-3 top-2 z-30 flex items-center gap-1.5 rounded-lg border border-content/12 bg-background-base/95 px-1.5 py-1 shadow-xl backdrop-blur-xl"
+      className="absolute right-3 top-2 z-30 flex items-center gap-0.5 rounded-lg border border-content/12 bg-background-base/95 px-1 py-0.5 shadow-xl backdrop-blur-xl"
       data-no-tooltip
     >
-      <Search className="ml-1 size-3.5 shrink-0 text-content/40" />
+      <Search className="ml-0.5 size-3 shrink-0 text-content/40" />
       <input
         ref={inputRef}
         value={query}
@@ -48,11 +48,11 @@ export function TranscriptFindBar({
         aria-label={t("Find in conversation")}
         spellCheck={false}
         autoComplete="off"
-        className="h-6 w-52 min-w-0 bg-transparent font-sans text-[12px] text-content outline-none placeholder:text-content/35"
+        className="h-5 w-40 min-w-0 bg-transparent font-sans text-[11.5px] text-content outline-none placeholder:text-content/35"
       />
       <span
         aria-live="polite"
-        className="min-w-10 shrink-0 text-center font-sans text-[11px] tabular-nums text-content/45"
+        className="min-w-8 shrink-0 text-center font-sans text-[10px] tabular-nums text-content/45"
       >
         {label}
       </span>
@@ -61,26 +61,26 @@ export function TranscriptFindBar({
         aria-label={t("Previous match")}
         disabled={count === 0}
         onClick={onPrev}
-        className="grid size-6 shrink-0 place-items-center rounded-md text-content/55 hover:bg-content/10 hover:text-content disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent"
+        className="grid size-5 shrink-0 place-items-center rounded-md text-content/55 hover:bg-content/10 hover:text-content disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent"
       >
-        <ChevronUp className="size-3.5" strokeWidth={1.75} />
+        <ChevronUp className="size-3" strokeWidth={1.75} />
       </button>
       <button
         type="button"
         aria-label={t("Next match")}
         disabled={count === 0}
         onClick={onNext}
-        className="grid size-6 shrink-0 place-items-center rounded-md text-content/55 hover:bg-content/10 hover:text-content disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent"
+        className="grid size-5 shrink-0 place-items-center rounded-md text-content/55 hover:bg-content/10 hover:text-content disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent"
       >
-        <ChevronDown className="size-3.5" strokeWidth={1.75} />
+        <ChevronDown className="size-3" strokeWidth={1.75} />
       </button>
       <button
         type="button"
         aria-label={t("Close")}
         onClick={onClose}
-        className="grid size-6 shrink-0 place-items-center rounded-md text-content/55 hover:bg-content/10 hover:text-content"
+        className="grid size-5 shrink-0 place-items-center rounded-md text-content/55 hover:bg-content/10 hover:text-content"
       >
-        <X className="size-3.5" strokeWidth={1.75} />
+        <X className="size-3" strokeWidth={1.75} />
       </button>
     </div>
   );

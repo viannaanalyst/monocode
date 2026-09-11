@@ -62,10 +62,26 @@ export function clearFindHighlights(): void {
   CSS.highlights.delete(FIND_ACTIVE_HIGHLIGHT);
 }
 
+function rangeElement(range: Range): HTMLElement | null {
+  const node = range.startContainer;
+  const el =
+    node.nodeType === Node.ELEMENT_NODE
+      ? (node as Element)
+      : node.parentElement;
+  return el instanceof HTMLElement ? el : null;
+}
+
 /** Scrolls a range into view without moving the document selection. */
 export function scrollRangeIntoView(range: Range, root: HTMLElement): void {
   const rect = range.getBoundingClientRect();
   if (rect.width === 0 && rect.height === 0) {
+    // Match inside folded/hidden content: let the browser find the nearest
+    // scrollable ancestor instead of guessing from a degenerate rect.
+    const el = rangeElement(range);
+    if (el && typeof el.scrollIntoView === "function") {
+      el.scrollIntoView({ block: "center", inline: "nearest" });
+      return;
+    }
     root.scrollTo({ top: root.scrollHeight });
     return;
   }

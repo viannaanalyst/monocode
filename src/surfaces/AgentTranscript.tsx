@@ -389,6 +389,9 @@ function AgentTranscriptComponent({
   const [findCount, setFindCount] = useState(0);
   const findInputRef = useRef<HTMLInputElement>(null);
   const findRanges = useRef<Range[]>([]);
+  const findActiveRef = useRef(0);
+  findActiveRef.current = findActive;
+  const findQueryRef = useRef("");
 
   const gotoMatch = useCallback((index: number, ranges?: Range[]) => {
     const list = ranges ?? findRanges.current;
@@ -401,13 +404,19 @@ function AgentTranscriptComponent({
     setFindActive(next);
     applyFindHighlights(list, list[next]);
     const el = scroller.current;
-    if (el) scrollRangeIntoView(list[next], el);
+    if (el) {
+      // Jumping to a hit must win over the auto-scroll that keeps a live
+      // transcript pinned to the bottom.
+      stickToBottom.current = false;
+      scrollRangeIntoView(list[next], el);
+    }
   }, []);
 
   // Recompute on query change and while the transcript streams new blocks.
   useEffect(() => {
     if (!findOpen) {
       findRanges.current = [];
+      findQueryRef.current = "";
       setFindCount(0);
       clearFindHighlights();
       return;
@@ -415,6 +424,7 @@ function AgentTranscriptComponent({
     const el = scroller.current;
     if (!el || !findQuery.trim()) {
       findRanges.current = [];
+      findQueryRef.current = "";
       setFindCount(0);
       clearFindHighlights();
       return;
@@ -423,7 +433,17 @@ function AgentTranscriptComponent({
       const ranges = collectMatchRanges(el, findQuery);
       findRanges.current = ranges;
       setFindCount(ranges.length);
-      gotoMatch(0, ranges);
+      const sameQuery = findQueryRef.current === findQuery;
+      findQueryRef.current = findQuery;
+      if (sameQuery && ranges.length > 0) {
+        // The transcript grew while a hit was active: hold that hit instead of
+        // snapping back to the first one (which reads as "nothing happened").
+        const at = Math.min(findActiveRef.current, ranges.length - 1);
+        setFindActive(at);
+        applyFindHighlights(ranges, ranges[at]);
+      } else {
+        gotoMatch(0, ranges);
+      }
     }, 120);
     return () => window.clearTimeout(timer);
   }, [findOpen, findQuery, blocks, visibleTurnCount, gotoMatch]);
