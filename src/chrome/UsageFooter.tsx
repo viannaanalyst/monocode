@@ -1,5 +1,5 @@
 import { CoinsDollar, RefreshCw } from "./icons";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HarnessIcon } from "./HarnessIcon";
 import { Popover } from "./Popover";
 import {
@@ -23,10 +23,12 @@ import { HARNESS_LABEL, HARNESS_TITLE, type HarnessId } from "../lib/session";
 import { t } from "../i18n";
 import { formatTokens } from "../lib/contextUsage";
 import {
+  aggregateUsageDays,
   findSessionCost,
   formatCost,
   supportsUsageCost,
   type SessionCost,
+  type UsageCostReport,
 } from "../lib/usageCost";
 import {
   fetchUsageCost,
@@ -191,7 +193,9 @@ export function UsageFooter({
       ) : session ? (
         <SessionChip session={session} />
       ) : null}
-      {sessionCost ? <CostChip cost={sessionCost} /> : null}
+      {sessionCost ? (
+        <CostChip cost={sessionCost} report={cost.report} />
+      ) : null}
       {showRight ? (
         <div className="ml-auto flex shrink-0 items-center gap-2">
           {showTerminals ? (
@@ -223,19 +227,48 @@ export function UsageFooter({
   );
 }
 
-function CostChip({ cost }: { cost: SessionCost }) {
+type CostTab = "session" | "today" | "week" | "month";
+
+function CostChip({
+  cost,
+  report,
+}: {
+  cost: SessionCost;
+  report: UsageCostReport | null;
+}) {
   const root = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
-  const models = cost.models.filter(
+  const [tab, setTab] = useState<CostTab>("session");
+
+  const views = useMemo<Record<CostTab, SessionCost>>(
+    () => ({
+      session: cost,
+      today: aggregateUsageDays(report, 1),
+      week: aggregateUsageDays(report, 7),
+      month: aggregateUsageDays(report, 30),
+    }),
+    [cost, report],
+  );
+
+  const active = views[tab];
+  const models = active.models.filter(
     (model) => model.tokens > 0 || model.cost > 0,
   );
   const showModelCost = models.some((model) => model.cost > 0);
   const tooltip = [
     `Estimated session cost · ${formatTokens(cost.totalTokens)} tokens`,
-    ...models.map(
-      (model) => `${model.model}: ${formatCost(model.cost)}`,
-    ),
+    `${t("Today")}: ${formatCost(views.today.totalCost)}`,
+    ...cost.models
+      .filter((model) => model.cost > 0)
+      .map((model) => `${model.model}: ${formatCost(model.cost)}`),
   ].join("\n");
+
+  const tabs: { key: CostTab; label: string }[] = [
+    { key: "session", label: t("Session") },
+    { key: "today", label: t("Today") },
+    { key: "week", label: t("7 days") },
+    { key: "month", label: t("30 days") },
+  ];
 
   return (
     <>
@@ -266,10 +299,23 @@ function CostChip({ cost }: { cost: SessionCost }) {
           autoFocus
           onDismiss={() => setOpen(false)}
           aria-label={t("Session cost")}
-          className="min-w-[15rem] p-2"
+          className="min-w-[16rem] p-2"
         >
-          <div className="px-1 pb-1.5 text-[10px] uppercase tracking-wide text-content/40">
-            {t("Estimated session cost")}
+          <div className="flex gap-0.5 px-1 pb-2">
+            {tabs.map((entry) => (
+              <button
+                key={entry.key}
+                type="button"
+                onClick={() => setTab(entry.key)}
+                className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                  tab === entry.key
+                    ? "bg-content/10 text-content"
+                    : "text-content/45 hover:bg-content/5 hover:text-content/75"
+                }`}
+              >
+                {entry.label}
+              </button>
+            ))}
           </div>
           {models.length > 0 ? (
             <div className="space-y-1">
@@ -292,14 +338,18 @@ function CostChip({ cost }: { cost: SessionCost }) {
                 </div>
               ))}
             </div>
-          ) : null}
+          ) : (
+            <p className="px-1 text-[11px] text-content/40">
+              {t("No usage recorded.")}
+            </p>
+          )}
           <div className="mt-1.5 flex items-center gap-3 border-t border-content/10 px-1 pt-1.5 text-[11px]">
             <span className="flex-1">{t("Total")}</span>
             <span className="tabular-nums text-content/60">
-              {formatTokens(cost.totalTokens)}
+              {formatTokens(active.totalTokens)}
             </span>
             <span className="tabular-nums font-medium">
-              {formatCost(cost.totalCost)}
+              {formatCost(active.totalCost)}
             </span>
           </div>
         </Popover>

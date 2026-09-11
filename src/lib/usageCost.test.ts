@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  aggregateUsageDays,
   findSessionCost,
   formatCost,
   parseUsageCostReport,
@@ -86,13 +87,94 @@ describe("parseUsageCostReport", () => {
     expect(report?.totalCost).toBeCloseTo(7.49);
   });
 
+  it("parses the daily section into day buckets", () => {
+    const body = JSON.stringify({
+      daily: [
+        {
+          period: "2026-09-10",
+          totalTokens: 100,
+          totalCost: 1.5,
+          modelBreakdowns: [{ modelName: "gpt-5.5", cost: 1.5, inputTokens: 100 }],
+        },
+        {
+          period: "2026-09-09",
+          totalTokens: 50,
+          totalCost: 0.5,
+          modelBreakdowns: [{ modelName: "gpt-5.5", cost: 0.5, inputTokens: 50 }],
+        },
+      ],
+      totals: { totalTokens: 150, totalCost: 2 },
+    });
+    const report = parseUsageCostReport(body);
+    expect(report?.days).toHaveLength(2);
+    expect(report?.days[0]?.period).toBe("2026-09-10");
+  });
+
   it("rejects invalid JSON", () => {
     expect(parseUsageCostReport("not json")).toBeNull();
     expect(parseUsageCostReport("{}")).toEqual({
       sessions: [],
+      days: [],
       totalTokens: 0,
       totalCost: 0,
     });
+  });
+});
+
+describe("aggregateUsageDays", () => {
+  const report = parseUsageCostReport(
+    JSON.stringify({
+      daily: [
+        {
+          period: "2026-09-10",
+          totalTokens: 100,
+          totalCost: 1,
+          modelBreakdowns: [{ modelName: "a", cost: 1, inputTokens: 100 }],
+        },
+        {
+          period: "2026-09-09",
+          totalTokens: 200,
+          totalCost: 2,
+          modelBreakdowns: [{ modelName: "a", cost: 2, inputTokens: 200 }],
+        },
+        {
+          period: "2026-09-03",
+          totalTokens: 400,
+          totalCost: 4,
+          modelBreakdowns: [{ modelName: "b", cost: 4, inputTokens: 400 }],
+        },
+        {
+          period: "2026-08-20",
+          totalTokens: 800,
+          totalCost: 8,
+          modelBreakdowns: [{ modelName: "b", cost: 8, inputTokens: 800 }],
+        },
+      ],
+    }),
+  );
+  const now = new Date(2026, 8, 10); // 2026-09-10
+
+  it("sums today only", () => {
+    const today = aggregateUsageDays(report, 1, now);
+    expect(today.totalCost).toBeCloseTo(1);
+    expect(today.totalTokens).toBe(100);
+  });
+
+  it("sums the last 7 days", () => {
+    const week = aggregateUsageDays(report, 7, now);
+    // Window is 2026-09-04..2026-09-10, so 09-03 falls outside.
+    expect(week.totalCost).toBeCloseTo(3);
+    expect(week.totalTokens).toBe(300);
+    expect(week.models.map((model) => model.model)).toEqual(["a"]);
+  });
+
+  it("sums the last 30 days", () => {
+    const month = aggregateUsageDays(report, 30, now);
+    expect(month.totalCost).toBeCloseTo(15);
+  });
+
+  it("handles a missing report", () => {
+    expect(aggregateUsageDays(null, 7, now).totalCost).toBe(0);
   });
 });
 

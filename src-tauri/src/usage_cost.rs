@@ -67,20 +67,25 @@ fn fetch_usage_cost_sync(force: bool) -> UsageCostFetch {
     }
 }
 
+/// One ccusage run answers both questions: the `session` section prices the
+/// live session, and `daily` backs the day/week/month views.
+fn ccusage_args() -> Vec<String> {
+    vec![
+        "daily".into(),
+        "--sections".into(),
+        "daily,session".into(),
+        "--json".into(),
+    ]
+}
+
 fn resolve_runner() -> Option<(std::path::PathBuf, Vec<String>)> {
     if let Some(path) = resolve_gui_binary("ccusage") {
-        return Some((path, vec!["session".into(), "--json".into()]));
+        return Some((path, ccusage_args()));
     }
     let npx = resolve_gui_binary("npx")?;
-    Some((
-        npx,
-        vec![
-            "-y".into(),
-            "ccusage@latest".into(),
-            "session".into(),
-            "--json".into(),
-        ],
-    ))
+    let mut args = vec!["-y".into(), "ccusage@latest".into()];
+    args.extend(ccusage_args());
+    Some((npx, args))
 }
 
 fn run_captured(program: &Path, args: &[String], cwd: Option<&str>) -> Result<String, String> {

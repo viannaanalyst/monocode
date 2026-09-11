@@ -24,10 +24,15 @@ export type SessionCost = {
 };
 
 export type UsageCostReport = {
+  /** Per-session rows; `period` is the provider session id. */
   sessions: SessionCost[];
+  /** Per-day rows; `period` is a local `YYYY-MM-DD` date. */
+  days: SessionCost[];
   totalTokens: number;
   totalCost: number;
 };
+
+export type UsagePeriodKey = "today" | "week" | "month";
 
 /** Harnesses whose sessions ccusage can price locally. */
 const HARNESS_AGENT: Partial<Record<HarnessId, string>> = {
@@ -59,6 +64,11 @@ export function parseUsageCostReport(body: string): UsageCostReport | null {
     const session = sessionCostFrom(row);
     return session ? [session] : [];
   });
+  const dayRows = arrayField(root, "daily") ?? [];
+  const days = dayRows.flatMap((row) => {
+    const day = sessionCostFrom(row);
+    return day ? [day] : [];
+  });
   const totals = asRecord(root.totals);
   const totalTokens =
     numberField(totals, "totalTokens") ??
@@ -67,7 +77,66 @@ export function parseUsageCostReport(body: string): UsageCostReport | null {
     numberField(totals, "totalCost") ??
     numberField(totals, "costUSD") ??
     sessions.reduce((sum, session) => sum + session.totalCost, 0);
-  return { sessions, totalTokens, totalCost };
+  return { sessions, days, totalTokens, totalCost };
+}
+
+/**
+ * Sum of the last `span` days (inclusive) across every provider ccusage saw.
+ * `period` values are local dates, so lexical comparison is enough.
+ */
+export function aggregateUsageDays(
+  report: UsageCostReport | null,
+  span: number,
+  now = new Date(),
+): SessionCost {
+  const to = localDateKey(now);
+  const from = localDateKey(addDays(now, -(span - 1)));
+  const rows = (report?.days ?? []).filter(
+    (day) => day.period >= from && day.period <= to,
+  );
+  return sumCosts(rows);
+}
+
+/** Merge per-model totals across rows, most expensive first. */
+export function sumCosts(rows: SessionCost[]): SessionCost {
+  const models = new Map<string, UsageCostModel>();
+  let totalTokens = 0;
+  let totalCost = 0;
+  for (const row of rows) {
+    totalTokens += row.totalTokens;
+    totalCost += row.totalCost;
+    for (const model of row.models) {
+      const current = models.get(model.model) ?? {
+        model: model.model,
+        tokens: 0,
+        cost: 0,
+      };
+      current.tokens += model.tokens;
+      current.cost += model.cost;
+      models.set(model.model, current);
+    }
+  }
+  return {
+    agent: "",
+    period: "",
+    totalTokens,
+    totalCost,
+    models: [...models.values()].sort((a, b) => b.cost - a.cost),
+  };
+}
+
+function addDays(date: Date, delta: number): Date {
+  const next = new Date(date);
+  next.setDate(next.getDate() + delta);
+  return next;
+}
+
+/** Local `YYYY-MM-DD`, matching ccusage's day buckets. */
+export function localDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function sessionCostFrom(value: unknown): SessionCost | null {
