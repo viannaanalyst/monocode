@@ -1819,32 +1819,20 @@ function ComposerAction({
   onSend: () => void;
   onStop: () => void;
 }) {
-  if (busy) {
+  // One button: while a turn runs and the draft is empty it stops; as soon as
+  // you type it becomes send (and back to stop if you clear the draft).
+  if (busy && !hasValue) {
     return (
-      <>
-        {hasValue ? (
-          <button
-            type="button"
-            data-no-tooltip
-            title={t("Send")}
-            aria-label={t("Send")}
-            onClick={onSend}
-            className="composer-send grid size-6.5 place-items-center rounded-full bg-white text-black hover:bg-white/90"
-          >
-            <ArrowUpLong className="size-4" strokeWidth={1.75} />
-          </button>
-        ) : null}
-        <button
-          type="button"
-          data-no-tooltip
-          title={t("Stop")}
-          aria-label={t("Stop")}
-          onClick={onStop}
-          className="grid size-6.5 place-items-center rounded-full bg-white text-black hover:bg-white/90"
-        >
-          <Square className="size-2.5 fill-current" strokeWidth={0} />
-        </button>
-      </>
+      <button
+        type="button"
+        data-no-tooltip
+        title={t("Stop")}
+        aria-label={t("Stop")}
+        onClick={onStop}
+        className="grid size-6.5 place-items-center rounded-full bg-white text-black hover:bg-white/90"
+      >
+        <Square className="size-2.5 fill-current" strokeWidth={0} />
+      </button>
     );
   }
 

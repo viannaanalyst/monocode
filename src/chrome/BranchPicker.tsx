@@ -1,4 +1,4 @@
-import { Check, GitBranch, Plus, Search } from "./icons";
+import { Check, ChevronDown, GitBranch, Plus, Search } from "./icons";
 import {
   useEffect,
   useMemo,
@@ -301,6 +301,10 @@ export function BranchPicker({
               label
             )}
           </span>
+          <ChevronDown
+            className="size-3 shrink-0 text-content/40"
+            strokeWidth={1.75}
+          />
         </button>
         {blocked ? (
           <SwitchBranchDialog
