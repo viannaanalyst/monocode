@@ -9,10 +9,15 @@ import {
   ChevronRight,
   Copy,
   ExternalLink,
+  ImagePlus,
   MoreHorizontal,
   RefreshCw,
 } from "../chrome/icons";
 import { copyText } from "../lib/clipboard";
+import {
+  requestAttachmentInChat,
+  screenshotAttachment,
+} from "../lib/attachments";
 import { LAYER } from "../lib/layers";
 import { normalizeBrowserUrl, browserDataStoreId } from "../lib/browserUrl";
 import {
@@ -392,6 +397,22 @@ export function BrowserView({ id, url, cwd, active, onUrlChange }: Props) {
     setGeneration((n) => n + 1);
   };
 
+  const sendScreenshotToChat = async () => {
+    const box = host.current?.getBoundingClientRect();
+    if (!box) return;
+    const win = getCurrentWindow();
+    const pos = await win.innerPosition();
+    const scale = await win.scaleFactor();
+    const data = await browserScreenshotRect(
+      pos.x / scale + box.left,
+      pos.y / scale + box.top,
+      box.width,
+      box.height,
+    ).catch(() => null);
+    if (!data) return;
+    requestAttachmentInChat(screenshotAttachment(data));
+  };
+
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-visible">
       <div className="relative z-20 flex shrink-0 items-center gap-0.5 border-b border-content/10 px-1.5 py-1">
@@ -433,6 +454,13 @@ export function BrowserView({ id, url, cwd, active, onUrlChange }: Props) {
             className="h-6 w-full rounded-md bg-content/10 px-2 text-[12px] text-content outline-none placeholder:text-content/35"
           />
         </form>
+        <ChromeButton
+          title={t("Send screenshot to chat")}
+          disabled={!showPage}
+          onClick={() => void sendScreenshotToChat()}
+        >
+          <ImagePlus className="size-3.5" strokeWidth={1.75} />
+        </ChromeButton>
         <ChromeButton
           title="Open in system browser"
           disabled={!showPage}

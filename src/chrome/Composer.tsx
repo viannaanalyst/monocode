@@ -31,12 +31,14 @@ import {
 } from "react";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import {
+  ADD_ATTACHMENT_TO_CHAT_EVENT,
   attachmentsFromFiles,
   attachmentsFromPaths,
   filesFromClipboard,
   mergeAttachments,
   pickAttachments,
   revokeAttachment,
+  type AddAttachmentRequest,
 } from "../lib/attachments";
 import type { ContextUsage } from "../lib/contextUsage";
 import {
@@ -599,6 +601,19 @@ export function Composer({
     },
     [harness, syncHasValue],
   );
+
+  // Another surface (e.g. the browser pane) can hand the focused composer a
+  // screenshot to describe and fix.
+  useEffect(() => {
+    if (!focused) return;
+    const onAdd = (event: Event) => {
+      const detail = (event as CustomEvent<AddAttachmentRequest>).detail;
+      if (detail?.attachment) addAttachments([detail.attachment]);
+    };
+    window.addEventListener(ADD_ATTACHMENT_TO_CHAT_EVENT, onAdd);
+    return () =>
+      window.removeEventListener(ADD_ATTACHMENT_TO_CHAT_EVENT, onAdd);
+  }, [addAttachments, focused]);
 
   const removeAttachment = useCallback(
     (id: string) => {

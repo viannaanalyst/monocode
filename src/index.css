@@ -1440,3 +1440,14 @@ html.theme-light .popover-backdrop {
     var(--color-background-base)
   );
 }
+
+/* In-conversation find (Ctrl/Cmd+F) uses the CSS Custom Highlight API so the
+   native selection and its add-to-chat menu stay untouched. */
+::highlight(monocode-find) {
+  background-color: color-mix(in srgb, var(--color-accent) 38%, transparent);
+  color: inherit;
+}
+::highlight(monocode-find-active) {
+  background-color: color-mix(in srgb, var(--color-accent) 85%, transparent);
+  color: #fff;
+}

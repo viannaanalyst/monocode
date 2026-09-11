@@ -489,3 +489,40 @@ function readBlobBase64(file: File): Promise<string | null> {
     reader.readAsDataURL(file);
   });
 }
+
+export const ADD_ATTACHMENT_TO_CHAT_EVENT =
+  "monocode:add-attachment-to-chat";
+
+export type AddAttachmentRequest = { attachment: Attachment };
+
+/** Sends an attachment to the focused session's composer. */
+export function requestAttachmentInChat(attachment: Attachment) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent<AddAttachmentRequest>(ADD_ATTACHMENT_TO_CHAT_EVENT, {
+      detail: { attachment },
+    }),
+  );
+}
+
+/** Builds a vision attachment from a base64 PNG (e.g. a browser screenshot). */
+export function screenshotAttachment(base64: string): Attachment {
+  const data = base64.trim();
+  let previewUrl: string | undefined;
+  try {
+    const bytes = Uint8Array.from(atob(data), (char) => char.charCodeAt(0));
+    previewUrl = URL.createObjectURL(new Blob([bytes], { type: "image/png" }));
+  } catch {
+    previewUrl = undefined;
+  }
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  return {
+    id: `screenshot-${Date.now()}`,
+    name: `screenshot-${stamp}.png`,
+    mimeType: "image/png",
+    kind: "image",
+    size: Math.round((data.length * 3) / 4),
+    data,
+    previewUrl,
+  };
+}

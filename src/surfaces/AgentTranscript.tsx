@@ -22,9 +22,17 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from "react";
 import { flushSync } from "react-dom";
+import { TranscriptFindBar } from "./TranscriptFindBar";
+import {
+  applyFindHighlights,
+  clearFindHighlights,
+  collectMatchRanges,
+  scrollRangeIntoView,
+} from "../lib/transcriptFind";
 import {
   EXPAND_TOOL_ACTIVITY_DEFAULT,
   loadExpandToolActivity,
@@ -136,6 +144,8 @@ type Props = {
   latestTurnAccessory?: ReactNode;
   /** False while another tab is in front; local transcript state is retained. */
   visible?: boolean;
+  /** False while another pane holds focus; gates Ctrl/Cmd+F to one transcript. */
+  focused?: boolean;
 };
 
 function AgentTranscriptComponent({
@@ -159,6 +169,7 @@ function AgentTranscriptComponent({
   onRevealReady,
   latestTurnAccessory,
   visible = true,
+  focused = true,
 }: Props) {
   const lockOverscroll = useLockOverscroll<HTMLDivElement>();
   const scroller = useRef<HTMLDivElement>(null);
@@ -362,7 +373,113 @@ function AgentTranscriptComponent({
     onRevealReady?.(revealBlock);
   }, [revealBlock, onRevealReady]);
 
+  const [findOpen, setFindOpen] = useState(false);
+  const [findQuery, setFindQuery] = useState("");
+  const [findActive, setFindActive] = useState(0);
+  const [findCount, setFindCount] = useState(0);
+  const findInputRef = useRef<HTMLInputElement>(null);
+  const findRanges = useRef<Range[]>([]);
+
+  const gotoMatch = useCallback((index: number, ranges?: Range[]) => {
+    const list = ranges ?? findRanges.current;
+    if (list.length === 0) {
+      setFindCount(0);
+      applyFindHighlights([], null);
+      return;
+    }
+    const next = ((index % list.length) + list.length) % list.length;
+    setFindActive(next);
+    applyFindHighlights(list, list[next]);
+    const el = scroller.current;
+    if (el) scrollRangeIntoView(list[next], el);
+  }, []);
+
+  // Recompute on query change and while the transcript streams new blocks.
+  useEffect(() => {
+    if (!findOpen) {
+      findRanges.current = [];
+      setFindCount(0);
+      clearFindHighlights();
+      return;
+    }
+    const el = scroller.current;
+    if (!el || !findQuery.trim()) {
+      findRanges.current = [];
+      setFindCount(0);
+      clearFindHighlights();
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      const ranges = collectMatchRanges(el, findQuery);
+      findRanges.current = ranges;
+      setFindCount(ranges.length);
+      gotoMatch(0, ranges);
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [findOpen, findQuery, blocks, visibleTurnCount, gotoMatch]);
+
+  useEffect(() => {
+    if (!findOpen) return;
+    const frame = window.requestAnimationFrame(() => {
+      findInputRef.current?.focus();
+      findInputRef.current?.select();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [findOpen]);
+
+  useEffect(() => () => clearFindHighlights(), []);
+
+  useEffect(() => {
+    if (!visible || !focused) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.altKey || event.shiftKey) return;
+      if (!(event.metaKey || event.ctrlKey)) return;
+      if (event.key.toLowerCase() !== "f") return;
+      const target = event.target instanceof Element ? event.target : null;
+      if (target?.closest(".monocode-terminal")) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setFindOpen(true);
+      setVisibleTurnCount(turnsRef.current.length);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [focused, visible]);
+
+  const closeFind = useCallback(() => {
+    setFindOpen(false);
+    setFindQuery("");
+    clearFindHighlights();
+  }, []);
+
+  const onFindKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      closeFind();
+      return;
+    }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      gotoMatch(findActive + (event.shiftKey ? -1 : 1));
+    }
+  };
+
   return (
+    <div className="relative h-full min-h-0">
+    {findOpen ? (
+      <TranscriptFindBar
+        query={findQuery}
+        active={findActive}
+        count={findCount}
+        inputRef={findInputRef}
+        onQueryChange={setFindQuery}
+        onPrev={() => gotoMatch(findActive - 1)}
+        onNext={() => gotoMatch(findActive + 1)}
+        onClose={closeFind}
+        onInputKeyDown={onFindKeyDown}
+      />
+    ) : null}
     <div
       ref={setScroller}
       data-no-tooltip
@@ -589,6 +706,7 @@ function AgentTranscriptComponent({
           onDismiss={dismissSelection}
         />
       ) : null}
+    </div>
     </div>
   );
 }

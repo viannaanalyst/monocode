@@ -348,6 +348,10 @@ export const PT_BR: Record<string, string> = {
   "Continue in a summarized session to keep the next turns fast and focused.":
     "Continue em uma sessão resumida para manter os próximos turnos rápidos e focados.",
   "Create summarized session": "Criar sessão resumida",
+  "Find in conversation": "Buscar na conversa",
+  "Send screenshot to chat": "Enviar print para o chat",
+  "Previous match": "Ocorrência anterior",
+  "Next match": "Próxima ocorrência",
   "Review only": "Somente revisão",
   "Read, search, and analyze. The agent cannot change files.":
     "Pode ler, pesquisar e analisar. O agente não consegue alterar arquivos.",

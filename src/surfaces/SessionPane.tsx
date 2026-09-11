@@ -479,6 +479,7 @@ export const SessionPane = memo(function SessionPane({
                       onHandoff(session.id, harness, turn, model)
                   : undefined
               }
+              focused={focused}
               onJumpToBottomChange={setShowJumpToBottom}
               onJumpToBottomReady={onJumpToBottomReady}
               onRevealReady={onRevealReady}
