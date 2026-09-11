@@ -241,8 +241,16 @@ pub async fn jira_issue_comment(
             return Err("Comment is empty".into());
         }
         let path = format!("/rest/api/3/issue/{}/comment", encode(&id));
-        let payload = json!({ "body": adf_paragraph(body.trim()) });
-        let created = jira_request(&config, "POST", &path, Some(payload))?;
+        let text = adf_paragraph(body.trim());
+        // Replies are newer protocol; fall back to a flat comment if the
+        // instance rejects `parentId` instead of failing the whole post.
+        if let Some(parent) = parent_id.filter(|value| !value.trim().is_empty()) {
+            let payload = json!({ "body": text.clone(), "parentId": parent.trim() });
+            if let Ok(created) = jira_request(&config, "POST", &path, Some(payload)) {
+                return Ok(string_field(&created, "self").unwrap_or_default());
+            }
+        }
+        let created = jira_request(&config, "POST", &path, Some(json!({ "body": text })))?;
         Ok(string_field(&created, "self").unwrap_or_default())
     })
     .await

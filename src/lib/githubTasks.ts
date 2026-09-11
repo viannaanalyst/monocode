@@ -673,7 +673,10 @@ async function fetchInboxItems(
 }
 
 async function fetchNotionInboxItems(query: InboxQuery): Promise<InboxItem[]> {
-  const tasks = await listNotionTasks({ state: query.state });
+  const tasks = await listNotionTasks({
+    state: query.state,
+    assignedToMe: query.assignedToMe,
+  });
   return tasks.map(notionTaskToInboxItem);
 }
 

@@ -148,7 +148,11 @@ pub async fn notion_set_config(
 }
 
 #[tauri::command]
-pub async fn notion_list_tasks(app: AppHandle, state: String) -> Result<Vec<NotionTask>, String> {
+pub async fn notion_list_tasks(
+    app: AppHandle,
+    state: String,
+    assigned_to_me: bool,
+) -> Result<Vec<NotionTask>, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let config = require_config(&app)?;
         let open_only = state != "all";
@@ -167,7 +171,28 @@ pub async fn notion_list_tasks(app: AppHandle, state: String) -> Result<Vec<Noti
             .and_then(Value::as_array)
             .cloned()
             .unwrap_or_default();
-        let mut out: Vec<NotionTask> = rows.iter().map(task_from).collect();
+        // "Assigned to me" means the integration's own Notion user sits in one
+        // of the row's people properties.
+        let assignee = if assigned_to_me {
+            notion_request(&config, "GET", "/users/me", None)
+                .ok()
+                .and_then(|me| string_field(&me, "id"))
+        } else {
+            None
+        };
+        let mut out: Vec<NotionTask> = rows
+            .iter()
+            .filter(|row| {
+                if !assigned_to_me {
+                    return true;
+                }
+                assignee
+                    .as_deref()
+                    .map(|id| page_has_assignee(row, id))
+                    .unwrap_or(false)
+            })
+            .map(task_from)
+            .collect();
         if open_only {
             out.retain(|task| task.state_type.to_lowercase() != "complete");
         }
@@ -175,6 +200,27 @@ pub async fn notion_list_tasks(app: AppHandle, state: String) -> Result<Vec<Noti
     })
     .await
     .map_err(|error| error.to_string())?
+}
+
+fn page_has_assignee(row: &Value, user_id: &str) -> bool {
+    if user_id.is_empty() {
+        return false;
+    }
+    let Some(properties) = row.get("properties").and_then(Value::as_object) else {
+        return false;
+    };
+    properties.values().any(|value| {
+        value.get("type").and_then(Value::as_str) == Some("people")
+            && value
+                .get("people")
+                .and_then(Value::as_array)
+                .map(|people| {
+                    people
+                        .iter()
+                        .any(|person| string_field(person, "id").as_deref() == Some(user_id))
+                })
+                .unwrap_or(false)
+    })
 }
 
 #[tauri::command]

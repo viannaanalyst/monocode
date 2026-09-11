@@ -86,8 +86,12 @@ export function disconnectNotion(): Promise<NotionStatus> {
 
 export function listNotionTasks(query: {
   state: "open" | "all";
+  assignedToMe?: boolean;
 }): Promise<NotionTask[]> {
-  return invoke<NotionTask[]>("notion_list_tasks", { state: query.state });
+  return invoke<NotionTask[]>("notion_list_tasks", {
+    state: query.state,
+    assignedToMe: query.assignedToMe ?? false,
+  });
 }
 
 export function peekNotionTaskDetails(id: string): NotionTaskDetails | null {
