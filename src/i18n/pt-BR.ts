@@ -294,6 +294,16 @@ export const PT_BR: Record<string, string> = {
   "Export as Markdown": "Exportar como Markdown",
   "Export as JSON": "Exportar como JSON",
   "Import session…": "Importar sessão…",
+  Jira: "Jira",
+  "Jira site": "Site do Jira",
+  "Jira e-mail": "E-mail do Jira",
+  "Jira API token": "Token de API do Jira",
+  "Connect Jira Cloud with your site, e-mail, and an API token from id.atlassian.com. The token is stored locally and Disconnect deletes it.":
+    "Conecte o Jira Cloud com o site, e-mail e um token de API de id.atlassian.com. O token fica salvo localmente e Desconectar o apaga.",
+  "No matching Jira issues": "Nenhuma issue do Jira correspondente",
+  "No Jira issues match these filters":
+    "Nenhuma issue do Jira corresponde a estes filtros",
+  "No Jira issues": "Nenhuma issue do Jira",
   "Import session": "Importar sessão",
   "Recent exports": "Exports recentes",
   "Paste a file path": "Cole um caminho de arquivo",

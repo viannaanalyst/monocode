@@ -188,6 +188,12 @@ import {
   saveLinearToken,
   type LinearTeam,
 } from "../lib/linear";
+import {
+  disconnectJira,
+  jiraConnected,
+  notifyJiraChange,
+  saveJiraConfig,
+} from "../lib/jira";
 import { loadTabGroupLabels, resolveTabGroupLabel } from "../lib/tabGroups";
 import {
   filterKeybindings,
@@ -718,6 +724,9 @@ function GeneralPage({
       <Heading title={t("Linear")} />
       <LinearSettings />
 
+      <Heading title={t("Jira")} />
+      <JiraSettings />
+
       <Heading title={t("Browser")} />
       <Row
         label={t("Open localhost in Browser")}
@@ -882,6 +891,150 @@ function GitlabSettings() {
             <SecondaryButton
               onClick={() => void onSave()}
               disabled={busy || !token.trim()}
+            >
+              {busy ? t("Saving") : t("Connect")}
+            </SecondaryButton>
+          </div>
+        )}
+      </Row>
+      {error ? (
+        <p className="pb-2 text-[12px] text-red-400/90">{error}</p>
+      ) : null}
+    </>
+  );
+}
+
+function JiraSettings() {
+  const [site, setSite] = useState("");
+  const [email, setEmail] = useState("");
+  const [token, setToken] = useState("");
+  const [connected, setConnected] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void jiraConnected()
+      .then((status) => {
+        if (cancelled) return;
+        setConnected(status.connected);
+        if (status.site) setSite(status.site);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled)
+          setError(err instanceof Error ? err.message : String(err));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const onSave = async () => {
+    if (!token.trim() || !site.trim() || !email.trim() || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const status = await saveJiraConfig(site, email, token);
+      setConnected(status.connected);
+      if (status.site) setSite(status.site);
+      setToken("");
+      clearInboxCache();
+      notifyJiraChange();
+    } catch (err: unknown) {
+      setConnected(false);
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onDisconnect = async () => {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await disconnectJira();
+      setConnected(false);
+      clearInboxCache();
+      notifyJiraChange();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <Row
+        label={
+          <span className="flex items-center gap-2">
+            <InboxProviderMark provider="jira" className="size-4 shrink-0" />
+            Connection
+          </span>
+        }
+        description={t(
+          "Connect Jira Cloud with your site, e-mail, and an API token from id.atlassian.com. The token is stored locally and Disconnect deletes it.",
+        )}
+      >
+        {connected ? (
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="max-w-56 truncate text-[12px] text-content/50">
+              {site}
+            </span>
+            <SecondaryButton
+              onClick={() => void onDisconnect()}
+              disabled={busy}
+            >
+              {t("Disconnect")}
+            </SecondaryButton>
+          </div>
+        ) : (
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <label className="flex h-7 w-44 shrink-0 items-center rounded-md border border-content/10 px-2 focus-within:border-content/20">
+              <input
+                type="text"
+                value={site}
+                onChange={(event) => setSite(event.target.value)}
+                placeholder="team.atlassian.net"
+                aria-label={t("Jira site")}
+                autoComplete="off"
+                spellCheck={false}
+                className="min-w-0 flex-1 bg-transparent text-[12px] text-content outline-none placeholder:text-content/35"
+              />
+            </label>
+            <label className="flex h-7 w-44 shrink-0 items-center rounded-md border border-content/10 px-2 focus-within:border-content/20">
+              <input
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="you@company.com"
+                aria-label={t("Jira e-mail")}
+                autoComplete="email"
+                spellCheck={false}
+                className="min-w-0 flex-1 bg-transparent text-[12px] text-content outline-none placeholder:text-content/35"
+              />
+            </label>
+            <label className="flex h-7 w-44 shrink-0 items-center rounded-md border border-content/10 px-2 focus-within:border-content/20">
+              <input
+                type="password"
+                value={token}
+                onChange={(event) => setToken(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") void onSave();
+                }}
+                placeholder="API token"
+                aria-label={t("Jira API token")}
+                autoComplete="off"
+                spellCheck={false}
+                className="min-w-0 flex-1 bg-transparent text-[12px] text-content outline-none placeholder:text-content/35"
+              />
+            </label>
+            <SecondaryButton
+              onClick={() => void onSave()}
+              disabled={
+                busy || !token.trim() || !site.trim() || !email.trim()
+              }
             >
               {busy ? t("Saving") : t("Connect")}
             </SecondaryButton>

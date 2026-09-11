@@ -62,7 +62,9 @@ const SOURCE_KEY = "monocode.inboxSource";
 export function loadInboxSource(): InboxSource {
   try {
     const raw = localStorage.getItem(SOURCE_KEY);
-    return raw === "linear" || raw === "gitlab" ? raw : "github";
+    return raw === "linear" || raw === "gitlab" || raw === "jira"
+      ? raw
+      : "github";
   } catch {
     return "github";
   }
@@ -138,23 +140,28 @@ export function hasActiveInboxFilters(
   /** Teams live outside InboxFilters — they narrow the fetch and are shared with Settings. */
   hiddenLinearTeamIds: readonly string[] = [],
 ): boolean {
-  const statusActive =
-    source === "linear"
-      ? filters.status.open || filters.status.closed
-      : filters.status.open ||
-        filters.status.draft ||
-        filters.status.closed ||
-        filters.status.merged;
+  const tracker = isTrackerSource(source);
+  const statusActive = tracker
+    ? filters.status.open || filters.status.closed
+    : filters.status.open ||
+      filters.status.draft ||
+      filters.status.closed ||
+      filters.status.merged;
   return (
     filters.assignedToMe ||
-    (source === "linear" && hiddenLinearTeamIds.length > 0) ||
-    (source === "linear"
+    (tracker && hiddenLinearTeamIds.length > 0) ||
+    (tracker
       ? filters.hiddenLinearProjects.length > 0
       : filters.hiddenProjects.length > 0) ||
-    (source === "linear" ? false : filters.hiddenKinds.length > 0) ||
+    (tracker ? false : filters.hiddenKinds.length > 0) ||
     filters.time !== "all" ||
     statusActive
   );
+}
+
+/** Linear and Jira share the same issue-tracker filter model. */
+export function isTrackerSource(source?: InboxSource): boolean {
+  return source === "linear" || source === "jira";
 }
 
 /** No status box checked means "no restriction", so the fetch has to widen with it. */
@@ -271,8 +278,9 @@ export function applyInboxFilters(
   source?: InboxSource,
 ): InboxItem[] {
   const scoped = source ? filterInboxByProvider(items, source) : [...items];
-  const hiddenProjects = source === "linear" ? [] : filters.hiddenProjects;
-  const hiddenKinds = source === "linear" ? [] : filters.hiddenKinds;
+  const tracker = isTrackerSource(source);
+  const hiddenProjects = tracker ? [] : filters.hiddenProjects;
+  const hiddenKinds = tracker ? [] : filters.hiddenKinds;
   return filterInboxItems(
     filterInboxByStatus(
       filterInboxByTime(
@@ -296,7 +304,7 @@ export function statusFilterForSource(
   status: InboxStatusFilter,
   source?: InboxSource,
 ): InboxStatusFilter {
-  if (source !== "linear") return status;
+  if (!isTrackerSource(source)) return status;
   return {
     open: status.open,
     closed: status.closed,

@@ -14,6 +14,7 @@ import {
   listGitlabWorkItems,
   type GitlabWorkItem,
 } from "./gitlab";
+import { jiraConnected, listJiraIssues, type JiraIssue } from "./jira";
 import {
   collectRailProjects,
   normalizeProjectPath,
@@ -22,7 +23,7 @@ import {
 } from "./recents";
 
 export type GithubTaskKind = "issue" | "pr";
-export type InboxKind = GithubTaskKind | "linear";
+export type InboxKind = GithubTaskKind | "linear" | "jira";
 
 export type GithubLabel = {
   name: string;
@@ -47,7 +48,7 @@ export type GithubWorkItem = {
   repo: string;
 };
 
-export type InboxProvider = "github" | "linear" | "gitlab";
+export type InboxProvider = "github" | "linear" | "gitlab" | "jira";
 
 export type InboxItem = Omit<GithubWorkItem, "kind"> & {
   kind: InboxKind;
@@ -127,6 +128,7 @@ export type InboxProviders = {
   github: boolean;
   linear: boolean;
   gitlab: boolean;
+  jira: boolean;
 };
 
 export type InboxListResult = {
@@ -493,7 +495,7 @@ export async function listInboxItems(
       peekInboxList(projects, query) ?? {
         items: [],
         errors: {},
-        providers: { github: false, linear: false, gitlab: false },
+        providers: { github: false, linear: false, gitlab: false, jira: false },
       }
     );
   }
@@ -553,10 +555,12 @@ async function fetchInboxItems(
 
   const linearOn = (await linearConnected()).connected;
   const gitlabOn = (await gitlabConnected()).connected;
+  const jiraOn = (await jiraConnected()).connected;
   const providers: InboxProviders = {
     github: grouped.length > 0,
     linear: linearOn,
     gitlab: gitlabOn,
+    jira: jiraOn,
   };
 
   let linearItems: InboxItem[] = [];
@@ -575,13 +579,55 @@ async function fetchInboxItems(
     if (gitlab.error) errors.gitlab = gitlab.error;
   }
 
+  let jiraItems: InboxItem[] = [];
+  if (jiraOn) {
+    try {
+      jiraItems = await fetchJiraInboxItems(query);
+    } catch (error) {
+      errors.jira = inboxErrorMessage(error);
+    }
+  }
+
   return {
     items: dedupeInboxItems(
-      [...github.items, ...linearItems, ...gitlabItems],
+      [...github.items, ...linearItems, ...gitlabItems, ...jiraItems],
       preferredPaths,
     ),
     errors,
     providers,
+  };
+}
+
+async function fetchJiraInboxItems(query: InboxQuery): Promise<InboxItem[]> {
+  const issues = await listJiraIssues({
+    assignedToMe: query.assignedToMe,
+    state: query.state,
+    limit: query.state === "all" ? INBOX_ALL_LIMIT : undefined,
+  });
+  return issues.map(jiraIssueToInboxItem);
+}
+
+function jiraIssueToInboxItem(issue: JiraIssue): InboxItem {
+  return {
+    provider: "jira",
+    kind: "jira",
+    id: issue.id,
+    identifier: issue.identifier,
+    number: issue.number,
+    title: issue.title,
+    url: issue.url,
+    state: issue.state,
+    stateType: issue.stateType,
+    updatedAt: issue.updatedAt,
+    labels: issue.labels,
+    assignees: issue.assignees,
+    draft: false,
+    repo: issue.repo,
+    teamId: issue.teamId,
+    teamName: issue.teamName,
+    projectId: issue.projectId || "",
+    projectName: issue.projectName || "",
+    projectPath: issue.projectPath || "",
   };
 }
 
@@ -750,10 +796,10 @@ export function inboxIdentityKey(item: {
   identifier?: string;
   id?: string;
 }): string {
-  if (item.provider === "linear") {
+  if (item.provider === "linear" || item.provider === "jira") {
     const identity = item.identifier?.trim() || item.id?.trim();
     if (identity) return identity.toLowerCase();
-    return `linear:${item.number}`;
+    return `${item.provider}:${item.number}`;
   }
   const repo = item.repo.trim().toLowerCase();
   if (repo) return `${repo}:${item.kind}:${item.number}`;
@@ -820,9 +866,11 @@ export function inboxItemStatus(item: {
   draft: boolean;
   stateType?: string;
 }): string {
-  if (item.kind === "linear") {
+  if (item.kind === "linear" || item.kind === "jira") {
     const type = item.stateType?.trim().toLowerCase();
-    if (type === "completed" || type === "canceled") return "Closed";
+    if (type === "completed" || type === "canceled" || type === "done") {
+      return "Closed";
+    }
     return "Open";
   }
   if (item.draft) return "Draft";
@@ -841,7 +889,9 @@ export function matchesInboxQuery(item: InboxItem, query: string): boolean {
         : "pull request pr"
       : item.kind === "linear"
         ? "linear issue"
-        : "issue";
+        : item.kind === "jira"
+          ? "jira issue"
+          : "issue";
   const haystack = [
     item.title,
     item.repo,
@@ -872,17 +922,18 @@ export function inboxItemRef(item: {
   number: number;
   identifier?: string;
 }): string {
-  if (item.provider === "linear") {
+  if (item.provider === "linear" || item.provider === "jira") {
     return item.identifier?.trim() || `#${item.number}`;
   }
   return `#${item.number}`;
 }
 
 export function inboxStartDraft(item: InboxItem, body?: string): string {
-  if (item.provider === "linear") {
-    const id = item.identifier?.trim() || `Linear #${item.number}`;
+  if (item.provider === "linear" || item.provider === "jira") {
+    const provider = item.provider === "jira" ? "Jira" : "Linear";
+    const id = item.identifier?.trim() || `${provider} #${item.number}`;
     const title = item.title.trim() || id;
-    const lines = ["Work on this Linear issue:", "", `${id} ${title}`];
+    const lines = [`Work on this ${provider} issue:`, "", `${id} ${title}`];
     const url = item.url.trim();
     if (url) lines.push(url);
     const description = body?.trim();
@@ -923,14 +974,14 @@ export function inboxComposerCard(
   item: InboxItem,
   body?: string,
 ): InboxComposerCard {
-  const linear = item.provider === "linear";
+  const tracker = item.provider === "linear" || item.provider === "jira";
   return {
     provider: item.provider,
     kind: item.kind,
     identifier: inboxItemRef(item),
     title: item.title.trim() || inboxItemRef(item),
     url: item.url.trim(),
-    source: linear ? item.teamName || item.repo : item.repo,
+    source: tracker ? item.teamName || item.repo : item.repo,
     labels: item.labels.slice(0, 2),
     prompt: inboxStartDraft(item, body).trimEnd(),
   };

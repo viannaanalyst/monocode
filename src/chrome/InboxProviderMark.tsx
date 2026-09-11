@@ -42,6 +42,20 @@ export function InboxProviderMark({
       </svg>
     );
   }
+  if (provider === "jira") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>
+        <path
+          d="M11.6 2 21 11.4a1.5 1.5 0 0 1 0 2.1l-4 4-5.4-5.4a1 1 0 0 0-1.4 0L8 14.3 3 9.3a1.5 1.5 0 0 1 0-2.1L7.5 2.7a1 1 0 0 1 1.4 0L11.6 2Z"
+          fill="#2684FF"
+        />
+        <path
+          d="M12 22.5 8.8 19.3a1 1 0 0 1 0-1.4l3.2-3.2 3.2 3.2a1 1 0 0 1 0 1.4L12 22.5Z"
+          fill="#2684FF"
+        />
+      </svg>
+    );
+  }
   if (provider === "github") {
     return (
       <svg

@@ -1,16 +1,18 @@
-import type { InboxItem } from "./githubTasks";
+import type { InboxItem, InboxProvider } from "./githubTasks";
 import inboxInstructions from "../instructions/inbox.md?raw";
 
 export type InboxAskContext = {
   key: string;
   title: string;
   url: string;
-  provider: "github" | "linear" | "gitlab";
+  provider: InboxProvider;
   description?: string;
 };
 
 export function inboxAskKey(item: InboxItem): string {
-  if (item.provider === "linear") return `linear:${item.id}`;
+  if (item.provider === "linear" || item.provider === "jira") {
+    return `${item.provider}:${item.id}`;
+  }
   const url = new URL(item.url);
   return `${item.provider}:${url.host.toLowerCase()}:${url.pathname.replace(/\/$/, "").toLowerCase()}`;
 }
