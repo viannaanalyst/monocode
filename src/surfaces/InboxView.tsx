@@ -1895,7 +1895,9 @@ function InboxDetail({
             error={threadError}
             cwd={markdownCwd}
             provider={item.provider}
-            replyMode={linear ? "parent" : gitlab ? undefined : "thread"}
+            replyMode={
+              linear ? "parent" : gitlab || notion ? undefined : "thread"
+            }
             onReply={setReplyTo}
           />
           <InboxCommentForm
