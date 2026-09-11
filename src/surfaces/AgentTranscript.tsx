@@ -135,6 +135,7 @@ type Props = {
   onApproval?: (requestId: number, decision: ApprovalDecision) => void;
   onAddToChat?: (text: string) => void;
   onSaveNote?: (text: string) => void;
+  onSaveSelectionNote?: (text: string) => void;
   onOpenFile?: (path: string) => void;
   onOpenDiff?: (path: string) => void;
   onOpenPlan?: (blockId: string) => void;
@@ -164,6 +165,7 @@ function AgentTranscriptComponent({
   onApproval,
   onAddToChat,
   onSaveNote,
+  onSaveSelectionNote,
   onOpenFile,
   onOpenDiff,
   onOpenPlan,
@@ -197,7 +199,7 @@ function AgentTranscriptComponent({
   const [anchorTurn, setAnchorTurn] = useState(!!busy);
   const { selection, dismissSelection } = useTranscriptSelection(
     scrollerEl,
-    onAddToChat !== undefined,
+    onAddToChat !== undefined || onSaveSelectionNote !== undefined,
   );
   const transcriptLayout = useTranscriptLayout();
   const promptAnchor = useTranscriptAnchor();
@@ -207,7 +209,9 @@ function AgentTranscriptComponent({
     seenUserId.current = lastUserId;
     if (lastUserId && !anchorTurn) setAnchorTurn(true);
   }
-  const modelName = harness ? resolveModel(harness, model).name : undefined;
+  const currentModelName = harness
+    ? resolveModel(harness, model).name
+    : undefined;
   const waitingForApproval = hasPendingApproval(blocks) || pendingQuestion;
   const preparingHandoff = blocks.some(
     (block) =>
@@ -541,8 +545,11 @@ function AgentTranscriptComponent({
                 (item) => item.type === "block" && isProseBlock(item.block),
               );
           const workStillRunning = activityStillRunning(turn);
+          // New turns carry immutable model provenance. Legacy turns do not,
+          // so omit their model instead of rewriting history from the picker.
+          const turnModel = userBlock?.turnModel;
           const turnHarness = harness
-            ? harnessForTurn(blocks, turn, harness)
+            ? (turnModel?.harness ?? harnessForTurn(blocks, turn, harness))
             : undefined;
           // Work the turn has already answered for folds away behind one line,
           // leaving the prompt and the answer to it.
@@ -557,6 +564,8 @@ function AgentTranscriptComponent({
           // the last: the mark, and the clock beside it. It never moves, so a
           // turn settling does not shuffle the layout around the answer.
           const live = visible && !settled && !preparingHandoff;
+          const turnModelName =
+            turnModel?.name ?? (live ? currentModelName : undefined);
           const foldTitle: ReactNode = subagentFailure ? (
             subagentFailure
           ) : live ? (
@@ -565,10 +574,10 @@ function AgentTranscriptComponent({
               paused={waitingForApproval}
               waitingLabel={pendingQuestion ? "Waiting for answers" : undefined}
               subagent={hasRunningSubagent(turn)}
-              modelName={modelName}
+              modelName={turnModelName}
             />
           ) : durationMs != null ? (
-            formatWorkingDuration(durationMs, true, false, modelName)
+            formatWorkingDuration(durationMs, true, false, turnModelName)
           ) : (
             workSummaryLine(folded)
           );
@@ -636,7 +645,7 @@ function AgentTranscriptComponent({
                 title={foldTitle}
                 kind={workKind(folded)}
                 harness={turnHarness}
-                modelName={modelName}
+                modelName={turnModelName}
                 live={live}
                 failed={!!subagentFailure}
                 expandable={!!fold}
@@ -698,7 +707,7 @@ function AgentTranscriptComponent({
                 <TurnDuration
                   elapsedMs={durationMs}
                   labelHidden={showFoldLine}
-                  modelName={modelName}
+                  modelName={turnModelName}
                   completedAt={
                     startedAt != null ? startedAt + durationMs : undefined
                   }
@@ -724,10 +733,11 @@ function AgentTranscriptComponent({
           );
         })}
       </div>
-      {onAddToChat ? (
+      {onAddToChat || onSaveSelectionNote ? (
         <TranscriptSelectionMenu
           selection={selection}
           onAddToChat={onAddToChat}
+          onAddToNotes={onSaveSelectionNote}
           onDismiss={dismissSelection}
         />
       ) : null}

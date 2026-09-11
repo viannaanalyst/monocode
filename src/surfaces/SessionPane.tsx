@@ -275,6 +275,17 @@ export const SessionPane = memo(function SessionPane({
     },
     [session.cwd, session.harness, session.id, session.title],
   );
+  const saveSelectionNote = useCallback(
+    (text: string) => {
+      void createNote({
+        title: noteTitle(text),
+        body: text,
+        sourceSessionId: session.id,
+        sourceCwd: session.cwd,
+      });
+    },
+    [session.cwd, session.id],
+  );
 
   useEffect(() => {
     if (!addToChatTarget) return;
@@ -464,6 +475,7 @@ export const SessionPane = memo(function SessionPane({
               onApproval={approve}
               onAddToChat={addSelectionToChat}
               onSaveNote={notesEnabled ? saveNote : undefined}
+              onSaveSelectionNote={notesEnabled ? saveSelectionNote : undefined}
               onOpenFile={onOpenFile}
               onOpenDiff={onOpenDiff}
               onOpenPlan={openPlan}

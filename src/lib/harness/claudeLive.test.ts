@@ -106,6 +106,48 @@ afterEach(async () => {
   __claudeTestReset();
 });
 
+describe("claude model switching", () => {
+  it("restarts with the new model while resuming the provider conversation", async () => {
+    const first = await startTurn("s1");
+    emit({ type: "result", subtype: "success", session_id: "sess_1" });
+    await first.turn;
+
+    const userCount = parse().filter(
+      (message) => message.type === "user",
+    ).length;
+    const second = sendClaudeTurn({
+      sessionId: "s1",
+      cwd: "/repo",
+      model: "claude:opus-5",
+      modelSettings: {},
+      runtimeMode: "supervised",
+      text: "what did I ask before?",
+      attachments: [],
+      onEvent: () => undefined,
+    });
+
+    await waitFor(() => spawned.length === 2, "replacement Claude process");
+    expect(spawned[1]).toEqual(
+      expect.arrayContaining([
+        "--model",
+        "claude-opus-5",
+        "--resume",
+        "sess_1",
+      ]),
+    );
+    expect(spawned[1]).not.toContain("--session-id");
+
+    emit({ type: "system", subtype: "init", session_id: "sess_1" });
+    await waitFor(
+      () =>
+        parse().filter((message) => message.type === "user").length > userCount,
+      "follow-up prompt",
+    );
+    emit({ type: "result", subtype: "success", session_id: "sess_1" });
+    await second;
+  });
+});
+
 describe("claude subagents", () => {
   it("stays busy after a parent result while a background subagent is running", async () => {
     const { events, turn } = await startTurn("s1");
