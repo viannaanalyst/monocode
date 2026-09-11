@@ -276,6 +276,17 @@ import {
   upsertSession,
   type SessionSummary,
 } from "./lib/sessionStore";
+import {
+  parseImportedSession,
+  sessionToExportJson,
+  sessionToMarkdown,
+  suggestExportFilename,
+  type SessionExportFormat,
+} from "./lib/sessionExport";
+import {
+  pickSessionImportFile,
+  saveSessionExport,
+} from "./lib/sessionExportIo";
 import { syncDockBadge } from "./lib/dockBadge";
 import { liveAgentsFromSessions } from "./lib/liveAgents";
 import { hiddenApprovalNotices } from "./lib/approvalToast";
@@ -2906,6 +2917,69 @@ export default function App({
       focusOpenSession,
       replaceBlankPaneWithSession,
     ],
+  );
+
+  const onExportHistorySession = useCallback(
+    async (sessionId: string, format: SessionExportFormat) => {
+      const session =
+        sessionsRef.current.find((entry) => entry.id === sessionId) ??
+        (await getSession(sessionId));
+      if (!session) return;
+      const base = suggestExportFilename(session);
+      try {
+        if (format === "json") {
+          await saveSessionExport(
+            `${base}.json`,
+            sessionToExportJson(session),
+            "json",
+          );
+        } else {
+          await saveSessionExport(
+            `${base}.md`,
+            sessionToMarkdown(session),
+            "markdown",
+          );
+        }
+      } catch (error) {
+        await message(error instanceof Error ? error.message : String(error), {
+          kind: "error",
+        });
+      }
+    },
+    [],
+  );
+
+  const onImportSessionIntoProject = useCallback(
+    async (cwd: string) => {
+      let picked: Awaited<ReturnType<typeof pickSessionImportFile>>;
+      try {
+        picked = await pickSessionImportFile();
+      } catch (error) {
+        await message(error instanceof Error ? error.message : String(error), {
+          kind: "error",
+        });
+        return;
+      }
+      if (!picked) return;
+      const imported = parseImportedSession(picked.text);
+      if (!imported) {
+        await message("This file is not a MonoCode session export.", {
+          kind: "error",
+        });
+        return;
+      }
+      if (!shouldPersistSession({ ...imported, cwd })) {
+        await message("This export has no messages to import.", {
+          kind: "warning",
+        });
+        return;
+      }
+      imported.cwd = cwd;
+      await upsertSession(imported);
+      await refreshHistory(cwd);
+      await onSelectHistorySession(imported.id);
+    },
+    [onSelectHistorySession, refreshHistory],
   );
 
   const onPlaceSessionOnPane = useCallback(
@@ -5599,6 +5673,8 @@ export default function App({
         onPinSessions={onPinHistorySessions}
         onDeleteSession={onDeleteHistorySession}
         onDeleteSessions={onDeleteHistorySessions}
+        onExportSession={onExportHistorySession}
+        onImportSession={onImportSessionIntoProject}
         onOpenFile={onOpenFile}
         onOpenTerminal={onOpenTerminal}
         onFileMoved={onFileMoved}

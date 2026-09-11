@@ -385,7 +385,7 @@ export async function loadWorkspaceSnapshot(): Promise<unknown | null> {
   return raw ?? null;
 }
 
-function sanitizeBlock(block: Block): Block | null {
+export function sanitizeBlock(block: Block): Block | null {
   const next: Block = {
     id: block.id,
     role: block.role,

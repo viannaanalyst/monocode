@@ -4,6 +4,7 @@ import {
   ChevronDown,
   ChevronUp,
   CircleAlert,
+  FilePlusCorner,
   FolderOpen,
   ImagePlus,
   Inbox,
@@ -86,6 +87,7 @@ function revealLabel() {
 function projectMenuExtraItems(
   pinned: boolean,
   canRemove: boolean,
+  canImport: boolean,
 ): TabGroupMenuExtraItem[] {
   const items: TabGroupMenuExtraItem[] = [
     {
@@ -97,6 +99,15 @@ function projectMenuExtraItems(
       ? { id: "unpin", label: t("Unpin project"), icon: PinOff }
       : { id: "pin", label: t("Pin project"), icon: Pin },
     { id: "reveal", label: revealLabel(), icon: FolderOpen },
+    ...(canImport
+      ? [
+          {
+            id: "import-session",
+            label: t("Import session…"),
+            icon: FilePlusCorner,
+          },
+        ]
+      : []),
   ];
   if (canRemove) {
     items.push(
@@ -129,6 +140,7 @@ type Props = {
   onSelectProject: (path: string) => void;
   onOpenProject: () => void;
   onRemoveProject?: (path: string, options: { purgeData: boolean }) => void;
+  onImportSession?: (cwd: string) => void;
   liveAgents?: LiveAgent[];
   activeSessionId?: string;
   onSelectAgent?: (sessionId: string) => void;
@@ -164,6 +176,7 @@ export function ProjectRail({
   onSelectProject,
   onOpenProject,
   onRemoveProject,
+  onImportSession,
   liveAgents = [],
   activeSessionId,
   onSelectAgent,
@@ -346,6 +359,7 @@ export function ProjectRail({
         name: resolveTabGroupLabel(projectKey, groupLabels, basename(path)),
       });
     } else if (action === "reveal") void revealPath(path);
+    else if (action === "import-session") onImportSession?.(path);
     else if (action === "archive") {
       onRemoveProject?.(path, { purgeData: false });
     } else if (action === "delete") {
@@ -560,6 +574,7 @@ export function ProjectRail({
               sameProjectPath(pinned, projectMenu.path),
             ),
             Boolean(onRemoveProject),
+            Boolean(onImportSession),
           )}
           onExtraPick={onProjectMenuPick}
         />

@@ -122,6 +122,7 @@ import {
 } from "../lib/recents";
 import { ColorPickerPopover, ColorSwatchRow } from "./ColorPickerPopover";
 import { ExplorerMenu, type ExplorerMenuItem } from "./ExplorerMenu";
+import type { SessionExportFormat } from "../lib/sessionExport";
 import { FileTree } from "./FileTree";
 import { ModelBrandIcon } from "./ModelBrandIcon";
 import { ProjectRail } from "./ProjectRail";
@@ -201,6 +202,8 @@ type Props = {
   onPinSessions?: (sessionIds: readonly string[], pinned: boolean) => void;
   onDeleteSession?: (sessionId: string) => void;
   onDeleteSessions?: (sessionIds: readonly string[]) => void;
+  onExportSession?: (sessionId: string, format: SessionExportFormat) => void;
+  onImportSession?: (cwd: string) => void;
   onOpenFile: (path: string) => void;
   onOpenTerminal?: (cwd: string) => void;
   onFileMoved?: (from: string, to: string) => void;
@@ -279,6 +282,8 @@ function SidebarComponent({
   onPinSessions,
   onDeleteSession,
   onDeleteSessions,
+  onExportSession,
+  onImportSession,
   onOpenFile,
   onOpenTerminal,
   onFileMoved,
@@ -747,6 +752,21 @@ function SidebarComponent({
             : []),
         ]
       : []),
+    ...(!multipleMenuSessions && onExportSession
+      ? [
+          { kind: "sep" as const },
+          {
+            kind: "item" as const,
+            id: "export-markdown",
+            label: t("Export as Markdown"),
+          },
+          {
+            kind: "item" as const,
+            id: "export-json",
+            label: t("Export as JSON"),
+          },
+        ]
+      : []),
   ];
 
   const onSessionContextMenu = (
@@ -843,6 +863,10 @@ function SidebarComponent({
       } else {
         for (const id of sessionIds) onDeleteSession?.(id);
       }
+      return;
+    }
+    if (id === "export-markdown" || id === "export-json") {
+      onExportSession?.(sessionId, id === "export-json" ? "json" : "markdown");
     }
   };
 
@@ -1541,6 +1565,7 @@ function SidebarComponent({
           onSelectProject={onSelectProject}
           onOpenProject={onOpenProject}
           onRemoveProject={onRemoveProject}
+          onImportSession={onImportSession}
           settingsOpen={settingsOpen}
           settingsSection={settingsSection}
           onOpenSettings={onOpenSettings}
