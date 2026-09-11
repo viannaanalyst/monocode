@@ -26,13 +26,12 @@ export function AttachmentChip({ attachment, onRemove }: Props) {
         className={`group relative flex min-w-0 items-center gap-1.5 rounded-md ${
           image ? "" : "bg-content/10 py-0.5 pl-1 pr-1"
         }`}
-        title={attachment.path ?? attachment.name}
       >
         {image ? (
           <button
             type="button"
+            data-no-tooltip
             aria-label={t("Open {name} full screen", { name: attachment.name })}
-            title={t("Open {name} full screen", { name: attachment.name })}
             onClick={(event) => {
               event.stopPropagation();
               setPreviewOpen(true);
@@ -59,7 +58,7 @@ export function AttachmentChip({ attachment, onRemove }: Props) {
         {onRemove ? (
           <button
             type="button"
-            title={t("Remove")}
+            data-no-tooltip
             aria-label={t("Remove {name}", { name: attachment.name })}
             onClick={(event) => {
               event.stopPropagation();
