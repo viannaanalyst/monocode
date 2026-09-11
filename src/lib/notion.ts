@@ -57,6 +57,26 @@ export type NotionTaskThread = {
   headRefName: string;
 };
 
+export type NotionPropertyOption = {
+  name: string;
+  color: string;
+};
+
+export type NotionDatabaseSchema = {
+  titleProperty: string;
+  stateProperty: string;
+  stateType: "status" | "select" | "";
+  stateOptions: NotionPropertyOption[];
+  labelsProperty: string;
+  labelOptions: NotionPropertyOption[];
+};
+
+export type NotionTaskChanges = {
+  title?: string;
+  status?: string;
+  labels?: string[];
+};
+
 export const NOTION_CHANGE_EVENT = "monocode:notion-change";
 
 const detailsById = new Map<string, NotionTaskDetails>();
@@ -91,6 +111,43 @@ export function listNotionTasks(query: {
   return invoke<NotionTask[]>("notion_list_tasks", {
     state: query.state,
     assignedToMe: query.assignedToMe ?? false,
+  });
+}
+
+export function notionDatabaseSchema(): Promise<NotionDatabaseSchema> {
+  return invoke<NotionDatabaseSchema>("notion_database_schema");
+}
+
+export function createNotionTask(
+  title: string,
+  status?: string,
+): Promise<NotionTask> {
+  const task = invoke<NotionTask>("notion_create_task", {
+    title: title.trim(),
+    status: status?.trim() || null,
+  });
+  return task.then((created) => {
+    notifyNotionChange();
+    return created;
+  });
+}
+
+export function updateNotionTask(
+  id: string,
+  changes: NotionTaskChanges,
+): Promise<NotionTask> {
+  const task = invoke<NotionTask>("notion_update_task", {
+    id,
+    title: changes.title?.trim() ?? null,
+    status: changes.status?.trim() ?? null,
+    labels: changes.labels ?? null,
+  });
+  return task.then((updated) => {
+    detailsById.delete(id);
+    threadById.delete(id);
+    threadInflight.delete(id);
+    notifyNotionChange();
+    return updated;
   });
 }
 

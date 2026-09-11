@@ -91,6 +91,25 @@ pub struct NotionTaskThread {
     pub head_ref_name: String,
 }
 
+#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct NotionPropertyOption {
+    pub name: String,
+    pub color: String,
+}
+
+#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct NotionDatabaseSchema {
+    pub title_property: String,
+    pub state_property: String,
+    /// Either `status` or `select`, empty when the database has neither.
+    pub state_type: String,
+    pub state_options: Vec<NotionPropertyOption>,
+    pub labels_property: String,
+    pub label_options: Vec<NotionPropertyOption>,
+}
+
 #[derive(Clone)]
 struct NotionConfig {
     token: String,
@@ -302,6 +321,208 @@ pub async fn notion_task_comment(
     })
     .await
     .map_err(|error| error.to_string())?
+}
+
+#[tauri::command]
+pub async fn notion_database_schema(app: AppHandle) -> Result<NotionDatabaseSchema, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let config = require_config(&app)?;
+        database_schema(&config)
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
+#[tauri::command]
+pub async fn notion_create_task(
+    app: AppHandle,
+    title: String,
+    status: Option<String>,
+) -> Result<NotionTask, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let config = require_config(&app)?;
+        if title.trim().is_empty() {
+            return Err("Title cannot be empty".into());
+        }
+        let schema = database_schema(&config)?;
+        let payload = create_payload(&config, &schema, title.trim(), status.as_deref());
+        let created = notion_request(&config, "POST", "/pages", Some(payload))?;
+        Ok(task_from(&created))
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
+#[tauri::command]
+pub async fn notion_update_task(
+    app: AppHandle,
+    id: String,
+    title: Option<String>,
+    status: Option<String>,
+    labels: Option<Vec<String>>,
+) -> Result<NotionTask, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let config = require_config(&app)?;
+        let schema = database_schema(&config)?;
+        let payload = update_payload(
+            &schema,
+            title.as_deref(),
+            status.as_deref(),
+            labels.as_deref(),
+        )?;
+        let updated = notion_request(
+            &config,
+            "PATCH",
+            &format!("/pages/{}", encode(&id)),
+            Some(payload),
+        )?;
+        Ok(task_from(&updated))
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
+fn database_schema(config: &NotionConfig) -> Result<NotionDatabaseSchema, String> {
+    let data = notion_request(
+        config,
+        "GET",
+        &format!("/databases/{}", encode(&config.database_id)),
+        None,
+    )?;
+    schema_from_database(&data)
+}
+
+fn schema_from_database(data: &Value) -> Result<NotionDatabaseSchema, String> {
+    let mut schema = NotionDatabaseSchema {
+        title_property: String::new(),
+        state_property: String::new(),
+        state_type: String::new(),
+        state_options: Vec::new(),
+        labels_property: String::new(),
+        label_options: Vec::new(),
+    };
+    if let Some(properties) = data.get("properties").and_then(Value::as_object) {
+        for (name, value) in properties {
+            match value.get("type").and_then(Value::as_str).unwrap_or("") {
+                "title" if schema.title_property.is_empty() => {
+                    schema.title_property = name.clone();
+                }
+                "status" if schema.state_property.is_empty() => {
+                    schema.state_property = name.clone();
+                    schema.state_type = "status".into();
+                    schema.state_options = property_options(value, "status");
+                }
+                "select" if schema.state_property.is_empty() => {
+                    schema.state_property = name.clone();
+                    schema.state_type = "select".into();
+                    schema.state_options = property_options(value, "select");
+                }
+                "multi_select" if schema.labels_property.is_empty() => {
+                    schema.labels_property = name.clone();
+                    schema.label_options = property_options(value, "multi_select");
+                }
+                _ => {}
+            }
+        }
+    }
+    if schema.title_property.is_empty() {
+        return Err("Notion database has no title property".into());
+    }
+    Ok(schema)
+}
+
+fn property_options(value: &Value, field: &str) -> Vec<NotionPropertyOption> {
+    value
+        .get(field)
+        .and_then(|inner| inner.get("options"))
+        .and_then(Value::as_array)
+        .map(|options| {
+            options
+                .iter()
+                .map(|option| NotionPropertyOption {
+                    name: string_field(option, "name").unwrap_or_default(),
+                    color: string_field(option, "color").unwrap_or_default(),
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn title_payload(title: &str) -> Value {
+    json!({ "title": [{ "type": "text", "text": { "content": title } }] })
+}
+
+fn state_payload(state_type: &str, value: &str) -> Value {
+    if state_type == "select" {
+        json!({ "select": { "name": value } })
+    } else {
+        json!({ "status": { "name": value } })
+    }
+}
+
+fn create_payload(
+    config: &NotionConfig,
+    schema: &NotionDatabaseSchema,
+    title: &str,
+    status: Option<&str>,
+) -> Value {
+    let mut properties = serde_json::Map::new();
+    properties.insert(schema.title_property.clone(), title_payload(title));
+    if let Some(status) = status.filter(|value| !value.trim().is_empty()) {
+        if !schema.state_property.is_empty() {
+            properties.insert(
+                schema.state_property.clone(),
+                state_payload(&schema.state_type, status.trim()),
+            );
+        }
+    }
+    json!({
+        "parent": { "database_id": config.database_id },
+        "properties": properties,
+    })
+}
+
+fn update_payload(
+    schema: &NotionDatabaseSchema,
+    title: Option<&str>,
+    status: Option<&str>,
+    labels: Option<&[String]>,
+) -> Result<Value, String> {
+    let mut properties = serde_json::Map::new();
+    if let Some(title) = title {
+        let title = title.trim();
+        if title.is_empty() {
+            return Err("Title cannot be empty".into());
+        }
+        properties.insert(schema.title_property.clone(), title_payload(title));
+    }
+    if let Some(status) = status {
+        if schema.state_property.is_empty() {
+            return Err("This Notion database has no status property".into());
+        }
+        properties.insert(
+            schema.state_property.clone(),
+            state_payload(&schema.state_type, status.trim()),
+        );
+    }
+    if let Some(labels) = labels {
+        if schema.labels_property.is_empty() {
+            return Err("This Notion database has no tags property".into());
+        }
+        let options: Vec<Value> = labels
+            .iter()
+            .filter(|label| !label.trim().is_empty())
+            .map(|label| json!({ "name": label.trim() }))
+            .collect();
+        properties.insert(
+            schema.labels_property.clone(),
+            json!({ "multi_select": options }),
+        );
+    }
+    if properties.is_empty() {
+        return Err("Nothing to update".into());
+    }
+    Ok(json!({ "properties": properties }))
 }
 
 fn task_from(row: &Value) -> NotionTask {
@@ -542,6 +763,7 @@ fn notion_request(
     let request = match method {
         "GET" => agent.get(&url),
         "POST" => agent.post(&url),
+        "PATCH" => agent.patch(&url),
         _ => return Err("Unsupported Notion request".into()),
     };
     let request = request
@@ -722,6 +944,74 @@ mod tests {
         assert_eq!(task.state_type, "in_progress");
         assert_eq!(task.labels[0].name, "frontend");
         assert_eq!(task.identifier, "aaaaaaaa");
+    }
+
+    #[test]
+    fn schema_from_database_reads_title_status_and_labels() {
+        let data = json!({
+            "properties": {
+                "Name": { "type": "title", "title": {} },
+                "Status": {
+                    "type": "status",
+                    "status": { "options": [{ "name": "A fazer", "color": "red" }] }
+                },
+                "Tags": {
+                    "type": "multi_select",
+                    "multi_select": { "options": [{ "name": "backend", "color": "blue" }] }
+                }
+            }
+        });
+        let schema = schema_from_database(&data).expect("schema");
+        assert_eq!(schema.title_property, "Name");
+        assert_eq!(schema.state_property, "Status");
+        assert_eq!(schema.state_type, "status");
+        assert_eq!(schema.state_options[0].name, "A fazer");
+        assert_eq!(schema.labels_property, "Tags");
+        assert_eq!(schema.label_options[0].color, "blue");
+    }
+
+    #[test]
+    fn update_payload_builds_status_and_labels() {
+        let schema = NotionDatabaseSchema {
+            title_property: "Name".into(),
+            state_property: "Status".into(),
+            state_type: "status".into(),
+            state_options: Vec::new(),
+            labels_property: "Tags".into(),
+            label_options: Vec::new(),
+        };
+        let payload = update_payload(
+            &schema,
+            Some("Novo título"),
+            Some("Concluído"),
+            Some(&["frontend".to_string()]),
+        )
+        .expect("payload");
+        assert_eq!(
+            payload["properties"]["Name"]["title"][0]["text"]["content"],
+            "Novo título"
+        );
+        assert_eq!(
+            payload["properties"]["Status"]["status"]["name"],
+            "Concluído"
+        );
+        assert_eq!(
+            payload["properties"]["Tags"]["multi_select"][0]["name"],
+            "frontend"
+        );
+    }
+
+    #[test]
+    fn update_payload_rejects_empty_title() {
+        let schema = NotionDatabaseSchema {
+            title_property: "Name".into(),
+            state_property: String::new(),
+            state_type: String::new(),
+            state_options: Vec::new(),
+            labels_property: String::new(),
+            label_options: Vec::new(),
+        };
+        assert!(update_payload(&schema, Some("  "), None, None).is_err());
     }
 
     #[test]

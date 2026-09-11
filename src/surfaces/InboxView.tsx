@@ -15,6 +15,8 @@ import {
   ListFilter,
   LoaderCircle,
   MessageMultiple,
+  Pencil,
+  Plus,
   RefreshCw,
   Search,
   type IconComponent,
@@ -161,6 +163,7 @@ import {
   type InboxReplyTarget,
 } from "./InboxComments";
 import { InboxPrDiff } from "./InboxPrDiff";
+import { NotionTaskEditor, type NotionEditTarget } from "./NotionTaskEditor";
 import {
   InboxDiscussionPanel,
   type InboxSessionPortal,
@@ -286,6 +289,15 @@ function inboxEmptyMessage(
   return source === "gitlab"
     ? t("No matching issues or merge requests")
     : t("No matching issues or pull requests");
+}
+
+function notionEditTarget(item: InboxItem): NotionEditTarget {
+  return {
+    id: item.id ?? "",
+    title: item.title,
+    status: item.state,
+    labels: item.labels.map((label) => label.name),
+  };
 }
 
 function InboxSourceTab({
@@ -428,6 +440,10 @@ export function InboxView({
   const [filterMenu, setFilterMenu] = useState<{ x: number; y: number } | null>(
     null,
   );
+  const [notionEditor, setNotionEditor] = useState<{
+    mode: "create" | "edit";
+    target?: NotionEditTarget;
+  } | null>(null);
   const [linearHiddenTeamIds, setLinearHiddenTeamIds] = useState(
     loadHiddenLinearTeamIds,
   );
@@ -836,6 +852,17 @@ export function InboxView({
             <RefreshCw className="size-3.5" strokeWidth={1.75} />
           )}
         </button>
+        {source === "notion" ? (
+          <button
+            type="button"
+            title={t("New Notion page")}
+            aria-label={t("New Notion page")}
+            onClick={() => setNotionEditor({ mode: "create" })}
+            className="grid size-6 shrink-0 place-items-center rounded-md text-content/45 hover:bg-content/10 hover:text-content"
+          >
+            <Plus className="size-3.5" strokeWidth={1.75} />
+          </button>
+        ) : null}
       </div>
       <div
         ref={listLock}
@@ -961,6 +988,9 @@ export function InboxView({
               onDiscuss={() => setDiscussionOpen(true)}
               onStart={onStart}
               onOpenSession={onOpenSession}
+              onEditNotion={(item) =>
+                setNotionEditor({ mode: "edit", target: notionEditTarget(item) })
+              }
             />
           </div>
           {discussionOpen && selected ? (
@@ -976,6 +1006,14 @@ export function InboxView({
         </div>
       </div>
       {filtersPortal}
+      {notionEditor ? (
+        <NotionTaskEditor
+          mode={notionEditor.mode}
+          target={notionEditor.target}
+          onClose={() => setNotionEditor(null)}
+          onSaved={() => setNotionEditor(null)}
+        />
+      ) : null}
     </div>
   );
 }
@@ -989,6 +1027,7 @@ function InboxDetailBody({
   onDiscuss,
   onStart,
   onOpenSession,
+  onEditNotion,
 }: {
   item: InboxItem | null;
   cwd: string;
@@ -998,6 +1037,7 @@ function InboxDetailBody({
   onDiscuss?: () => void;
   onStart?: (item: InboxItem, body?: string) => void | Promise<void>;
   onOpenSession?: (sessionId: string) => void | Promise<void>;
+  onEditNotion?: (item: InboxItem) => void;
 }) {
   if (!item) {
     return (
@@ -1020,6 +1060,7 @@ function InboxDetailBody({
       onDiscuss={onDiscuss}
       onStart={onStart}
       onOpenSession={onOpenSession}
+      onEditNotion={onEditNotion}
     />
   );
 }
@@ -1190,6 +1231,7 @@ function InboxDetail({
   onDiscuss,
   onStart,
   onOpenSession,
+  onEditNotion,
 }: {
   item: InboxItem;
   cwd: string;
@@ -1199,6 +1241,7 @@ function InboxDetail({
   onDiscuss?: () => void;
   onStart?: (item: InboxItem, body?: string) => void | Promise<void>;
   onOpenSession?: (sessionId: string) => void | Promise<void>;
+  onEditNotion?: (item: InboxItem) => void;
 }) {
   const linear = item.provider === "linear";
   const jira = item.provider === "jira";
@@ -1810,6 +1853,15 @@ function InboxDetail({
           >
             <MessageSquare className="size-3.5" strokeWidth={1.75} /> Ask
           </button>
+          {notion && onEditNotion ? (
+            <button
+              type="button"
+              onClick={() => onEditNotion(item)}
+              className={ACTION_OUTLINE}
+            >
+              <Pencil className="size-3.5" strokeWidth={1.75} /> {t("Edit")}
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => void openUrl(item.url)}
@@ -1822,9 +1874,15 @@ function InboxDetail({
                 : "Review on GitHub"
               : linear
                 ? "Open in Linear"
-                : gitlab
-                  ? "Open on GitLab"
-                  : "Open on GitHub"}
+                : jira
+                  ? "Open in Jira"
+                  : clickup
+                    ? "Open in ClickUp"
+                    : notion
+                      ? "Open in Notion"
+                      : gitlab
+                        ? "Open on GitLab"
+                        : "Open on GitHub"}
           </button>
         </div>
         {startError ? (
