@@ -1504,7 +1504,7 @@ export function Composer({
                   setPlanSelected(false);
                   ref.current?.focus();
                 }}
-                className="flex h-6.5 shrink-0 items-center gap-1 rounded-md bg-yellow-300/12 px-1.5 text-[11px] text-yellow-200/90 hover:bg-yellow-300/18"
+                className="flex h-6.5 shrink-0 items-center gap-1 rounded-full px-1.5 text-[11px] text-yellow-200/90 hover:bg-content/10"
               >
                 <AiIdea className="size-3.5" />
                 Plan
@@ -1544,7 +1544,7 @@ export function Composer({
             <div className="flex shrink-0 items-center gap-1">
               {voiceEnabled ? (
                 dictation.state === "recording" ? (
-                  <div className="flex h-6.5 shrink-0 items-center gap-1.5 rounded-full bg-content/10 pl-2.5 pr-1 text-content/80">
+                  <div className="flex h-6.5 shrink-0 items-center gap-1.5 rounded-full pl-1.5 pr-1 text-content/80">
                     <DictationWaveform level={dictation.level} />
                     <button
                       type="button"
