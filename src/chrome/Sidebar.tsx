@@ -2120,7 +2120,6 @@ function FolderRow({
     <div
       role="button"
       tabIndex={0}
-      title={folder.name}
       aria-expanded={expanded}
       data-tauri-drag-region="false"
       onPointerDown={onPointerDown}
@@ -2191,7 +2190,6 @@ function FolderRow({
       </span>
       <button
         type="button"
-        data-no-tooltip
         aria-label={t("Edit folder")}
         onPointerDown={(event) => event.stopPropagation()}
         onClick={(event) => {
@@ -2200,7 +2198,7 @@ function FolderRow({
         }}
         className="relative grid size-5 shrink-0 place-items-center rounded text-content/45 opacity-0 hover:bg-content/15 hover:text-content group-hover:opacity-100 focus-visible:opacity-100"
       >
-        <Pencil className="size-3" strokeWidth={1.75} />
+        <Pencil className="size-3.5" strokeWidth={1.75} />
       </button>
     </div>
   );
