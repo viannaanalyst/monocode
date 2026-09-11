@@ -27,6 +27,7 @@ import {
   useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
+  type ReactNode,
 } from "react";
 import {
   InboxFiltersMenu,
@@ -1344,7 +1345,7 @@ function InboxDetail({
       person.login.trim().toLowerCase() !== authorName.toLowerCase(),
   );
   const showAssignment =
-    extraAssignees.length > 0 || item.assignees.length === 0;
+    !tracker && (extraAssignees.length > 0 || item.assignees.length === 0);
   const reviewDecision =
     details?.reviewDecision?.trim() || thread?.reviewDecision?.trim() || "";
   const reviewLabel = githubReviewDecisionLabel(reviewDecision);
@@ -1688,10 +1689,66 @@ function InboxDetail({
     }
   };
 
+  const statusPill = (
+    <span
+      className={`inline-flex h-6 min-w-0 items-center gap-1.5 rounded-md border border-content/10 px-2 text-[12px] ${statusMark.className}`}
+    >
+      <statusMark.Icon className="size-3.5 shrink-0" strokeWidth={1.75} />
+      <span className="truncate">{status || t("Open")}</span>
+    </span>
+  );
+  const trackerAssignees =
+    item.assignees.length > 0 ? (
+      <div className="flex flex-wrap gap-1.5">
+        {item.assignees.map((person) => (
+          <span
+            key={person.login}
+            className="inline-flex min-w-0 items-center gap-1.5 rounded-md border border-content/10 px-1.5 py-0.5 text-[12px] text-content/75"
+          >
+            <InboxPerson
+              name={person.login}
+              avatarUrl={inboxPersonAvatarUrl(
+                item.provider,
+                person.login,
+                person.avatarUrl,
+              )}
+              size={16}
+            />
+            <span className="truncate">{person.login}</span>
+          </span>
+        ))}
+      </div>
+    ) : (
+      <span className="text-[12px] text-content/45">{t("Unassigned")}</span>
+    );
+  const trackerTags =
+    item.labels.length > 0 ? (
+      <div className="flex flex-wrap gap-1.5">
+        {item.labels.map((label) => (
+          <span
+            key={label.name}
+            className="inline-flex items-center rounded-md border border-content/10 px-1.5 py-0.5 text-[11px] text-content/70"
+          >
+            {label.name}
+          </span>
+        ))}
+      </div>
+    ) : (
+      <span className="text-[12px] text-content/45">{t("None")}</span>
+    );
+
   return (
-    <div className="flex h-full min-h-0 w-full flex-col">
+    <div className="@container flex h-full min-h-0 w-full flex-col">
+      <div
+        className={`flex min-h-0 flex-1 flex-col @3xl:flex-row ${
+          tracker ? "overflow-y-auto overscroll-none @3xl:overflow-hidden" : ""
+        }`}
+      >
+      <div className="flex min-h-0 flex-1 flex-col">
       <header className="shrink-0 border-b border-content/10 px-8 pt-8 pb-4">
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-3">
+        <div
+          className={`mx-auto flex w-full flex-col gap-3 ${tracker ? "max-w-3xl" : "max-w-5xl"}`}
+        >
         <div className="flex items-center gap-2 text-[12px] text-content/50">
           <InboxProviderMark provider={item.provider} className="size-3.5" />
           <span>
@@ -1702,11 +1759,13 @@ function InboxDetail({
               : "Issue"}
           </span>
           <span className="tabular-nums">{inboxItemRef(item)}</span>
-          <span className={`flex items-center gap-1 ${statusMark.className}`}>
-            <statusMark.Icon className="size-3.5" strokeWidth={1.75} />
-            {status}
-          </span>
-          {source ? <span className="truncate">{source}</span> : null}
+          {tracker ? null : (
+            <span className={`flex items-center gap-1 ${statusMark.className}`}>
+              <statusMark.Icon className="size-3.5" strokeWidth={1.75} />
+              {status}
+            </span>
+          )}
+          {source && !tracker ? <span className="truncate">{source}</span> : null}
         </div>
         <h1 className="text-[20px] font-semibold leading-tight text-content">
           {item.title}
@@ -1752,10 +1811,14 @@ function InboxDetail({
               <span>{projectName(item.projectPath)}</span>
             </>
           )}
-          {formatRelativeTime(item.updatedAt) ? (
+          {!tracker && formatRelativeTime(item.updatedAt) ? (
             <>
               <span aria-hidden>·</span>
-              <span>Updated {formatRelativeTime(item.updatedAt)}</span>
+              <span>
+                {t("Updated {time}", {
+                  time: formatRelativeTime(item.updatedAt),
+                })}
+              </span>
             </>
           ) : null}
           {baseRef && headRef ? (
@@ -1776,7 +1839,7 @@ function InboxDetail({
             </>
           ) : null}
         </div>
-        {item.labels.length > 0 ? (
+        {!tracker && item.labels.length > 0 ? (
           <div className="flex flex-wrap gap-1">
             {item.labels.map((label) => (
               <InboxLabel key={label.name} label={label} />
@@ -1914,7 +1977,9 @@ function InboxDetail({
         ref={bodyScroll}
         className="min-h-0 flex-1 overflow-y-auto overscroll-none"
       >
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-8 py-6">
+        <div
+          className={`mx-auto flex w-full flex-col gap-5 px-8 py-6 ${tracker ? "max-w-3xl" : "max-w-5xl"}`}
+        >
       {isPr && tab === "code" ? (
         diffLoading ? (
           <div className="flex justify-center py-10 text-content/40">
@@ -1972,6 +2037,66 @@ function InboxDetail({
       )}
         </div>
       </div>
+      </div>
+      {tracker ? (
+        <aside className="shrink-0 border-t border-content/10 @3xl:w-[300px] @3xl:border-l @3xl:border-t-0">
+          <div className="flex h-full flex-col gap-5 overflow-y-auto px-8 py-6 @3xl:px-5">
+            <InboxProp label={t("Status")}>
+              {notion && onEditNotion ? (
+                <button
+                  type="button"
+                  onClick={() => onEditNotion(item)}
+                  className="block transition-opacity hover:opacity-80"
+                >
+                  {statusPill}
+                </button>
+              ) : (
+                statusPill
+              )}
+            </InboxProp>
+            <InboxProp label={t("Assignee")}>{trackerAssignees}</InboxProp>
+            <InboxProp label={t("Tags")}>{trackerTags}</InboxProp>
+            <InboxProp label={t("Updated")}>
+              <span className="text-[12px] text-content/70">
+                {formatRelativeTime(item.updatedAt) || "—"}
+              </span>
+            </InboxProp>
+            <InboxProp label={t("Source")}>
+              <span className="block min-w-0 truncate text-[12px] text-content/70">
+                {source || "—"}
+              </span>
+            </InboxProp>
+            {notion && onEditNotion ? (
+              <button
+                type="button"
+                onClick={() => onEditNotion(item)}
+                className="inline-flex h-7 items-center justify-center gap-1.5 rounded-md border border-content/15 text-[12px] text-content/80 hover:bg-content/5"
+              >
+                <Pencil className="size-3.5" strokeWidth={1.75} />
+                {t("Edit page")}
+              </button>
+            ) : null}
+          </div>
+        </aside>
+      ) : null}
+      </div>
+    </div>
+  );
+}
+
+function InboxProp({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="text-[10px] uppercase tracking-widest text-content/40">
+        {label}
+      </span>
+      <div className="min-w-0">{children}</div>
     </div>
   );
 }
