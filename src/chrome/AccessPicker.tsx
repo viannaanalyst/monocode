@@ -105,7 +105,7 @@ export function AccessPicker({
           }
           setOpen(true);
         }}
-        className={`flex h-6.5 max-w-52 items-center gap-1 rounded-md px-1.5 ${
+        className={`flex h-6.5 max-w-52 items-center gap-1 rounded-full px-1.5 ${
           open
             ? "bg-content/10 text-content"
             : "bg-content/10 text-content hover:bg-content/15"

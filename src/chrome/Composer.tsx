@@ -226,10 +226,10 @@ function ToolButton({
       aria-label={label}
       disabled={disabled}
       onClick={onClick}
-      className={`grid size-6.5 shrink-0 place-items-center rounded-md ${
+      className={`grid size-6.5 shrink-0 place-items-center rounded-full ${
         active
-          ? "bg-content/20 text-content"
-          : "bg-content/10 text-content/50 hover:bg-content/15 hover:text-content"
+          ? "bg-content/15 text-content"
+          : "text-content/50 hover:bg-content/10 hover:text-content"
       } disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-content/50`}
     >
       {children}
@@ -1332,48 +1332,17 @@ export function Composer({
         <div
           ref={boxRef}
           data-composer-box
-          className={`relative z-10 rounded-lg border bg-content/3 backdrop-blur-sm ${
+          className={`relative z-10 rounded-2xl border bg-content/3 backdrop-blur-sm ${
             fileDrag
               ? "border-accent/60"
               : "border-content/10 has-focus:border-content/20"
           }`}
         >
           {fileDrag ? (
-            <div className="pointer-events-none absolute inset-0 z-20 grid place-items-center rounded-lg bg-accent/8 text-[12px] text-content/70">
+            <div className="pointer-events-none absolute inset-0 z-20 grid place-items-center rounded-2xl bg-accent/8 text-[12px] text-content/70">
               Drop files to attach
             </div>
           ) : null}
-          {hideTopBar ? null : (
-            <div className="flex min-w-0 items-center gap-2.5 px-3 pt-2.5">
-              {hideProjectPicker ? null : (
-                <CwdPicker
-                  cwd={cwd}
-                  recents={recents}
-                  projectLogoPath={projectLogoPath}
-                  enabled={enabled}
-                  onCwdChange={onCwdChange}
-                  onNewTerminal={onNewTerminal}
-                  onClose={() => ref.current?.focus()}
-                />
-              )}
-              {hideBranchPicker ? null : (
-                <BranchPicker
-                  cwd={cwd}
-                  branch={branch}
-                  enabled={enabled && !busy}
-                  onChange={onBranchChange}
-                  onClose={() => ref.current?.focus()}
-                />
-              )}
-              <div className="ml-auto flex shrink-0 items-center">
-                <ContextMeter
-                  usage={context}
-                  onCompact={compactSupported ? onCompactContext : undefined}
-                  compactDisabled={busy}
-                />
-              </div>
-            </div>
-          )}
 
           {attachments.length > 0 ? (
             <div className="flex flex-wrap gap-1.5 px-3 pt-2">
@@ -1542,43 +1511,34 @@ export function Composer({
                 <X className="size-3" />
               </button>
             ) : null}
-            <div
-              className="composer-toolbar flex min-w-0 flex-1 items-center"
-              onWheel={(e) => {
-                if (
-                  e.target instanceof Element &&
-                  e.target.closest(
-                    "[data-model-picker], [data-access-picker], [data-model-settings]",
-                  )
-                ) {
-                  return;
-                }
-                const el = e.currentTarget;
-                if (el.scrollWidth <= el.clientWidth) return;
-                if (e.deltaX === 0 && e.deltaY !== 0) el.scrollLeft += e.deltaY;
-              }}
-            >
-              <div data-no-tooltip className="flex shrink-0 items-center gap-1">
-                <ModelPicker
-                  harness={harness}
-                  model={model}
-                  values={modelSettings}
-                  hotkeys={hotkeys && enabled}
-                  onChange={onModelChange}
-                  onSettingsChange={(settings) =>
-                    onModelSettingsChange?.(settings)
-                  }
+            {harness !== "fx" ? (
+              <div data-no-tooltip className="shrink-0">
+                <AccessPicker
+                  value={runtimeMode}
+                  busy={busy}
+                  onChange={onRuntimeModeChange}
                   onClose={() => ref.current?.focus()}
                 />
-                {harness !== "fx" ? (
-                  <AccessPicker
-                    value={runtimeMode}
-                    busy={busy}
-                    onChange={onRuntimeModeChange}
-                    onClose={() => ref.current?.focus()}
-                  />
-                ) : null}
               </div>
+            ) : null}
+
+            <div className="min-w-0 flex-1" />
+
+            <div
+              data-no-tooltip
+              className="flex min-w-0 shrink items-center gap-1"
+            >
+              <ModelPicker
+                harness={harness}
+                model={model}
+                values={modelSettings}
+                hotkeys={hotkeys && enabled}
+                onChange={onModelChange}
+                onSettingsChange={(settings) =>
+                  onModelSettingsChange?.(settings)
+                }
+                onClose={() => ref.current?.focus()}
+              />
             </div>
 
             <div className="flex shrink-0 items-center gap-1">
@@ -1641,7 +1601,7 @@ export function Composer({
                       setVoiceError(null);
                       dictation.toggle();
                     }}
-                    className="grid size-6.5 shrink-0 place-items-center rounded-md bg-content/10 text-content/50 hover:bg-content/15 hover:text-content disabled:opacity-40"
+                    className="grid size-6.5 shrink-0 place-items-center rounded-full text-content/50 hover:bg-content/10 hover:text-content disabled:opacity-40"
                   >
                     {dictation.state === "transcribing" ? (
                       <Loader className="size-3.5 animate-spin" />
@@ -1660,6 +1620,37 @@ export function Composer({
             </div>
           </div>
         </div>
+        {hideTopBar ? null : (
+          <div className="flex min-w-0 items-center gap-2.5 px-1 pt-1.5">
+            {hideProjectPicker ? null : (
+              <CwdPicker
+                cwd={cwd}
+                recents={recents}
+                projectLogoPath={projectLogoPath}
+                enabled={enabled}
+                onCwdChange={onCwdChange}
+                onNewTerminal={onNewTerminal}
+                onClose={() => ref.current?.focus()}
+              />
+            )}
+            {hideBranchPicker ? null : (
+              <BranchPicker
+                cwd={cwd}
+                branch={branch}
+                enabled={enabled && !busy}
+                onChange={onBranchChange}
+                onClose={() => ref.current?.focus()}
+              />
+            )}
+            <div className="ml-auto flex shrink-0 items-center">
+              <ContextMeter
+                usage={context}
+                onCompact={compactSupported ? onCompactContext : undefined}
+                compactDisabled={busy}
+              />
+            </div>
+          </div>
+        )}
         {voiceError ? (
           <p className="px-3 pb-1 text-[11px] text-red-400">{voiceError}</p>
         ) : null}
@@ -1787,7 +1778,7 @@ function ComposerAction({
             title={t("Send")}
             aria-label={t("Send")}
             onClick={onSend}
-            className="composer-send grid size-6.5 place-items-center rounded-md bg-white text-black hover:bg-white/90"
+            className="composer-send grid size-6.5 place-items-center rounded-full bg-white text-black hover:bg-white/90"
           >
             <ArrowUp className="size-3.5" strokeWidth={2.25} />
           </button>
@@ -1798,7 +1789,7 @@ function ComposerAction({
           title={t("Stop")}
           aria-label={t("Stop")}
           onClick={onStop}
-          className="grid size-6.5 place-items-center rounded-md bg-white text-black hover:bg-white/90"
+          className="grid size-6.5 place-items-center rounded-full bg-white text-black hover:bg-white/90"
         >
           <Square className="size-2.5 fill-current" strokeWidth={0} />
         </button>
@@ -1814,7 +1805,7 @@ function ComposerAction({
       aria-label={t("Send")}
       disabled={!hasValue}
       onClick={onSend}
-      className="composer-send grid size-6.5 place-items-center rounded-md bg-white text-black hover:bg-white/90 disabled:cursor-default disabled:bg-white/30 disabled:text-black/40 disabled:hover:bg-white/30"
+      className="composer-send grid size-6.5 place-items-center rounded-full bg-white text-black hover:bg-white/90 disabled:cursor-default disabled:bg-white/30 disabled:text-black/40 disabled:hover:bg-white/30"
     >
       <ArrowUp className="size-3.5" strokeWidth={2.25} />
     </button>

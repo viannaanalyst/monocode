@@ -272,6 +272,7 @@ export function PromptOutline({
             key={prompt.id}
             type="button"
             data-prompt-bar={prompt.id}
+            data-no-tooltip
             tabIndex={prompt.id === tabId ? 0 : -1}
             aria-label={promptLabel(prompt)}
             aria-current={prompt.id === activeId ? "true" : undefined}

@@ -525,10 +525,10 @@ export function ModelPicker({
           openRecentMenu();
         }}
         onClick={() => togglePicker()}
-        className={`flex h-6.5 max-w-40 items-center gap-1 rounded-md px-1.5 ${
+        className={`flex h-6.5 max-w-40 items-center gap-1 rounded-full px-1.5 ${
           open
             ? "bg-content/10 text-content"
-            : "bg-content/10 text-content hover:bg-content/15"
+            : "text-content hover:bg-content/10"
         }`}
       >
         <ModelBrandIcon model={current} className="size-4 shrink-0" />
