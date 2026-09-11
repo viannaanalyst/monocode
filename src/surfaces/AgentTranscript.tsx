@@ -96,6 +96,7 @@ import {
   needsApproval,
   nestedScrollAbsorbsWheel,
   proseSummary,
+  subagentFailureSummary,
   toolCallLabel,
   toolCallState,
   turnCopyText,
@@ -170,8 +171,8 @@ function AgentTranscriptComponent({
   const [visibleTurnCount, setVisibleTurnCount] = useState(INITIAL_TURNS);
   // Turns whose folded work the reader has opened, by turn id.
   const [openWork, setOpenWork] = useState<Record<string, boolean>>({});
-  const toggleWork = useCallback((turnId: string) => {
-    setOpenWork((open) => ({ ...open, [turnId]: !open[turnId] }));
+  const toggleWork = useCallback((turnId: string, currentlyOpen: boolean) => {
+    setOpenWork((open) => ({ ...open, [turnId]: !currentlyOpen }));
   }, []);
   // Stretch the last turn after a send while this tab stays open. Closing
   // the tab is a new visit: the remount uses the true transcript height so
@@ -408,13 +409,18 @@ function AgentTranscriptComponent({
           // leaving the prompt and the answer to it.
           const turnId = turn[0].id;
           const fold = foldableWork(items);
-          const workOpen = !!openWork[turnId];
           const folded = fold ? foldedBlocks(items, fold) : [];
+          const subagentFailure = subagentFailureSummary(turn);
+          // Failures open once by default so their provider detail is not
+          // buried. An explicit click still lets the reader fold them away.
+          const workOpen = openWork[turnId] ?? !!subagentFailure;
           // The fold line is the turn's status line from the first token to
           // the last: the mark, and the clock beside it. It never moves, so a
           // turn settling does not shuffle the layout around the answer.
           const live = visible && !settled && !preparingHandoff;
-          const foldTitle: ReactNode = live ? (
+          const foldTitle: ReactNode = subagentFailure ? (
+            subagentFailure
+          ) : live ? (
             <LiveFoldTitle
               startedAt={startedAt}
               paused={waitingForApproval}
@@ -493,9 +499,10 @@ function AgentTranscriptComponent({
                 harness={turnHarness}
                 modelName={modelName}
                 live={live}
+                failed={!!subagentFailure}
                 expandable={!!fold}
                 open={workOpen && !!fold}
-                onToggle={() => toggleWork(turnId)}
+                onToggle={() => toggleWork(turnId, workOpen)}
               />
             </TurnRow>
           );
@@ -1141,6 +1148,7 @@ function WorkFoldLine({
   harness,
   modelName,
   live = false,
+  failed = false,
   expandable,
   open,
   onToggle,
@@ -1150,13 +1158,16 @@ function WorkFoldLine({
   harness?: HarnessId;
   modelName?: string;
   live?: boolean;
+  failed?: boolean;
   expandable: boolean;
   open: boolean;
   onToggle: () => void;
 }) {
   const icon = (
     <span className="relative flex size-3.5 shrink-0 items-center justify-center">
-      {open ? (
+      {failed ? (
+        <X className="size-3.5 shrink-0 text-red-400" strokeWidth={2} />
+      ) : open ? (
         // Open, the chevron stays put: it is the way back, and hunting for it
         // under the cursor is no way to close what you opened.
         <ChevronRight
@@ -1189,7 +1200,11 @@ function WorkFoldLine({
   );
   // While the agent runs, the clock shimmers here rather than at the bottom,
   // which is now bare.
-  const label = live ? (
+  const label = failed ? (
+    <span className="min-w-0 flex-1 truncate font-sans text-sm text-red-400">
+      {title}
+    </span>
+  ) : live ? (
     title
   ) : (
     <span className="min-w-0 flex-1 truncate font-sans text-sm text-content/50 transition-colors duration-200 group-hover:text-content/80">
@@ -1371,9 +1386,10 @@ function ActivityPhaseGroup({
     () => EXPAND_TOOL_ACTIVITY_DEFAULT,
   );
   const waiting = phase.steps.some(needsApproval);
+  const failed = !!subagentFailureSummary(phase.steps);
   // With auto-expand off, a group stays behind its header until clicked (a
-  // pending approval still forces it open).
-  const open = waiting || (override ?? (autoExpand && active));
+  // pending approval or a failed subagent still forces it open).
+  const open = waiting || (override ?? ((autoExpand && active) || failed));
   const [liveScroller, setLiveScroller] = useState<HTMLDivElement | null>(null);
   useLivePhaseScroll(liveScroller, active && open, phase.steps);
   const title = activityPhaseTitle(phase, active);
@@ -1752,30 +1768,76 @@ function ActivityToolRow({
   onOpenFile?: (path: string) => void;
   onOpenDiff?: (path: string) => void;
 }) {
+  const [errorOpen, setErrorOpen] = useState(false);
   const label = toolCallLabel(block, cwd);
   const state = toolCallState(block);
   const pending = needsApproval(block);
+  const errorDetail =
+    !pending && state === "rejected" ? block.tool?.detail?.trim() : undefined;
+  const summary = (
+    <ToolCallSummary
+      label={label}
+      preview={block.tool?.preview}
+      cwd={cwd}
+      chip={bare}
+      failed={state === "rejected"}
+      status={state}
+      onOpenFile={onOpenFile}
+      onOpenDiff={onOpenDiff}
+    />
+  );
+
   return (
     <div className="flex min-w-0 flex-col">
-      <div
-        aria-label={t("Tool call: {label}", { label })}
-        className="flex min-w-0 items-center gap-1.5 py-1"
-      >
-        {bare ? null : <ActivityToolIcon state={state} live={live} />}
-        <ToolCallSummary
-          label={label}
-          preview={block.tool?.preview}
-          cwd={cwd}
-          chip={bare}
-          failed={state === "rejected"}
-          status={state}
-          onOpenFile={onOpenFile}
-          onOpenDiff={onOpenDiff}
-        />
-        {pending ? null : <ToolCallStatusIcon state={state} />}
-      </div>
+      {errorDetail ? (
+        <div
+          aria-label={t("Failed tool call: {label}", { label })}
+          className="group flex min-w-0 items-center gap-1.5 py-1"
+        >
+          {bare ? null : <ActivityToolIcon state={state} live={live} />}
+          <div
+            className="flex min-w-0 flex-1 cursor-pointer"
+            onClick={() => setErrorOpen((value) => !value)}
+          >
+            {summary}
+          </div>
+          <ToolCallStatusIcon state={state} />
+          <button
+            type="button"
+            aria-expanded={errorOpen}
+            aria-label={
+              errorOpen
+                ? t("Hide error details for {label}", { label })
+                : t("Show error details for {label}", { label })
+            }
+            onClick={() => setErrorOpen((value) => !value)}
+            className="-m-1 shrink-0 rounded p-1"
+          >
+            <ChevronRight
+              className={`size-3.5 text-red-400/60 transition-transform ${errorOpen ? "rotate-90" : ""}`}
+              strokeWidth={1.75}
+            />
+          </button>
+        </div>
+      ) : (
+        <div
+          aria-label={t("Tool call: {label}", { label })}
+          className="flex min-w-0 items-center gap-1.5 py-1"
+        >
+          {bare ? null : <ActivityToolIcon state={state} live={live} />}
+          {summary}
+          {pending ? null : <ToolCallStatusIcon state={state} />}
+        </div>
+      )}
       {pending ? (
         <ApprovalControls block={block} onApproval={onApproval} />
+      ) : null}
+      {errorOpen && errorDetail ? (
+        <pre
+          className={`min-w-0 whitespace-pre-wrap break-words py-1 font-mono text-[12px] leading-5 text-red-400/80 ${bare ? "" : "pl-5"}`}
+        >
+          {errorDetail}
+        </pre>
       ) : null}
     </div>
   );

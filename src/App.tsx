@@ -157,6 +157,7 @@ import {
   sendHarnessTurn,
   steerHarnessTurn,
   startHarnessBridge,
+  stopHarnessSession,
   stopStreaming,
   pickTextHarness,
   type ApprovalDecision,
@@ -232,6 +233,7 @@ import {
   filterTabsForProject,
   planWorkspaceTabClose,
   workspaceTabCwd,
+  focusedWorkspaceTabCwd,
 } from "./lib/workspaceTabGroups";
 import { runSessionRemoval } from "./lib/sessionRemoval";
 import {
@@ -321,6 +323,12 @@ import { preparePrompt } from "./lib/promptPreparation";
 import { warmNativeSkills, isNativeCommandPrompt } from "./lib/skills";
 import { nativeSkillContextForSession } from "./lib/sessionSkills";
 import {
+  loadSessionFolders,
+  placeSessionInFolder,
+  saveSessionFolders,
+  type SessionFolderTarget,
+} from "./lib/sessionFolders";
+import {
   ADD_NOTE_TO_CHAT_EVENT,
   composeNoteMessage,
   noteCardMeta,
@@ -340,7 +348,8 @@ import { SessionPane } from "./surfaces/SessionPane";
 import { SessionSurface } from "./surfaces/SessionSurface";
 import { ProjectTerminalDock } from "./surfaces/ProjectTerminalDock";
 import { SearchView } from "./surfaces/SearchView";
-import { SettingsView } from "./surfaces/SettingsView";
+import { SettingsView, type SettingsAnchor } from "./surfaces/SettingsView";
+import type { ConnectableInboxSource } from "./lib/inboxFilters";
 import { InboxView } from "./surfaces/InboxView";
 import type { InboxSessionPortal } from "./surfaces/InboxDiscussionPanel";
 import { inboxAskKey, inboxAskPrompt } from "./lib/inboxAsk";
@@ -673,6 +682,9 @@ export default function App({
   const [importDialogCwd, setImportDialogCwd] = useState<string | null>(null);
   const [settingsSection, setSettingsSection] =
     useState<SettingsSectionId>(loadSettingsSection);
+  const [settingsAnchor, setSettingsAnchor] = useState<SettingsAnchor | null>(
+    null,
+  );
   const [editorNavigation, setEditorNavigation] =
     useState<EditorNavigationTarget | null>(null);
   const editorNavigationToken = useRef(0);
@@ -1465,15 +1477,10 @@ export default function App({
     }
 
     if (tab) {
-      const focusedSession = nextFocusedId
-        ? sessionsRef.current.find((session) => session.id === nextFocusedId)
-        : undefined;
       const focusedTab = nextFocusedId
         ? { ...tab, focusedId: nextFocusedId }
         : tab;
-      const cwd =
-        focusedSession?.cwd ??
-        (focusedTab ? workspaceTabCwd(focusedTab, sessionsRef.current) : null);
+      const cwd = focusedWorkspaceTabCwd(focusedTab, sessionsRef.current);
       if (cwd && looksLikeProject(cwd)) {
         const normalized = normalizeProjectPath(cwd);
         if (!sameProjectPath(normalized, projectCwdRef.current)) {
@@ -3493,6 +3500,8 @@ export default function App({
       });
       switch (decision.action) {
         case "keep":
+          setProjectCwd(normalized);
+          setRecents(rememberProject(normalized));
           return;
         case "reuse-blank":
           onCwdChange(decision.sessionId, normalized);
@@ -3560,6 +3569,27 @@ export default function App({
     const path = await pickFolder();
     if (path) onSelectProject(path);
   }, [onSelectProject]);
+
+  const onPlaceSessionInFolder = useCallback(
+    (sessionId: string, target: SessionFolderTarget) => {
+      const source = sessionsRef.current.find(
+        (session) => session.id === sessionId,
+      );
+      if (!source || !looksLikeProject(source.cwd)) return;
+      const folders = loadSessionFolders(source.cwd);
+      if (
+        target.kind === "existing" &&
+        !folders.some((folder) => folder.id === target.folderId)
+      ) {
+        return;
+      }
+      saveSessionFolders(
+        source.cwd,
+        placeSessionInFolder(folders, sessionId, target),
+      );
+    },
+    [],
+  );
 
   const onRemoveProject = useCallback(
     (path: string, options: { purgeData: boolean }) => {
@@ -4358,13 +4388,24 @@ export default function App({
             error instanceof Error
               ? error.message
               : `${current.harness} adapter failed`;
-          enqueueHarnessEvent(sessionId, {
-            type: "session.error",
-            message,
-          });
+          if (!providerFailureSeen) {
+            enqueueHarnessEvent(sessionId, {
+              type: "session.error",
+              message,
+            });
+          }
+          providerFailureSeen = true;
         } finally {
           if (turnGen.current.get(sessionId) !== gen) return;
           flushHarnessEvents();
+          // A failed provider can leave its process alive with a dead event
+          // stream or poisoned turn state. Park it now; the next prompt will
+          // reconnect and resume through a fresh transport.
+          if (providerFailureSeen) {
+            await stopHarnessSession(current.harness, sessionId).catch(
+              () => undefined,
+            );
+          }
           await flushSessionCheckpoint(sessionId);
           setSessions((prev) =>
             prev.map((s) => {
@@ -5148,19 +5189,28 @@ export default function App({
     setNotesViewOpen(false);
   }, []);
 
-  const openSettings = useCallback((section?: SettingsSectionId) => {
-    setFilePickerOpen(false);
-    setSearchViewOpen(false);
-    setInboxViewOpen(false);
-    setNotesViewOpen(false);
-    if (section) {
-      setSettingsSection(section);
-      saveSettingsSection(section);
-    }
-    setSettingsOpen(true);
-  }, []);
+  const openSettings = useCallback(
+    (section?: SettingsSectionId, anchor?: SettingsAnchor) => {
+      setFilePickerOpen(false);
+      setSearchViewOpen(false);
+      setInboxViewOpen(false);
+      setNotesViewOpen(false);
+      if (section) {
+        setSettingsSection(section);
+        saveSettingsSection(section);
+      }
+      setSettingsAnchor(anchor ?? null);
+      setSettingsOpen(true);
+    },
+    [],
+  );
 
   const onOpenSettings = useCallback(() => openSettings(), [openSettings]);
+
+  const onOpenInboxIntegrations = useCallback(
+    (source: ConnectableInboxSource) => openSettings("inbox", source),
+    [openSettings],
+  );
 
   const onCloseSettings = useCallback(() => {
     setSettingsOpen(false);
@@ -5637,6 +5687,7 @@ export default function App({
     onSubmit,
     onStop,
     onCompactContext,
+    onPlaceSessionInFolder,
     onDeleteQueuedMessage,
     onEditQueuedMessage,
     onQueuedMessageEditingChange,
@@ -5983,6 +6034,7 @@ export default function App({
             sessions={inboxRelatedSessions}
             onOpenSession={onOpenInboxSession}
             target={inboxTarget}
+            onOpenIntegrations={onOpenInboxIntegrations}
           />
         ) : null}
         {notesViewOpen ? (
@@ -5996,6 +6048,7 @@ export default function App({
         {settingsOpen ? (
           <SettingsView
             section={settingsSection}
+            anchor={settingsAnchor}
             cwd={sidebarCwd}
             sessions={sidebarHistory}
             besideRail

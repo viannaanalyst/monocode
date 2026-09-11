@@ -334,6 +334,18 @@ export const PT_BR: Record<string, string> = {
   "Updated {time}": "Atualizado {time}",
   Page: "Página",
   "Open in Notion": "Abrir no Notion",
+  "Connect an inbox source": "Conectar uma fonte do Inbox",
+  "Add connection": "Adicionar conexão",
+  "Add a connection to start using the Inbox.":
+    "Adicione uma conexão para começar a usar o Inbox.",
+  "Open in MonoCode": "Abrir no MonoCode",
+  "File link actions": "Ações do link de arquivo",
+  "Mixed changes": "Alterações mistas",
+  "Failed tool call: {label}": "Chamada de ferramenta com falha: {label}",
+  "Show error details for {label}":
+    "Mostrar detalhes do erro de {label}",
+  "Hide error details for {label}":
+    "Ocultar detalhes do erro de {label}",
   "Open in Jira": "Abrir no Jira",
   "Open in ClickUp": "Abrir no ClickUp",
   "Import session": "Importar sessão",

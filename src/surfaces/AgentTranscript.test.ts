@@ -61,6 +61,29 @@ describe("AgentTranscript collapsed work", () => {
     expect(markup.includes('aria-label="Show the work"')).toBe(false);
   });
 
+  it("opens failed subagent work but keeps provider details collapsed", () => {
+    const markup = render([
+      { id: "user", role: "user", text: "Delegate this", startedAt: 1_000 },
+      {
+        id: "agent",
+        role: "tool",
+        text: "Inspect auth",
+        tool: {
+          callId: "agent-1",
+          kind: "agent",
+          status: "failed",
+          detail: "Child process disconnected",
+        },
+      },
+      { id: "answer", role: "assistant", text: "I could not finish." },
+    ]);
+
+    expect(markup).toContain("Subagent failed");
+    expect(markup).not.toContain("Child process disconnected");
+    expect(markup).toContain("Show error details for Inspect auth");
+    expect(markup).toContain('aria-label="Hide the work"');
+  });
+
   it("places a session accessory after the latest reply and before its action row", () => {
     const markup = render(
       [

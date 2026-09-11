@@ -58,6 +58,7 @@ import {
   loadChatBackgroundPath,
   subscribeChatBackgroundPath,
 } from "../lib/appearance";
+import type { SessionFolderTarget } from "../lib/sessionFolders";
 
 type Props = {
   session: Session;
@@ -87,6 +88,10 @@ type Props = {
   ) => void;
   onStop: (sessionId: string) => void;
   onCompactContext: (sessionId: string) => boolean;
+  onPlaceSessionInFolder: (
+    sessionId: string,
+    target: SessionFolderTarget,
+  ) => void;
   onDeleteQueuedMessage: (sessionId: string, messageId: string) => void;
   onEditQueuedMessage: (
     sessionId: string,
@@ -157,6 +162,7 @@ export const SessionPane = memo(function SessionPane({
   onSubmit,
   onStop,
   onCompactContext,
+  onPlaceSessionInFolder,
   onDeleteQueuedMessage,
   onEditQueuedMessage,
   onQueuedMessageEditingChange,
@@ -347,6 +353,7 @@ export const SessionPane = memo(function SessionPane({
       }
       onStop={() => onStop(session.id)}
       onCompactContext={() => onCompactContext(session.id)}
+      onPlaceInFolder={(target) => onPlaceSessionInFolder(session.id, target)}
       queuedMessages={session.queuedMessages}
       queueStatus={session.queueStatus}
       onDeleteQueuedMessage={(messageId) =>

@@ -99,7 +99,6 @@ import { InboxMiniCard } from "./InboxMiniCard";
 import { NoteMiniCard } from "./NoteMiniCard";
 import { HandoffMiniCard } from "./HandoffMiniCard";
 import { ModelPicker } from "./ModelPicker";
-import { ModelSettings } from "./ModelSettings";
 import { QuestionForm } from "./QuestionForm";
 import { SkillPicker } from "./SkillPicker";
 import { projectKey } from "../lib/paths";
@@ -133,7 +132,18 @@ import { COMPACT_COMMAND, isCompactCommand } from "../lib/compact";
 import { insertAtCursor } from "../lib/transcribe";
 import { useDictation } from "../hooks/useDictation";
 import { t } from "../i18n";
-
+import {
+  consumeSessionFolderCommand,
+  isSessionFolderCommand,
+  runsSessionFolderCommandOnSpace,
+  SESSION_FOLDER_COMMAND,
+} from "../lib/sessionFolderCommand";
+import {
+  loadSessionFolders,
+  type SessionFolderTarget,
+  type SessionFolder,
+} from "../lib/sessionFolders";
+import { SessionFolderPicker } from "./SessionFolderPicker";
 
 type Props = {
   enabled?: boolean;
@@ -183,6 +193,7 @@ type Props = {
   ) => void;
   onStop?: () => void;
   onCompactContext?: () => boolean;
+  onPlaceInFolder?: (target: SessionFolderTarget) => void;
   onDeleteQueuedMessage?: (messageId: string) => void;
   onEditQueuedMessage?: (messageId: string, text: string) => void;
   onQueuedMessageEditingChange?: (messageId?: string) => void;
@@ -434,6 +445,7 @@ export function Composer({
   onSubmit,
   onStop,
   onCompactContext,
+  onPlaceInFolder,
   onDeleteQueuedMessage,
   onEditQueuedMessage,
   onQueuedMessageEditingChange,
@@ -467,6 +479,9 @@ export function Composer({
   const [slash, setSlash] = useState<SlashToken | null>(null);
   const [skillActive, setSkillActive] = useState(0);
   const [creatingSkill, setCreatingSkill] = useState(false);
+  const [sessionFolderOpen, setSessionFolderOpen] = useState(false);
+  const [sessionFolders, setSessionFolders] = useState<SessionFolder[]>([]);
+  const [sessionFolderSelected, setSessionFolderSelected] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [createBusy, setCreateBusy] = useState(false);
   const [files, setFiles] = useState<ProjectFile[]>(
@@ -500,7 +515,8 @@ export function Composer({
     !inboxCard &&
     !noteCard &&
     !handoffCard;
-  const pickerOpen = creatingSkill || slash !== null;
+  const skillPickerOpen = creatingSkill || slash !== null;
+  const pickerOpen = skillPickerOpen || sessionFolderOpen;
   const skillCatalog = useComposerSkills({
     harness,
     executionCwd,
@@ -510,13 +526,15 @@ export function Composer({
   const skills = skillCatalog.skills;
   const slashItems = useMemo(
     () => [
+      SESSION_FOLDER_COMMAND,
       PLAN_COMMAND,
       COMPACT_COMMAND,
       ...skills.filter(
         (skill) =>
           skill.kind === "native" ||
           (skill.name !== PLAN_COMMAND.name &&
-            skill.name !== COMPACT_COMMAND.name),
+            skill.name !== COMPACT_COMMAND.name &&
+            skill.name !== SESSION_FOLDER_COMMAND.name),
       ),
     ],
     [skills],
@@ -630,6 +648,11 @@ export function Composer({
   useEffect(() => {
     setSkillActive(0);
   }, [slash?.query, cwd]);
+
+  useEffect(() => {
+    setSessionFolderOpen(false);
+    setSessionFolderSelected(false);
+  }, [cwd]);
 
   useEffect(() => {
     setSkillActive((index) =>
@@ -758,6 +781,11 @@ export function Composer({
       ),
   });
 
+  const openSessionFolderPicker = useCallback(() => {
+    setSessionFolders(loadSessionFolders(cwd));
+    setSessionFolderOpen(true);
+  }, [cwd]);
+
   useEffect(() => {
     const el = ref.current;
     if (!el || !quoteRequest) return;
@@ -794,6 +822,28 @@ export function Composer({
       }
       const planCommand =
         skill.kind === "builtin" && skill.name === PLAN_COMMAND.name;
+      const sessionFolderCommand =
+        skill.kind === "builtin" &&
+        skill.name === SESSION_FOLDER_COMMAND.name &&
+        !!onPlaceInFolder;
+      if (sessionFolderCommand) {
+        const next = replaceSlashToken(
+          el.value,
+          token,
+          SESSION_FOLDER_COMMAND.invocation,
+        );
+        el.value = next;
+        resizeTextarea(el);
+        let cursor = token.start + SESSION_FOLDER_COMMAND.invocation.length + 1;
+        if (next[cursor] === " ") cursor += 1;
+        el.setSelectionRange(cursor, cursor);
+        setDraft(next);
+        syncHasValue(next, attachmentsRef.current);
+        setSlash(null);
+        setCreatingSkill(false);
+        openSessionFolderPicker();
+        return;
+      }
       const next = planCommand
         ? `${el.value.slice(0, token.start)}${el.value
             .slice(token.end)
@@ -813,7 +863,7 @@ export function Composer({
       if (planCommand) setPlanSelected(true);
       el.focus();
     },
-    [syncHasValue],
+    [onPlaceInFolder, openSessionFolderPicker, syncHasValue],
   );
 
   const pickMention = useCallback(
@@ -845,7 +895,7 @@ export function Composer({
     if (!focused) return;
     if (
       document.querySelector(
-        "[data-model-picker], [data-access-picker], [data-model-settings], [data-file-picker], [data-branch-picker], [data-skill-picker], [data-mention-picker], [data-composer-plus]",
+        "[data-model-picker], [data-access-picker], [data-model-settings], [data-file-picker], [data-branch-picker], [data-skill-picker], [data-session-folder-picker], [data-mention-picker], [data-composer-plus]",
       )
     )
       return;
@@ -952,6 +1002,12 @@ export function Composer({
   }, [addAttachments, attachmentsSupported, enabled]);
 
   const submit = (value: string) => {
+    const folderCommand = consumeSessionFolderCommand(value);
+    if (folderCommand.matched && onPlaceInFolder && !sessionFolderSelected) {
+      openSessionFolderPicker();
+      return;
+    }
+
     if (isCompactCommand(value)) {
       if (!onCompactContext?.()) return;
       if (!ref.current) return;
@@ -968,7 +1024,11 @@ export function Composer({
       return;
     }
 
-    const command = consumePlanCommand(value);
+    const command = consumePlanCommand(
+      folderCommand.matched && sessionFolderSelected
+        ? folderCommand.text
+        : value,
+    );
     const text = isNativeCommandPrompt(command.text, harness)
       ? command.text
       : composeInboxMessage(inboxCard, command.text);
@@ -984,6 +1044,8 @@ export function Composer({
     onDraftChange?.("");
     setAttachments([]);
     setPlanSelected(false);
+    setSessionFolderSelected(false);
+    setSessionFolderOpen(false);
     setPlusOpen(false);
     setSlash(null);
     setMention(null);
@@ -999,6 +1061,22 @@ export function Composer({
     if (e.key === "Escape" && dictation.state === "recording") {
       e.preventDefault();
       dictation.cancel();
+      return;
+    }
+
+    if (
+      e.key === " " &&
+      runsSessionFolderCommandOnSpace({
+        text: e.currentTarget.value,
+        selectionStart: e.currentTarget.selectionStart,
+        selectionEnd: e.currentTarget.selectionEnd,
+        altKey: e.altKey,
+        ctrlKey: e.ctrlKey,
+        metaKey: e.metaKey,
+      })
+    ) {
+      e.preventDefault();
+      openSessionFolderPicker();
       return;
     }
 
@@ -1042,7 +1120,8 @@ export function Composer({
     if (
       e.key === "Enter" &&
       !e.shiftKey &&
-      isCompactCommand(e.currentTarget.value)
+      (isCompactCommand(e.currentTarget.value) ||
+        isSessionFolderCommand(e.currentTarget.value))
     ) {
       e.preventDefault();
       submit(e.currentTarget.value);
@@ -1136,7 +1215,35 @@ export function Composer({
         onResume={onResumeQueue}
       />
       <div className="relative overflow-visible">
-        {pickerOpen ? (
+        {sessionFolderOpen ? (
+          <div className="absolute inset-x-0 bottom-full z-30 mb-1">
+            <SessionFolderPicker
+              folders={sessionFolders}
+              onPick={(target) => {
+                setSessionFolderOpen(false);
+                setSessionFolderSelected(true);
+                onPlaceInFolder?.(target);
+                const el = ref.current;
+                if (!el) return;
+                const cursor = el.selectionStart ?? el.value.length;
+                if (/^\s*\/add-to-folder$/i.test(el.value)) {
+                  el.value = `${el.value} `;
+                  resizeTextarea(el);
+                  setDraft(el.value);
+                  syncHasValue(el.value, attachmentsRef.current);
+                  el.setSelectionRange(el.value.length, el.value.length);
+                } else {
+                  el.setSelectionRange(cursor, cursor);
+                }
+                requestAnimationFrame(() => el.focus());
+              }}
+              onDismiss={() => {
+                setSessionFolderOpen(false);
+                ref.current?.focus();
+              }}
+            />
+          </div>
+        ) : skillPickerOpen ? (
           <div className="absolute inset-x-0 bottom-full z-30 mb-1">
             <SkillPicker
               skills={rankedSkills}
@@ -1323,6 +1430,12 @@ export function Composer({
                 const el = e.currentTarget;
                 resizeTextarea(el);
                 setDraft(el.value);
+                if (
+                  sessionFolderSelected &&
+                  !consumeSessionFolderCommand(el.value).matched
+                ) {
+                  setSessionFolderSelected(false);
+                }
                 syncHasValue(el.value, attachments);
                 syncTokensFromTextarea(el);
               }}
@@ -1434,15 +1547,12 @@ export function Composer({
                 <ModelPicker
                   harness={harness}
                   model={model}
+                  values={modelSettings}
                   hotkeys={hotkeys && enabled}
                   onChange={onModelChange}
-                  onClose={() => ref.current?.focus()}
-                />
-                <ModelSettings
-                  harness={harness}
-                  model={model}
-                  values={modelSettings}
-                  onChange={(settings) => onModelSettingsChange?.(settings)}
+                  onSettingsChange={(settings) =>
+                    onModelSettingsChange?.(settings)
+                  }
                   onClose={() => ref.current?.focus()}
                 />
                 {harness !== "fx" ? (

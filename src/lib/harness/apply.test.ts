@@ -55,6 +55,33 @@ describe("turn duration", () => {
     expect(session.busy).toBe(false);
     expect(session.blocks[0]?.durationMs).toBe(7_000);
   });
+
+  it("marks orphaned subagent work failed when the provider dies", () => {
+    let session = appendUser(newSession("codex", "/tmp"), "delegate it");
+    session = applyHarnessEvent(session, {
+      type: "tool.started",
+      callId: "agent-1",
+      title: "Inspect auth",
+      kind: "agent",
+      status: "in_progress",
+    });
+    session = applyHarnessEvent(session, {
+      type: "session.error",
+      message: "Codex app-server exited",
+    });
+
+    expect(session.busy).toBe(false);
+    expect(
+      session.blocks.find((block) => block.tool?.callId === "agent-1"),
+    ).toMatchObject({
+      streaming: false,
+      tool: { kind: "agent", status: "failed" },
+    });
+    expect(session.blocks.at(-1)).toMatchObject({
+      role: "system",
+      text: "Codex app-server exited",
+    });
+  });
 });
 
 describe("streamed markdown", () => {

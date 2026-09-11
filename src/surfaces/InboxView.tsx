@@ -33,6 +33,7 @@ import {
   InboxFiltersMenu,
   INBOX_FILTER_MENU_WIDTH,
 } from "../chrome/InboxFiltersMenu";
+import { InboxConnectMenu } from "../chrome/InboxConnectMenu";
 import { InboxProviderMark } from "../chrome/InboxProviderMark";
 import { ProjectLogoIcon } from "../chrome/ProjectLogoIcon";
 import { ProjectMascot } from "../chrome/ProjectMascot";
@@ -42,6 +43,7 @@ import { useDragResize } from "../hooks/useDragResize";
 import { useLockOverscroll } from "../hooks/useLockOverscroll";
 import { useTabGroupLogos } from "../hooks/useTabGroupLogos";
 import {
+  githubStatus,
   githubPrDiff,
   githubReviewDecisionLabel,
   githubWorkItem,
@@ -71,14 +73,21 @@ import {
 } from "../lib/githubTasks";
 import {
   applyInboxFilters,
+  connectableInboxSources,
   hasActiveInboxFilters,
+  loadInboxConnections,
   linearProjectOptions,
   inboxFetchState,
   loadInboxFilters,
   loadInboxSource,
   pruneInboxFilters,
   saveInboxFilters,
+  resolveInboxSource,
+  saveInboxConnections,
   saveInboxSource,
+  visibleInboxSources,
+  INBOX_SOURCE_LABELS,
+  type ConnectableInboxSource,
   type InboxFilters,
   type InboxSource,
 } from "../lib/inboxFilters";
@@ -100,6 +109,7 @@ import {
 } from "../lib/inboxSeen";
 import {
   LINEAR_CHANGE_EVENT,
+  linearConnected,
   linearIssueComment,
   linearIssueDetails,
   linearIssueThread,
@@ -112,34 +122,8 @@ import {
   type LinearTeam,
 } from "../lib/linear";
 import {
-  JIRA_CHANGE_EVENT,
-  jiraIssueComment,
-  jiraIssueDetails,
-  jiraIssueThread,
-  peekJiraIssueDetails,
-  peekJiraIssueThread,
-  type JiraIssueThread,
-} from "../lib/jira";
-import {
-  CLICKUP_CHANGE_EVENT,
-  clickUpTaskComment,
-  clickUpTaskDetails,
-  clickUpTaskThread,
-  peekClickUpTaskDetails,
-  peekClickUpTaskThread,
-  type ClickUpTaskThread,
-} from "../lib/clickup";
-import {
-  NOTION_CHANGE_EVENT,
-  notionTaskComment,
-  notionTaskDetails,
-  notionTaskThread,
-  peekNotionTaskDetails,
-  peekNotionTaskThread,
-  type NotionTaskThread,
-} from "../lib/notion";
-import {
   GITLAB_CHANGE_EVENT,
+  gitlabConnected,
   gitlabMrDiff,
   gitlabWorkItemComment,
   gitlabWorkItemDetails,
@@ -149,6 +133,36 @@ import {
   peekGitlabWorkItemThread,
   type GitlabWorkItemThread,
 } from "../lib/gitlab";
+import {
+  JIRA_CHANGE_EVENT,
+  jiraConnected,
+  jiraIssueComment,
+  jiraIssueDetails,
+  jiraIssueThread,
+  peekJiraIssueDetails,
+  peekJiraIssueThread,
+  type JiraIssueThread,
+} from "../lib/jira";
+import {
+  CLICKUP_CHANGE_EVENT,
+  clickUpConnected,
+  clickUpTaskComment,
+  clickUpTaskDetails,
+  clickUpTaskThread,
+  peekClickUpTaskDetails,
+  peekClickUpTaskThread,
+  type ClickUpTaskThread,
+} from "../lib/clickup";
+import {
+  NOTION_CHANGE_EVENT,
+  notionConnected,
+  notionTaskComment,
+  notionTaskDetails,
+  notionTaskThread,
+  peekNotionTaskDetails,
+  peekNotionTaskThread,
+  type NotionTaskThread,
+} from "../lib/notion";
 import {
   loadTabGroupColors,
   loadTabGroupCustomColors,
@@ -164,14 +178,13 @@ import {
   type InboxReplyTarget,
 } from "./InboxComments";
 import { InboxPrDiff } from "./InboxPrDiff";
-import { NotionTaskEditor, type NotionEditTarget } from "./NotionTaskEditor";
 import {
   InboxDiscussionPanel,
   type InboxSessionPortal,
 } from "./InboxDiscussionPanel";
 import { inboxAskKey } from "../lib/inboxAsk";
+import { NotionTaskEditor, type NotionEditTarget } from "./NotionTaskEditor";
 import { t } from "../i18n";
-
 
 const MIN_WIDTH = 240;
 const MAX_WIDTH = 420;
@@ -257,50 +270,6 @@ function peekInboxForRail(recents: RecentProject[], cwd: string) {
   });
 }
 
-function inboxEmptyMessage(
-  source: InboxSource,
-  options: {
-    narrowedByUser: boolean;
-    searchNarrowed: boolean;
-    hasProjects: boolean;
-  },
-): string {
-  const { narrowedByUser, searchNarrowed, hasProjects } = options;
-  if (narrowedByUser) {
-    if (searchNarrowed) {
-      if (source === "linear") return t("No matching Linear issues");
-      if (source === "jira") return t("No matching Jira issues");
-      if (source === "clickup") return t("No matching ClickUp tasks");
-      if (source === "notion") return t("No matching Notion pages");
-      if (source === "gitlab") return t("No matching issues or merge requests");
-      return t("No matching issues or pull requests");
-    }
-    if (source === "linear") return t("No Linear issues match these filters");
-    if (source === "jira") return t("No Jira issues match these filters");
-    if (source === "clickup") return t("No ClickUp tasks match these filters");
-    if (source === "notion") return t("No Notion pages match these filters");
-    if (source === "gitlab") return t("No GitLab items match these filters");
-    return t("No issues or pull requests match these filters");
-  }
-  if (source === "linear") return t("No Linear issues");
-  if (source === "jira") return t("No Jira issues");
-  if (source === "clickup") return t("No ClickUp tasks");
-  if (source === "notion") return t("No Notion pages");
-  if (!hasProjects) return t("Open a project to fill the inbox");
-  return source === "gitlab"
-    ? t("No matching issues or merge requests")
-    : t("No matching issues or pull requests");
-}
-
-function notionEditTarget(item: InboxItem): NotionEditTarget {
-  return {
-    id: item.id ?? "",
-    title: item.title,
-    status: item.state,
-    labels: item.labels.map((label) => label.name),
-  };
-}
-
 function InboxSourceTab({
   source,
   selected,
@@ -310,18 +279,7 @@ function InboxSourceTab({
   selected: boolean;
   onSelect: (source: InboxSource) => void;
 }) {
-  const label =
-    source === "linear"
-      ? "Linear"
-      : source === "jira"
-        ? "Jira"
-        : source === "clickup"
-          ? "ClickUp"
-          : source === "notion"
-            ? "Notion"
-            : source === "gitlab"
-              ? t("GitLab")
-              : "GitHub";
+  const label = t(INBOX_SOURCE_LABELS[source]);
   return (
     <button
       type="button"
@@ -386,6 +344,8 @@ type Props = {
   onOpenSession?: (sessionId: string) => void | Promise<void>;
   /** Session-card destination to reveal after the Inbox list loads. */
   target?: LinkedWorkItem | null;
+  /** Opens Settings on the card where the given source is connected. */
+  onOpenIntegrations: (source: ConnectableInboxSource) => void;
 };
 
 export function InboxView({
@@ -401,6 +361,7 @@ export function InboxView({
   sessions = [],
   onOpenSession,
   target = null,
+  onOpenIntegrations,
 }: Props) {
   const [discussionOpen, setDiscussionOpen] = useState(false);
   const listLock = useLockOverscroll<HTMLDivElement>();
@@ -429,26 +390,23 @@ export function InboxView({
   );
   const [targetItem, setTargetItem] = useState<InboxItem | null>(null);
   const [filters, setFilters] = useState(loadInboxFilters);
-  const [source, setSource] = useState(loadInboxSource);
-  const [providers, setProviders] = useState({
-    github: true,
-    linear: true,
-    gitlab: true,
-    jira: true,
-    clickup: true,
-    notion: true,
-  });
+  const [connections, setConnections] = useState(loadInboxConnections);
+  const [source, setSource] = useState(() =>
+    resolveInboxSource(loadInboxSource(), connections),
+  );
+  const [connectMenuOpen, setConnectMenuOpen] = useState(false);
+  const connectButtonRef = useRef<HTMLButtonElement | null>(null);
   const [filterMenu, setFilterMenu] = useState<{ x: number; y: number } | null>(
     null,
   );
-  const [notionEditor, setNotionEditor] = useState<{
-    mode: "create" | "edit";
-    target?: NotionEditTarget;
-  } | null>(null);
   const [linearHiddenTeamIds, setLinearHiddenTeamIds] = useState(
     loadHiddenLinearTeamIds,
   );
   const [linearTeams, setLinearTeams] = useState<LinearTeam[]>([]);
+  const [notionEditor, setNotionEditor] = useState<{
+    mode: "create" | "edit";
+    target?: NotionEditTarget;
+  } | null>(null);
   const prevRefresh = useRef(refresh);
 
   const projects = useMemo(
@@ -509,11 +467,15 @@ export function InboxView({
         setFilterMenu(null);
         return;
       }
+      if (connectMenuOpen) {
+        setConnectMenuOpen(false);
+        return;
+      }
       onCloseRef.current?.();
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [filterMenu]);
+  }, [connectMenuOpen, filterMenu]);
 
   useEffect(() => {
     const onChange = () => {
@@ -530,23 +492,90 @@ export function InboxView({
     return () => window.removeEventListener(GITLAB_CHANGE_EVENT, onChange);
   }, []);
 
+  // The mount read does the real work: opening Settings unmounts this view, so
+  // a token set there lands on the way back in. Reads can also overlap, and
+  // only the newest may write, or a slow earlier answer restores a stale one.
   useEffect(() => {
-    const onChange = () => setRefresh((value) => value + 1);
-    window.addEventListener(JIRA_CHANGE_EVENT, onChange);
-    return () => window.removeEventListener(JIRA_CHANGE_EVENT, onChange);
+    let cancelled = false;
+    let latest = 0;
+    const read = () => {
+      const generation = ++latest;
+      void Promise.allSettled([
+        githubStatus(),
+        linearConnected(),
+        gitlabConnected(),
+        jiraConnected(),
+        clickUpConnected(),
+        notionConnected(),
+      ]).then(([github, linear, gitlab, jira, clickup, notion]) => {
+        if (cancelled || generation !== latest) return;
+        setConnections((prev) => ({
+          github:
+            github.status === "fulfilled"
+              ? github.value.connected
+              : prev.github,
+          linear:
+            linear.status === "fulfilled"
+              ? linear.value.connected
+              : prev.linear,
+          gitlab:
+            gitlab.status === "fulfilled"
+              ? gitlab.value.connected
+              : prev.gitlab,
+          jira:
+            jira.status === "fulfilled" ? jira.value.connected : prev.jira,
+          clickup:
+            clickup.status === "fulfilled"
+              ? clickup.value.connected
+              : prev.clickup,
+          notion:
+            notion.status === "fulfilled"
+              ? notion.value.connected
+              : prev.notion,
+        }));
+      });
+    };
+    read();
+    window.addEventListener(LINEAR_CHANGE_EVENT, read);
+    window.addEventListener(GITLAB_CHANGE_EVENT, read);
+    window.addEventListener(JIRA_CHANGE_EVENT, read);
+    window.addEventListener(CLICKUP_CHANGE_EVENT, read);
+    window.addEventListener(NOTION_CHANGE_EVENT, read);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(LINEAR_CHANGE_EVENT, read);
+      window.removeEventListener(GITLAB_CHANGE_EVENT, read);
+      window.removeEventListener(JIRA_CHANGE_EVENT, read);
+      window.removeEventListener(CLICKUP_CHANGE_EVENT, read);
+      window.removeEventListener(NOTION_CHANGE_EVENT, read);
+    };
   }, []);
 
   useEffect(() => {
-    const onChange = () => setRefresh((value) => value + 1);
-    window.addEventListener(CLICKUP_CHANGE_EVENT, onChange);
-    return () => window.removeEventListener(CLICKUP_CHANGE_EVENT, onChange);
+    saveInboxConnections(connections);
+  }, [connections]);
+
+  // The initial source is resolved against cached status, so storage can still
+  // name a provider this view has already fallen back from.
+  useEffect(() => {
+    saveInboxSource(source);
+    // Mount only: the temporary switch to GitHub for a linked target must not
+    // be persisted.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Disconnecting can pull the tab out from under the current selection.
   useEffect(() => {
-    const onChange = () => setRefresh((value) => value + 1);
-    window.addEventListener(NOTION_CHANGE_EVENT, onChange);
-    return () => window.removeEventListener(NOTION_CHANGE_EVENT, onChange);
-  }, []);
+    const next = resolveInboxSource(source, connections);
+    if (next === source) return;
+    setSource(next);
+    saveInboxSource(next);
+  }, [connections, source]);
+
+  const visibleSources = visibleInboxSources(connections);
+  const connectableSources = connectableInboxSources(connections);
+  const sourceAvailable = visibleSources.includes(source);
+  const noSourcesConnected = visibleSources.length === 0;
 
   // The roster has to come from Linear, not from the fetched issues: hiding a
   // team drops its issues, so a derived list could never offer it back.
@@ -572,7 +601,6 @@ export function InboxView({
     if (cached) {
       setItems(cached.items);
       setProviderErrors(cached.errors);
-      setProviders(cached.providers);
       setLoading(false);
     }
     if (!force && cached && inboxListIsFresh(projects, fetchQuery)) {
@@ -590,7 +618,6 @@ export function InboxView({
         if (cancelled) return;
         setItems(next.items);
         setProviderErrors(next.errors);
-        setProviders(next.providers);
       })
       .catch((err: unknown) => {
         if (cancelled) return;
@@ -601,9 +628,6 @@ export function InboxView({
           github: message,
           linear: message,
           gitlab: message,
-          jira: message,
-          clickup: message,
-          notion: message,
         });
       })
       .finally(() => {
@@ -643,6 +667,7 @@ export function InboxView({
   }, [cwd, items, target, targetSelectionKey]);
 
   const visibleItems = useMemo(() => {
+    if (!sourceAvailable) return [];
     const visible = applyInboxFilters(
       items,
       activeFilters,
@@ -658,18 +683,28 @@ export function InboxView({
         : null);
     if (!targeted || visible.includes(targeted)) return visible;
     return [targeted, ...visible];
-  }, [activeFilters, items, searchInput, source, target, targetItem]);
+  }, [
+    activeFilters,
+    items,
+    searchInput,
+    source,
+    sourceAvailable,
+    target,
+    targetItem,
+  ]);
 
   const inboxSeenTick = useInboxSeenTick();
   const sourceEntries = useMemo(
     () =>
-      items
-        .filter((item) => item.provider === source)
-        .map((item) => ({
-          key: inboxItemKey(item),
-          updatedAt: item.updatedAt,
-        })),
-    [items, source],
+      sourceAvailable
+        ? items
+            .filter((item) => item.provider === source)
+            .map((item) => ({
+              key: inboxItemKey(item),
+              updatedAt: item.updatedAt,
+            }))
+        : [],
+    [items, source, sourceAvailable],
   );
   const sourceHasUnseen = useMemo(
     () => sourceEntries.some(isInboxEntryUnseen),
@@ -720,23 +755,6 @@ export function InboxView({
     saveInboxSource(next);
   };
 
-  // A source only deserves a tab when its provider is actually available, so
-  // the current selection falls back to the first connected provider.
-  useEffect(() => {
-    const order: InboxSource[] = [
-      "github",
-      "linear",
-      "gitlab",
-      "jira",
-      "clickup",
-      "notion",
-    ];
-    const available = order.filter((provider) => providers[provider]);
-    if (available.length === 0 || providers[source]) return;
-    setSource(available[0]);
-    saveInboxSource(available[0]);
-  }, [providers, source]);
-
   const onFilterButtonClick = (event: ReactMouseEvent<HTMLButtonElement>) => {
     if (filterMenu) {
       setFilterMenu(null);
@@ -754,122 +772,118 @@ export function InboxView({
       ref={resize.setPaneRef}
       className="relative flex h-full min-h-0 shrink-0 flex-col border-r border-content/10"
     >
-      <div
-        role="tablist"
-        aria-label={t("Inbox source")}
-        className="flex h-9 shrink-0 items-center gap-px border-b border-content/10 px-2"
-      >
-        {providers.github ? (
-          <InboxSourceTab
-            source="github"
-            selected={source === "github"}
-            onSelect={onSourceChange}
-          />
-        ) : null}
-        {providers.linear ? (
-          <InboxSourceTab
-            source="linear"
-            selected={source === "linear"}
-            onSelect={onSourceChange}
-          />
-        ) : null}
-        {providers.gitlab ? (
-          <InboxSourceTab
-            source="gitlab"
-            selected={source === "gitlab"}
-            onSelect={onSourceChange}
-          />
-        ) : null}
-        {providers.jira ? (
-          <InboxSourceTab
-            source="jira"
-            selected={source === "jira"}
-            onSelect={onSourceChange}
-          />
-        ) : null}
-        {providers.clickup ? (
-          <InboxSourceTab
-            source="clickup"
-            selected={source === "clickup"}
-            onSelect={onSourceChange}
-          />
-        ) : null}
-        {providers.notion ? (
-          <InboxSourceTab
-            source="notion"
-            selected={source === "notion"}
-            onSelect={onSourceChange}
-          />
-        ) : null}
-      </div>
-      <div className="flex h-9 shrink-0 items-center gap-1 border-b border-content/10 px-2">
-        <div className="relative flex h-7 min-w-0 flex-1 items-center">
-          <Search className="pointer-events-none absolute left-2 size-3 shrink-0 opacity-50" />
-          <input
-            value={searchInput}
-            onChange={(event) => setSearchInput(event.target.value)}
-            placeholder={t("Filter inbox")}
-            aria-label={t("Filter inbox")}
-            spellCheck={false}
-            autoComplete="off"
-            className="h-7 w-full rounded-md bg-transparent pl-7 pr-2 text-[12px] text-content outline-none placeholder:text-content/40"
-          />
-        </div>
-        <button
-          type="button"
-          title={t("Filter inbox")}
-          aria-label={t("Filter inbox")}
-          aria-expanded={!!filterMenu}
-          aria-haspopup="menu"
-          onClick={onFilterButtonClick}
-          className={`grid size-6 shrink-0 place-items-center rounded-md text-content/45 hover:bg-content/10 hover:text-content ${
-            filterMenu || filtersActive ? "bg-content/10 text-content" : ""
-          }`}
-        >
-          <ListFilter className="size-3" strokeWidth={1.75} />
-        </button>
-        <button
-          type="button"
-          title={t("Mark all as read")}
-          aria-label={t("Mark all as read")}
-          disabled={!sourceHasUnseen}
-          onClick={() => markInboxItemsSeen(sourceEntries)}
-          className="grid size-6 shrink-0 place-items-center rounded-md text-content/45 hover:bg-content/10 hover:text-content disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-content/45"
-        >
-          <CheckCheck className="size-3.5" strokeWidth={1.75} />
-        </button>
-        <button
-          type="button"
-          aria-label={t("Refresh")}
-          onClick={() => setRefresh((value) => value + 1)}
-          className="grid size-6 shrink-0 place-items-center rounded-md text-content/45 hover:bg-content/10 hover:text-content"
-        >
-          {loading || revalidating ? (
-            <LoaderCircle
-              className="size-3.5 animate-spin"
-              strokeWidth={1.75}
-            />
-          ) : (
-            <RefreshCw className="size-3.5" strokeWidth={1.75} />
-          )}
-        </button>
-        {source === "notion" ? (
-          <button
-            type="button"
-            title={t("New Notion page")}
-            aria-label={t("New Notion page")}
-            onClick={() => setNotionEditor({ mode: "create" })}
-            className="grid size-6 shrink-0 place-items-center rounded-md text-content/45 hover:bg-content/10 hover:text-content"
+      <div className="flex h-9 shrink-0 items-center gap-px border-b border-content/10 px-2">
+        {visibleSources.length > 0 ? (
+          <div
+            role="tablist"
+            aria-label="Inbox source"
+            className="flex min-w-0 basis-0 items-center gap-px"
+            style={{ flexGrow: visibleSources.length }}
           >
-            <Plus className="size-3.5" strokeWidth={1.75} />
+            {visibleSources.map((option) => (
+              <InboxSourceTab
+                key={option}
+                source={option}
+                selected={source === option}
+                onSelect={onSourceChange}
+              />
+            ))}
+          </div>
+        ) : null}
+        {connectableSources.length > 0 ? (
+          <button
+            ref={connectButtonRef}
+            type="button"
+            aria-label={t("Connect an inbox source")}
+            aria-haspopup="menu"
+            aria-expanded={connectMenuOpen}
+            title={t("Connect an inbox source")}
+            onClick={() => setConnectMenuOpen((open) => !open)}
+            className={`flex h-6 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-md px-2 text-[12px] leading-none ${
+              connectMenuOpen
+                ? "bg-content/10 text-content"
+                : "text-content/40 hover:bg-content/5 hover:text-content"
+            }`}
+          >
+            <Plus className="size-3.5 shrink-0" strokeWidth={1.75} />
+            <span className="min-w-0 truncate">{t("Add connection")}</span>
           </button>
         ) : null}
       </div>
+      {noSourcesConnected ? null : (
+        <div className="flex h-9 shrink-0 items-center gap-1 border-b border-content/10 px-2">
+          <div className="relative flex h-7 min-w-0 flex-1 items-center">
+            <Search className="pointer-events-none absolute left-2 size-3 shrink-0 opacity-50" />
+            <input
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+              placeholder={t("Filter inbox")}
+              aria-label={t("Filter inbox")}
+              spellCheck={false}
+              autoComplete="off"
+              className="h-7 w-full rounded-md bg-transparent pl-7 pr-2 text-[12px] text-content outline-none placeholder:text-content/40"
+            />
+          </div>
+          <button
+            type="button"
+            title={t("Filter inbox")}
+            aria-label={t("Filter inbox")}
+            aria-expanded={!!filterMenu}
+            aria-haspopup="menu"
+            onClick={onFilterButtonClick}
+            className={`grid size-6 shrink-0 place-items-center rounded-md text-content/45 hover:bg-content/10 hover:text-content ${
+              filterMenu || filtersActive ? "bg-content/10 text-content" : ""
+            }`}
+          >
+            <ListFilter className="size-3" strokeWidth={1.75} />
+          </button>
+          <button
+            type="button"
+            title={t("Mark all as read")}
+            aria-label={t("Mark all as read")}
+            disabled={!sourceHasUnseen}
+            onClick={() => markInboxItemsSeen(sourceEntries)}
+            className="grid size-6 shrink-0 place-items-center rounded-md text-content/45 hover:bg-content/10 hover:text-content disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-content/45"
+          >
+            <CheckCheck className="size-3.5" strokeWidth={1.75} />
+          </button>
+          <button
+            type="button"
+            aria-label={t("Refresh")}
+            onClick={() => setRefresh((value) => value + 1)}
+            className="grid size-6 shrink-0 place-items-center rounded-md text-content/45 hover:bg-content/10 hover:text-content"
+          >
+            {loading || revalidating ? (
+              <LoaderCircle
+                className="size-3.5 animate-spin"
+                strokeWidth={1.75}
+              />
+            ) : (
+              <RefreshCw className="size-3.5" strokeWidth={1.75} />
+            )}
+          </button>
+          {source === "notion" ? (
+            <button
+              type="button"
+              title={t("New Notion page")}
+              aria-label={t("New Notion page")}
+              onClick={() => setNotionEditor({ mode: "create" })}
+              className="grid size-6 shrink-0 place-items-center rounded-md text-content/45 hover:bg-content/10 hover:text-content"
+            >
+              <Plus className="size-3.5" strokeWidth={1.75} />
+            </button>
+          ) : null}
+        </div>
+      )}
       <div
         ref={listLock}
         className="min-h-0 flex-1 overflow-y-auto overscroll-none"
       >
-        {sourceError && visibleItems.length === 0 ? (
+        {noSourcesConnected ? (
+          <p className="px-3 py-3 text-[12px] text-content/50">
+            Add a connection to start using the Inbox.
+          </p>
+        ) : sourceError && visibleItems.length === 0 ? (
           <p className="px-3 py-2 text-[12px] text-content/50">{sourceError}</p>
         ) : loading && items.length === 0 ? (
           <div className="flex justify-center py-10 text-content/40">
@@ -877,11 +891,27 @@ export function InboxView({
           </div>
         ) : visibleItems.length === 0 ? (
           <p className="px-3 py-2 text-[12px] text-content/50">
-            {inboxEmptyMessage(source, {
-              narrowedByUser,
-              searchNarrowed,
-              hasProjects: projects.length > 0,
-            })}
+            {narrowedByUser
+              ? searchNarrowed
+                ? source === "linear"
+                  ? "No matching Linear issues"
+                  : source === "gitlab"
+                    ? "No matching issues or merge requests"
+                    : "No matching issues or pull requests"
+                : source === "linear"
+                  ? "No Linear issues match these filters"
+                  : source === "gitlab"
+                    ? "No GitLab items match these filters"
+                    : "No issues or pull requests match these filters"
+              : source === "linear"
+                ? "No Linear issues"
+                : source === "gitlab"
+                  ? projects.length === 0
+                    ? "Open a project to fill the inbox"
+                    : "No matching issues or merge requests"
+                  : projects.length === 0
+                    ? "Open a project to fill the inbox"
+                    : "No matching issues or pull requests"}
           </p>
         ) : (
           <ul className="flex flex-col gap-0.5 p-1.5">
@@ -923,7 +953,7 @@ export function InboxView({
       <div
         role="separator"
         aria-orientation="vertical"
-        aria-label={t("Resize inbox list")}
+        aria-label="Resize inbox list"
         className={`absolute inset-y-0 -right-px z-10 w-1.5 cursor-col-resize touch-none ${
           resize.dragging ? "bg-content/15" : "hover:bg-content/10"
         }`}
@@ -949,10 +979,20 @@ export function InboxView({
     />
   ) : null;
 
+  const connectPortal =
+    connectMenuOpen && connectableSources.length > 0 ? (
+      <InboxConnectMenu
+        anchor={connectButtonRef}
+        sources={connectableSources}
+        onConnect={onOpenIntegrations}
+        onClose={() => setConnectMenuOpen(false)}
+      />
+    ) : null;
+
   return (
     <div
       role="region"
-      aria-label={t("Inbox")}
+      aria-label="Inbox"
       data-app-inbox
       className="flex min-h-0 min-w-0 flex-1 flex-col text-content"
     >
@@ -969,7 +1009,7 @@ export function InboxView({
             className="size-3.5 shrink-0 text-content/45"
             strokeWidth={1.75}
           />
-          <span className="min-w-0 truncate text-content">{t("Inbox")}</span>
+          <span className="min-w-0 truncate text-content">Inbox</span>
         </div>
         {IS_MAC ? null : <WindowControls />}
       </div>
@@ -977,7 +1017,7 @@ export function InboxView({
       <div className="flex min-h-0 min-w-0 flex-1">
         {list}
         <div className="relative flex min-h-0 min-w-0 flex-1">
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <div className="min-h-0 min-w-0 flex-1">
             <InboxDetailBody
               item={selected}
               cwd={cwd}
@@ -1007,6 +1047,7 @@ export function InboxView({
         </div>
       </div>
       {filtersPortal}
+      {connectPortal}
       {notionEditor ? (
         <NotionTaskEditor
           mode={notionEditor.mode}
@@ -1017,6 +1058,15 @@ export function InboxView({
       ) : null}
     </div>
   );
+}
+
+function notionEditTarget(item: InboxItem): NotionEditTarget {
+  return {
+    id: item.id ?? "",
+    title: item.title,
+    status: item.state,
+    labels: item.labels.map((label) => label.name),
+  };
 }
 
 function InboxDetailBody({
@@ -1044,9 +1094,7 @@ function InboxDetailBody({
     return (
       <div className="flex h-full flex-col items-center justify-center px-6 text-center">
         <Inbox className="mb-3 size-6 text-content/30" strokeWidth={1.75} />
-        <p className="text-[13px] text-content/45">
-          Select an inbox item
-        </p>
+        <p className="text-[13px] text-content/45">Select an inbox item</p>
       </div>
     );
   }
@@ -1167,12 +1215,7 @@ function InboxCard({
           <span className="flex shrink-0 items-center gap-1.5">
             {relatedSessionCount > 0 ? (
               <span
-                title={t(
-                  relatedSessionCount === 1
-                    ? "{count} related thread"
-                    : "{count} related threads",
-                  { count: relatedSessionCount },
-                )}
+                title={`${relatedSessionCount} related ${relatedSessionCount === 1 ? "thread" : "threads"}`}
                 className="inline-flex items-center gap-0.5 text-[11px] tabular-nums text-accent"
               >
                 <MessageMultiple className="size-3" strokeWidth={1.75} />
@@ -1223,7 +1266,7 @@ function InboxCard({
   );
 }
 
-function InboxDetail({
+export function InboxDetail({
   item,
   cwd,
   projects,
@@ -1244,12 +1287,13 @@ function InboxDetail({
   onOpenSession?: (sessionId: string) => void | Promise<void>;
   onEditNotion?: (item: InboxItem) => void;
 }) {
+  const detailLock = useLockOverscroll<HTMLDivElement>();
   const linear = item.provider === "linear";
+  const gitlab = item.provider === "gitlab";
   const jira = item.provider === "jira";
   const clickup = item.provider === "clickup";
   const notion = item.provider === "notion";
   const tracker = linear || jira || clickup || notion;
-  const gitlab = item.provider === "gitlab";
   const isPr = !tracker && item.kind === "pr";
   const githubKind =
     item.provider === "github" && (item.kind === "issue" || item.kind === "pr")
@@ -1266,11 +1310,7 @@ function InboxDetail({
         : notion
           ? peekNotionTaskDetails(item.id ?? "")
           : gitlabKind
-            ? peekGitlabWorkItemDetails(
-                item.projectPath,
-                gitlabKind,
-                item.number,
-              )
+            ? peekGitlabWorkItemDetails(item.projectPath, gitlabKind, item.number)
             : githubKind
               ? peekGithubWorkItemDetails(
                   item.projectPath,
@@ -1292,7 +1332,11 @@ function InboxDetail({
         : notion
           ? peekNotionTaskThread(item.id ?? "")
           : gitlabKind
-            ? peekGitlabWorkItemThread(item.projectPath, gitlabKind, item.number)
+            ? peekGitlabWorkItemThread(
+                item.projectPath,
+                gitlabKind,
+                item.number,
+              )
             : githubKind
               ? peekGithubWorkItemThread(
                   item.projectPath,
@@ -1301,7 +1345,6 @@ function InboxDetail({
                 )
               : null;
   const [details, setDetails] = useState<GithubWorkItemDetails | null>(cached);
-  const bodyScroll = useLockOverscroll<HTMLDivElement>();
   const [loading, setLoading] = useState(cached == null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<"summary" | "code">("summary");
@@ -1311,10 +1354,10 @@ function InboxDetail({
   const [thread, setThread] = useState<
     | GithubWorkItemThread
     | LinearIssueThread
+    | GitlabWorkItemThread
     | JiraIssueThread
     | ClickUpTaskThread
     | NotionTaskThread
-    | GitlabWorkItemThread
     | null
   >(cachedThread);
   const [threadLoading, setThreadLoading] = useState(cachedThread == null);
@@ -1362,14 +1405,15 @@ function InboxDetail({
 
   useEffect(() => {
     let cancelled = false;
+    const id = item.id ?? "";
     const cachedDetails = linear
-      ? peekLinearIssueDetails(item.id ?? "")
+      ? peekLinearIssueDetails(id)
       : jira
-        ? peekJiraIssueDetails(item.id ?? "")
+        ? peekJiraIssueDetails(id)
         : clickup
-          ? peekClickUpTaskDetails(item.id ?? "")
+          ? peekClickUpTaskDetails(id)
           : notion
-            ? peekNotionTaskDetails(item.id ?? "")
+            ? peekNotionTaskDetails(id)
             : gitlabKind
               ? peekGitlabWorkItemDetails(
                   item.projectPath,
@@ -1393,20 +1437,20 @@ function InboxDetail({
       setDetails(null);
     }
     const pending = linear
-      ? item.id
-        ? linearIssueDetails(item.id)
+      ? id
+        ? linearIssueDetails(id)
         : Promise.reject(new Error("Missing Linear issue"))
       : jira
-        ? item.id
-          ? jiraIssueDetails(item.id)
+        ? id
+          ? jiraIssueDetails(id)
           : Promise.reject(new Error("Missing Jira issue"))
         : clickup
-          ? item.id
-            ? clickUpTaskDetails(item.id)
+          ? id
+            ? clickUpTaskDetails(id)
             : Promise.reject(new Error("Missing ClickUp task"))
           : notion
-            ? item.id
-              ? notionTaskDetails(item.id)
+            ? id
+              ? notionTaskDetails(id)
               : Promise.reject(new Error("Missing Notion page"))
             : gitlabKind
               ? gitlabWorkItemDetails(item.projectPath, gitlabKind, item.number)
@@ -1449,87 +1493,28 @@ function InboxDetail({
 
   useEffect(() => {
     let cancelled = false;
-    if (tracker) {
-      const id = item.id ?? "";
-      const cachedThread = linear
-        ? peekLinearIssueThread(id)
-        : jira
-          ? peekJiraIssueThread(id)
-          : clickup
-            ? peekClickUpTaskThread(id)
-            : peekNotionTaskThread(id);
-      if (cachedThread) {
-        setThread(cachedThread);
-        setThreadLoading(false);
-        setThreadError(null);
-      } else {
-        setThreadLoading(true);
-        setThreadError(null);
-        setThread(null);
-      }
-      void (linear
-        ? linearIssueThread(id)
-        : jira
-          ? jiraIssueThread(id)
-          : clickup
-            ? clickUpTaskThread(id)
-            : notionTaskThread(id))
-        .then((next) => {
-          if (cancelled) return;
-          setThread(next);
-          setThreadError(null);
-        })
-        .catch((err: unknown) => {
-          if (cancelled) return;
-          if (cachedThread) return;
-          setThreadError(err instanceof Error ? err.message : String(err));
-        })
-        .finally(() => {
-          if (!cancelled) setThreadLoading(false);
-        });
-      return () => {
-        cancelled = true;
-      };
-    }
-    if (gitlabKind) {
-      const cachedThread = peekGitlabWorkItemThread(
-        item.projectPath,
-        gitlabKind,
-        item.number,
-      );
-      if (cachedThread) {
-        setThread(cachedThread);
-        setThreadLoading(false);
-        setThreadError(null);
-      } else {
-        setThreadLoading(true);
-        setThreadError(null);
-        setThread(null);
-      }
-      void gitlabWorkItemThread(item.projectPath, gitlabKind, item.number)
-        .then((next) => {
-          if (cancelled) return;
-          setThread(next);
-          setThreadError(null);
-        })
-        .catch((err: unknown) => {
-          if (cancelled) return;
-          if (cachedThread) return;
-          setThreadError(err instanceof Error ? err.message : String(err));
-        })
-        .finally(() => {
-          if (!cancelled) setThreadLoading(false);
-        });
-      return () => {
-        cancelled = true;
-      };
-    }
-    if (!githubKind) return;
-    const cachedThread = peekGithubWorkItemThread(
-      item.projectPath,
-      githubKind,
-      item.number,
-    );
+    const id = item.id ?? "";
+    const cachedThread = linear
+      ? peekLinearIssueThread(id)
+      : jira
+        ? peekJiraIssueThread(id)
+        : clickup
+          ? peekClickUpTaskThread(id)
+          : notion
+            ? peekNotionTaskThread(id)
+            : gitlabKind
+              ? peekGitlabWorkItemThread(
+                  item.projectPath,
+                  gitlabKind,
+                  item.number,
+                )
+              : githubKind
+                ? peekGithubWorkItemThread(
+                    item.projectPath,
+                    githubKind,
+                    item.number,
+                  )
+                : null;
     if (cachedThread) {
       setThread(cachedThread);
       setThreadLoading(false);
@@ -1539,7 +1524,37 @@ function InboxDetail({
       setThreadError(null);
       setThread(null);
     }
-    void githubWorkItemThread(item.projectPath, githubKind, item.number)
+    const pending = linear
+      ? id
+        ? linearIssueThread(id)
+        : Promise.reject(new Error("Missing Linear issue"))
+      : jira
+        ? id
+          ? jiraIssueThread(id)
+          : Promise.reject(new Error("Missing Jira issue"))
+        : clickup
+          ? id
+            ? clickUpTaskThread(id)
+            : Promise.reject(new Error("Missing ClickUp task"))
+          : notion
+            ? id
+              ? notionTaskThread(id)
+              : Promise.reject(new Error("Missing Notion page"))
+            : gitlabKind
+              ? gitlabWorkItemThread(item.projectPath, gitlabKind, item.number)
+              : githubKind
+                ? githubWorkItemThread(
+                    item.projectPath,
+                    githubKind,
+                    item.number,
+                  )
+                : null;
+    if (!pending) {
+      return () => {
+        cancelled = true;
+      };
+    }
+    void pending
       .then((next) => {
         if (cancelled) return;
         setThread(next);
@@ -1566,7 +1581,6 @@ function InboxDetail({
     jira,
     clickup,
     notion,
-    tracker,
     revision,
   ]);
 
@@ -1611,25 +1625,32 @@ function InboxDetail({
     setPosting(true);
     setPostError(null);
     try {
-      if (tracker) {
+      if (linear) {
         const id = item.id ?? "";
-        await (linear
-          ? linearIssueComment(id, body, { parentId: replyTo?.id })
-          : jira
-            ? jiraIssueComment(id, body, { parentId: replyTo?.id })
-            : clickup
-              ? clickUpTaskComment(id, body, { parentId: replyTo?.id })
-              : notionTaskComment(id, body, { parentId: replyTo?.id }));
+        await linearIssueComment(id, body, { parentId: replyTo?.id });
+        setReplyTo(null);
+        try {
+          setThread(await linearIssueThread(id, { force: true }));
+        } catch (err: unknown) {
+          setPostError(err instanceof Error ? err.message : String(err));
+        }
+        return;
+      }
+      if (jira || clickup || notion) {
+        const id = item.id ?? "";
+        await (jira
+          ? jiraIssueComment(id, body, { parentId: replyTo?.id })
+          : clickup
+            ? clickUpTaskComment(id, body, { parentId: replyTo?.id })
+            : notionTaskComment(id, body));
         setReplyTo(null);
         try {
           setThread(
-            await (linear
-              ? linearIssueThread(id, { force: true })
-              : jira
-                ? jiraIssueThread(id, { force: true })
-                : clickup
-                  ? clickUpTaskThread(id, { force: true })
-                  : notionTaskThread(id, { force: true })),
+            await (jira
+              ? jiraIssueThread(id, { force: true })
+              : clickup
+                ? clickUpTaskThread(id, { force: true })
+                : notionTaskThread(id, { force: true })),
           );
         } catch (err: unknown) {
           setPostError(err instanceof Error ? err.message : String(err));
@@ -1738,303 +1759,329 @@ function InboxDetail({
     );
 
   return (
-    <div className="@container flex h-full min-h-0 w-full flex-col">
+    <div className="@container flex h-full min-h-0 min-w-0 flex-col">
       <div
         className={`flex min-h-0 flex-1 flex-col @3xl:flex-row ${
           tracker ? "overflow-y-auto overscroll-none @3xl:overflow-hidden" : ""
         }`}
       >
       <div className="flex min-h-0 flex-1 flex-col">
-      <header className="shrink-0 border-b border-content/10 px-8 pt-8 pb-4">
-        <div
-          className={`mx-auto flex w-full flex-col gap-3 ${tracker ? "max-w-3xl" : "max-w-5xl"}`}
-        >
-        <div className="flex items-center gap-2 text-[12px] text-content/50">
-          <InboxProviderMark provider={item.provider} className="size-3.5" />
-          <span>
-            {item.kind === "pr"
-              ? gitlab
-                ? "Merge request"
-                : "Pull request"
-              : "Issue"}
-          </span>
-          <span className="tabular-nums">{inboxItemRef(item)}</span>
-          {tracker ? null : (
-            <span className={`flex items-center gap-1 ${statusMark.className}`}>
-              <statusMark.Icon className="size-3.5" strokeWidth={1.75} />
-              {status}
-            </span>
-          )}
-          {source && !tracker ? <span className="truncate">{source}</span> : null}
-        </div>
-        <h1 className="text-[20px] font-semibold leading-tight text-content">
-          {item.title}
-        </h1>
-        <div className="flex flex-wrap items-center gap-2 text-[12px] text-content/50">
-          {authorName ? (
-            <InboxPerson
-              name={authorName}
-              avatarUrl={inboxPersonAvatarUrl(
-                item.provider,
-                authorName,
-                details?.authorAvatarUrl,
-              )}
-              size={16}
-            />
-          ) : null}
-          {showAssignment ? (
-            <>
-              {authorName ? <span aria-hidden>·</span> : null}
-              {extraAssignees.length > 0 ? (
-                <span className="flex min-w-0 flex-wrap items-center gap-2">
-                  {extraAssignees.map((person) => (
-                    <InboxPerson
-                      key={person.login}
-                      name={person.login}
-                      avatarUrl={inboxPersonAvatarUrl(
-                        item.provider,
-                        person.login,
-                        person.avatarUrl,
-                      )}
-                      size={16}
-                    />
-                  ))}
-                </span>
-              ) : (
-                <span>{t("Unassigned")}</span>
-              )}
-            </>
-          ) : null}
-          {tracker ? null : (
-            <>
-              <span aria-hidden>·</span>
-              <span>{projectName(item.projectPath)}</span>
-            </>
-          )}
-          {!tracker && formatRelativeTime(item.updatedAt) ? (
-            <>
-              <span aria-hidden>·</span>
-              <span>
-                {t("Updated {time}", {
-                  time: formatRelativeTime(item.updatedAt),
-                })}
-              </span>
-            </>
-          ) : null}
-          {baseRef && headRef ? (
-            <>
-              <span aria-hidden>·</span>
-              <span className="inline-flex min-w-0 items-center gap-1">
-                <GitCompare className="size-3 shrink-0" strokeWidth={1.75} />
-                <span className="min-w-0 truncate">
-                  {baseRef} ← {headRef}
-                </span>
-              </span>
-            </>
-          ) : null}
-          {reviewLabel ? (
-            <>
-              <span aria-hidden>·</span>
-              <span className={reviewClass}>{reviewLabel}</span>
-            </>
-          ) : null}
-        </div>
-        {!tracker && item.labels.length > 0 ? (
-          <div className="flex flex-wrap gap-1">
-            {item.labels.map((label) => (
-              <InboxLabel key={label.name} label={label} />
-            ))}
-          </div>
-        ) : null}
-        {relatedSessions.length > 0 ? (
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="mr-0.5 inline-flex items-center gap-1 text-[11px] text-content/45">
-              <MessageMultiple className="size-3.5" strokeWidth={1.75} />
-              Related {relatedSessions.length === 1 ? "thread" : "threads"}
-            </span>
-            {relatedSessions.map((session) => {
-              const title = sessionDisplayTitle(session.title, session.harness);
-              return (
-                <button
-                  key={session.id}
-                  type="button"
-                  title={t("Open thread: {title}", { title })}
-                  onClick={() => void onOpenSession?.(session.id)}
-                  className="inline-flex max-w-64 items-center gap-1 rounded-md bg-content/5 px-2 py-1 text-[11px] text-content/70 hover:bg-content/10 hover:text-content"
-                >
-                  <span className="truncate">{title}</span>
-                  {session.archived ? (
-                    <span className="shrink-0 text-content/40">{t("Archived")}</span>
-                  ) : null}
-                </button>
-              );
-            })}
-          </div>
-        ) : null}
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          {onStart && item.kind !== "pr" ? (
-            <>
-              <button
-                type="button"
-                disabled={
-                  starting || (linear && (!startProject || loading || !!error))
-                }
-                onClick={() => {
-                  if (starting) return;
-                  setStarting(true);
-                  setStartError(null);
-                  const next = linear
-                    ? { ...item, projectPath: startProject }
-                    : item;
-                  void Promise.resolve(
-                    onStart(next, linear ? (details?.body ?? "") : undefined),
-                  )
-                    .catch((err: unknown) => {
-                      setStartError(
-                        err instanceof Error ? err.message : String(err),
-                      );
-                    })
-                    .finally(() => setStarting(false));
-                }}
-                className={`${ACTION_FILLED} disabled:cursor-default disabled:opacity-40`}
-              >
-                {starting ? t("Sending...") : t("Send to agent")}
-              </button>
-              {linear ? (
-                <InboxProjectPicker
-                  projects={projects}
-                  value={startProject}
-                  onChange={setStartProject}
-                />
-              ) : null}
-            </>
-          ) : null}
-          <button
-            type="button"
-            onClick={onDiscuss}
-            className={item.kind === "pr" ? ACTION_FILLED : ACTION_OUTLINE}
-          >
-            <MessageSquare className="size-3.5" strokeWidth={1.75} /> Ask
-          </button>
-          {notion && onEditNotion ? (
-            <button
-              type="button"
-              onClick={() => onEditNotion(item)}
-              className={ACTION_OUTLINE}
-            >
-              <Pencil className="size-3.5" strokeWidth={1.75} /> {t("Edit")}
-            </button>
-          ) : null}
-          <button
-            type="button"
-            onClick={() => void openUrl(item.url)}
-            className={ACTION_GHOST}
-          >
-            <ExternalLink className="size-3.5" strokeWidth={1.75} />
-            {item.kind === "pr"
-              ? gitlab
-                ? "Review on GitLab"
-                : "Review on GitHub"
-              : linear
-                ? "Open in Linear"
-                : jira
-                  ? "Open in Jira"
-                  : clickup
-                    ? "Open in ClickUp"
-                    : notion
-                      ? "Open in Notion"
-                      : gitlab
-                        ? "Open on GitLab"
-                        : "Open on GitHub"}
-          </button>
-        </div>
-        {startError ? (
-          <p className="text-[12px] text-red-400/90">{startError}</p>
-        ) : null}
-        {isPr ? (
-          <div
-            role="tablist"
-            aria-label={
-              gitlab ? t("Merge request sections") : t("Pull request sections")
-            }
-            className="flex h-9 items-stretch gap-4 border-b border-content/10"
-          >
-            <InboxDetailTab
-              label={t("Summary")}
-              selected={tab === "summary"}
-              onSelect={() => setTab("summary")}
-            />
-            <InboxDetailTab
-              label={t("Code")}
-              selected={tab === "code"}
-              onSelect={() => setTab("code")}
-            />
-          </div>
-        ) : null}
-        </div>
-      </header>
       <div
-        ref={bodyScroll}
-        className="min-h-0 flex-1 overflow-y-auto overscroll-none"
+        data-inbox-detail-header
+        className="relative z-10 shrink-0 border-b border-content/10"
       >
         <div
-          className={`mx-auto flex w-full flex-col gap-5 px-8 py-6 ${tracker ? "max-w-3xl" : "max-w-5xl"}`}
+          className={`mx-auto flex w-full max-w-5xl flex-col gap-2.5 px-8 pt-5 ${
+            isPr ? "" : "pb-5"
+          }`}
         >
-      {isPr && tab === "code" ? (
-        diffLoading ? (
-          <div className="flex justify-center py-10 text-content/40">
-            <LoaderCircle className="size-4 animate-spin" strokeWidth={1.75} />
-          </div>
-        ) : diffError ? (
-          <p className="text-[13px] text-content/50">{diffError}</p>
-        ) : prDiff ? (
-          <InboxPrDiff
-            key={`${item.projectPath}:${item.number}:${revision}`}
-            diff={prDiff}
-          />
-        ) : (
-          <p className="text-[13px] text-content/45">{t("No file changes")}</p>
-        )
-      ) : loading ? (
-        <div className="flex justify-center py-10 text-content/40">
-          <LoaderCircle className="size-4 animate-spin" strokeWidth={1.75} />
+          <header className="flex flex-col gap-2.5">
+            <div className="flex min-w-0 items-center gap-2 text-[12px] text-content/50">
+              <InboxProviderMark
+                provider={item.provider}
+                className="size-3.5 shrink-0"
+              />
+              <span className="shrink-0">
+                {item.kind === "pr"
+                  ? gitlab
+                    ? "Merge request"
+                    : "Pull request"
+                  : "Issue"}
+              </span>
+              <span className="shrink-0 tabular-nums">
+                {inboxItemRef(item)}
+              </span>
+              <span
+                className={`flex shrink-0 items-center gap-1 ${statusMark.className}`}
+              >
+                <statusMark.Icon className="size-3.5" strokeWidth={1.75} />
+                {status}
+              </span>
+              {source ? (
+                <span className="min-w-0 truncate">{source}</span>
+              ) : null}
+            </div>
+            <h1
+              title={item.title}
+              className="line-clamp-2 text-[20px] font-semibold leading-tight text-content"
+            >
+              {item.title}
+            </h1>
+            <div className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap text-[12px] text-content/50">
+              {authorName ? (
+                <InboxPerson
+                  name={authorName}
+                  avatarUrl={inboxPersonAvatarUrl(
+                    item.provider,
+                    authorName,
+                    details?.authorAvatarUrl,
+                  )}
+                  size={16}
+                />
+              ) : null}
+              {showAssignment ? (
+                <>
+                  {authorName ? <span aria-hidden>·</span> : null}
+                  {extraAssignees.length > 0 ? (
+                    <span className="flex min-w-0 items-center gap-2 overflow-hidden">
+                      {extraAssignees.map((person) => (
+                        <InboxPerson
+                          key={person.login}
+                          name={person.login}
+                          avatarUrl={inboxPersonAvatarUrl(
+                            item.provider,
+                            person.login,
+                            person.avatarUrl,
+                          )}
+                          size={16}
+                        />
+                      ))}
+                    </span>
+                  ) : (
+                    <span>Unassigned</span>
+                  )}
+                </>
+              ) : null}
+              {formatRelativeTime(item.updatedAt) ? (
+                <>
+                  <span aria-hidden>·</span>
+                  <span>Updated {formatRelativeTime(item.updatedAt)}</span>
+                </>
+              ) : null}
+              {baseRef && headRef ? (
+                <>
+                  <span aria-hidden>·</span>
+                  <span className="inline-flex min-w-0 items-center gap-1">
+                    <GitCompare
+                      className="size-3 shrink-0"
+                      strokeWidth={1.75}
+                    />
+                    <span className="min-w-0 truncate">
+                      {baseRef} ← {headRef}
+                    </span>
+                  </span>
+                </>
+              ) : null}
+              {reviewLabel ? (
+                <>
+                  <span aria-hidden>·</span>
+                  <span className={reviewClass}>{reviewLabel}</span>
+                </>
+              ) : null}
+            </div>
+            {relatedSessions.length > 0 ? (
+              <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
+                <span className="mr-0.5 inline-flex shrink-0 items-center gap-1 text-[11px] text-content/45">
+                  <MessageMultiple className="size-3.5" strokeWidth={1.75} />
+                  Related {relatedSessions.length === 1 ? "thread" : "threads"}
+                </span>
+                {relatedSessions.map((session) => {
+                  const title = sessionDisplayTitle(
+                    session.title,
+                    session.harness,
+                  );
+                  return (
+                    <button
+                      key={session.id}
+                      type="button"
+                      title={`Open thread: ${title}`}
+                      onClick={() => void onOpenSession?.(session.id)}
+                      className="inline-flex min-w-0 max-w-64 items-center gap-1 rounded-md bg-content/5 px-2 py-1 text-[11px] text-content/70 hover:bg-content/10 hover:text-content"
+                    >
+                      <span className="truncate">{title}</span>
+                      {session.archived ? (
+                        <span className="shrink-0 text-content/40">
+                          Archived
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+            <div className="flex flex-wrap items-center gap-2 pt-0.5">
+              {onStart && item.kind !== "pr" ? (
+                <>
+                  <button
+                    type="button"
+                    disabled={
+                      starting ||
+                      (linear && (!startProject || loading || !!error))
+                    }
+                    onClick={() => {
+                      if (starting) return;
+                      setStarting(true);
+                      setStartError(null);
+                      const next = linear
+                        ? { ...item, projectPath: startProject }
+                        : item;
+                      void Promise.resolve(
+                        onStart(
+                          next,
+                          linear ? (details?.body ?? "") : undefined,
+                        ),
+                      )
+                        .catch((err: unknown) => {
+                          setStartError(
+                            err instanceof Error ? err.message : String(err),
+                          );
+                        })
+                        .finally(() => setStarting(false));
+                    }}
+                    className={`${ACTION_FILLED} disabled:cursor-default disabled:opacity-40`}
+                  >
+                    {starting ? t("Sending...") : t("Send to agent")}
+                  </button>
+                  {linear ? (
+                    <InboxProjectPicker
+                      projects={projects}
+                      value={startProject}
+                      onChange={setStartProject}
+                    />
+                  ) : null}
+                </>
+              ) : null}
+              <button
+                type="button"
+                onClick={onDiscuss}
+                className={item.kind === "pr" ? ACTION_FILLED : ACTION_OUTLINE}
+              >
+                <MessageSquare className="size-3.5" strokeWidth={1.75} /> {t("Ask")}
+              </button>
+              {notion && onEditNotion ? (
+                <button
+                  type="button"
+                  onClick={() => onEditNotion(item)}
+                  className={ACTION_OUTLINE}
+                >
+                  <Pencil className="size-3.5" strokeWidth={1.75} /> {t("Edit")}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => void openUrl(item.url)}
+                className={ACTION_GHOST}
+              >
+                <ExternalLink className="size-3.5" strokeWidth={1.75} />
+                {item.kind === "pr"
+                  ? gitlab
+                    ? t("Review on GitLab")
+                    : t("Review on GitHub")
+                  : linear
+                    ? t("Open in Linear")
+                    : jira
+                      ? t("Open in Jira")
+                      : clickup
+                        ? t("Open in ClickUp")
+                        : notion
+                          ? t("Open in Notion")
+                          : gitlab
+                            ? t("Open on GitLab")
+                            : t("Open on GitHub")}
+              </button>
+            </div>
+            {startError ? (
+              <p className="text-[12px] text-red-400/90">{startError}</p>
+            ) : null}
+          </header>
+          {isPr ? (
+            <div
+              role="tablist"
+              aria-label={
+                gitlab ? "Merge request sections" : "Pull request sections"
+              }
+              className="flex h-9 items-stretch gap-4"
+            >
+              <InboxDetailTab
+                label="Summary"
+                selected={tab === "summary"}
+                onSelect={() => setTab("summary")}
+              />
+              <InboxDetailTab
+                label="Code"
+                selected={tab === "code"}
+                onSelect={() => setTab("code")}
+              />
+            </div>
+          ) : null}
         </div>
-      ) : error ? (
-        <p className="text-[13px] text-content/50">{error}</p>
-      ) : (
-        <>
-          {details?.body.trim() ? (
-            <AgentMarkdown
-              text={details.body}
-              cwd={markdownCwd}
-              allowRemoteMedia
-            />
+      </div>
+      <div
+        ref={detailLock}
+        data-inbox-detail-scroll
+        className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-none"
+      >
+        <div
+          className={`mx-auto flex w-full flex-col gap-5 px-8 py-5 ${tracker ? "max-w-3xl" : "max-w-5xl"}`}
+        >
+          {!tracker && item.labels.length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {item.labels.map((label) => (
+                <InboxLabel key={label.name} label={label} />
+              ))}
+            </div>
+          ) : null}
+          {isPr && tab === "code" ? (
+            diffLoading ? (
+              <div className="flex justify-center py-10 text-content/40">
+                <LoaderCircle
+                  className="size-4 animate-spin"
+                  strokeWidth={1.75}
+                />
+              </div>
+            ) : diffError ? (
+              <p className="text-[13px] text-content/50">{diffError}</p>
+            ) : prDiff ? (
+              <InboxPrDiff
+                key={`${item.projectPath}:${item.number}:${revision}`}
+                diff={prDiff}
+              />
+            ) : (
+              <p className="text-[13px] text-content/45">No file changes</p>
+            )
+          ) : loading ? (
+            <div className="flex justify-center py-10 text-content/40">
+              <LoaderCircle
+                className="size-4 animate-spin"
+                strokeWidth={1.75}
+              />
+            </div>
+          ) : error ? (
+            <p className="text-[13px] text-content/50">{error}</p>
           ) : (
-            <p className="text-[13px] text-content/45">{t("No description")}</p>
+            <>
+              {details?.body.trim() ? (
+                <AgentMarkdown
+                  text={details.body}
+                  cwd={markdownCwd}
+                  allowRemoteMedia
+                />
+              ) : (
+                <p className="text-[13px] text-content/45">No description</p>
+              )}
+              <InboxComments
+                thread={thread}
+                loading={threadLoading}
+                error={threadError}
+                cwd={markdownCwd}
+                provider={item.provider}
+                replyMode={
+                  linear ? "parent" : gitlab || notion ? undefined : "thread"
+                }
+                onReply={setReplyTo}
+              />
+              <InboxCommentForm
+                replyTo={replyTo}
+                posting={posting}
+                error={postError}
+                onCancelReply={() => {
+                  setReplyTo(null);
+                  setPostError(null);
+                }}
+                onSubmit={postComment}
+              />
+            </>
           )}
-          <InboxComments
-            thread={thread}
-            loading={threadLoading}
-            error={threadError}
-            cwd={markdownCwd}
-            provider={item.provider}
-            replyMode={
-              linear ? "parent" : gitlab || notion ? undefined : "thread"
-            }
-            onReply={setReplyTo}
-          />
-          <InboxCommentForm
-            replyTo={replyTo}
-            posting={posting}
-            error={postError}
-            onCancelReply={() => {
-              setReplyTo(null);
-              setPostError(null);
-            }}
-            onSubmit={postComment}
-          />
-        </>
-      )}
         </div>
       </div>
       </div>
