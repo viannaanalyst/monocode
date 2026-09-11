@@ -201,6 +201,7 @@ import {
   preferredModelSettings,
   resolveModel,
   saveLastModelSettings,
+  saveRecentModelChoice,
   type AgentModel,
 } from "./lib/models";
 import {
@@ -290,6 +291,8 @@ import { saveSessionExport } from "./lib/sessionExportIo";
 import { syncDockBadge } from "./lib/dockBadge";
 import { liveAgentsFromSessions } from "./lib/liveAgents";
 import { hiddenApprovalNotices } from "./lib/approvalToast";
+import { useSessionReminders } from "./hooks/useSessionReminders";
+import { ReminderNotices } from "./chrome/ReminderNotices";
 import { nextUnseenFinishedSessions } from "./lib/sessionDone";
 import {
   loadNotificationsEnabled,
@@ -1096,6 +1099,7 @@ export default function App({
     () => hiddenApprovalNotices(sessions, activeTabId, tabs, composerFocused),
     [sessions, activeTabId, tabs, composerFocused],
   );
+  const [reminderNoticesHeight, setReminderNoticesHeight] = useState(0);
 
   useEffect(() => {
     syncDockBadge(sessions);
@@ -2959,6 +2963,42 @@ export default function App({
     [],
   );
 
+  const openReminderSession = useCallback(
+    async (sessionId: string) => {
+      const session = await ensureOpenSession(sessionId);
+      if (!session)
+        throw new Error(t("This conversation is no longer available."));
+      setSearchViewOpen(false);
+      setInboxViewOpen(false);
+      setNotesViewOpen(false);
+      setSettingsOpen(false);
+      setFilePickerOpen(false);
+      setSidebarTab("sessions");
+      setProjectCwd(session.cwd);
+      setRecents(rememberProject(session.cwd));
+      await onSelectHistorySession(sessionId);
+    },
+    [ensureOpenSession, onSelectHistorySession],
+  );
+
+  const ensureReminderSessionsSaved = useCallback(
+    async (ids: readonly string[]) => {
+      for (const id of ids) {
+        const session = sessionsRef.current.find(
+          (session) => session.id === id,
+        );
+        if (session && !(await upsertSession(session))) {
+          throw new Error(
+            t(
+              "Send a message in this conversation before setting a reminder.",
+            ),
+          );
+        }
+      }
+    },
+    [],
+  );
+
   const importSessionText = useCallback(
     async (cwd: string, text: string) => {
       const imported = parseImportedSession(text);
@@ -2981,6 +3021,12 @@ export default function App({
       setImportDialogCwd(cwd);
     },
     [],
+  );
+
+  const sessionReminders = useSessionReminders(
+    openReminderSession,
+    ensureReminderSessionsSaved,
+    sessions.filter((session) => !session.inboxAsk).map((session) => session.id),
   );
 
   const onPlaceSessionOnPane = useCallback(
@@ -3861,6 +3907,7 @@ export default function App({
         settleOrphanedHandoff(sessionId);
       }
       const resolved = resolveModel(harness, model);
+      saveRecentModelChoice(resolved.harness, resolved.id);
       if (current.modelSettings) {
         saveLastModelSettings(current.modelSettings, "fill");
       }
@@ -3977,6 +4024,7 @@ export default function App({
       const preparingHandoff =
         isPreparingHandoff(current) &&
         handoffPrepInFlight.current.has(sessionId);
+      saveRecentModelChoice(current.harness, current.model);
       const workCwd = sessionWorkCwd(current);
       const submittedText = intent === "build" ? "Build approved plan" : text;
       const rawCommand = isNativeCommandPrompt(submittedText, current.harness);
@@ -5743,6 +5791,9 @@ export default function App({
         onArchiveSessions={onArchiveHistorySessions}
         onPinSession={onPinHistorySession}
         onPinSessions={onPinHistorySessions}
+        reminders={sessionReminders.reminders}
+        onSetReminders={sessionReminders.schedule}
+        onCancelReminders={sessionReminders.cancel}
         onDeleteSession={onDeleteHistorySession}
         onDeleteSessions={onDeleteHistorySessions}
         onExportSession={onExportHistorySession}
@@ -6089,8 +6140,19 @@ export default function App({
 
       <ApprovalToasts
         notices={hiddenApprovalToasts}
+        topOffset={12 + (reminderNoticesHeight ? reminderNoticesHeight + 8 : 0)}
         onFocusSession={onOpenApprovalSession}
         onApproval={onApproval}
+      />
+      <ReminderNotices
+        reminders={sessionReminders.due}
+        error={sessionReminders.error}
+        onOpen={sessionReminders.open}
+        onSnooze={sessionReminders.schedule}
+        onDismiss={sessionReminders.cancel}
+        onRetry={sessionReminders.refresh}
+        onOpenSettings={() => openSettings()}
+        onHeightChange={setReminderNoticesHeight}
       />
       {projectCwd ? (
         <BrowserAgentBridge

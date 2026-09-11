@@ -339,6 +339,30 @@ export const PT_BR: Record<string, string> = {
   "Add a connection to start using the Inbox.":
     "Adicione uma conexão para começar a usar o Inbox.",
   "Open in MonoCode": "Abrir no MonoCode",
+  "This conversation is no longer available.":
+    "Esta conversa não está mais disponível.",
+  "Send a message in this conversation before setting a reminder.":
+    "Envie uma mensagem nesta conversa antes de criar um lembrete.",
+  "Due reminders": "Lembretes vencidos",
+  Snooze: "Adiar",
+  Dismiss: "Dispensar",
+  "Open session": "Abrir sessão",
+  "Snooze reminder": "Adiar lembrete",
+  "Remind me": "Lembrar-me",
+  "Cancel reminder": "Cancelar lembrete",
+  Reminders: "Lembretes",
+  Retry: "Tentar de novo",
+  "Couldn’t load reminders.": "Não foi possível carregar os lembretes.",
+  "Desktop alerts are off. Enable in Settings.":
+    "Os alertas da área de trabalho estão desligados. Ative nos Ajustes.",
+  "In 1 hour ({time})": "Em 1 hora ({time})",
+  "In 3 hours ({time})": "Em 3 horas ({time})",
+  "This evening (18:00)": "Hoje à noite (18:00)",
+  "Tomorrow (9:00)": "Amanhã (9:00)",
+  "Next week (Mon 9:00)": "Semana que vem (seg 9:00)",
+  "Recently used models": "Modelos usados recentemente",
+  "Notify when a reminder is due, or when an agent finishes or needs input in another session or while MonoCode is in the background. Click the notification to open that session.":
+    "Notifica quando um lembrete vence, ou quando um agente termina ou precisa de input em outra sessão ou com o MonoCode em segundo plano. Clique na notificação para abrir aquela sessão.",
   "File link actions": "Ações do link de arquivo",
   "Mixed changes": "Alterações mistas",
   "Failed tool call: {label}": "Chamada de ferramenta com falha: {label}",
