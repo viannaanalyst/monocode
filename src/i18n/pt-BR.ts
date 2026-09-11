@@ -283,6 +283,17 @@ export const PT_BR: Record<string, string> = {
   "Export as Markdown": "Exportar como Markdown",
   "Export as JSON": "Exportar como JSON",
   "Import session…": "Importar sessão…",
+  "Project instructions": "Instruções do projeto",
+  "Loading…": "Carregando…",
+  "Link from CLAUDE.md": "Vincular no CLAUDE.md",
+  "Add @AGENTS.md import": "Adicionar import @AGENTS.md",
+  "Written to the project root and read by Codex and opencode automatically. Claude Code reads CLAUDE.md, so the bridge below imports it there.":
+    "Gravado na raiz do projeto e lido automaticamente pelo Codex e opencode. O Claude Code lê o CLAUDE.md, então a ponte abaixo importa lá.",
+  "Creates or appends an @AGENTS.md import to CLAUDE.md so Claude Code reads the same instructions. Existing content is kept.":
+    "Cria ou adiciona um import @AGENTS.md no CLAUDE.md para o Claude Code ler as mesmas instruções. O conteúdo existente é mantido.",
+  "Project folder: {path}": "Pasta do projeto: {path}",
+  "# Project instructions\n\nRules every agent should follow in this project.":
+    "# Instruções do projeto\n\nRegras que todo agente deve seguir neste projeto.",
   "Release notes": "Notas de versão",
   Remove: "Remover",
   "Remove from folder": "Remover da pasta",

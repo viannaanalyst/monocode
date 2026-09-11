@@ -146,6 +146,12 @@ import {
   subscribeModels,
 } from "../lib/models";
 import { supportsCustomModels } from "../lib/customModels";
+import {
+  AGENTS_FILENAME,
+  loadProjectInstructions,
+  saveProjectInstructions,
+  type ProjectInstructions,
+} from "../lib/projectInstructions";
 import { prettyCwd, projectKey, projectName } from "../lib/paths";
 import { IS_MAC } from "../lib/platform";
 import {
@@ -360,6 +366,7 @@ export function SettingsView({
           ) : null}
           {section === "keybindings" ? <KeybindingsPage /> : null}
           {section === "providers" ? <ProvidersPage /> : null}
+          {section === "project" ? <ProjectPage key={cwd} cwd={cwd} /> : null}
           {section === "voice" ? <VoicePage /> : null}
           {section === "skills" ? <SkillsPage key={cwd} cwd={cwd} /> : null}
           {section === "archive" ? (
@@ -2567,6 +2574,122 @@ function formatDate(value: number): string {
   } catch {
     return "";
   }
+}
+
+function ProjectPage({ cwd }: { cwd: string }) {
+  const [data, setData] = useState<ProjectInstructions | null>(null);
+  const [draft, setDraft] = useState("");
+  const [bridge, setBridge] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setData(null);
+    setStatus(null);
+    setError(null);
+    void loadProjectInstructions(cwd)
+      .then((loaded) => {
+        if (cancelled) return;
+        setData(loaded);
+        setDraft(loaded.agents);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setData({ agents: "", claude: "", agentsExists: false });
+        setDraft("");
+        setError(err instanceof Error ? err.message : String(err));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [cwd]);
+
+  const dirty = data != null && draft !== data.agents;
+
+  const save = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      await saveProjectInstructions({
+        cwd,
+        agents: draft,
+        writeClaudeBridge: bridge,
+        existingClaude: data?.claude ?? "",
+      });
+      const loaded = await loadProjectInstructions(cwd);
+      setData(loaded);
+      setDraft(loaded.agents);
+      setStatus(t("Saved"));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <Heading title={AGENTS_FILENAME} first />
+      <p className="max-w-2xl pb-3 text-[13px] leading-relaxed text-content/45">
+        {t(
+          "Written to the project root and read by Codex and opencode automatically. Claude Code reads CLAUDE.md, so the bridge below imports it there.",
+        )}
+      </p>
+      {data == null ? (
+        <p className="text-[13px] text-content/40">{t("Loading…")}</p>
+      ) : (
+        <>
+          <textarea
+            value={draft}
+            onChange={(event) => {
+              setDraft(event.target.value);
+              setStatus(null);
+            }}
+            spellCheck={false}
+            placeholder={t(
+              "# Project instructions\n\nRules every agent should follow in this project.",
+            )}
+            className="h-80 w-full resize-y rounded-lg border border-content/10 bg-content/5 px-3 py-2 font-mono text-[12px] leading-relaxed text-content outline-none focus:border-content/25"
+          />
+          <div className="flex flex-wrap items-center gap-3 pt-3">
+            <button
+              type="button"
+              onClick={() => void save()}
+              disabled={saving || !dirty}
+              className="rounded-md bg-accent px-3 py-1.5 text-[12px] font-medium text-white hover:bg-accent/90 disabled:opacity-40"
+            >
+              {saving ? t("Saving…") : t("Save")}
+            </button>
+            {status ? (
+              <span className="text-[12px] text-content/45">{status}</span>
+            ) : null}
+            {error ? (
+              <span className="text-[12px] text-red-400">{error}</span>
+            ) : null}
+          </div>
+          <div className="pt-6">
+            <Row label={t("Link from CLAUDE.md")}>
+              <Toggle
+                label={t("Add @AGENTS.md import")}
+                on={bridge}
+                onChange={setBridge}
+              />
+            </Row>
+            <p className="max-w-2xl pb-2 text-[12px] leading-relaxed text-content/40">
+              {t(
+                "Creates or appends an @AGENTS.md import to CLAUDE.md so Claude Code reads the same instructions. Existing content is kept.",
+              )}
+            </p>
+          </div>
+          <p className="pt-4 text-[12px] text-content/35">
+            {t("Project folder: {path}", { path: prettyCwd(cwd) })}
+          </p>
+        </>
+      )}
+    </>
+  );
 }
 
 function PageHeader({
