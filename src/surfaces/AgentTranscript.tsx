@@ -449,8 +449,16 @@ function AgentTranscriptComponent({
       if (target?.closest(".monocode-terminal")) return;
       event.preventDefault();
       event.stopPropagation();
-      setFindOpen(true);
-      setVisibleTurnCount(turnsRef.current.length);
+      // Cmd/Ctrl+F toggles: open when closed, close (and clear) when open.
+      setFindOpen((open) => {
+        if (open) {
+          setFindQuery("");
+          clearFindHighlights();
+          return false;
+        }
+        setVisibleTurnCount(turnsRef.current.length);
+        return true;
+      });
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
