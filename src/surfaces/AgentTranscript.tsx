@@ -21,9 +21,15 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 import { flushSync } from "react-dom";
+import {
+  EXPAND_TOOL_ACTIVITY_DEFAULT,
+  loadExpandToolActivity,
+  subscribeExpandToolActivity,
+} from "../lib/settings";
 import { AttachmentChip } from "../chrome/AttachmentChip";
 import { FilePreview } from "../chrome/FilePreview";
 import { FileTypeIcon } from "../chrome/FileTypeIcon";
@@ -1358,8 +1364,15 @@ function ActivityPhaseGroup({
   onOpenDiff?: (path: string) => void;
 }) {
   const [override, setOverride] = useState<boolean | null>(null);
+  const autoExpand = useSyncExternalStore(
+    subscribeExpandToolActivity,
+    loadExpandToolActivity,
+    () => EXPAND_TOOL_ACTIVITY_DEFAULT,
+  );
   const waiting = phase.steps.some(needsApproval);
-  const open = waiting || (override ?? active);
+  // With auto-expand off, a group stays behind its header until clicked (a
+  // pending approval still forces it open).
+  const open = waiting || (override ?? (autoExpand && active));
   const [liveScroller, setLiveScroller] = useState<HTMLDivElement | null>(null);
   useLivePhaseScroll(liveScroller, active && open, phase.steps);
   const title = activityPhaseTitle(phase, active);
@@ -2147,6 +2160,7 @@ function ToolCallSummary({
         ) : canOpen ? (
           <button
             type="button"
+            data-no-tooltip
             className={`-my-0.5 flex min-w-0 cursor-pointer items-center gap-1 rounded px-1 py-0.5 text-left hover:text-sky-300 ${
               chip
                 ? `max-w-full bg-content/6 hover:bg-content/10 ${targetTone}`

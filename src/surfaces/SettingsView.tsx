@@ -200,6 +200,7 @@ import {
   loadLiveAgentsEnabled,
   loadNotesEnabled,
   loadSessionActivityEnabled,
+  loadExpandToolActivity,
   loadLocalhostInBrowser,
   loadBrowserAgentEnabled,
   loadBrowserAgentAllowlistText,
@@ -218,6 +219,7 @@ import {
   saveLiveAgentsEnabled,
   saveNotesEnabled,
   saveSessionActivityEnabled,
+  saveExpandToolActivity,
   saveVoiceEnabled,
   saveVoiceLanguage,
   saveVoiceModel,
@@ -408,6 +410,9 @@ function GeneralPage({
   const [sessionActivity, setSessionActivity] = useState(
     loadSessionActivityEnabled,
   );
+  const [expandToolActivity, setExpandToolActivity] = useState(
+    loadExpandToolActivity,
+  );
   const [liveAgentsEnabled, setLiveAgentsEnabled] = useState(
     loadLiveAgentsEnabled,
   );
@@ -470,6 +475,10 @@ function GeneralPage({
   const onSessionActivity = (next: boolean) => {
     saveSessionActivityEnabled(next);
     setSessionActivity(next);
+  };
+  const onExpandToolActivity = (next: boolean) => {
+    saveExpandToolActivity(next);
+    setExpandToolActivity(next);
   };
 
   const onFollowUpBehavior = (next: FollowUpBehavior) => {
@@ -578,6 +587,18 @@ function GeneralPage({
           label={t("Session activity card")}
           on={sessionActivity}
           onChange={onSessionActivity}
+        />
+      </Row>
+      <Row
+        label={t("Expand tool activity automatically")}
+        description={t(
+          "Opens the tool group (edits, reads, commands) while the agent works. Turn it off to keep each group collapsed until you click it.",
+        )}
+      >
+        <Toggle
+          label={t("Expand tool activity automatically")}
+          on={expandToolActivity}
+          onChange={onExpandToolActivity}
         />
       </Row>
       <Row

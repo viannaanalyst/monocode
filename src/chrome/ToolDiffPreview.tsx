@@ -81,6 +81,7 @@ export function ToolDiffPreview({
       <button
         ref={trigger}
         type="button"
+        data-no-tooltip
         className={`${className ?? ""} focus-visible:outline-2 focus-visible:outline-sky-400/60`}
         aria-label={
           onOpen

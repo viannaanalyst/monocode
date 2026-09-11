@@ -331,6 +331,9 @@ export const PT_BR: Record<string, string> = {
   "Project instructions": "Instruções do projeto",
   "Session activity": "Atividade da sessão",
   "Session activity card": "Card de atividade da sessão",
+  "Expand tool activity automatically": "Expandir atividade das ferramentas automaticamente",
+  "Opens the tool group (edits, reads, commands) while the agent works. Turn it off to keep each group collapsed until you click it.":
+    "Abre o grupo de ferramentas (edições, leituras, comandos) enquanto o agente trabalha. Desligue para manter cada grupo recolhido até você clicar.",
   "Shows a card at the end of a turn summarizing the commands the agent ran, with tests and commits called out.":
     "Mostra um card no fim do turno resumindo os comandos que o agente rodou, com testes e commits destacados.",
   "{count} command": "{count} comando",

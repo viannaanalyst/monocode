@@ -316,7 +316,7 @@ export function subscribeDiffViewer(onStoreChange: () => void) {
 
 const SESSION_ACTIVITY_KEY = "monocode.sessionActivityEnabled";
 
-export const SESSION_ACTIVITY_ENABLED_DEFAULT = true;
+export const SESSION_ACTIVITY_ENABLED_DEFAULT = false;
 
 /** Fired on `window` when the transcript activity card setting flips. */
 export const SESSION_ACTIVITY_ENABLED_CHANGE_EVENT =
@@ -354,6 +354,45 @@ export function subscribeSessionActivityEnabled(onStoreChange: () => void) {
       SESSION_ACTIVITY_ENABLED_CHANGE_EVENT,
       onStoreChange,
     );
+}
+
+const EXPAND_TOOL_ACTIVITY_KEY = "monocode.expandToolActivity";
+
+export const EXPAND_TOOL_ACTIVITY_DEFAULT = false;
+
+/** Fired on `window` when the tool-activity auto-expand setting flips. */
+export const EXPAND_TOOL_ACTIVITY_CHANGE_EVENT =
+  "monocode:expand-tool-activity-change";
+
+export function loadExpandToolActivity(): boolean {
+  try {
+    const raw = localStorage.getItem(EXPAND_TOOL_ACTIVITY_KEY);
+    if (raw == null) return EXPAND_TOOL_ACTIVITY_DEFAULT;
+    return raw === "1" || raw === "true";
+  } catch {
+    return EXPAND_TOOL_ACTIVITY_DEFAULT;
+  }
+}
+
+export function saveExpandToolActivity(value: boolean) {
+  try {
+    localStorage.setItem(EXPAND_TOOL_ACTIVITY_KEY, value ? "1" : "0");
+  } catch {
+    // private mode / quota
+  }
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent<boolean>(EXPAND_TOOL_ACTIVITY_CHANGE_EVENT, {
+      detail: value,
+    }),
+  );
+}
+
+export function subscribeExpandToolActivity(onStoreChange: () => void) {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener(EXPAND_TOOL_ACTIVITY_CHANGE_EVENT, onStoreChange);
+  return () =>
+    window.removeEventListener(EXPAND_TOOL_ACTIVITY_CHANGE_EVENT, onStoreChange);
 }
 
 const LOCALHOST_IN_BROWSER_KEY = "monocode.localhostInBrowser";
