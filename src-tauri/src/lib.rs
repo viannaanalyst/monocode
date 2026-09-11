@@ -17,6 +17,7 @@ mod macos;
 mod menu;
 mod notes;
 mod notifications;
+mod notion;
 mod project_logo;
 mod pty;
 mod rate_limits;
@@ -273,6 +274,12 @@ pub fn run() {
             clickup::clickup_task_details,
             clickup::clickup_task_thread,
             clickup::clickup_task_comment,
+            notion::notion_status,
+            notion::notion_set_config,
+            notion::notion_list_tasks,
+            notion::notion_task_details,
+            notion::notion_task_thread,
+            notion::notion_task_comment,
             fs::git_branches,
             fs::git_checkout,
             fs::git_create_branch,

@@ -20,6 +20,7 @@ import {
   listClickUpTasks,
   type ClickUpTask,
 } from "./clickup";
+import { notionConnected, listNotionTasks, type NotionTask } from "./notion";
 import {
   collectRailProjects,
   normalizeProjectPath,
@@ -28,7 +29,12 @@ import {
 } from "./recents";
 
 export type GithubTaskKind = "issue" | "pr";
-export type InboxKind = GithubTaskKind | "linear" | "jira" | "clickup";
+export type InboxKind =
+  | GithubTaskKind
+  | "linear"
+  | "jira"
+  | "clickup"
+  | "notion";
 
 export type GithubLabel = {
   name: string;
@@ -58,7 +64,8 @@ export type InboxProvider =
   | "linear"
   | "gitlab"
   | "jira"
-  | "clickup";
+  | "clickup"
+  | "notion";
 
 export type InboxItem = Omit<GithubWorkItem, "kind"> & {
   kind: InboxKind;
@@ -140,6 +147,7 @@ export type InboxProviders = {
   gitlab: boolean;
   jira: boolean;
   clickup: boolean;
+  notion: boolean;
 };
 
 export type InboxListResult = {
@@ -150,11 +158,21 @@ export type InboxListResult = {
 
 /** Providers whose items are issues/tasks rather than repo work items. */
 export function isTrackerProvider(provider?: InboxProvider): boolean {
-  return provider === "linear" || provider === "jira" || provider === "clickup";
+  return (
+    provider === "linear" ||
+    provider === "jira" ||
+    provider === "clickup" ||
+    provider === "notion"
+  );
 }
 
 export function isTrackerKind(kind: InboxKind): boolean {
-  return kind === "linear" || kind === "jira" || kind === "clickup";
+  return (
+    kind === "linear" ||
+    kind === "jira" ||
+    kind === "clickup" ||
+    kind === "notion"
+  );
 }
 
 const INBOX_CACHE_FRESH_MS = 30_000;
@@ -521,6 +539,7 @@ export async function listInboxItems(
           gitlab: false,
           jira: false,
           clickup: false,
+          notion: false,
         },
       }
     );
@@ -583,12 +602,14 @@ async function fetchInboxItems(
   const gitlabOn = (await gitlabConnected()).connected;
   const jiraOn = (await jiraConnected()).connected;
   const clickUpOn = (await clickUpConnected()).connected;
+  const notionOn = (await notionConnected()).connected;
   const providers: InboxProviders = {
     github: grouped.length > 0,
     linear: linearOn,
     gitlab: gitlabOn,
     jira: jiraOn,
     clickup: clickUpOn,
+    notion: notionOn,
   };
 
   let linearItems: InboxItem[] = [];
@@ -625,6 +646,15 @@ async function fetchInboxItems(
     }
   }
 
+  let notionItems: InboxItem[] = [];
+  if (notionOn) {
+    try {
+      notionItems = await fetchNotionInboxItems(query);
+    } catch (error) {
+      errors.notion = inboxErrorMessage(error);
+    }
+  }
+
   return {
     items: dedupeInboxItems(
       [
@@ -633,11 +663,41 @@ async function fetchInboxItems(
         ...gitlabItems,
         ...jiraItems,
         ...clickUpItems,
+        ...notionItems,
       ],
       preferredPaths,
     ),
     errors,
     providers,
+  };
+}
+
+async function fetchNotionInboxItems(query: InboxQuery): Promise<InboxItem[]> {
+  const tasks = await listNotionTasks({ state: query.state });
+  return tasks.map(notionTaskToInboxItem);
+}
+
+function notionTaskToInboxItem(task: NotionTask): InboxItem {
+  return {
+    provider: "notion",
+    kind: "notion",
+    id: task.id,
+    identifier: task.identifier,
+    number: task.number,
+    title: task.title,
+    url: task.url,
+    state: task.state,
+    stateType: task.stateType,
+    updatedAt: task.updatedAt,
+    labels: task.labels,
+    assignees: task.assignees,
+    draft: false,
+    repo: task.repo,
+    teamId: task.teamId,
+    teamName: task.teamName,
+    projectId: task.projectId || "",
+    projectName: task.projectName || "",
+    projectPath: task.projectPath || "",
   };
 }
 
@@ -974,7 +1034,9 @@ export function matchesInboxQuery(item: InboxItem, query: string): boolean {
           ? "jira issue"
           : item.kind === "clickup"
             ? "clickup task"
-            : "issue";
+            : item.kind === "notion"
+              ? "notion page"
+              : "issue";
   const haystack = [
     item.title,
     item.repo,
@@ -1018,7 +1080,9 @@ export function inboxStartDraft(item: InboxItem, body?: string): string {
         ? "Jira"
         : item.provider === "clickup"
           ? "ClickUp"
-          : "Linear";
+          : item.provider === "notion"
+            ? "Notion"
+            : "Linear";
     const id = item.identifier?.trim() || `${provider} #${item.number}`;
     const title = item.title.trim() || id;
     const lines = [`Work on this ${provider} issue:`, "", `${id} ${title}`];

@@ -312,6 +312,15 @@ export const PT_BR: Record<string, string> = {
   "No ClickUp tasks match these filters":
     "Nenhuma tarefa do ClickUp corresponde a estes filtros",
   "No ClickUp tasks": "Nenhuma tarefa do ClickUp",
+  Notion: "Notion",
+  "Notion integration token": "Token da integração do Notion",
+  "Notion database": "Database do Notion",
+  "Create a Notion integration, share a Tasks database with it, and paste the integration token + database id. Each row becomes an Inbox item.":
+    "Crie uma integração no Notion, compartilhe um database de Tarefas com ela e cole o token + o id do database. Cada linha vira um item no Inbox.",
+  "No matching Notion pages": "Nenhuma página do Notion correspondente",
+  "No Notion pages match these filters":
+    "Nenhuma página do Notion corresponde a estes filtros",
+  "No Notion pages": "Nenhuma página do Notion",
   "Import session": "Importar sessão",
   "Recent exports": "Exports recentes",
   "Paste a file path": "Cole um caminho de arquivo",

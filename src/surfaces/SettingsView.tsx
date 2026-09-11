@@ -200,6 +200,12 @@ import {
   notifyClickUpChange,
   saveClickUpToken,
 } from "../lib/clickup";
+import {
+  disconnectNotion,
+  notionConnected,
+  notifyNotionChange,
+  saveNotionConfig,
+} from "../lib/notion";
 import { loadTabGroupLabels, resolveTabGroupLabel } from "../lib/tabGroups";
 import {
   filterKeybindings,
@@ -736,6 +742,9 @@ function GeneralPage({
       <Heading title={t("ClickUp")} />
       <ClickUpSettings />
 
+      <Heading title={t("Notion")} />
+      <NotionSettings />
+
       <Heading title={t("Browser")} />
       <Row
         label={t("Open localhost in Browser")}
@@ -1005,6 +1014,135 @@ function ClickUpSettings() {
             <SecondaryButton
               onClick={() => void onSave()}
               disabled={busy || !token.trim()}
+            >
+              {busy ? t("Saving") : t("Connect")}
+            </SecondaryButton>
+          </div>
+        )}
+      </Row>
+      {error ? (
+        <p className="pb-2 text-[12px] text-red-400/90">{error}</p>
+      ) : null}
+    </>
+  );
+}
+
+function NotionSettings() {
+  const [token, setToken] = useState("");
+  const [databaseId, setDatabaseId] = useState("");
+  const [connected, setConnected] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void notionConnected()
+      .then((status) => {
+        if (cancelled) return;
+        setConnected(status.connected);
+        if (status.databaseId) setDatabaseId(status.databaseId);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled)
+          setError(err instanceof Error ? err.message : String(err));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const onSave = async () => {
+    if (!token.trim() || !databaseId.trim() || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const status = await saveNotionConfig(token, databaseId);
+      setConnected(status.connected);
+      if (status.databaseId) setDatabaseId(status.databaseId);
+      setToken("");
+      clearInboxCache();
+      notifyNotionChange();
+    } catch (err: unknown) {
+      setConnected(false);
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onDisconnect = async () => {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await disconnectNotion();
+      setConnected(false);
+      clearInboxCache();
+      notifyNotionChange();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <Row
+        label={
+          <span className="flex items-center gap-2">
+            <InboxProviderMark provider="notion" className="size-4 shrink-0" />
+            Connection
+          </span>
+        }
+        description={t(
+          "Create a Notion integration, share a Tasks database with it, and paste the integration token + database id. Each row becomes an Inbox item.",
+        )}
+      >
+        {connected ? (
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="max-w-56 truncate font-mono text-[12px] text-content/50">
+              {databaseId}
+            </span>
+            <SecondaryButton
+              onClick={() => void onDisconnect()}
+              disabled={busy}
+            >
+              {t("Disconnect")}
+            </SecondaryButton>
+          </div>
+        ) : (
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <label className="flex h-7 w-52 shrink-0 items-center rounded-md border border-content/10 px-2 focus-within:border-content/20">
+              <input
+                type="password"
+                value={token}
+                onChange={(event) => setToken(event.target.value)}
+                placeholder="secret_…"
+                aria-label={t("Notion integration token")}
+                autoComplete="off"
+                spellCheck={false}
+                className="min-w-0 flex-1 bg-transparent text-[12px] text-content outline-none placeholder:text-content/35"
+              />
+            </label>
+            <label className="flex h-7 w-64 shrink-0 items-center rounded-md border border-content/10 px-2 focus-within:border-content/20">
+              <input
+                type="text"
+                value={databaseId}
+                onChange={(event) => setDatabaseId(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") void onSave();
+                }}
+                placeholder="Database id or URL"
+                aria-label={t("Notion database")}
+                autoComplete="off"
+                spellCheck={false}
+                className="min-w-0 flex-1 bg-transparent font-mono text-[12px] text-content outline-none placeholder:text-content/35"
+              />
+            </label>
+            <SecondaryButton
+              onClick={() => void onSave()}
+              disabled={busy || !token.trim() || !databaseId.trim()}
             >
               {busy ? t("Saving") : t("Connect")}
             </SecondaryButton>

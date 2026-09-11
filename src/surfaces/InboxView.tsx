@@ -127,6 +127,15 @@ import {
   type ClickUpTaskThread,
 } from "../lib/clickup";
 import {
+  NOTION_CHANGE_EVENT,
+  notionTaskComment,
+  notionTaskDetails,
+  notionTaskThread,
+  peekNotionTaskDetails,
+  peekNotionTaskThread,
+  type NotionTaskThread,
+} from "../lib/notion";
+import {
   GITLAB_CHANGE_EVENT,
   gitlabMrDiff,
   gitlabWorkItemComment,
@@ -258,18 +267,21 @@ function inboxEmptyMessage(
       if (source === "linear") return t("No matching Linear issues");
       if (source === "jira") return t("No matching Jira issues");
       if (source === "clickup") return t("No matching ClickUp tasks");
+      if (source === "notion") return t("No matching Notion pages");
       if (source === "gitlab") return t("No matching issues or merge requests");
       return t("No matching issues or pull requests");
     }
     if (source === "linear") return t("No Linear issues match these filters");
     if (source === "jira") return t("No Jira issues match these filters");
     if (source === "clickup") return t("No ClickUp tasks match these filters");
+    if (source === "notion") return t("No Notion pages match these filters");
     if (source === "gitlab") return t("No GitLab items match these filters");
     return t("No issues or pull requests match these filters");
   }
   if (source === "linear") return t("No Linear issues");
   if (source === "jira") return t("No Jira issues");
   if (source === "clickup") return t("No ClickUp tasks");
+  if (source === "notion") return t("No Notion pages");
   if (!hasProjects) return t("Open a project to fill the inbox");
   return source === "gitlab"
     ? t("No matching issues or merge requests")
@@ -292,9 +304,11 @@ function InboxSourceTab({
         ? "Jira"
         : source === "clickup"
           ? "ClickUp"
-          : source === "gitlab"
-            ? t("GitLab")
-            : "GitHub";
+          : source === "notion"
+            ? "Notion"
+            : source === "gitlab"
+              ? t("GitLab")
+              : "GitHub";
   return (
     <button
       type="button"
@@ -409,6 +423,7 @@ export function InboxView({
     gitlab: true,
     jira: true,
     clickup: true,
+    notion: true,
   });
   const [filterMenu, setFilterMenu] = useState<{ x: number; y: number } | null>(
     null,
@@ -510,6 +525,12 @@ export function InboxView({
     return () => window.removeEventListener(CLICKUP_CHANGE_EVENT, onChange);
   }, []);
 
+  useEffect(() => {
+    const onChange = () => setRefresh((value) => value + 1);
+    window.addEventListener(NOTION_CHANGE_EVENT, onChange);
+    return () => window.removeEventListener(NOTION_CHANGE_EVENT, onChange);
+  }, []);
+
   // The roster has to come from Linear, not from the fetched issues: hiding a
   // team drops its issues, so a derived list could never offer it back.
   useEffect(() => {
@@ -565,6 +586,7 @@ export function InboxView({
           gitlab: message,
           jira: message,
           clickup: message,
+          notion: message,
         });
       })
       .finally(() => {
@@ -690,6 +712,7 @@ export function InboxView({
       "gitlab",
       "jira",
       "clickup",
+      "notion",
     ];
     const available = order.filter((provider) => providers[provider]);
     if (available.length === 0 || providers[source]) return;
@@ -751,6 +774,13 @@ export function InboxView({
           <InboxSourceTab
             source="clickup"
             selected={source === "clickup"}
+            onSelect={onSourceChange}
+          />
+        ) : null}
+        {providers.notion ? (
+          <InboxSourceTab
+            source="notion"
+            selected={source === "notion"}
             onSelect={onSourceChange}
           />
         ) : null}
@@ -1173,7 +1203,8 @@ function InboxDetail({
   const linear = item.provider === "linear";
   const jira = item.provider === "jira";
   const clickup = item.provider === "clickup";
-  const tracker = linear || jira || clickup;
+  const notion = item.provider === "notion";
+  const tracker = linear || jira || clickup || notion;
   const gitlab = item.provider === "gitlab";
   const isPr = !tracker && item.kind === "pr";
   const githubKind =
@@ -1188,15 +1219,21 @@ function InboxDetail({
       ? peekJiraIssueDetails(item.id ?? "")
       : clickup
         ? peekClickUpTaskDetails(item.id ?? "")
-        : gitlabKind
-          ? peekGitlabWorkItemDetails(item.projectPath, gitlabKind, item.number)
-          : githubKind
-            ? peekGithubWorkItemDetails(
+        : notion
+          ? peekNotionTaskDetails(item.id ?? "")
+          : gitlabKind
+            ? peekGitlabWorkItemDetails(
                 item.projectPath,
-                githubKind,
+                gitlabKind,
                 item.number,
               )
-            : null;
+            : githubKind
+              ? peekGithubWorkItemDetails(
+                  item.projectPath,
+                  githubKind,
+                  item.number,
+                )
+              : null;
   const cachedDiff = isPr
     ? gitlab
       ? peekGitlabMrDiff(item.projectPath, item.number)
@@ -1208,11 +1245,17 @@ function InboxDetail({
       ? peekJiraIssueThread(item.id ?? "")
       : clickup
         ? peekClickUpTaskThread(item.id ?? "")
-        : gitlabKind
-          ? peekGitlabWorkItemThread(item.projectPath, gitlabKind, item.number)
-          : githubKind
-            ? peekGithubWorkItemThread(item.projectPath, githubKind, item.number)
-            : null;
+        : notion
+          ? peekNotionTaskThread(item.id ?? "")
+          : gitlabKind
+            ? peekGitlabWorkItemThread(item.projectPath, gitlabKind, item.number)
+            : githubKind
+              ? peekGithubWorkItemThread(
+                  item.projectPath,
+                  githubKind,
+                  item.number,
+                )
+              : null;
   const [details, setDetails] = useState<GithubWorkItemDetails | null>(cached);
   const bodyScroll = useLockOverscroll<HTMLDivElement>();
   const [loading, setLoading] = useState(cached == null);
@@ -1226,6 +1269,7 @@ function InboxDetail({
     | LinearIssueThread
     | JiraIssueThread
     | ClickUpTaskThread
+    | NotionTaskThread
     | GitlabWorkItemThread
     | null
   >(cachedThread);
@@ -1280,19 +1324,21 @@ function InboxDetail({
         ? peekJiraIssueDetails(item.id ?? "")
         : clickup
           ? peekClickUpTaskDetails(item.id ?? "")
-          : gitlabKind
-            ? peekGitlabWorkItemDetails(
-                item.projectPath,
-                gitlabKind,
-                item.number,
-              )
-            : githubKind
-              ? peekGithubWorkItemDetails(
+          : notion
+            ? peekNotionTaskDetails(item.id ?? "")
+            : gitlabKind
+              ? peekGitlabWorkItemDetails(
                   item.projectPath,
-                  githubKind,
+                  gitlabKind,
                   item.number,
                 )
-              : null;
+              : githubKind
+                ? peekGithubWorkItemDetails(
+                    item.projectPath,
+                    githubKind,
+                    item.number,
+                  )
+                : null;
     if (cachedDetails) {
       setDetails(cachedDetails);
       setLoading(false);
@@ -1314,11 +1360,19 @@ function InboxDetail({
           ? item.id
             ? clickUpTaskDetails(item.id)
             : Promise.reject(new Error("Missing ClickUp task"))
-          : gitlabKind
-            ? gitlabWorkItemDetails(item.projectPath, gitlabKind, item.number)
-            : githubKind
-              ? githubWorkItemDetails(item.projectPath, githubKind, item.number)
-              : Promise.reject(new Error("Unknown inbox item"));
+          : notion
+            ? item.id
+              ? notionTaskDetails(item.id)
+              : Promise.reject(new Error("Missing Notion page"))
+            : gitlabKind
+              ? gitlabWorkItemDetails(item.projectPath, gitlabKind, item.number)
+              : githubKind
+                ? githubWorkItemDetails(
+                    item.projectPath,
+                    githubKind,
+                    item.number,
+                  )
+                : Promise.reject(new Error("Unknown inbox item"));
     void pending
       .then((next) => {
         if (cancelled) return;
@@ -1345,6 +1399,7 @@ function InboxDetail({
     linear,
     jira,
     clickup,
+    notion,
     revision,
   ]);
 
@@ -1356,7 +1411,9 @@ function InboxDetail({
         ? peekLinearIssueThread(id)
         : jira
           ? peekJiraIssueThread(id)
-          : peekClickUpTaskThread(id);
+          : clickup
+            ? peekClickUpTaskThread(id)
+            : peekNotionTaskThread(id);
       if (cachedThread) {
         setThread(cachedThread);
         setThreadLoading(false);
@@ -1370,7 +1427,9 @@ function InboxDetail({
         ? linearIssueThread(id)
         : jira
           ? jiraIssueThread(id)
-          : clickUpTaskThread(id))
+          : clickup
+            ? clickUpTaskThread(id)
+            : notionTaskThread(id))
         .then((next) => {
           if (cancelled) return;
           setThread(next);
@@ -1462,6 +1521,7 @@ function InboxDetail({
     linear,
     jira,
     clickup,
+    notion,
     tracker,
     revision,
   ]);
@@ -1513,7 +1573,9 @@ function InboxDetail({
           ? linearIssueComment(id, body, { parentId: replyTo?.id })
           : jira
             ? jiraIssueComment(id, body, { parentId: replyTo?.id })
-            : clickUpTaskComment(id, body, { parentId: replyTo?.id }));
+            : clickup
+              ? clickUpTaskComment(id, body, { parentId: replyTo?.id })
+              : notionTaskComment(id, body, { parentId: replyTo?.id }));
         setReplyTo(null);
         try {
           setThread(
@@ -1521,7 +1583,9 @@ function InboxDetail({
               ? linearIssueThread(id, { force: true })
               : jira
                 ? jiraIssueThread(id, { force: true })
-                : clickUpTaskThread(id, { force: true })),
+                : clickup
+                  ? clickUpTaskThread(id, { force: true })
+                  : notionTaskThread(id, { force: true })),
           );
         } catch (err: unknown) {
           setPostError(err instanceof Error ? err.message : String(err));

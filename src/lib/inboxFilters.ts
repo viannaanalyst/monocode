@@ -65,7 +65,8 @@ export function loadInboxSource(): InboxSource {
     return raw === "linear" ||
       raw === "gitlab" ||
       raw === "jira" ||
-      raw === "clickup"
+      raw === "clickup" ||
+      raw === "notion"
       ? raw
       : "github";
   } catch {
@@ -162,9 +163,14 @@ export function hasActiveInboxFilters(
   );
 }
 
-/** Linear, Jira, and ClickUp share the same issue-tracker filter model. */
+/** Linear, Jira, ClickUp, and Notion share the same issue-tracker filter model. */
 export function isTrackerSource(source?: InboxSource): boolean {
-  return source === "linear" || source === "jira" || source === "clickup";
+  return (
+    source === "linear" ||
+    source === "jira" ||
+    source === "clickup" ||
+    source === "notion"
+  );
 }
 
 /** No status box checked means "no restriction", so the fetch has to widen with it. */

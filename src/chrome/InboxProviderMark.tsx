@@ -56,6 +56,26 @@ export function InboxProviderMark({
       </svg>
     );
   }
+  if (provider === "notion") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>
+        <rect
+          x="3"
+          y="3"
+          width="18"
+          height="18"
+          rx="3.5"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          opacity="0.75"
+        />
+        <path
+          d="M7.5 17V7h2.1l4.2 6.2V7h2.2v10h-2.1L9.7 10.7V17H7.5Z"
+          fill="currentColor"
+        />
+      </svg>
+    );
+  }
   if (provider === "jira") {
     return (
       <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>
