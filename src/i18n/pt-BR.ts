@@ -343,6 +343,14 @@ export const PT_BR: Record<string, string> = {
     "Esta conversa não está mais disponível.",
   "Send a message in this conversation before setting a reminder.":
     "Envie uma mensagem nesta conversa antes de criar um lembrete.",
+  "This conversation is using a lot of context.":
+    "Esta conversa está usando bastante contexto.",
+  "Continue in a summarized session to keep the next turns fast and focused.":
+    "Continue em uma sessão resumida para manter os próximos turnos rápidos e focados.",
+  "Create summarized session": "Criar sessão resumida",
+  "Review only": "Somente revisão",
+  "Read, search, and analyze. The agent cannot change files.":
+    "Pode ler, pesquisar e analisar. O agente não consegue alterar arquivos.",
   "Due reminders": "Lembretes vencidos",
   Snooze: "Adiar",
   Dismiss: "Dispensar",

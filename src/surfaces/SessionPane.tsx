@@ -13,6 +13,7 @@ import { Composer } from "../chrome/Composer";
 import { DiscussionEmpty } from "../chrome/DiscussionEmpty";
 import { SessionReview } from "../chrome/SessionReview";
 import { SessionActivity } from "../chrome/SessionActivity";
+import { LargeContextNudge } from "./LargeContextNudge";
 import { PromptOutline } from "../chrome/PromptOutline";
 import {
   canCompactHarnessContext,
@@ -493,6 +494,15 @@ export const SessionPane = memo(function SessionPane({
                       onOpenDiff={onOpenDiff}
                     />
                     <SessionActivity session={session} />
+                    <LargeContextNudge
+                      session={session}
+                      onHandoff={
+                        onHandoff
+                          ? (harness, turn, model) =>
+                              onHandoff(session.id, harness, turn, model)
+                          : undefined
+                      }
+                    />
                   </>
                 )
               }

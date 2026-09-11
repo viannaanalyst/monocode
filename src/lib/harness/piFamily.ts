@@ -397,7 +397,8 @@ async function ensureLive(
 ): Promise<Live> {
   const { liveByThread, resumeByThread } = stateFor(flavor);
   const existing = liveByThread.get(input.sessionId);
-  const wantPlanning = input.intent === "plan";
+  const wantPlanning =
+    input.intent === "plan" || input.runtimeMode === "read-only";
   if (
     existing &&
     existing.cwd === input.cwd &&
@@ -462,7 +463,8 @@ async function startLive(
     thinking: input.modelSettings?.thinking ?? "",
     fastModeEnabled: undefined,
     fastModeRequested: undefined,
-    planning: input.intent === "plan",
+    planning:
+      input.intent === "plan" || input.runtimeMode === "read-only",
     onEvent: input.onEvent,
     approvals: new Map(),
     questions: new Map(),
@@ -520,7 +522,7 @@ async function startLive(
     buildPiSpawnArgs(flavor, {
       resume,
       model: modelRef ? native : undefined,
-      plan: input.intent === "plan",
+      plan: input.intent === "plan" || input.runtimeMode === "read-only",
     }),
     input.cwd,
   );

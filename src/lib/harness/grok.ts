@@ -560,7 +560,7 @@ async function handlePermission(live: Live, id: number, params: unknown) {
     });
   }
 
-  if (live.planning) {
+  if (live.planning || live.runtimeMode === "read-only") {
     const readOnly = request.kind === "read" || request.kind === "search";
     const optionId = permissionOptionId(
       readOnly ? "allow" : "deny",

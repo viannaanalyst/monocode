@@ -17,6 +17,7 @@ import { WindowControls } from "../chrome/WindowControls";
 import { useLockOverscroll } from "../hooks/useLockOverscroll";
 import {
   conversationRowsFrom,
+  filterHitsByProject,
   flattenGrouped,
   groupHits,
   hitsFromContentMatches,
@@ -156,25 +157,34 @@ export function SearchView({
     [cwd, files, trimmed],
   );
   const titleHits = useMemo(
-    () => (trimmed ? searchConversationTitles(conversationRows, trimmed) : []),
-    [conversationRows, trimmed],
+    () =>
+      trimmed
+        ? filterHitsByProject(
+            searchConversationTitles(conversationRows, trimmed),
+            cwd,
+          )
+        : [],
+    [conversationRows, cwd, trimmed],
   );
   const liveMessageHits = useMemo(
     () =>
       trimmed
-        ? searchSessionMessages(
-            sessions.map((session) => ({
-              id: session.id,
-              cwd: session.cwd,
-              harness: session.harness,
-              title: session.title,
-              updatedAt: Date.now(),
-              blocks: session.blocks,
-            })),
-            trimmed,
+        ? filterHitsByProject(
+            searchSessionMessages(
+              sessions.map((session) => ({
+                id: session.id,
+                cwd: session.cwd,
+                harness: session.harness,
+                title: session.title,
+                updatedAt: Date.now(),
+                blocks: session.blocks,
+              })),
+              trimmed,
+            ),
+            cwd,
           )
         : [],
-    [sessions, trimmed],
+    [cwd, sessions, trimmed],
   );
   const projectHits = useMemo(
     () => (trimmed ? searchRecentProjects(recents, trimmed) : []),
@@ -199,7 +209,10 @@ export function SearchView({
       if (wantSessions) {
         setLoading(true);
         jobs.push(
-          searchSessions({ query: trimmed })
+          searchSessions({
+            query: trimmed,
+            ...(looksLikeProject(cwd) ? { cwd } : {}),
+          })
             .then((result) => {
               if (!cancelled) setRemoteHits(hitsFromSessionSearch(result.hits));
             })

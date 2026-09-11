@@ -662,7 +662,7 @@ async function handlePermission(live: Live, id: number, params: unknown) {
     .map((item) => asRecord(item)?.optionId)
     .filter((value): value is string => typeof value === "string");
 
-  if (live.planning) {
+  if (live.planning || live.runtimeMode === "read-only") {
     const normalized = (preview?.kind ?? kind ?? "").toLowerCase();
     const readOnly = normalized === "read" || normalized === "search";
     const optionId = readOnly

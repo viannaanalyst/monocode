@@ -509,13 +509,16 @@ async function handlePermission(live: Live, id: number, params: unknown) {
       preview: request.preview,
     });
   }
-  const optionId = live.planning
-    ? permissionOptionId(
-        request.kind === "read" || request.kind === "search" ? "allow" : "deny",
-        request.optionIds,
-      )
-    : (autoPermissionOption(live.runtimeMode, request.optionIds) ??
-      permissionOptionId("allow", request.optionIds));
+  const optionId =
+    live.planning || live.runtimeMode === "read-only"
+      ? permissionOptionId(
+          request.kind === "read" || request.kind === "search"
+            ? "allow"
+            : "deny",
+          request.optionIds,
+        )
+      : (autoPermissionOption(live.runtimeMode, request.optionIds) ??
+        permissionOptionId("allow", request.optionIds));
   await live.acp.respond(id, {
     outcome: { outcome: "selected", optionId },
   });

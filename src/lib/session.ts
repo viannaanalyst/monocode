@@ -198,7 +198,11 @@ export type Block = {
 };
 
 export type RuntimeMode =
-  "supervised" | "auto-accept-edits" | "auto" | "full-access";
+  | "read-only"
+  | "supervised"
+  | "auto-accept-edits"
+  | "auto"
+  | "full-access";
 
 /** One GitHub issue or pull request associated with a coding session. */
 export type LinkedWorkItem = {
@@ -209,6 +213,7 @@ export type LinkedWorkItem = {
 };
 
 export const RUNTIME_MODES: RuntimeMode[] = [
+  "read-only",
   "supervised",
   "auto-accept-edits",
   "auto",
@@ -218,6 +223,7 @@ export const RUNTIME_MODES: RuntimeMode[] = [
 export const DEFAULT_RUNTIME_MODE: RuntimeMode = "supervised";
 
 export const RUNTIME_MODE_LABEL: Record<RuntimeMode, string> = {
+  "read-only": "Review only",
   supervised: "Supervised",
   "auto-accept-edits": "Auto-accept edits",
   auto: "Auto",
@@ -225,6 +231,7 @@ export const RUNTIME_MODE_LABEL: Record<RuntimeMode, string> = {
 };
 
 export const RUNTIME_MODE_HINT: Record<RuntimeMode, string> = {
+  "read-only": "Read, search, and analyze. The agent cannot change files.",
   supervised: "Ask before commands and file changes.",
   "auto-accept-edits": "Auto-approve edits, ask before other actions.",
   auto: "An AI reviewer can approve or deny actions.",

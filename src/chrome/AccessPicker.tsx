@@ -1,4 +1,11 @@
-import { ChevronDown, Lock, LockOpen, Pencil, Sparkles } from "./icons";
+import {
+  ChevronDown,
+  Lock,
+  LockOpen,
+  Pencil,
+  Search,
+  Sparkles,
+} from "./icons";
 import {
   useEffect,
   useRef,
@@ -25,6 +32,7 @@ type Props = {
 const MENU_WIDTH = 288;
 
 const ICONS: Record<RuntimeMode, typeof Lock> = {
+  "read-only": Search,
   supervised: Lock,
   "auto-accept-edits": Pencil,
   auto: Sparkles,

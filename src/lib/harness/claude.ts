@@ -811,7 +811,7 @@ async function handleControlRequest(
 
   applyKnownToolInput(live, toolName, input, control.toolUseId);
 
-  if (live.planning) {
+  if (live.planning || live.runtimeMode === "read-only") {
     const kind = toolKindFromName(toolName);
     const decision = kind === "read" || kind === "search" ? "allow" : "deny";
     await writeJson(

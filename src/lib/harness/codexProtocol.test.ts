@@ -12,6 +12,15 @@ import {
 import { parseCodexModelList } from "./codexCatalog";
 
 describe("runtimeModeToCodexConfig", () => {
+  it("maps review-only to a hard read-only sandbox", () => {
+    expect(runtimeModeToCodexConfig("read-only")).toEqual({
+      approvalPolicy: "never",
+      sandbox: "read-only",
+      approvalsReviewer: "user",
+      sandboxPolicy: { type: "readOnly" },
+    });
+  });
+
   it("maps supervised to untrusted read-only", () => {
     expect(runtimeModeToCodexConfig("supervised")).toEqual({
       approvalPolicy: "untrusted",

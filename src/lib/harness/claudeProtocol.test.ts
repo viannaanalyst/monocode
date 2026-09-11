@@ -37,6 +37,7 @@ import {
 
 describe("runtimeModeToPermission", () => {
   it("maps runtime modes onto Claude permission flags", () => {
+    expect(runtimeModeToPermission("read-only")).toBe("plan");
     expect(runtimeModeToPermission("supervised")).toBeUndefined();
     expect(runtimeModeToPermission("auto-accept-edits")).toBe("acceptEdits");
     expect(runtimeModeToPermission("auto")).toBe("auto");

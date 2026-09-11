@@ -98,6 +98,8 @@ export function runtimeModeToPermission(
   mode: RuntimeMode,
 ): ClaudePermissionMode | undefined {
   switch (mode) {
+    case "read-only":
+      return "plan";
     case "auto-accept-edits":
       return "acceptEdits";
     case "auto":

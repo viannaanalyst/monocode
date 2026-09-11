@@ -26,6 +26,13 @@ export type CodexThreadConfig = {
 
 export function runtimeModeToCodexConfig(mode: RuntimeMode): CodexThreadConfig {
   switch (mode) {
+    case "read-only":
+      return {
+        approvalPolicy: "never",
+        sandbox: "read-only",
+        approvalsReviewer: "user",
+        sandboxPolicy: { type: "readOnly" },
+      };
     case "supervised":
       return {
         approvalPolicy: "untrusted",

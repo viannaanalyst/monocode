@@ -621,7 +621,7 @@ function handleEvent(live: Live, event: Record<string, unknown>): void {
           query: preview?.query,
           previewKind: preview?.kind,
         }) || permissionTitle(permission, patterns);
-      if (live.planning) {
+      if (live.planning || live.runtimeMode === "read-only") {
         const decision =
           kind === "read" || kind === "search" ? "allow" : "deny";
         void live.client

@@ -742,7 +742,12 @@ async function handleServerRequest(
     return;
   }
 
-  if (live.planning || live.cancelled || live.muteUpdates) {
+  if (
+    live.planning ||
+    live.runtimeMode === "read-only" ||
+    live.cancelled ||
+    live.muteUpdates
+  ) {
     // Plan turns run in a non-escalating read-only sandbox. If an older
     // app-server still asks for broader access, deny it silently instead of
     // leaking a Supervised approval prompt into the user's selected mode.
