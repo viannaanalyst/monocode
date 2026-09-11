@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { isHexColor } from "./colorUtils";
 import { compareSessionSummaries } from "./sessionHistory";
 import type { SessionSummary } from "./sessionStore";
@@ -49,7 +50,7 @@ export function folderContaining(
 
 export function uniqueFolderName(
   folders: SessionFolder[],
-  base = "New folder",
+  base = t("New folder"),
 ): string {
   const names = new Set(folders.map((folder) => folder.name));
   if (!names.has(base)) return base;

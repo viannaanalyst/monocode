@@ -11,6 +11,7 @@ import {
   GitPullRequest,
   Inbox,
   ListFilter,
+  Pencil,
   Pin,
   Plus,
   Search,
@@ -796,7 +797,7 @@ function SidebarComponent({
 
   const onFolderContextMenu = (
     folderId: string,
-    e: ReactMouseEvent<HTMLButtonElement>,
+    e: ReactMouseEvent<HTMLElement>,
   ) => {
     e.preventDefault();
     e.stopPropagation();
@@ -2108,16 +2109,17 @@ function FolderRow({
   busy: boolean;
   done: boolean;
   needsApproval: boolean;
-  onPointerDown?: (event: ReactPointerEvent<HTMLButtonElement>) => void;
+  onPointerDown?: (event: ReactPointerEvent<HTMLElement>) => void;
   onToggle: () => void;
-  onContextMenu: (event: ReactMouseEvent<HTMLButtonElement>) => void;
+  onContextMenu: (event: ReactMouseEvent<HTMLElement>) => void;
   onRename: () => void;
 }) {
   const count = sessions.length;
   const accent = folderAccent(folder.colorIndex, folder.customColor);
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       title={folder.name}
       aria-expanded={expanded}
       data-tauri-drag-region="false"
@@ -2128,6 +2130,9 @@ function FolderRow({
         if (event.key === "F2") {
           event.preventDefault();
           onRename();
+        } else if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onToggle();
         }
       }}
       className={`group relative flex w-full touch-none items-center gap-1.5 px-2 h-8 text-left ${
@@ -2164,7 +2169,14 @@ function FolderRow({
           </>
         )}
       </span>
-      <span className="relative min-w-0 flex-1 truncate text-[13px] font-semibold leading-snug text-content">
+      <span
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={(event) => {
+          event.stopPropagation();
+          onRename();
+        }}
+        className="relative min-w-0 flex-1 cursor-text truncate text-[13px] font-semibold leading-snug text-content"
+      >
         {folder.name}
       </span>
       <span className="relative flex shrink-0 items-center gap-1 text-[11px] tabular-nums text-content/45">
@@ -2177,7 +2189,20 @@ function FolderRow({
         ) : null}
         <span>{count}</span>
       </span>
-    </button>
+      <button
+        type="button"
+        data-no-tooltip
+        aria-label={t("Edit folder")}
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={(event) => {
+          event.stopPropagation();
+          onContextMenu(event);
+        }}
+        className="relative grid size-5 shrink-0 place-items-center rounded text-content/45 opacity-0 hover:bg-content/15 hover:text-content group-hover:opacity-100 focus-visible:opacity-100"
+      >
+        <Pencil className="size-3" strokeWidth={1.75} />
+      </button>
+    </div>
   );
 }
 
@@ -2303,7 +2328,8 @@ function SessionCard({
 }) {
   const skipClickUntil = useRef(0);
   const [dragging, setDragging] = useState(false);
-  const title = sessionDisplayTitle(session.title, session.harness);
+  const rawTitle = sessionDisplayTitle(session.title, session.harness);
+  const title = rawTitle === "New session" ? t("New session") : rawTitle;
   const gitLabel = formatGitLabel(session.repo, session.branch);
   const time = formatRelative(session.updatedAt, now);
   const modelChoice = resolveModel(session.harness, session.model);
