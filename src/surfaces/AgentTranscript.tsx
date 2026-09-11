@@ -28,6 +28,10 @@ import {
 import { flushSync } from "react-dom";
 import { TranscriptFindBar } from "./TranscriptFindBar";
 import {
+  BookmarkButton,
+  BookmarksListButton,
+} from "./TranscriptBookmarks";
+import {
   applyFindHighlights,
   clearFindHighlights,
   collectMatchRanges,
@@ -126,6 +130,7 @@ type Props = {
   cwd?: string;
   harness?: HarnessId;
   model?: string;
+  sessionId?: string;
   pendingQuestion?: boolean;
   onApproval?: (requestId: number, decision: ApprovalDecision) => void;
   onAddToChat?: (text: string) => void;
@@ -154,6 +159,7 @@ function AgentTranscriptComponent({
   cwd,
   harness,
   model,
+  sessionId,
   pendingQuestion = false,
   onApproval,
   onAddToChat,
@@ -452,6 +458,19 @@ function AgentTranscriptComponent({
     clearFindHighlights();
   }, []);
 
+  const jumpToBookmark = useCallback(
+    (blockId: string) => {
+      if (!revealBlock(blockId)) return;
+      window.requestAnimationFrame(() => {
+        const el = scroller.current?.querySelector(
+          `[data-block-id="${CSS.escape(blockId)}"]`,
+        );
+        el?.scrollIntoView({ block: "center", behavior: "smooth" });
+      });
+    },
+    [revealBlock],
+  );
+
   const onFindKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Escape") {
       event.preventDefault();
@@ -479,6 +498,9 @@ function AgentTranscriptComponent({
         onClose={closeFind}
         onInputKeyDown={onFindKeyDown}
       />
+    ) : null}
+    {!findOpen ? (
+      <BookmarksListButton sessionId={sessionId} onJump={jumpToBookmark} />
     ) : null}
     <div
       ref={setScroller}
@@ -626,6 +648,7 @@ function AgentTranscriptComponent({
           return (
             <div
               key={turn[0].id}
+              data-block-id={turn[0].id}
               className={`transcript-turn flex min-w-0 flex-col${
                 isLastTurn ? " transcript-turn-live" : ""
               }${
@@ -683,6 +706,8 @@ function AgentTranscriptComponent({
                   onSaveNote={onSaveNote}
                   harness={turnHarness}
                   fromHarness={turnHarness}
+                  sessionId={sessionId}
+                  bookmarkBlockId={turn[0].id}
                   onSecondOpinion={
                     onSecondOpinion
                       ? (target, model) => onSecondOpinion(target, turn, model)
@@ -770,6 +795,8 @@ function TurnDuration({
   copyText: output,
   onSaveNote,
   fromHarness,
+  sessionId,
+  bookmarkBlockId,
   onSecondOpinion,
   onHandoff,
 }: {
@@ -782,6 +809,8 @@ function TurnDuration({
   copyText?: string;
   onSaveNote?: (text: string) => void;
   fromHarness?: HarnessId;
+  sessionId?: string;
+  bookmarkBlockId?: string;
   onSecondOpinion?: (harness: HarnessId, model: string) => void;
   onHandoff?: (harness: HarnessId, model: string) => void;
 }) {
@@ -803,6 +832,13 @@ function TurnDuration({
             <CopyTurnButton text={output} />
             {onSaveNote ? (
               <SaveNoteButton text={output} onSave={onSaveNote} />
+            ) : null}
+            {bookmarkBlockId ? (
+              <BookmarkButton
+                sessionId={sessionId}
+                blockId={bookmarkBlockId}
+                text={output ?? ""}
+              />
             ) : null}
           </>
         ) : (
