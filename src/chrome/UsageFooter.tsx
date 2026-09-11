@@ -1,5 +1,5 @@
 import { CoinsDollar, RefreshCw } from "./icons";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { HarnessIcon } from "./HarnessIcon";
 import { Popover } from "./Popover";
 import {
@@ -10,8 +10,8 @@ import {
 import {
   clampUsedPercent,
   fetchingRateLimits,
-  formatRateLimitWindowChipLabel,
   formatUsagePercent,
+  formatWindowLabel,
   idleRateLimits,
   RATE_LIMIT_POLL_MS,
   rateLimitWindowTooltip,
@@ -24,12 +24,10 @@ import { HARNESS_LABEL, HARNESS_TITLE, type HarnessId } from "../lib/session";
 import { t } from "../i18n";
 import { formatTokens } from "../lib/contextUsage";
 import {
-  aggregateUsageDays,
   findSessionCost,
   formatCost,
   supportsUsageCost,
   type SessionCost,
-  type UsageCostReport,
 } from "../lib/usageCost";
 import {
   fetchUsageCost,
@@ -212,9 +210,7 @@ export function UsageFooter({
       ) : session ? (
         <SessionChip session={session} />
       ) : null}
-      {sessionCost ? (
-        <CostChip cost={sessionCost} report={cost.report} />
-      ) : null}
+      {sessionCost ? <CostChip cost={sessionCost} /> : null}
       {showRight ? (
         <div className="ml-auto flex shrink-0 items-center gap-2">
           {showTerminals ? (
@@ -246,48 +242,17 @@ export function UsageFooter({
   );
 }
 
-type CostTab = "session" | "today" | "week" | "month";
-
-function CostChip({
-  cost,
-  report,
-}: {
-  cost: SessionCost;
-  report: UsageCostReport | null;
-}) {
+function CostChip({ cost }: { cost: SessionCost }) {
   const root = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState<CostTab>("session");
-
-  const views = useMemo<Record<CostTab, SessionCost>>(
-    () => ({
-      session: cost,
-      today: aggregateUsageDays(report, 1),
-      week: aggregateUsageDays(report, 7),
-      month: aggregateUsageDays(report, 30),
-    }),
-    [cost, report],
-  );
-
-  const active = views[tab];
-  const models = active.models.filter(
+  const models = cost.models.filter(
     (model) => model.tokens > 0 || model.cost > 0,
   );
   const showModelCost = models.some((model) => model.cost > 0);
   const tooltip = [
     `Estimated session cost · ${formatTokens(cost.totalTokens)} tokens`,
-    `${t("Today")}: ${formatCost(views.today.totalCost)}`,
-    ...cost.models
-      .filter((model) => model.cost > 0)
-      .map((model) => `${model.model}: ${formatCost(model.cost)}`),
+    ...models.map((model) => `${model.model}: ${formatCost(model.cost)}`),
   ].join("\n");
-
-  const tabs: { key: CostTab; label: string }[] = [
-    { key: "session", label: t("Session") },
-    { key: "today", label: t("Today") },
-    { key: "week", label: t("7 days") },
-    { key: "month", label: t("30 days") },
-  ];
 
   return (
     <>
@@ -318,23 +283,10 @@ function CostChip({
           autoFocus
           onDismiss={() => setOpen(false)}
           aria-label={t("Session cost")}
-          className="min-w-[16rem] p-2"
+          className="min-w-[15rem] p-2"
         >
-          <div className="flex gap-0.5 px-1 pb-2">
-            {tabs.map((entry) => (
-              <button
-                key={entry.key}
-                type="button"
-                onClick={() => setTab(entry.key)}
-                className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
-                  tab === entry.key
-                    ? "bg-content/10 text-content"
-                    : "text-content/45 hover:bg-content/5 hover:text-content/75"
-                }`}
-              >
-                {entry.label}
-              </button>
-            ))}
+          <div className="px-1 pb-1.5 text-[10px] uppercase tracking-wide text-content/40">
+            {t("Estimated session cost")}
           </div>
           {models.length > 0 ? (
             <div className="space-y-1">
@@ -357,18 +309,14 @@ function CostChip({
                 </div>
               ))}
             </div>
-          ) : (
-            <p className="px-1 text-[11px] text-content/40">
-              {t("No usage recorded.")}
-            </p>
-          )}
+          ) : null}
           <div className="mt-1.5 flex items-center gap-3 border-t border-content/10 px-1 pt-1.5 text-[11px]">
             <span className="flex-1">{t("Total")}</span>
             <span className="tabular-nums text-content/60">
-              {formatTokens(active.totalTokens)}
+              {formatTokens(cost.totalTokens)}
             </span>
             <span className="tabular-nums font-medium">
-              {formatCost(active.totalCost)}
+              {formatCost(cost.totalCost)}
             </span>
           </div>
         </Popover>
@@ -507,15 +455,9 @@ function ProviderChip({
   ].filter((entry): entry is { key: string; window: RateLimitWindow } => {
     return entry != null;
   });
-  const tightest = windows.reduce<RateLimitWindow | null>((best, entry) => {
-    if (!best || entry.window.usedPercent > best.usedPercent) {
-      return entry.window;
-    }
-    return best;
-  }, null);
   const tooltip = windows
     .map((entry) => rateLimitWindowTooltip(entry.window, now))
-    .join(" · ");
+    .join("\n");
 
   return (
     <span
@@ -538,23 +480,30 @@ function ProviderChip({
       ) : windows.length === 0 ? (
         <span className="text-content/35">{emptyUsageLabel(limits)}</span>
       ) : (
-        <>
-          {tightest ? <MiniBar usedPct={tightest.usedPercent} /> : null}
-          <span className="flex min-w-0 items-center gap-1 tabular-nums">
-            {windows.map((entry, index) => (
-              <span key={entry.key} className="inline-flex items-center gap-1">
-                {index > 0 ? <span className="text-content/25">·</span> : null}
-                <span>
-                  {formatUsagePercent(entry.window.usedPercent)}{" "}
-                  {formatRateLimitWindowChipLabel(entry.window, now)}
-                </span>
+        <span className="flex min-w-0 items-center gap-1.5 tabular-nums">
+          {windows.map((entry, index) => (
+            <span key={entry.key} className="inline-flex items-center gap-1.5">
+              {index > 0 ? <span className="text-content/20">·</span> : null}
+              <span className="text-content/40">
+                {t(formatWindowLabel(entry.window.windowMinutes))}
               </span>
-            ))}
-          </span>
-        </>
+              <MiniBar usedPct={entry.window.usedPercent} />
+              <span className={usagePctClass(entry.window.usedPercent)}>
+                {formatUsagePercent(entry.window.usedPercent)}
+              </span>
+            </span>
+          ))}
+        </span>
       )}
     </span>
   );
+}
+
+function usagePctClass(usedPct: number): string {
+  const pct = clampUsedPercent(usedPct);
+  if (pct >= 90) return "text-red-400";
+  if (pct >= 80) return "text-amber-300";
+  return "text-content/80";
 }
 
 function emptyUsageLabel(limits: ProviderRateLimits): string {

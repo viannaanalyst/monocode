@@ -1430,7 +1430,7 @@ export function Composer({
                 if (e.deltaX === 0 && e.deltaY !== 0) el.scrollLeft += e.deltaY;
               }}
             >
-              <div className="flex shrink-0 items-center gap-1">
+              <div data-no-tooltip className="flex shrink-0 items-center gap-1">
                 <ModelPicker
                   harness={harness}
                   model={model}
@@ -1463,6 +1463,7 @@ export function Composer({
                     <DictationWaveform level={dictation.level} />
                     <button
                       type="button"
+                      data-no-tooltip
                       title={t("Stop recording")}
                       aria-label={t("Stop recording")}
                       onPointerDown={(e) => {
@@ -1487,6 +1488,7 @@ export function Composer({
                 ) : (
                   <button
                     type="button"
+                    data-no-tooltip
                     title={
                       dictation.state === "transcribing"
                         ? t("Transcribing…")
@@ -1656,6 +1658,7 @@ function ComposerAction({
         {hasValue ? (
           <button
             type="button"
+            data-no-tooltip
             title={t("Send")}
             aria-label={t("Send")}
             onClick={onSend}
@@ -1666,6 +1669,7 @@ function ComposerAction({
         ) : null}
         <button
           type="button"
+          data-no-tooltip
           title={t("Stop")}
           aria-label={t("Stop")}
           onClick={onStop}
@@ -1680,6 +1684,7 @@ function ComposerAction({
   return (
     <button
       type="button"
+      data-no-tooltip
       title={t("Send")}
       aria-label={t("Send")}
       disabled={!hasValue}

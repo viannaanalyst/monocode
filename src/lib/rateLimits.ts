@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { asRecord } from "./harness/codexProtocol";
 
 export type RateLimitProvider = "claude" | "codex" | "opencode";
@@ -211,11 +212,12 @@ export function rateLimitWindowTooltip(
   window: RateLimitWindow,
   now = Date.now(),
 ): string {
+  const label = t(formatWindowLabel(window.windowMinutes));
   const used = `${formatUsagePercent(window.usedPercent)} used`;
   if (window.resetsAt == null) {
-    return `${used} · ${formatWindowLabel(window.windowMinutes)} window`;
+    return `${label} · ${used}`;
   }
-  return `${used} · ${formatResetCountdown(window.resetsAt - now)}`;
+  return `${label} · ${used} · ${formatResetCountdown(window.resetsAt - now)}`;
 }
 
 export function parseResetTimestamp(value: unknown): number | null {

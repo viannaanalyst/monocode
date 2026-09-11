@@ -221,7 +221,7 @@ describe("rateLimitWindowTooltip", () => {
         },
         now,
       ),
-    ).toBe("42% used · Resets in 2h 33m");
+    ).toBe("5h · 42% used · Resets in 2h 33m");
   });
 });
 

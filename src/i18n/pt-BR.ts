@@ -282,6 +282,8 @@ export const PT_BR: Record<string, string> = {
   "Session cost": "Custo da sessão",
   "Estimated session cost": "Custo estimado da sessão",
   Session: "Sessão",
+  wk: "semana",
+  mo: "mês",
   "7 days": "7 dias",
   "30 days": "30 dias",
   "No usage recorded.": "Nenhum uso registrado.",
