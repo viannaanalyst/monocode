@@ -1,4 +1,4 @@
-import { RefreshCw } from "./icons";
+import { CoinsDollar, RefreshCw } from "./icons";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { HarnessIcon } from "./HarnessIcon";
 import { Popover } from "./Popover";
@@ -21,6 +21,20 @@ import {
 } from "../lib/rateLimits";
 import { HARNESS_LABEL, HARNESS_TITLE, type HarnessId } from "../lib/session";
 import { t } from "../i18n";
+import { formatTokens } from "../lib/contextUsage";
+import {
+  findSessionCost,
+  formatCost,
+  supportsUsageCost,
+  type SessionCost,
+} from "../lib/usageCost";
+import {
+  fetchUsageCost,
+  shouldFetchUsageCost,
+  usageCostSnapshot,
+  USAGE_COST_POLL_MS,
+  type UsageCostState,
+} from "../lib/usageCostFetch";
 import {
 
   runningTerminalChipLabel,
@@ -31,6 +45,7 @@ const CLOCK_MS = 30_000;
 
 export type UsageFooterSession = {
   harness: HarnessId;
+  providerSessionId?: string;
 };
 
 export function UsageFooter({
@@ -48,19 +63,26 @@ export function UsageFooter({
 }) {
   const wantClaude = providers.includes("claude");
   const wantCodex = providers.includes("codex");
+  const wantCost =
+    session != null &&
+    supportsUsageCost(session.harness) &&
+    Boolean(session.providerSessionId);
   const [claude, setClaude] = useState<ProviderRateLimits>(() =>
     idleRateLimits("claude"),
   );
   const [codex, setCodex] = useState<ProviderRateLimits>(() =>
     idleRateLimits("codex"),
   );
+  const [cost, setCost] = useState<UsageCostState>(() => usageCostSnapshot());
   const [now, setNow] = useState(() => Date.now());
   const [refreshing, setRefreshing] = useState(false);
   const inflight = useRef<Promise<void> | null>(null);
   const claudeRef = useRef(claude);
   const codexRef = useRef(codex);
+  const costRef = useRef(cost);
   claudeRef.current = claude;
   codexRef.current = codex;
+  costRef.current = cost;
 
   const refresh = useCallback((force = false) => {
     if (inflight.current) return inflight.current;
@@ -71,9 +93,11 @@ export function UsageFooter({
     const fetchCodex =
       wantCodex &&
       shouldFetchProvider(codexRef.current, { force, visible });
-    if (!fetchClaude && !fetchCodex) return;
+    const fetchCost =
+      wantCost && shouldFetchUsageCost(costRef.current, { force, visible });
+    if (!fetchClaude && !fetchCodex && !fetchCost) return;
     if (force) setRefreshing(true);
-    const jobs: Promise<void>[] = [];
+    const jobs: Promise<unknown>[] = [];
     if (fetchClaude) {
       setClaude((current) => fetchingRateLimits("claude", current));
       jobs.push(
@@ -90,6 +114,9 @@ export function UsageFooter({
         }),
       );
     }
+    if (fetchCost) {
+      jobs.push(fetchUsageCost(force).then((value) => setCost(value)));
+    }
     const run = Promise.allSettled(jobs)
       .then(() => undefined)
       .finally(() => {
@@ -98,7 +125,7 @@ export function UsageFooter({
       });
     inflight.current = run;
     return run;
-  }, [wantClaude, wantCodex]);
+  }, [wantClaude, wantCodex, wantCost]);
 
   useEffect(() => {
     void refresh();
@@ -113,14 +140,36 @@ export function UsageFooter({
     };
   }, [refresh]);
 
+  // Session cost moves every turn, so it polls on a tighter clock than the
+  // rate-limit windows. `refresh` dedupes and `shouldFetchUsageCost` throttles.
+  useEffect(() => {
+    if (!wantCost) return;
+    void refresh();
+    const poll = window.setInterval(() => void refresh(), USAGE_COST_POLL_MS);
+    return () => window.clearInterval(poll);
+  }, [refresh, wantCost]);
+
+  // Switching sessions lands on a key the last report has no row for until the
+  // next poll. Fetch straight away; `fetchUsageCost` collapses concurrent calls.
+  const costSessionId = session?.providerSessionId;
+  useEffect(() => {
+    if (!wantCost || !costSessionId) return;
+    void fetchUsageCost(false).then(setCost);
+  }, [costSessionId, wantCost]);
+
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), CLOCK_MS);
     return () => window.clearInterval(timer);
   }, []);
 
+  const sessionCost =
+    wantCost && session
+      ? findSessionCost(cost.report, session.harness, session.providerSessionId)
+      : null;
   const showUsage = wantClaude || wantCodex;
   const showTerminals = terminals.length > 0;
-  const showRight = showUsage || showTerminals;
+  const showRefresh = showUsage || wantCost;
+  const showRight = showUsage || showTerminals || showRefresh;
   const ariaLabel = showUsage
     ? "Provider usage"
     : showTerminals
@@ -142,6 +191,7 @@ export function UsageFooter({
       ) : session ? (
         <SessionChip session={session} />
       ) : null}
+      {sessionCost ? <CostChip cost={sessionCost} /> : null}
       {showRight ? (
         <div className="ml-auto flex shrink-0 items-center gap-2">
           {showTerminals ? (
@@ -151,7 +201,7 @@ export function UsageFooter({
               onToggle={onToggleTerminal}
             />
           ) : null}
-          {showUsage ? (
+          {showRefresh ? (
             <button
               type="button"
               className="grid size-5 shrink-0 place-items-center rounded text-content/40 hover:bg-content/10 hover:text-content disabled:opacity-50"
@@ -170,6 +220,91 @@ export function UsageFooter({
         </div>
       ) : null}
     </footer>
+  );
+}
+
+function CostChip({ cost }: { cost: SessionCost }) {
+  const root = useRef<HTMLButtonElement>(null);
+  const [open, setOpen] = useState(false);
+  const models = cost.models.filter(
+    (model) => model.tokens > 0 || model.cost > 0,
+  );
+  const showModelCost = models.some((model) => model.cost > 0);
+  const tooltip = [
+    `Estimated session cost · ${formatTokens(cost.totalTokens)} tokens`,
+    ...models.map(
+      (model) => `${model.model}: ${formatCost(model.cost)}`,
+    ),
+  ].join("\n");
+
+  return (
+    <>
+      <button
+        ref={root}
+        type="button"
+        className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap rounded px-1 -mx-1 tabular-nums hover:bg-content/10 hover:text-content"
+        aria-label={t("Session cost")}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        title={tooltip}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <CoinsDollar
+          className="size-3 shrink-0"
+          strokeWidth={1.75}
+          aria-hidden
+        />
+        <span>{formatCost(cost.totalCost)}</span>
+        <span className="text-content/25">·</span>
+        <span>{formatTokens(cost.totalTokens)}</span>
+      </button>
+      {open ? (
+        <Popover
+          anchor={root}
+          side="top"
+          align="start"
+          autoFocus
+          onDismiss={() => setOpen(false)}
+          aria-label={t("Session cost")}
+          className="min-w-[15rem] p-2"
+        >
+          <div className="px-1 pb-1.5 text-[10px] uppercase tracking-wide text-content/40">
+            {t("Estimated session cost")}
+          </div>
+          {models.length > 0 ? (
+            <div className="space-y-1">
+              {models.map((model) => (
+                <div
+                  key={model.model}
+                  className="flex items-center gap-3 px-1 text-[11px]"
+                >
+                  <span className="min-w-0 flex-1 truncate" title={model.model}>
+                    {model.model}
+                  </span>
+                  <span className="shrink-0 tabular-nums text-content/60">
+                    {formatTokens(model.tokens)}
+                  </span>
+                  {showModelCost ? (
+                    <span className="shrink-0 tabular-nums">
+                      {formatCost(model.cost)}
+                    </span>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          ) : null}
+          <div className="mt-1.5 flex items-center gap-3 border-t border-content/10 px-1 pt-1.5 text-[11px]">
+            <span className="flex-1">{t("Total")}</span>
+            <span className="tabular-nums text-content/60">
+              {formatTokens(cost.totalTokens)}
+            </span>
+            <span className="tabular-nums font-medium">
+              {formatCost(cost.totalCost)}
+            </span>
+          </div>
+        </Popover>
+      ) : null}
+    </>
   );
 }
 

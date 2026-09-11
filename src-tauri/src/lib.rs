@@ -23,6 +23,7 @@ mod secrets;
 mod session_store;
 mod skills;
 mod transcribe;
+mod usage_cost;
 mod window;
 mod window_transfer;
 #[cfg(windows)]
@@ -300,6 +301,7 @@ pub fn run() {
             harness::harness_sse_close,
             harness::harness_exec,
             rate_limits::fetch_claude_usage,
+            usage_cost::fetch_usage_cost,
             pty::pty_spawn,
             pty::pty_write,
             pty::pty_resize,
