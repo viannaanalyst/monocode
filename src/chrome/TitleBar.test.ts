@@ -11,6 +11,7 @@ import {
   titleTabClosable,
   type Tab,
 } from "./TitleBar";
+import type { AgentModel } from "../lib/models";
 
 vi.mock("./WindowControls", () => ({ WindowControls: () => null }));
 
@@ -33,6 +34,7 @@ function tab(overrides: Partial<Tab> = {}): Tab {
     more: [],
     sessionCount: 1,
     harnesses: [],
+    models: [],
     busyHarnesses: [],
     files: [],
     ...overrides,
@@ -159,6 +161,50 @@ describe("titleTabContextCloseIds", () => {
     expect(titleTabContextCloseIds(tabs, "a", "left")).toEqual([]);
     expect(titleTabContextCloseIds(tabs, "d", "right")).toEqual([]);
     expect(titleTabContextCloseIds(tabs, "missing", "others")).toEqual([]);
+  });
+});
+
+describe("TitleBar session brand", () => {
+  it("shows the model vendor mark instead of the harness icon", () => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    roots.push(root);
+
+    act(() => {
+      root.render(
+        createElement(TitleBar, {
+          tabs: [
+            tab({
+              harnesses: ["codex"],
+              models: [
+                {
+                  id: "codex:gpt-5.5",
+                  harness: "codex",
+                  name: "GPT-5.5",
+                  nativeId: "gpt-5.5",
+                } satisfies AgentModel,
+              ],
+            }),
+          ],
+          activeId: "t1",
+          cwd: "/workspace/monocode",
+          onToggleSidebar: () => {},
+          onSelect: () => {},
+          onNew: () => {},
+          onNewTerminal: () => {},
+          onClose: () => {},
+          onCloseMany: () => {},
+          onReorder: () => {},
+        }),
+      );
+    });
+
+    // The Codex mark ships as an SVG asset rendered through an <img>; the old
+    // harness-icon path drew an inline <svg>, so this distinguishes the two.
+    const brand = container.querySelector("img");
+    expect(brand).not.toBeNull();
+    expect(brand?.getAttribute("src")).toContain("svg");
   });
 });
 

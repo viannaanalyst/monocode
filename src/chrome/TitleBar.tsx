@@ -29,7 +29,8 @@ import { CwdPicker } from "./CwdPicker";
 import { useLockOverscroll } from "../hooks/useLockOverscroll";
 import { useSortable } from "../hooks/useSortable";
 import { FileTypeIcon } from "./FileTypeIcon";
-import { HarnessIcon } from "./HarnessIcon";
+import { ModelBrandIcon } from "./ModelBrandIcon";
+import type { AgentModel } from "../lib/models";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { TerminalSpinner } from "./TerminalSpinner";
 import { WindowControls } from "./WindowControls";
@@ -49,6 +50,8 @@ export type Tab = {
   more: string[];
   sessionCount: number;
   harnesses: HarnessId[];
+  /** Resolved models for the tab's sessions, focused session first. */
+  models: AgentModel[];
   /** Harnesses with an in-flight turn in this tab. */
   busyHarnesses: HarnessId[];
   /** Open file basenames, active files first. */
@@ -178,32 +181,32 @@ export function titleTabContextCloseIds(
 }
 
 function TabHarnesses({
-  harnesses,
+  models,
   busyHarnesses,
   dimmed,
 }: {
-  harnesses: HarnessId[];
+  models: AgentModel[];
   busyHarnesses: HarnessId[];
   dimmed: boolean;
 }) {
-  const shown = harnesses.slice(0, 3);
-  const extra = harnesses.length - shown.length;
+  const shown = models.slice(0, 3);
+  const extra = models.length - shown.length;
   const opacity = dimmed ? "opacity-55" : "opacity-100";
   const busy = new Set(busyHarnesses);
 
   return (
     <span className="flex shrink-0 items-center">
-      {shown.map((harness, i) => (
+      {shown.map((model, i) => (
         <span
-          key={harness}
+          key={model.id}
           className={`grid size-3.5 shrink-0 place-items-center ${opacity} ${
             i > 0 ? "-ml-0.5" : ""
           }`}
         >
-          {busy.has(harness) ? (
+          {busy.has(model.harness) ? (
             <TerminalSpinner className="inline-block w-3.5 select-none text-center text-[11px] leading-none text-accent" />
           ) : (
-            <HarnessIcon harness={harness} className="size-3.5 shrink-0" />
+            <ModelBrandIcon model={model} className="size-3.5 shrink-0" />
           )}
         </span>
       ))}
@@ -315,7 +318,7 @@ function TitleTabItem({
       >
         {tab.harnesses.length > 0 ? (
           <TabHarnesses
-            harnesses={tab.harnesses}
+            models={tab.models}
             busyHarnesses={tab.busyHarnesses}
             dimmed={!active}
           />

@@ -51,6 +51,7 @@ function workspaceTab(id: string): Tab {
     more: [],
     sessionCount: 1,
     harnesses: [],
+    models: [],
     busyHarnesses: [],
     files: [],
   };

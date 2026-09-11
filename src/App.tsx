@@ -199,6 +199,7 @@ import {
   preferredModelSettings,
   resolveModel,
   saveLastModelSettings,
+  type AgentModel,
 } from "./lib/models";
 import {
   buildPlanPrompt,
@@ -552,6 +553,8 @@ function titleTabsEqual(a: TitleTab[], b: TitleTab[]): boolean {
       tab.dirty === other.dirty &&
       tab.more.join("\u0000") === other.more.join("\u0000") &&
       tab.harnesses.join("\u0000") === other.harnesses.join("\u0000") &&
+      tab.models.map((model) => model.id).join("\u0000") ===
+        other.models.map((model) => model.id).join("\u0000") &&
       tab.busyHarnesses.join("\u0000") === other.busyHarnesses.join("\u0000") &&
       tab.files.join("\u0000") === other.files.join("\u0000") &&
       tab.multiPane === other.multiPane &&
@@ -6022,6 +6025,8 @@ function toTitleTab(
 
   const seen = new Set<HarnessId>();
   const harnesses: HarnessId[] = [];
+  const seenModels = new Set<string>();
+  const models: AgentModel[] = [];
   const busySeen = new Set<HarnessId>();
   const busyHarnesses: HarnessId[] = [];
   const ordered = focused
@@ -6035,6 +6040,22 @@ function toTitleTab(
     ) {
       busySeen.add(session.harness);
       busyHarnesses.push(session.harness);
+    }
+    // A harness whose catalog has not loaded yet resolves to whatever model
+    // list is available (often another vendor). Keep the icon honest with a
+    // synthetic model that falls back to this session's harness glyph.
+    const resolved = resolveModel(session.harness, session.model);
+    const model: AgentModel =
+      resolved.harness === session.harness
+        ? resolved
+        : {
+            id: session.model || `${session.harness}:default`,
+            harness: session.harness,
+            name: session.model,
+          };
+    if (!seenModels.has(model.id)) {
+      seenModels.add(model.id);
+      models.push(model);
     }
     if (seen.has(session.harness)) continue;
     seen.add(session.harness);
@@ -6099,6 +6120,7 @@ function toTitleTab(
     more,
     sessionCount: tabSessions.length,
     harnesses,
+    models,
     busyHarnesses,
     files,
     multiPane,

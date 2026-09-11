@@ -32,6 +32,7 @@ function tab(id: string, project: string, groupId?: string): Tab {
     more: [],
     sessionCount: 1,
     harnesses: [],
+    models: [],
     busyHarnesses: [],
     files: [],
     ...(groupId ? { groupId } : {}),
