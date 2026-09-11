@@ -59,6 +59,47 @@ export function RailAction({
   );
 }
 
+/** Compact, label-free variant for a horizontal row of rail actions. */
+export function RailIconAction({
+  label,
+  icon: Icon,
+  onClick,
+  active = false,
+  dot = false,
+  badge,
+  ariaLabel,
+}: Props) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={!onClick}
+      title={label}
+      aria-label={ariaLabel ?? label}
+      className={`relative grid size-8 shrink-0 place-items-center rounded-md ${
+        active
+          ? "bg-content/10 text-content"
+          : "text-content/50 hover:bg-content/10 hover:text-content"
+      } disabled:cursor-default disabled:opacity-40`}
+    >
+      <Icon className="size-4 shrink-0 opacity-80" strokeWidth={1.75} />
+      {badge != null ? (
+        <span
+          aria-hidden
+          className="absolute -right-0.5 -top-0.5 grid min-w-4 place-items-center rounded-full bg-accent px-1 text-[9px] font-semibold leading-4 text-white tabular-nums"
+        >
+          {badge > 99 ? "99+" : badge}
+        </span>
+      ) : dot ? (
+        <span
+          aria-hidden
+          className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-accent"
+        />
+      ) : null}
+    </button>
+  );
+}
+
 export function RailSearch({
   label,
   icon: Icon,

@@ -65,7 +65,7 @@ import { HarnessIcon } from "./HarnessIcon";
 import { ProjectLogoIcon } from "./ProjectLogoIcon";
 import { ProjectBackgroundDialog } from "./ProjectBackgroundDialog";
 import { ProjectMascot } from "./ProjectMascot";
-import { RailAction, RailSearch } from "./RailAction";
+import { RailAction, RailIconAction, RailSearch } from "./RailAction";
 import { RemoveProjectDialog } from "./RemoveProjectDialog";
 import { DevModeSlot, TabVisitNav } from "./TitleBar";
 import { SidebarUpdateFooter } from "./SidebarUpdate";
@@ -402,7 +402,7 @@ export function ProjectRail({
         />
       ) : (
         <>
-          <div className="flex shrink-0 flex-col gap-px px-2 pb-2 pt-0.5">
+          <div className="flex shrink-0 flex-col gap-1.5 px-2 pb-2 pt-0.5">
             <RailSearch
               label={t("Search")}
               icon={Search}
@@ -411,33 +411,34 @@ export function ProjectRail({
               shortcut={`${MOD}K`}
               ariaLabel={withShortcut("Search", `${MOD}K`)}
             />
-            <div className="mt-0.5" />
-            <RailAction
-              label={t("Inbox")}
-              icon={Inbox}
-              onClick={onOpenInbox}
-              active={inboxActive}
-              dot={inboxUnseen}
-              ariaLabel={inboxUnseen ? t("Inbox, new items") : t("Inbox")}
-            />
-            {notesEnabled ? (
-              <RailAction
-                label={t("Notes")}
-                icon={File}
-                onClick={onOpenNotes}
-                active={notesActive}
-                ariaLabel={t("Notes")}
+            <div className="flex items-center gap-1">
+              <RailIconAction
+                label={t("Inbox")}
+                icon={Inbox}
+                onClick={onOpenInbox}
+                active={inboxActive}
+                dot={inboxUnseen}
+                ariaLabel={inboxUnseen ? t("Inbox, new items") : t("Inbox")}
               />
-            ) : null}
-            {onOpenAllSessions ? (
-              <RailAction
-                label={t("All sessions")}
-                icon={ListBullet}
-                onClick={onOpenAllSessions}
-                active={allSessionsActive}
-                ariaLabel={t("All sessions")}
-              />
-            ) : null}
+              {notesEnabled ? (
+                <RailIconAction
+                  label={t("Notes")}
+                  icon={File}
+                  onClick={onOpenNotes}
+                  active={notesActive}
+                  ariaLabel={t("Notes")}
+                />
+              ) : null}
+              {onOpenAllSessions ? (
+                <RailIconAction
+                  label={t("All sessions")}
+                  icon={ListBullet}
+                  onClick={onOpenAllSessions}
+                  active={allSessionsActive}
+                  ariaLabel={t("All sessions")}
+                />
+              ) : null}
+            </div>
           </div>
 
           <div
