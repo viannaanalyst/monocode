@@ -259,7 +259,7 @@ export function ProjectTerminalDock({
               </div>
             ) : null}
             <IconButton
-              label={withShortcut("New Terminal", `${MOD}\``)}
+              label={withShortcut("Terminal", `${MOD}\``)}
               onClick={onAddTerminal}
             >
               <Plus className="size-3.5" strokeWidth={1.75} />

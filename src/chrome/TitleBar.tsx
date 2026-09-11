@@ -739,7 +739,7 @@ function TitleBarComponent({
             label={
               projectTerminalActive
                 ? t("Terminal")
-                : `${t("New Terminal")} (${MOD}\`)`
+                : `${t("Terminal")} (${MOD}\`)`
             }
             accent={projectTerminalActive}
             onClick={
@@ -752,7 +752,7 @@ function TitleBarComponent({
           </IconButton>
         ) : null}
         {!projectless && onNewBrowser ? (
-          <IconButton label={t("New Browser")} onClick={onNewBrowser}>
+          <IconButton label={t("Browser")} onClick={onNewBrowser}>
             <Globe className="size-3.5" strokeWidth={1.75} />
           </IconButton>
         ) : null}

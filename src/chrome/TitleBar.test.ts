@@ -233,11 +233,11 @@ describe("TitleBar terminal action", () => {
     });
 
     const terminalAction = container.querySelector<HTMLButtonElement>(
-      '[aria-label="New Terminal (Ctrl+`)"]',
+      '[aria-label="Terminal (Ctrl+`)"]',
     );
     expect(terminalAction).not.toBeNull();
     expect(terminalAction?.getAttribute("aria-label")).toBe(
-      "New Terminal (Ctrl+`)",
+      "Terminal (Ctrl+`)",
     );
     expect(terminalAction?.getAttribute("aria-disabled")).not.toBe("true");
     expect(terminalAction?.className).toContain("cursor-pointer");
@@ -269,7 +269,7 @@ describe("TitleBar terminal action", () => {
     });
 
     const browserAction = container.querySelector<HTMLButtonElement>(
-      '[aria-label="New Browser"]',
+      '[aria-label="Browser"]',
     );
     expect(browserAction).not.toBeNull();
     expect(browserAction?.className).toContain("cursor-pointer");

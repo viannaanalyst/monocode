@@ -611,7 +611,6 @@ export function ModelPicker({
                   aria-expanded={
                     !isToggle && highlighted ? showSubmenu : undefined
                   }
-                  title={setting.description}
                   onMouseDown={(event) => event.preventDefault()}
                   onMouseEnter={() => {
                     setActive(index);
@@ -1043,7 +1042,7 @@ function ProviderTabButton({
     <button
       type="button"
       role="tab"
-      title={title}
+      data-no-tooltip
       aria-label={title}
       aria-selected={selected}
       onMouseDown={(event) => event.preventDefault()}
