@@ -859,19 +859,19 @@ function TitleBarComponent({
                 />
               </div>
             ))}
+            {!projectless ? (
+              <button
+                type="button"
+                title={`${t("New session")} (${MOD}T)`}
+                aria-label={t("New session")}
+                data-tauri-drag-region="false"
+                onClick={onNew}
+                className="ml-1 grid size-6 shrink-0 place-items-center rounded-md text-content/45 hover:bg-content/10 hover:text-content"
+              >
+                <Plus className="size-3.5" strokeWidth={1.75} />
+              </button>
+            ) : null}
           </div>
-          {!projectless ? (
-            <button
-              type="button"
-              title={`${t("New session")} (${MOD}T)`}
-              aria-label={t("New session")}
-              data-tauri-drag-region="false"
-              onClick={onNew}
-              className="grid size-6 shrink-0 place-items-center self-center rounded-md text-content/45 hover:bg-content/10 hover:text-content"
-            >
-              <Plus className="size-3.5" strokeWidth={1.75} />
-            </button>
-          ) : null}
         </div>
 
         {IS_MAC ? null : (
