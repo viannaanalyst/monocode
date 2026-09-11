@@ -184,6 +184,7 @@ import {
   wrapHandoffPrompt,
 } from "./lib/handoff";
 import { requestOutgoingHandoff } from "./lib/handoffTurn";
+import { writePty } from "./lib/pty";
 import { isEditTool } from "./lib/harness/preview";
 import {
   beginSessionTurn,
@@ -1750,6 +1751,25 @@ export default function App({
       return true;
     },
     [focusProjectTerminal],
+  );
+
+  const onRunProjectScript = useCallback(
+    (command: string) => {
+      const projectPath = projectCwdRef.current;
+      if (!looksLikeProject(projectPath) || !command.trim()) return;
+      openProjectTerminal(projectPath);
+      // Let the dock mount and the PTY spawn before typing the command.
+      window.setTimeout(() => {
+        const dock = findProjectTerminal(
+          projectTerminalsRef.current,
+          projectPath,
+        );
+        const id = dock?.pane.activeFileId;
+        if (!id) return;
+        void writePty(id, `${command}\r`).catch(() => undefined);
+      }, 400);
+    },
+    [openProjectTerminal],
   );
 
   const onOpenTerminal = useCallback(
@@ -5972,6 +5992,7 @@ export default function App({
                       onCloseTerminal={onCloseProjectTerminal}
                       onReorderTerminals={onReorderProjectTerminals}
                       onTerminalMetaChange={onTerminalMetaChange}
+                      onRunScript={onRunProjectScript}
                     />
                   </div>
                 );

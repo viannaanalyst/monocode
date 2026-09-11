@@ -7,6 +7,7 @@ import {
   PanelLeft,
   PanelRight,
   PanelTop,
+  Play,
   Plus,
 } from "../chrome/icons";
 import {
@@ -26,6 +27,10 @@ import {
   type ProjectTerminalDock,
 } from "../lib/projectTerminal";
 import { MOD } from "../lib/platform";
+import {
+  loadProjectScripts,
+  type ProjectScript,
+} from "../lib/projectScripts";
 import type { TerminalMetaPatch } from "../lib/terminalTab";
 import { TerminalView } from "./TerminalView";
 import { t, withShortcut } from "../i18n";
@@ -44,6 +49,7 @@ type Props = {
   onCloseTerminal: (fileId: string) => void;
   onReorderTerminals: (ids: string[]) => void;
   onTerminalMetaChange?: (fileId: string, patch: TerminalMetaPatch) => void;
+  onRunScript?: (command: string) => void;
 };
 
 function dockSideItems(): { id: DockSide; label: string }[] {
@@ -82,11 +88,33 @@ export function ProjectTerminalDock({
   onCloseTerminal,
   onReorderTerminals,
   onTerminalMetaChange,
+  onRunScript,
 }: Props) {
   const vertical = isVerticalDock(dock.side);
   const [dragging, setDragging] = useState(false);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const [scripts, setScripts] = useState<ProjectScript[]>([]);
+  const [scriptsMenu, setScriptsMenu] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
   const sideButton = useRef<HTMLDivElement>(null);
+  const scriptsButton = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setScripts([]);
+    void loadProjectScripts(dock.projectPath)
+      .then((next) => {
+        if (!cancelled) setScripts(next);
+      })
+      .catch(() => {
+        if (!cancelled) setScripts([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [dock.projectPath]);
   const drag = useRef<{ start: number; size: number } | null>(null);
   const sizeRef = useRef(dock.size);
   sizeRef.current = dock.size;
@@ -215,6 +243,21 @@ export function ProjectTerminalDock({
         onReorder={onReorderTerminals}
         trailing={
           <div className="flex shrink-0 items-center gap-0.5 border-l border-content/10 px-1">
+            {onRunScript ? (
+              <div ref={scriptsButton}>
+                <IconButton
+                  label={t("Run project script")}
+                  onClick={() => {
+                    const rect =
+                      scriptsButton.current?.getBoundingClientRect();
+                    if (!rect) return;
+                    setScriptsMenu({ x: rect.left, y: rect.bottom + 4 });
+                  }}
+                >
+                  <Play className="size-3.5" strokeWidth={1.75} />
+                </IconButton>
+              </div>
+            ) : null}
             <IconButton
               label={withShortcut("New Terminal", `${MOD}\``)}
               onClick={onAddTerminal}
@@ -280,6 +323,35 @@ export function ProjectTerminalDock({
             setMenu(null);
           }}
           onClose={() => setMenu(null)}
+        />
+      ) : null}
+      {scriptsMenu ? (
+        <ExplorerMenu
+          x={scriptsMenu.x}
+          y={scriptsMenu.y}
+          width={260}
+          ariaLabel={t("Run project script")}
+          items={
+            scripts.length > 0
+              ? scripts.map((script) => ({
+                  kind: "item" as const,
+                  id: script.command,
+                  label: script.name,
+                }))
+              : [
+                  {
+                    kind: "item" as const,
+                    id: "none",
+                    label: t("Add scripts in .monocode/scripts.json"),
+                    disabled: true,
+                  },
+                ]
+          }
+          onPick={(id) => {
+            if (id !== "none") onRunScript?.(id);
+            setScriptsMenu(null);
+          }}
+          onClose={() => setScriptsMenu(null)}
         />
       ) : null}
     </section>
