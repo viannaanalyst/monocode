@@ -48,6 +48,7 @@ import {
   toggleSessionSelection,
 } from "../lib/sessionSelection";
 import { paneDropFromPoint, setExternalPaneDrop } from "../lib/paneDrop";
+import { startDragGhost, type DragGhost } from "../lib/dragGhost";
 import type { PaneEdge } from "../lib/layout";
 import { suppressTextSelection } from "../lib/drag";
 import {
@@ -2415,6 +2416,7 @@ function SessionCard({
     let lastX = startX;
     let lastY = startY;
     let lastList: SessionListDropTarget | null = null;
+    let ghost: DragGhost | null = null;
     handle.setPointerCapture(pointerId);
     const restoreSelection = suppressTextSelection();
 
@@ -2431,6 +2433,7 @@ function SessionCard({
         if (Math.hypot(ev.clientX - startX, ev.clientY - startY) < 5) return;
         active = true;
         setDragging(true);
+        ghost = startDragGhost(handle, ev.clientX, ev.clientY);
         if (onPlaceOnPane) {
           setExternalPaneDrop({
             fromId: session.id,
@@ -2439,6 +2442,7 @@ function SessionCard({
           });
         }
       }
+      ghost?.move(ev.clientX, ev.clientY);
       setListTarget(
         sessionListDropFromPoint(ev.clientX, ev.clientY, session.id),
       );
@@ -2473,6 +2477,8 @@ function SessionCard({
       window.removeEventListener("keydown", onKey);
       restoreSelection();
       setDragging(false);
+      ghost?.end();
+      ghost = null;
       setExternalPaneDrop(null);
       setListTarget(null);
       try {
