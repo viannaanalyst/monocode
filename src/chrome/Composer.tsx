@@ -2,8 +2,10 @@ import {
   ArrowUp,
   AiIdea,
   Check,
+  ChevronDown,
   CornerDownRight,
   FilePlus,
+  Laptop,
   ListEnd,
   Loader,
   Mic,
@@ -399,6 +401,54 @@ function MessageQueue({
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/** Where a turn runs. Only the local machine exists today. */
+function ExecutionTargetChip() {
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  return (
+    <div ref={root} className="relative shrink-0">
+      <button
+        type="button"
+        data-no-tooltip
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => setOpen((value) => !value)}
+        className="flex h-6 items-center gap-1.5 rounded-full px-1.5 text-[12px] text-content/60 hover:bg-content/10 hover:text-content"
+      >
+        <Laptop className="size-3.5 shrink-0" strokeWidth={1.5} />
+        <span className="truncate">{t("This Mac")}</span>
+        <ChevronDown className="size-3 shrink-0 text-content/50" strokeWidth={1.75} />
+      </button>
+      {open ? (
+        <Popover
+          anchor={root}
+          side="top"
+          align="start"
+          width={220}
+          onDismiss={() => setOpen(false)}
+          aria-label={t("Run on")}
+          className="p-1"
+        >
+          <p className="px-2 pb-1 pt-1 text-[10px] uppercase tracking-wide text-content/40">
+            {t("Run on")}
+          </p>
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => setOpen(false)}
+            className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-[12px] text-content hover:bg-content/10"
+          >
+            <Laptop className="size-3.5 shrink-0" strokeWidth={1.5} />
+            <span className="flex-1">{t("This Mac")}</span>
+            <Check className="size-3.5 shrink-0 text-content/70" />
+          </button>
+        </Popover>
+      ) : null}
     </div>
   );
 }
@@ -1622,6 +1672,7 @@ export function Composer({
         </div>
         {hideTopBar ? null : (
           <div className="flex min-w-0 items-center gap-2.5 px-1 pt-1.5">
+            <ExecutionTargetChip />
             {hideProjectPicker ? null : (
               <CwdPicker
                 cwd={cwd}
