@@ -365,6 +365,7 @@ pub fn run() {
             checkpoint::session_checkpoint_ensure,
             checkpoint::session_checkpoint_begin_turn,
             checkpoint::session_checkpoint_undo_turn,
+            checkpoint::session_checkpoint_register_changes,
             checkpoint::session_checkpoint_prepare,
             checkpoint::session_checkpoint_capture,
             checkpoint::session_checkpoint_status,

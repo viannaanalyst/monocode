@@ -28,6 +28,12 @@ export type CheckpointFileDiff = {
 
 const REVIEW_CHANGED = "monocode-review-changed";
 const checkpointQueues = new Map<string, Promise<void>>();
+/** Latest turn id started for a session, so command snapshots join that turn. */
+const activeTurns = new Map<string, string>();
+
+export function activeSessionTurn(sessionId: string): string | undefined {
+  return activeTurns.get(sessionId);
+}
 
 function enqueueCheckpoint<T>(
   sessionId: string,
@@ -85,11 +91,33 @@ export async function beginSessionTurn(
   turnId: string,
 ): Promise<void> {
   if (!cwd || cwd === "~") return;
+  activeTurns.set(sessionId, turnId);
   await ensureSessionCheckpoint(sessionId, cwd);
   await enqueueCheckpoint(sessionId, () =>
     invoke<void>("session_checkpoint_begin_turn", { sessionId, cwd, turnId }),
   );
   notifyReviewChanged(sessionId);
+}
+
+/**
+ * After a risky shell command, register the paths it changed so the review
+ * card can show and undo them. Falls back to a fresh turn id when the command
+ * ran outside a turn.
+ */
+export function registerSessionChanges(
+  sessionId: string,
+  cwd: string,
+  turnId?: string,
+): Promise<CheckpointStatus> {
+  const id = turnId ?? activeTurns.get(sessionId) ?? `cmd-${Date.now().toString(36)}`;
+  activeTurns.set(sessionId, id);
+  return enqueueCheckpoint(sessionId, () =>
+    invoke<CheckpointStatus>("session_checkpoint_register_changes", {
+      sessionId,
+      cwd,
+      turnId: id,
+    }),
+  );
 }
 
 /** Undo only the most recent response, restoring files to their pre-turn state. */

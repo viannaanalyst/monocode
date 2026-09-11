@@ -192,7 +192,9 @@ import {
   keepSessionChanges,
   notifyReviewChanged,
   prepareSessionCheckpoint,
+  registerSessionChanges,
 } from "./lib/checkpoint";
+import { isDangerousCommand } from "./lib/dangerousCommands";
 import { notifyDirsChanged } from "./lib/fileTree";
 import { nudgeWatchedFiles } from "./lib/fileWatch";
 import { type EditorNavigationTarget, type OpenFileFn } from "./lib/search";
@@ -4415,6 +4417,7 @@ export default function App({
               }
               nudgeOpenEditors(event, workCwd);
               trackSessionEdits(sessionId, workCwd, event);
+              trackDangerousCommand(sessionId, workCwd, event);
               const routed = routePlanEvent(event);
               if (routed) enqueueHarnessEvent(sessionId, routed);
             },
@@ -6413,6 +6416,31 @@ function trackSessionEdits(
   void captureSessionCheckpoint(sessionId, cwd, paths)
     .catch(() => undefined)
     .then(() => notifyReviewChanged(sessionId));
+}
+
+const trackedDangerousCalls = new Set<string>();
+
+/** Snapshot the files a risky shell command changed, so it can be undone. */
+function trackDangerousCommand(
+  sessionId: string,
+  cwd: string,
+  event: HarnessEvent,
+) {
+  if (event.type !== "tool.updated") return;
+  const kind = event.kind?.trim().toLowerCase();
+  if (kind !== "execute" && event.preview?.kind !== "shell") return;
+  const completed = event.status === "completed" || event.status === "success";
+  if (!completed) return;
+  const command = event.preview?.query?.trim() || event.title?.trim() || "";
+  if (!isDangerousCommand(command)) return;
+  const callKey = `${sessionId}:${event.callId}`;
+  if (trackedDangerousCalls.has(callKey)) return;
+  trackedDangerousCalls.add(callKey);
+  if (trackedDangerousCalls.size > 500) trackedDangerousCalls.clear();
+  if (!cwd || cwd === "~") return;
+  void registerSessionChanges(sessionId, cwd)
+    .then(() => notifyReviewChanged(sessionId))
+    .catch(() => undefined);
 }
 
 function nudgeWorkspace(cwd?: string) {

@@ -240,6 +240,83 @@ impl CheckpointStore {
         Ok(CheckpointStatus { files: Vec::new() })
     }
 
+    /// After a risky shell command, register every path it touched so the
+    /// review card can undo it. Baselines are materialized from HEAD for
+    /// tracked files and marked missing for files the command created.
+    fn register_changes(
+        &self,
+        session_id: &str,
+        cwd: &str,
+        turn_id: &str,
+    ) -> Result<CheckpointStatus, String> {
+        let turn_id = turn_id.trim();
+        if turn_id.is_empty() {
+            return self.status(session_id, cwd);
+        }
+        let Some(mut manifest) = self.load_matching(session_id, cwd)? else {
+            return Ok(CheckpointStatus { files: Vec::new() });
+        };
+        let root = project_root(cwd)?;
+        let dir = self.session_dir(session_id);
+        let changed: BTreeSet<String> = git_diff_files_for(&root)
+            .files
+            .into_iter()
+            .map(|file| file.relative)
+            .collect();
+        manifest.turns.entry(turn_id.to_string()).or_default();
+        if !manifest.turn_order.iter().any(|id| id == turn_id) {
+            manifest.turn_order.push(turn_id.to_string());
+        }
+        let mut dirty = false;
+        for relative in changed {
+            manifest.touched.insert(relative.clone());
+            manifest.prepared.insert(relative.clone());
+            if !manifest.files.contains_key(&relative) {
+                let kind = materialize_baseline(&dir, turn_id, &root, &relative)?;
+                manifest.files.insert(relative.clone(), kind);
+            }
+            let kind = manifest
+                .files
+                .get(&relative)
+                .copied()
+                .unwrap_or(SnapshotKind::Missing);
+            let needs_turn = !manifest
+                .turns
+                .get(turn_id)
+                .map(|turn| turn.contains_key(&relative))
+                .unwrap_or(false);
+            if needs_turn {
+                let bytes = match read_snapshot(&dir, &relative, kind) {
+                    FileState::Contents(bytes) => bytes,
+                    _ => Vec::new(),
+                };
+                write_blob(&dir.join("turns").join(turn_id), &relative, &bytes)?;
+                manifest
+                    .turns
+                    .entry(turn_id.to_string())
+                    .or_default()
+                    .insert(relative.clone(), kind);
+            }
+            manifest.after.insert(
+                relative.clone(),
+                snapshot_after_file(&dir, &root, &relative)?,
+            );
+            match calculate_session_stats(&dir, &manifest, &relative) {
+                Some(stats) => {
+                    manifest.stats.insert(relative, stats);
+                }
+                None => {
+                    manifest.stats.remove(&relative);
+                }
+            }
+            dirty = true;
+        }
+        if dirty {
+            write_manifest(&dir, &manifest)?;
+        }
+        self.status(session_id, cwd)
+    }
+
     fn capture(&self, session_id: &str, cwd: &str, paths: &[String]) -> Result<(), String> {
         if paths.is_empty() {
             return Ok(());
@@ -635,6 +712,22 @@ pub async fn session_checkpoint_undo_turn(
 }
 
 #[tauri::command]
+pub async fn session_checkpoint_register_changes(
+    store: State<'_, CheckpointStore>,
+    session_id: String,
+    cwd: String,
+    turn_id: String,
+) -> Result<CheckpointStatus, String> {
+    validate_id(&session_id, "session")?;
+    let store = store.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        store.exclusive(|store| store.register_changes(&session_id, &cwd, &turn_id))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
 pub async fn session_checkpoint_prepare(
     store: State<'_, CheckpointStore>,
     session_id: String,
@@ -1011,6 +1104,37 @@ fn snapshot_file(dir: &Path, root: &Path, relative: &str) -> Result<SnapshotKind
 
 fn snapshot_after_file(dir: &Path, root: &Path, relative: &str) -> Result<SnapshotKind, String> {
     snapshot_file_at(&dir.join("after"), root, relative)
+}
+
+fn write_blob(blob_root: &Path, relative: &str, bytes: &[u8]) -> Result<(), String> {
+    let blob = state_blob_path(blob_root, relative)?;
+    if let Some(parent) = blob.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    std::fs::write(blob, bytes).map_err(|e| e.to_string())
+}
+
+/// Persist a baseline for a path a risky command touched: HEAD contents for a
+/// tracked file, "missing" for one the command created. Written to both the
+/// session baseline and the turn snapshot so either undo can restore it.
+fn materialize_baseline(
+    dir: &Path,
+    turn_id: &str,
+    root: &Path,
+    relative: &str,
+) -> Result<SnapshotKind, String> {
+    match crate::fs::git_blob(root, &format!("HEAD:{relative}")) {
+        Some(bytes) => {
+            write_blob(&dir.join("files"), relative, &bytes)?;
+            write_blob(&dir.join("turns").join(turn_id), relative, &bytes)?;
+            Ok(SnapshotKind::Contents)
+        }
+        None => {
+            write_blob(&dir.join("files"), relative, &[])?;
+            write_blob(&dir.join("turns").join(turn_id), relative, &[])?;
+            Ok(SnapshotKind::Missing)
+        }
+    }
 }
 
 fn snapshot_turn_file(
@@ -1862,6 +1986,33 @@ mod tests {
             std::fs::read_to_string(repo.0.join("a.txt")).unwrap(),
             "base\n"
         );
+    }
+
+    #[test]
+    fn register_changes_makes_command_edits_undoable() {
+        let repo = tmp("register-cmd");
+        if !init_git_commit(&repo.0, &[("a.txt", "base\n")]) {
+            return;
+        }
+        let cwd = repo.0.to_string_lossy().into_owned();
+        let (_root, store) = store();
+        store.ensure("s1", &cwd).unwrap();
+        store.begin_turn("s1", &cwd, "t1").unwrap();
+
+        // Simulate a risky command: delete a tracked file, create a new one.
+        std::fs::remove_file(repo.0.join("a.txt")).unwrap();
+        std::fs::write(repo.0.join("b.txt"), "new\n").unwrap();
+
+        let status = store.register_changes("s1", &cwd, "t1").unwrap();
+        assert!(relatives(&status).contains(&"a.txt"));
+        assert!(relatives(&status).contains(&"b.txt"));
+
+        store.undo_turn("s1", &cwd).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(repo.0.join("a.txt")).unwrap(),
+            "base\n"
+        );
+        assert!(!repo.0.join("b.txt").exists());
     }
 
     #[test]
