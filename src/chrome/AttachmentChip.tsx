@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { X } from "./icons";
-import { attachmentPreviewSrc } from "../lib/attachments";
+import {
+  attachmentPreviewSrc,
+  requestAttachmentInChat,
+  screenshotAttachment,
+} from "../lib/attachments";
 import type { Attachment } from "../lib/session";
 import { FileTypeIcon } from "./FileTypeIcon";
 import { ImageLightbox } from "./ImageLightbox";
@@ -61,10 +65,10 @@ export function AttachmentChip({ attachment, onRemove }: Props) {
               event.stopPropagation();
               onRemove();
             }}
-            className={`grid shrink-0 place-items-center rounded-full text-content/70 hover:bg-content/15 hover:text-content ${
+            className={`grid shrink-0 place-items-center rounded-full ${
               image
-                ? "absolute -right-1 -top-1 size-5 bg-content/20 opacity-100 shadow-sm backdrop-blur-sm"
-                : "size-4 text-content/40"
+                ? "absolute -right-1 -top-1 size-5 bg-black/70 text-white shadow-md hover:bg-black/85"
+                : "size-4 text-content/40 hover:bg-content/15 hover:text-content"
             }`}
           >
             <X className="size-3" strokeWidth={2} />
@@ -76,6 +80,10 @@ export function AttachmentChip({ attachment, onRemove }: Props) {
           src={preview}
           alt={attachment.name}
           onClose={() => setPreviewOpen(false)}
+          onAnnotate={(dataUrl) => {
+            const base64 = dataUrl.replace(/^data:image\/png;base64,/, "");
+            requestAttachmentInChat(screenshotAttachment(base64));
+          }}
         />
       ) : null}
     </>

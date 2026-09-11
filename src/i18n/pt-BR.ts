@@ -373,6 +373,10 @@ export const PT_BR: Record<string, string> = {
   "Revert this file": "Reverter este arquivo",
   "Open in Browser": "Abrir no navegador",
   "This Mac": "Este Mac",
+  "Draw color": "Cor do traço",
+  Pen: "Caneta",
+  Highlight: "Marca-texto",
+  Clear: "Limpar",
   "Run on": "Executar em",
   "Run project script": "Rodar script do projeto",
   "Add scripts in .monocode/scripts.json":
