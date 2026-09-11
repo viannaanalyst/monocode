@@ -204,6 +204,7 @@ type Props = {
   onDeleteSessions?: (sessionIds: readonly string[]) => void;
   onExportSession?: (sessionId: string, format: SessionExportFormat) => void;
   onImportSession?: (cwd: string) => void;
+  onNewInProject?: (cwd: string) => void;
   onOpenFile: (path: string) => void;
   onOpenTerminal?: (cwd: string) => void;
   onFileMoved?: (from: string, to: string) => void;
@@ -284,6 +285,7 @@ function SidebarComponent({
   onDeleteSessions,
   onExportSession,
   onImportSession,
+  onNewInProject,
   onOpenFile,
   onOpenTerminal,
   onFileMoved,
@@ -1116,7 +1118,7 @@ function SidebarComponent({
               recents={recents}
               onSearch={onGoToFile}
               onNew={onNew}
-              onSelectProject={onSelectProject}
+              onNewInProject={onNewInProject}
             />
           </div>
           <div
@@ -1901,13 +1903,13 @@ function WorkspaceTitleActions({
   recents,
   onSearch,
   onNew,
-  onSelectProject,
+  onNewInProject,
 }: {
   cwd?: string;
   recents?: RecentProject[];
   onSearch?: () => void;
   onNew?: () => void;
-  onSelectProject?: (path: string) => void;
+  onNewInProject?: (path: string) => void;
 }) {
   const root = useRef<HTMLButtonElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -1915,7 +1917,7 @@ function WorkspaceTitleActions({
   const otherProjects = (recents ?? []).filter(
     (item) => !cwd || !sameProjectPath(item.path, cwd),
   );
-  const canChooseProject = Boolean(onSelectProject && otherProjects.length > 0);
+  const canChooseProject = Boolean(onNewInProject && otherProjects.length > 0);
   return (
     <div
       className="flex shrink-0 items-center gap-0.5"
@@ -1976,7 +1978,7 @@ function WorkspaceTitleActions({
                       title={item.path}
                       onClick={() => {
                         setMenuOpen(false);
-                        onSelectProject?.(item.path);
+                        onNewInProject?.(item.path);
                       }}
                       className="flex w-full items-center justify-between gap-3 rounded-lg px-2 py-2 text-left text-content/80 hover:bg-content/10 hover:text-content"
                     >

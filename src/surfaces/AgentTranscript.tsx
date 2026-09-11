@@ -364,6 +364,7 @@ function AgentTranscriptComponent({
   return (
     <div
       ref={setScroller}
+      data-no-tooltip
       className="agent-transcript h-full overflow-y-auto overscroll-none [overflow-anchor:none] font-mono text-[13px] leading-5"
     >
       <div className="mx-auto flex w-full min-w-0 max-w-4xl flex-col gap-1 pb-1">

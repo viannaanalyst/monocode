@@ -807,7 +807,7 @@ function TitleBarComponent({
         }`}
       >
         <div
-          className="relative h-full min-w-0 flex-1 overflow-hidden"
+          className="relative flex h-full min-w-0 flex-1 items-center overflow-hidden"
           onWheel={(event) => {
             const el = tabStripRef.current;
             if (!el || el.scrollWidth <= el.clientWidth) return;
@@ -824,7 +824,7 @@ function TitleBarComponent({
           ) : null}
           <div
             ref={setTabStripRef}
-            className="scrollbar-none flex h-full min-w-0 cursor-default items-center gap-0.5 overflow-x-auto overflow-y-hidden overscroll-none px-1.5"
+            className="scrollbar-none flex h-full min-w-0 flex-1 cursor-default items-center gap-0.5 overflow-x-auto overflow-y-hidden overscroll-none px-1.5"
           >
             {tabs.map((tab, index) => (
               <div

@@ -3525,6 +3525,33 @@ export default function App({
     [activateTab, appendTab, onCwdChange, readProjectReturnMemory],
   );
 
+  const onNewInProject = useCallback(
+    (path: string) => {
+      const normalized = normalizeProjectPath(path);
+      if (!looksLikeProject(normalized)) return;
+      setAllSessions(false);
+      setSearchViewOpen(false);
+      setInboxViewOpen(false);
+      setNotesViewOpen(false);
+      const seed = active ?? sessionsRef.current[0];
+      const session = newSession(
+        seed?.harness ?? "claude",
+        normalized,
+        seed?.model,
+        seed?.runtimeMode,
+        seed?.modelSettings,
+      );
+      const tab = newTab(session.id);
+      setProjectCwd(normalized);
+      setRecents(rememberProject(normalized));
+      setSessions((prev) => [...prev, session]);
+      appendTab(tab, normalized);
+      setActiveTabId(tab.id);
+      setComposerFocused(true);
+    },
+    [active, appendTab],
+  );
+
   const pickProject = useCallback(async () => {
     const path = await pickFolder();
     if (path) onSelectProject(path);
@@ -5665,6 +5692,7 @@ export default function App({
         onDeleteSessions={onDeleteHistorySessions}
         onExportSession={onExportHistorySession}
         onImportSession={onImportSessionIntoProject}
+        onNewInProject={onNewInProject}
         onOpenFile={onOpenFile}
         onOpenTerminal={onOpenTerminal}
         onFileMoved={onFileMoved}
