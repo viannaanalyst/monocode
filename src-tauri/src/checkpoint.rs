@@ -82,6 +82,9 @@ impl CheckpointStore {
                 after: BTreeMap::new(),
                 stats: BTreeMap::new(),
                 diverged: BTreeSet::new(),
+                turns: BTreeMap::new(),
+                turn_order: Vec::new(),
+                current_turn: None,
             },
         )
     }
@@ -128,6 +131,16 @@ impl CheckpointStore {
             if manifest.prepared.insert(relative.clone()) {
                 dirty = true;
             }
+            // Attribute this file's pre-edit contents to the current turn too,
+            // so "Undo last response" can restore it.
+            if let Some(turn_id) = manifest.current_turn.clone() {
+                let entry = manifest.turns.entry(turn_id.clone()).or_default();
+                if !entry.contains_key(&relative) {
+                    let turn_kind = snapshot_turn_file(&dir, &turn_id, &root, &relative)?;
+                    entry.insert(relative.clone(), turn_kind);
+                    dirty = true;
+                }
+            }
             if in_head(&root, &relative) && manifest.tracked.insert(relative) {
                 dirty = true;
             }
@@ -136,6 +149,95 @@ impl CheckpointStore {
             write_manifest(&dir, &manifest)?;
         }
         Ok(())
+    }
+
+    fn begin_turn(&self, session_id: &str, cwd: &str, turn_id: &str) -> Result<(), String> {
+        let turn_id = turn_id.trim();
+        if turn_id.is_empty() {
+            return Ok(());
+        }
+        let root = project_root(cwd)?;
+        let dir = self.session_dir(session_id);
+        let mut manifest = match read_manifest(&dir)? {
+            Some(manifest) if same_cwd(&manifest.cwd, cwd) => manifest,
+            _ => return Ok(()),
+        };
+        if manifest.current_turn.as_deref() == Some(turn_id) {
+            return Ok(());
+        }
+        let owned: Vec<String> = manifest.files.keys().cloned().collect();
+        let mut captured: BTreeMap<String, SnapshotKind> = BTreeMap::new();
+        for relative in owned {
+            if manifest
+                .turns
+                .get(turn_id)
+                .map(|turn| turn.contains_key(&relative))
+                .unwrap_or(false)
+            {
+                continue;
+            }
+            let kind = snapshot_turn_file(&dir, turn_id, &root, &relative)?;
+            captured.insert(relative, kind);
+        }
+        manifest
+            .turns
+            .entry(turn_id.to_string())
+            .or_default()
+            .extend(captured);
+        if !manifest.turn_order.iter().any(|id| id == turn_id) {
+            manifest.turn_order.push(turn_id.to_string());
+        }
+        manifest.current_turn = Some(turn_id.to_string());
+        self.prune_turns(&dir, &mut manifest);
+        write_manifest(&dir, &manifest)
+    }
+
+    fn prune_turns(&self, dir: &Path, manifest: &mut Manifest) {
+        while manifest.turn_order.len() > MAX_TURNS {
+            let dropped = manifest.turn_order.remove(0);
+            manifest.turns.remove(&dropped);
+            let _ = std::fs::remove_dir_all(dir.join("turns").join(dropped));
+        }
+    }
+
+    fn undo_turn(&self, session_id: &str, cwd: &str) -> Result<CheckpointStatus, String> {
+        let Some(mut manifest) = self.load_matching(session_id, cwd)? else {
+            return Ok(CheckpointStatus { files: Vec::new() });
+        };
+        let root = project_root(cwd)?;
+        let dir = self.session_dir(session_id);
+        let foreign_touched = self.foreign_touched_paths(cwd, session_id);
+        while let Some(turn_id) = manifest.turn_order.pop() {
+            let Some(files) = manifest.turns.remove(&turn_id) else {
+                continue;
+            };
+            if manifest.current_turn.as_deref() == Some(turn_id.as_str()) {
+                manifest.current_turn = None;
+            }
+            for (relative, kind) in files {
+                if foreign_touched.contains(&relative) {
+                    continue;
+                }
+                let _ = restore_turn_snapshot(&dir, &turn_id, &root, &relative, kind);
+                manifest.diverged.remove(&relative);
+                manifest.after.insert(
+                    relative.clone(),
+                    snapshot_after_file(&dir, &root, &relative)?,
+                );
+                match calculate_session_stats(&dir, &manifest, &relative) {
+                    Some(stats) => {
+                        manifest.stats.insert(relative, stats);
+                    }
+                    None => {
+                        manifest.stats.remove(&relative);
+                    }
+                }
+            }
+            let _ = std::fs::remove_dir_all(dir.join("turns").join(&turn_id));
+            write_manifest(&dir, &manifest)?;
+            return self.status(session_id, cwd);
+        }
+        Ok(CheckpointStatus { files: Vec::new() })
     }
 
     fn capture(&self, session_id: &str, cwd: &str, paths: &[String]) -> Result<(), String> {
@@ -407,7 +509,18 @@ struct Manifest {
     /// Paths whose contents changed between two edits by this session.
     #[serde(default)]
     diverged: BTreeSet<String>,
+    /// Pre-turn worktree snapshots, keyed by turn id, so a single response can
+    /// be undone without rolling the whole session back.
+    #[serde(default)]
+    turns: BTreeMap<String, BTreeMap<String, SnapshotKind>>,
+    #[serde(default)]
+    turn_order: Vec<String>,
+    #[serde(default)]
+    current_turn: Option<String>,
 }
+
+/// Keep only the most recent turns; older snapshots are dropped.
+const MAX_TURNS: usize = 31;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -485,6 +598,37 @@ pub async fn session_checkpoint_ensure(
     let store = store.inner().clone();
     tauri::async_runtime::spawn_blocking(move || {
         store.exclusive(|store| store.ensure(&session_id, &cwd))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn session_checkpoint_begin_turn(
+    store: State<'_, CheckpointStore>,
+    session_id: String,
+    cwd: String,
+    turn_id: String,
+) -> Result<(), String> {
+    validate_id(&session_id, "session")?;
+    let store = store.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        store.exclusive(|store| store.begin_turn(&session_id, &cwd, &turn_id))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn session_checkpoint_undo_turn(
+    store: State<'_, CheckpointStore>,
+    session_id: String,
+    cwd: String,
+) -> Result<CheckpointStatus, String> {
+    validate_id(&session_id, "session")?;
+    let store = store.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        store.exclusive(|store| store.undo_turn(&session_id, &cwd))
     })
     .await
     .map_err(|e| e.to_string())?
@@ -867,6 +1011,45 @@ fn snapshot_file(dir: &Path, root: &Path, relative: &str) -> Result<SnapshotKind
 
 fn snapshot_after_file(dir: &Path, root: &Path, relative: &str) -> Result<SnapshotKind, String> {
     snapshot_file_at(&dir.join("after"), root, relative)
+}
+
+fn snapshot_turn_file(
+    dir: &Path,
+    turn_id: &str,
+    root: &Path,
+    relative: &str,
+) -> Result<SnapshotKind, String> {
+    snapshot_file_at(&dir.join("turns").join(turn_id), root, relative)
+}
+
+fn read_turn_snapshot(dir: &Path, turn_id: &str, relative: &str, kind: SnapshotKind) -> FileState {
+    read_snapshot_at(&dir.join("turns").join(turn_id), relative, kind)
+}
+
+fn restore_turn_snapshot(
+    dir: &Path,
+    turn_id: &str,
+    root: &Path,
+    relative: &str,
+    kind: SnapshotKind,
+) -> Result<(), String> {
+    let relative = resolve_repo_path(root, relative)?;
+    match kind {
+        SnapshotKind::Skipped => Ok(()),
+        SnapshotKind::Missing => {
+            let _ = git_checked(root, &["reset", "-q", "HEAD", "--", &relative]);
+            remove_worktree(root, &relative)
+        }
+        SnapshotKind::Contents => {
+            let bytes = match read_turn_snapshot(dir, turn_id, &relative, kind) {
+                FileState::Contents(bytes) => bytes,
+                _ => return Ok(()),
+            };
+            write_worktree(&root.join(&relative), &bytes)?;
+            let _ = git_checked(root, &["reset", "-q", "HEAD", "--", &relative]);
+            Ok(())
+        }
+    }
 }
 
 fn snapshot_file_at(blob_root: &Path, root: &Path, relative: &str) -> Result<SnapshotKind, String> {
@@ -1647,6 +1830,38 @@ mod tests {
         assert_eq!(s1.additions, 1);
         assert_eq!(s1.deletions, 0);
         assert_eq!(relatives(&store.status("s1", &cwd).unwrap()), vec!["a.txt"]);
+    }
+
+    #[test]
+    fn undo_turn_restores_the_previous_response_only() {
+        let repo = tmp("undo-turn");
+        if !init_git_commit(&repo.0, &[("a.txt", "base\n")]) {
+            return;
+        }
+        let cwd = repo.0.to_string_lossy().into_owned();
+        let (_root, store) = store();
+        store.ensure("s1", &cwd).unwrap();
+
+        store.begin_turn("s1", &cwd, "t1").unwrap();
+        store.prepare("s1", &cwd, &["a.txt".into()]).unwrap();
+        std::fs::write(repo.0.join("a.txt"), "one\n").unwrap();
+        store.capture("s1", &cwd, &["a.txt".into()]).unwrap();
+
+        store.begin_turn("s1", &cwd, "t2").unwrap();
+        std::fs::write(repo.0.join("a.txt"), "two\n").unwrap();
+        store.capture("s1", &cwd, &["a.txt".into()]).unwrap();
+
+        store.undo_turn("s1", &cwd).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(repo.0.join("a.txt")).unwrap(),
+            "one\n"
+        );
+
+        store.undo_turn("s1", &cwd).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(repo.0.join("a.txt")).unwrap(),
+            "base\n"
+        );
     }
 
     #[test]

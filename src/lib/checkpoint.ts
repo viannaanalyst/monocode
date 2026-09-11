@@ -82,10 +82,24 @@ export function ensureSessionCheckpoint(
 export async function beginSessionTurn(
   sessionId: string,
   cwd: string,
+  turnId: string,
 ): Promise<void> {
   if (!cwd || cwd === "~") return;
   await ensureSessionCheckpoint(sessionId, cwd);
+  await enqueueCheckpoint(sessionId, () =>
+    invoke<void>("session_checkpoint_begin_turn", { sessionId, cwd, turnId }),
+  );
   notifyReviewChanged(sessionId);
+}
+
+/** Undo only the most recent response, restoring files to their pre-turn state. */
+export function undoSessionTurn(
+  sessionId: string,
+  cwd: string,
+): Promise<CheckpointStatus> {
+  return enqueueCheckpoint(sessionId, () =>
+    invoke<CheckpointStatus>("session_checkpoint_undo_turn", { sessionId, cwd }),
+  );
 }
 
 /** Capture a file immediately before a structured edit starts. */

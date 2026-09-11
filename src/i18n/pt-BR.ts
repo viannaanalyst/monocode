@@ -361,6 +361,9 @@ export const PT_BR: Record<string, string> = {
   "Send screenshot to chat": "Enviar print para o chat",
   "Previous match": "Ocorrência anterior",
   "Next match": "Próxima ocorrência",
+  "Undo only the last response": "Desfazer apenas a última resposta",
+  "Undo response": "Desfazer resposta",
+  "Undoing…": "Desfazendo…",
   "Review only": "Somente revisão",
   "Read, search, and analyze. The agent cannot change files.":
     "Pode ler, pesquisar e analisar. O agente não consegue alterar arquivos.",

@@ -4361,7 +4361,11 @@ export default function App({
         };
 
         if (!current.inboxAsk) {
-          await beginSessionTurn(sessionId, workCwd).catch(() => undefined);
+          await beginSessionTurn(
+            sessionId,
+            workCwd,
+            `turn-${Date.now().toString(36)}-${gen}`,
+          ).catch(() => undefined);
         }
         if (turnGen.current.get(sessionId) !== gen) return;
         let buildSucceeded = false;

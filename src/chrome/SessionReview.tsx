@@ -5,6 +5,7 @@ import {
   sessionCheckpointStatus,
   subscribeReviewChanged,
   undoSessionChanges,
+  undoSessionTurn,
   type CheckpointFile,
 } from "../lib/checkpoint";
 import { invalidateProjectFiles } from "../lib/fileIndex";
@@ -36,7 +37,9 @@ export function SessionReview({
 }: Props) {
   const [files, setFiles] = useState<CheckpointFile[]>([]);
   const [expanded, setExpanded] = useState(false);
-  const [acting, setActing] = useState<"keep" | "undo" | null>(null);
+  const [acting, setActing] = useState<
+    "keep" | "undo" | "undo-turn" | null
+  >(null);
   const filesRef = useRef(files);
   filesRef.current = files;
 
@@ -105,13 +108,15 @@ export function SessionReview({
     { additions: 0, deletions: 0 },
   );
 
-  const run = (action: "keep" | "undo") => {
+  const run = (action: "keep" | "undo" | "undo-turn") => {
     if (disabled) return;
     setActing(action);
     const op =
       action === "keep"
         ? keepSessionChanges(sessionId, cwd)
-        : undoSessionChanges(sessionId, cwd);
+        : action === "undo-turn"
+          ? undoSessionTurn(sessionId, cwd)
+          : undoSessionChanges(sessionId, cwd);
     const previous = filesRef.current.map((file) => file.path);
     void op
       .then((status) => {
@@ -149,6 +154,17 @@ export function SessionReview({
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-0.5">
+            <button
+              type="button"
+              title={t("Undo only the last response")}
+              disabled={disabled}
+              onClick={() => run("undo-turn")}
+              className="h-7 rounded-md px-2.5 text-[11px] text-content/50 hover:bg-content/8 hover:text-content disabled:opacity-35"
+            >
+              {acting === "undo-turn"
+                ? t("Undoing…")
+                : t("Undo response")}
+            </button>
             <button
               type="button"
               title={
