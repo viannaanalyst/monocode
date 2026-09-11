@@ -216,7 +216,7 @@ export function ImageLightbox({ src, alt, onClose, onAnnotate }: Props) {
       </div>
 
       {showTools ? (
-        <div className="flex items-center gap-2 rounded-full border border-white/12 bg-black/60 px-2.5 py-1.5 shadow-xl backdrop-blur-md">
+        <div className="absolute left-1/2 top-4 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/10 bg-black/40 px-2 py-1 opacity-80 shadow-lg backdrop-blur-md transition-opacity hover:opacity-100">
           {COLORS.map((value) => (
             <button
               key={value}

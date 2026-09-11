@@ -1,5 +1,5 @@
 import {
-  ArrowUp,
+  ArrowUpLong,
   AiIdea,
   Check,
   ChevronDown,
@@ -1382,14 +1382,14 @@ export function Composer({
         <div
           ref={boxRef}
           data-composer-box
-          className={`relative z-10 rounded-3xl border bg-content/3 backdrop-blur-sm ${
+          className={`relative z-10 rounded-2xl border bg-content/3 backdrop-blur-sm ${
             fileDrag
               ? "border-accent/60"
               : "border-content/10 has-focus:border-content/20"
           }`}
         >
           {fileDrag ? (
-            <div className="pointer-events-none absolute inset-0 z-20 grid place-items-center rounded-3xl bg-accent/8 text-[12px] text-content/70">
+            <div className="pointer-events-none absolute inset-0 z-20 grid place-items-center rounded-2xl bg-accent/8 text-[12px] text-content/70">
               Drop files to attach
             </div>
           ) : null}
@@ -1831,7 +1831,7 @@ function ComposerAction({
             onClick={onSend}
             className="composer-send grid size-6.5 place-items-center rounded-full bg-white text-black hover:bg-white/90"
           >
-            <ArrowUp className="size-3.5" strokeWidth={2.25} />
+            <ArrowUpLong className="size-4" strokeWidth={1.75} />
           </button>
         ) : null}
         <button
@@ -1858,7 +1858,7 @@ function ComposerAction({
       onClick={onSend}
       className="composer-send grid size-6.5 place-items-center rounded-full bg-white text-black hover:bg-white/90 disabled:cursor-default disabled:bg-white/30 disabled:text-black/40 disabled:hover:bg-white/30"
     >
-      <ArrowUp className="size-3.5" strokeWidth={2.25} />
+      <ArrowUpLong className="size-4" strokeWidth={1.75} />
     </button>
   );
 }
