@@ -17,6 +17,7 @@ import type {
   CustomModelHarness,
 } from "../lib/customModels";
 import type { AgentModel } from "../lib/models";
+import { t } from "../i18n";
 import { Plus, X } from "./icons";
 
 const inputClass =
@@ -107,7 +108,7 @@ export function CustomModelEditor({
       }}
     >
       <label className="flex max-w-sm flex-col gap-1.5 text-[12px] text-content/50">
-        Display name
+        {t("Display name")}
         <input
           autoFocus
           value={draft.name}
@@ -122,11 +123,11 @@ export function CustomModelEditor({
       <div className="space-y-2.5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-[12px] text-content/50">
-            Options in the composer
+            {t("Options in the composer")}
           </span>
           {candidates.length > 0 ? (
             <select
-              aria-label="Copy options from a built-in model"
+              aria-label={t("Copy options from a built-in model")}
               className={`${inputClass} max-w-52`}
               value=""
               onChange={(event) => {
@@ -142,7 +143,7 @@ export function CustomModelEditor({
               }}
             >
               <option value="" disabled>
-                Copy from a model…
+                {t("Copy from a model…")}
               </option>
               {candidates.map((model) => (
                 <option key={model.id} value={model.id}>
@@ -156,8 +157,12 @@ export function CustomModelEditor({
         {draft.settings.length === 0 ? (
           <p className="text-[12px] leading-relaxed text-content/40">
             {harness === "codex"
-              ? "Uses the options from the Codex catalog until you add your own."
-              : "Add the options your model supports, or leave it with no extra options."}
+              ? t(
+                  "Uses the options from the Codex catalog until you add your own.",
+                )
+              : t(
+                  "Add the options your model supports, or leave it with no extra options.",
+                )}
           </p>
         ) : null}
 
@@ -171,7 +176,7 @@ export function CustomModelEditor({
               className="min-w-0 space-y-2 rounded-md border border-content/10 p-2.5"
             >
               <legend className="px-1 text-[11px] text-content/40">
-                Option {index + 1}
+                {t("Option {number}", { number: index + 1 })}
               </legend>
               <div className="flex flex-wrap items-center gap-2">
                 <select
@@ -195,10 +200,10 @@ export function CustomModelEditor({
                 >
                   {presets.map((preset) => (
                     <option key={preset.id} value={preset.id}>
-                      {preset.label}
+                      {t(preset.label)}
                     </option>
                   ))}
-                  <option value={CUSTOM_OPTION}>Custom option…</option>
+                  <option value={CUSTOM_OPTION}>{t("Custom option…")}</option>
                 </select>
                 {presetId === CUSTOM_OPTION ? (
                   <input
@@ -232,8 +237,8 @@ export function CustomModelEditor({
                     })
                   }
                 >
-                  <option value="select">Choices</option>
-                  <option value="toggle">Toggle</option>
+                  <option value="select">{t("Choices")}</option>
+                  <option value="toggle">{t("Toggle")}</option>
                 </select>
                 <button
                   type="button"
@@ -265,7 +270,7 @@ export function CustomModelEditor({
                       })
                     }
                   />
-                  On by default
+                  {t("On by default")}
                 </label>
               ) : (
                 <div className="space-y-1.5">
@@ -309,7 +314,7 @@ export function CustomModelEditor({
                             })
                           }
                         />
-                        Default
+                        {t("Default")}
                       </label>
                       <button
                         type="button"
@@ -337,7 +342,7 @@ export function CustomModelEditor({
                     }
                   >
                     <Plus className="size-3" />
-                    Add choice
+                    {t("Add choice")}
                   </button>
                 </div>
               )}
@@ -359,7 +364,7 @@ export function CustomModelEditor({
                 onClick={() => addSetting(settingToEditor(preset))}
               >
                 <Plus className="size-3" />
-                {preset.label}
+                {t(preset.label)}
               </button>
             ))}
           <button
@@ -368,7 +373,7 @@ export function CustomModelEditor({
             onClick={() => addSetting(emptyEditorSetting())}
           >
             <Plus className="size-3" />
-            Custom option
+            {t("Custom option")}
           </button>
         </div>
       </div>
@@ -383,10 +388,10 @@ export function CustomModelEditor({
           type="submit"
           className={`${buttonClass} bg-content/10 text-content`}
         >
-          Save model
+          {t("Save model")}
         </button>
         <button type="button" className={buttonClass} onClick={onCancel}>
-          Cancel
+          {t("Cancel")}
         </button>
       </div>
     </form>

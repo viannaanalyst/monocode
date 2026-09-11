@@ -79,6 +79,7 @@ function NavRow({
       type="button"
       title={label}
       aria-label={label}
+      data-no-tooltip
       onClick={onClick}
       aria-current={active ? "true" : undefined}
       className={`flex w-full items-center gap-2 rounded-md px-2 py-2 text-left ${

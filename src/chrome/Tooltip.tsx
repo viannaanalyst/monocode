@@ -20,6 +20,8 @@ type OpenTooltip = {
 };
 
 export function tooltipText(element: Element): string | null {
+  // Buttons whose label already reads on screen opt out of the hover bubble.
+  if (element.closest("[data-no-tooltip]")) return null;
   const title = element.getAttribute("title")?.trim();
   const ariaLabel = element.getAttribute("aria-label")?.trim();
   const raw = title || ariaLabel || null;
@@ -283,10 +285,25 @@ export function TooltipLayer({
       release(target);
     };
 
+    // A right click opens a context menu under the cursor; leaving the hover
+    // bubble up would overlap it.
+    const onContextMenu = () => {
+      const target = activeTargetRef.current;
+      if (!target) return;
+      clearTimer();
+      setOpenTooltip(null);
+      activeTargetRef.current = null;
+      labelRef.current = null;
+      pointerTargetRef.current = null;
+      focusTargetRef.current = null;
+      restoreTitle(target);
+    };
+
     document.addEventListener("pointerover", onPointerOver, true);
     document.addEventListener("pointerout", onPointerOut, true);
     document.addEventListener("focusin", onFocusIn, true);
     document.addEventListener("focusout", onFocusOut, true);
+    document.addEventListener("contextmenu", onContextMenu, true);
 
     const observer = new MutationObserver(() => {
       const activeTarget = activeTargetRef.current;
@@ -314,6 +331,7 @@ export function TooltipLayer({
       document.removeEventListener("pointerout", onPointerOut, true);
       document.removeEventListener("focusin", onFocusIn, true);
       document.removeEventListener("focusout", onFocusOut, true);
+      document.removeEventListener("contextmenu", onContextMenu, true);
       observer.disconnect();
       clearTimer();
       for (const target of suppressedTargetsRef.current) restoreTitle(target);

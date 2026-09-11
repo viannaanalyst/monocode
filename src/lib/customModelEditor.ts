@@ -1,6 +1,7 @@
 // Adapted from T3 Code's customModelEditor.logic.ts. See NOTICE.
 import type { CustomModelDefinition, CustomModelHarness } from "./customModels";
 import type { ModelSetting } from "./models";
+import { t } from "../i18n";
 
 export type EditorChoice = {
   key: string;
@@ -154,21 +155,32 @@ export function validateCustomModelDraft(
 ): string | null {
   const seen = new Set<string>();
   for (const [index, setting] of draft.settings.entries()) {
-    const position = `Option ${index + 1}`;
+    const position = t("Option {number}", { number: index + 1 });
     const id = setting.id.trim();
-    if (!id) return `${position} needs an ID.`;
-    if (seen.has(id)) return `${position}: ID "${id}" is used twice.`;
+    if (!id) return t("{option} needs an ID.", { option: position });
+    if (seen.has(id))
+      return t('{option}: ID "{id}" is used twice.', {
+        option: position,
+        id,
+      });
     seen.add(id);
-    if (!setting.label.trim()) return `${position} needs a label.`;
+    if (!setting.label.trim())
+      return t("{option} needs a label.", { option: position });
     if (setting.kind !== "select") continue;
     if (setting.choices.length === 0)
-      return `${position} needs at least one choice.`;
+      return t("{option} needs at least one choice.", { option: position });
     const choices = new Set<string>();
     for (const choice of setting.choices) {
       const value = choice.value.trim();
-      if (!value) return `${position} has a choice without a value.`;
+      if (!value)
+        return t("{option} has a choice without a value.", {
+          option: position,
+        });
       if (choices.has(value))
-        return `${position}: choice "${value}" is used twice.`;
+        return t('{option}: choice "{value}" is used twice.', {
+          option: position,
+          value,
+        });
       choices.add(value);
     }
   }

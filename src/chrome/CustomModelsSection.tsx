@@ -20,6 +20,7 @@ import {
   updateCustomModel,
 } from "../lib/models";
 import { HARNESS_TITLE } from "../lib/session";
+import { t } from "../i18n";
 import { CustomModelEditor } from "./CustomModelEditor";
 import { ChevronDown, Pencil, Plus, X } from "./icons";
 
@@ -84,7 +85,7 @@ export function CustomModelsSection({
           onClick={() => setExpanded((current) => !current)}
         >
           <ChevronDown className={`size-3.5 ${expanded ? "" : "-rotate-90"}`} />
-          Custom models
+          {t("Custom models")}
           {entries.length ? (
             <span className="rounded bg-content/10 px-1.5 text-[10px] tabular-nums">
               {entries.length}
@@ -98,7 +99,9 @@ export function CustomModelsSection({
           disabled={entries.length >= MAX_CUSTOM_MODEL_COUNT}
           title={
             entries.length >= MAX_CUSTOM_MODEL_COUNT
-              ? `Up to ${MAX_CUSTOM_MODEL_COUNT} custom models per provider`
+              ? t("Up to {count} custom models per provider", {
+                  count: MAX_CUSTOM_MODEL_COUNT,
+                })
               : undefined
           }
           onClick={() => {
@@ -109,16 +112,17 @@ export function CustomModelsSection({
           }}
         >
           <Plus className="size-3.5" />
-          Add model
+          {t("Add model")}
         </button>
       </div>
 
       {expanded ? (
         <div id={`${id}-models`} className="space-y-2 px-2 pt-2">
           <p className="text-[12px] leading-relaxed text-content/40">
-            Add a model ID supported by your {HARNESS_TITLE[harness]} CLI
-            configuration. Models appear in the picker and can be used by
-            default.
+            {t(
+              "Add a model ID supported by your {name} CLI configuration. Models appear in the picker and can be used by default.",
+              { name: HARNESS_TITLE[harness] },
+            )}
           </p>
           {adding ? (
             <form
@@ -162,11 +166,11 @@ export function CustomModelsSection({
                 type="submit"
                 className={`${buttonClass} border border-content/10 bg-content/5`}
               >
-                Add
+                {t("Add")}
               </button>
               <button
                 type="button"
-                aria-label="Cancel adding model"
+                aria-label={t("Cancel adding model")}
                 className={buttonClass}
                 onClick={cancelAdd}
               >
@@ -187,7 +191,7 @@ export function CustomModelsSection({
             <input
               aria-label={`Filter ${HARNESS_TITLE[harness]} custom models`}
               value={filter}
-              placeholder="Filter custom models…"
+              placeholder={t("Filter custom models…")}
               className="w-full rounded-md border border-content/10 bg-content/5 px-2.5 py-1.5 text-[12px] text-content outline-none placeholder:text-content/30 focus:border-content/30"
               onChange={(event) => setFilter(event.target.value)}
             />
@@ -259,7 +263,7 @@ export function CustomModelsSection({
             ))}
             {needle && visible.length === 0 ? (
               <p className="py-2 text-[12px] text-content/40">
-                No matching models.
+                {t("No matching models.")}
               </p>
             ) : null}
           </div>

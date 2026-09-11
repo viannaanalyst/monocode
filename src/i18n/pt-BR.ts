@@ -290,6 +290,44 @@ export const PT_BR: Record<string, string> = {
   "Paste a file path": "Cole um caminho de arquivo",
   Import: "Importar",
   "Browse…": "Procurar…",
+  "Custom models": "Modelos personalizados",
+  "Add model": "Adicionar modelo",
+  Add: "Adicionar",
+  "Cancel adding model": "Cancelar adição de modelo",
+  "Filter custom models…": "Filtrar modelos personalizados…",
+  "No matching models.": "Nenhum modelo correspondente.",
+  "Up to {count} custom models per provider":
+    "Até {count} modelos personalizados por provedor",
+  "Add a model ID supported by your {name} CLI configuration. Models appear in the picker and can be used by default.":
+    "Adicione um ID de modelo suportado pela configuração do CLI do {name}. Os modelos aparecem no seletor e podem ser usados como padrão.",
+  "Display name": "Nome de exibição",
+  "Options in the composer": "Opções no compositor",
+  "Copy options from a built-in model": "Copiar opções de um modelo embutido",
+  "Copy from a model…": "Copiar de um modelo…",
+  "Uses the options from the Codex catalog until you add your own.":
+    "Usa as opções do catálogo do Codex até você adicionar as suas.",
+  "Add the options your model supports, or leave it with no extra options.":
+    "Adicione as opções que seu modelo suporta, ou deixe sem opções extras.",
+  "Option {number}": "Opção {number}",
+  "Custom option…": "Opção personalizada…",
+  Choices: "Escolhas",
+  Toggle: "Alternar",
+  "On by default": "Ativado por padrão",
+  "Add choice": "Adicionar escolha",
+  "Custom option": "Opção personalizada",
+  "Save model": "Salvar modelo",
+  Speed: "Velocidade",
+  "Fast mode": "Modo rápido",
+  "{option} needs an ID.": "{option} precisa de um ID.",
+  '{option}: ID "{id}" is used twice.':
+    '{option}: o ID "{id}" está duplicado.',
+  "{option} needs a label.": "{option} precisa de um rótulo.",
+  "{option} needs at least one choice.":
+    "{option} precisa de pelo menos uma escolha.",
+  "{option} has a choice without a value.":
+    "{option} tem uma escolha sem valor.",
+  '{option}: choice "{value}" is used twice.':
+    '{option}: a escolha "{value}" está duplicada.',
   "Project instructions": "Instruções do projeto",
   "Session activity": "Atividade da sessão",
   "Session activity card": "Card de atividade da sessão",

@@ -26,6 +26,7 @@ export function RailAction({
       type="button"
       onClick={onClick}
       disabled={!onClick}
+      data-no-tooltip
       aria-label={ariaLabel ?? label}
       className={`relative flex w-full items-center gap-2 rounded-md px-2 h-8  text-left ${
         active
@@ -120,6 +121,7 @@ export function RailSearch({
       type="button"
       onClick={onClick}
       disabled={!onClick}
+      data-no-tooltip
       aria-label={ariaLabel ?? label}
       className={`relative flex w-full items-center gap-2 rounded-md border border-content/8 px-1.5 shadow-sm h-8 text-left ${
         active

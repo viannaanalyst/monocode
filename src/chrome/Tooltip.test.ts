@@ -95,6 +95,23 @@ describe("tooltipText", () => {
     expect(tooltipText(button)).toBe("Ajustes");
   });
 
+  it("opts out when the label already reads on screen", () => {
+    const button = document.createElement("button");
+    button.setAttribute("aria-label", "Settings");
+    button.setAttribute("data-no-tooltip", "");
+    expect(tooltipText(button)).toBeNull();
+    expect(isTooltipTarget(button)).toBe(false);
+  });
+
+  it("hides inherited opt-outs for descendants", () => {
+    const wrapper = document.createElement("div");
+    wrapper.setAttribute("data-no-tooltip", "");
+    const button = document.createElement("button");
+    button.setAttribute("aria-label", "Settings");
+    wrapper.append(button);
+    expect(tooltipText(button)).toBeNull();
+  });
+
   it("falls back to aria-label and ignores disabled controls", () => {
     const button = document.createElement("button");
     button.setAttribute("aria-label", "Settings");
