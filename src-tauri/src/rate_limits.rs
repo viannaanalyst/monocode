@@ -7,6 +7,8 @@ use serde_json::{json, Value};
 use crate::dirs_home;
 
 const OAUTH_USAGE_URL: &str = "https://api.anthropic.com/api/oauth/usage";
+const OPENCODE_USAGE_URL: &str = "https://opencode.ai/zen/go/v1/usage";
+const OPENCODE_USER_AGENT: &str = "opencode/1.18.0";
 const OAUTH_TOKEN_URL: &str = "https://platform.claude.com/v1/oauth/token";
 const OAUTH_CLIENT_ID: &str = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";
 const OAUTH_BETA: &str = "oauth-2025-04-20";
@@ -125,6 +127,89 @@ fn fetch_usage_with_token(token: &str) -> ClaudeUsageFetch {
             Some(format!("Claude usage request failed: {error}")),
         ),
     }
+}
+
+/// OpenCode Go rolling (5h) / weekly / monthly limits from the Zen usage API.
+/// The key comes from the opencode CLI's own `auth.json` and never leaves the
+/// host process.
+#[tauri::command]
+pub async fn fetch_opencode_usage() -> Result<ClaudeUsageFetch, String> {
+    tauri::async_runtime::spawn_blocking(fetch_opencode_usage_sync)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+fn fetch_opencode_usage_sync() -> ClaudeUsageFetch {
+    let Some(key) = read_opencode_key() else {
+        return usage_result(
+            "unavailable",
+            None,
+            None,
+            Some("OpenCode Go not signed in".into()),
+        );
+    };
+
+    let agent = ureq::AgentBuilder::new().timeout(HTTP_TIMEOUT).build();
+    let result = agent
+        .get(OPENCODE_USAGE_URL)
+        .set("Authorization", &format!("Bearer {key}"))
+        .set("User-Agent", OPENCODE_USER_AGENT)
+        .set("Accept", "application/json")
+        .call();
+
+    match result {
+        Ok(response) => {
+            let http_status = response.status();
+            let body = response.into_string().unwrap_or_default();
+            if (200..300).contains(&http_status) {
+                usage_result("ok", Some(http_status), Some(body), None)
+            } else {
+                usage_result(
+                    "error",
+                    Some(http_status),
+                    None,
+                    Some(format!("OpenCode usage request failed ({http_status})")),
+                )
+            }
+        }
+        Err(ureq::Error::Status(status, response)) => {
+            let _ = response.into_string();
+            usage_result(
+                "error",
+                Some(status),
+                None,
+                Some(format!("OpenCode usage request failed ({status})")),
+            )
+        }
+        Err(error) => usage_result(
+            "error",
+            None,
+            None,
+            Some(format!("OpenCode usage request failed: {error}")),
+        ),
+    }
+}
+
+fn read_opencode_key() -> Option<String> {
+    let home = dirs_home().or_else(|| {
+        std::env::var_os("USERPROFILE").map(|value| value.to_string_lossy().into_owned())
+    })?;
+    let path = PathBuf::from(home).join(".local/share/opencode/auth.json");
+    let raw = std::fs::read_to_string(path).ok()?;
+    let blob: Value = serde_json::from_str(raw.trim()).ok()?;
+    for provider in ["opencode-go", "opencode"] {
+        let key = blob
+            .get(provider)
+            .and_then(|entry| entry.get("key"))
+            .and_then(Value::as_str)
+            .map(str::trim);
+        if let Some(key) = key {
+            if !key.is_empty() {
+                return Some(key.to_string());
+            }
+        }
+    }
+    None
 }
 
 fn usage_error(status: u16) -> ClaudeUsageFetch {

@@ -990,7 +990,11 @@ export default function App({
   const busySessionIds = busySessionIdsRef.current;
 
   const usageProviders = useMemo(() => {
-    if (active?.harness === "claude" || active?.harness === "codex") {
+    if (
+      active?.harness === "claude" ||
+      active?.harness === "codex" ||
+      active?.harness === "opencode"
+    ) {
       return [active.harness];
     }
     return [];

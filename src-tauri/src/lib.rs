@@ -301,6 +301,7 @@ pub fn run() {
             harness::harness_sse_close,
             harness::harness_exec,
             rate_limits::fetch_claude_usage,
+            rate_limits::fetch_opencode_usage,
             usage_cost::fetch_usage_cost,
             pty::pty_spawn,
             pty::pty_write,

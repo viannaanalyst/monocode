@@ -4,6 +4,7 @@ import {
   errorRateLimits,
   parseClaudeOAuthUsage,
   parseCodexRateLimits,
+  parseOpencodeUsage,
   unavailableRateLimits,
   type ProviderRateLimits,
 } from "./rateLimits";
@@ -53,6 +54,30 @@ export async function fetchClaudeRateLimits(): Promise<ProviderRateLimits> {
     return errorRateLimits(
       "claude",
       error instanceof Error ? error.message : "Claude usage unavailable",
+    );
+  }
+}
+
+export async function fetchOpencodeRateLimits(): Promise<ProviderRateLimits> {
+  try {
+    const result = await invoke<ClaudeUsageFetch>("fetch_opencode_usage");
+    if (result.status === "ok" && result.body) {
+      return parseOpencodeUsage(result.body);
+    }
+    if (result.status === "unavailable") {
+      return unavailableRateLimits(
+        "opencode",
+        result.error?.trim() || "OpenCode Go not signed in",
+      );
+    }
+    return errorRateLimits(
+      "opencode",
+      result.error?.trim() || "OpenCode usage unavailable",
+    );
+  } catch (error) {
+    return errorRateLimits(
+      "opencode",
+      error instanceof Error ? error.message : "OpenCode usage unavailable",
     );
   }
 }

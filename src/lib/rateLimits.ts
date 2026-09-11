@@ -1,6 +1,6 @@
 import { asRecord } from "./harness/codexProtocol";
 
-export type RateLimitProvider = "claude" | "codex";
+export type RateLimitProvider = "claude" | "codex" | "opencode";
 
 export type RateLimitStatus =
   "idle" | "fetching" | "ok" | "error" | "unavailable";
@@ -18,6 +18,8 @@ export type ProviderRateLimits = {
   provider: RateLimitProvider;
   session: RateLimitWindow | null;
   weekly: RateLimitWindow | null;
+  /** OpenCode Go only; other providers report no monthly window. */
+  monthly: RateLimitWindow | null;
   updatedAt: number;
   error: string | null;
   status: RateLimitStatus;
@@ -25,6 +27,7 @@ export type ProviderRateLimits = {
 
 export const SESSION_WINDOW_MINUTES = 300;
 export const WEEKLY_WINDOW_MINUTES = 10_080;
+export const MONTHLY_WINDOW_MINUTES = 43_200;
 
 /** Background poll while the window is visible. */
 export const RATE_LIMIT_POLL_MS = 15 * 60 * 1000;
@@ -74,6 +77,7 @@ export function idleRateLimits(
     provider,
     session: null,
     weekly: null,
+    monthly: null,
     updatedAt: 0,
     error: null,
     status: "idle",
@@ -84,13 +88,14 @@ export function fetchingRateLimits(
   provider: RateLimitProvider,
   previous?: ProviderRateLimits | null,
 ): ProviderRateLimits {
-  if (previous && (previous.session || previous.weekly)) {
+  if (previous && (previous.session || previous.weekly || previous.monthly)) {
     return { ...previous, status: "fetching" };
   }
   return {
     provider,
     session: previous?.session ?? null,
     weekly: previous?.weekly ?? null,
+    monthly: previous?.monthly ?? null,
     updatedAt: previous?.updatedAt ?? 0,
     error: null,
     status: "fetching",
@@ -105,6 +110,7 @@ export function unavailableRateLimits(
     provider,
     session: null,
     weekly: null,
+    monthly: null,
     updatedAt: Date.now(),
     error,
     status: "unavailable",
@@ -116,7 +122,7 @@ export function errorRateLimits(
   error: string,
   previous?: ProviderRateLimits | null,
 ): ProviderRateLimits {
-  if (previous && (previous.session || previous.weekly)) {
+  if (previous && (previous.session || previous.weekly || previous.monthly)) {
     return {
       ...previous,
       error,
@@ -128,6 +134,7 @@ export function errorRateLimits(
     provider,
     session: null,
     weekly: null,
+    monthly: null,
     updatedAt: Date.now(),
     error,
     status: "error",
@@ -148,6 +155,7 @@ export function formatUsagePercent(usedPercent: number): string {
  * original status-bar copy.
  */
 export function formatWindowLabel(windowMinutes: number): string {
+  if (windowMinutes === MONTHLY_WINDOW_MINUTES) return "mo";
   if (windowMinutes === WEEKLY_WINDOW_MINUTES) return "wk";
   if (windowMinutes === SESSION_WINDOW_MINUTES) return "5h";
   if (windowMinutes === 60) return "1h";
@@ -271,9 +279,56 @@ export function parseClaudeOAuthUsage(body: string): ProviderRateLimits {
     provider: "claude",
     session: mapUsageWindow(rec.five_hour, SESSION_WINDOW_MINUTES),
     weekly: mapUsageWindow(rec.seven_day, WEEKLY_WINDOW_MINUTES),
+    monthly: null,
     updatedAt: Date.now(),
     error: null,
     status: "ok",
+  };
+}
+
+/**
+ * OpenCode Go returns three rolling windows: `rolling` (5h), `weekly`, and
+ * `monthly`, each as a used percentage plus an ISO reset time.
+ */
+export function parseOpencodeUsage(body: string): ProviderRateLimits {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return errorRateLimits("opencode", "OpenCode usage response was not JSON");
+  }
+  const root = asRecord(parsed);
+  const usage = asRecord(root?.usage) ?? root;
+  if (!usage) {
+    return errorRateLimits("opencode", "OpenCode usage response was empty");
+  }
+  return {
+    provider: "opencode",
+    session: opencodeWindow(usage, "rolling", SESSION_WINDOW_MINUTES),
+    weekly: opencodeWindow(usage, "weekly", WEEKLY_WINDOW_MINUTES),
+    monthly: opencodeWindow(usage, "monthly", MONTHLY_WINDOW_MINUTES),
+    updatedAt: Date.now(),
+    error: null,
+    status: "ok",
+  };
+}
+
+function opencodeWindow(
+  usage: Record<string, unknown>,
+  key: string,
+  windowMinutes: number,
+): RateLimitWindow | null {
+  const rec = asRecord(usage[key]);
+  if (!rec) return null;
+  const percent =
+    numberField(rec, "percent") ??
+    numberField(rec, "usedPercent") ??
+    numberField(rec, "utilization");
+  if (percent == null) return null;
+  return {
+    usedPercent: clampUsedPercent(percent),
+    windowMinutes,
+    resetsAt: parseResetTimestamp(rec.resetsAt ?? rec.resets_at),
   };
 }
 
@@ -294,6 +349,7 @@ export function parseCodexRateLimits(result: unknown): ProviderRateLimits {
     provider: "codex",
     session: mapCodexSnapshot(classified.session, SESSION_WINDOW_MINUTES),
     weekly: mapCodexSnapshot(classified.weekly, WEEKLY_WINDOW_MINUTES),
+    monthly: null,
     updatedAt: Date.now(),
     error: null,
     status: "ok",

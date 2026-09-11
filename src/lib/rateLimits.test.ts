@@ -11,6 +11,7 @@ import {
   mapUsageWindow,
   parseClaudeOAuthUsage,
   parseCodexRateLimits,
+  parseOpencodeUsage,
   parseResetTimestamp,
   RATE_LIMIT_MIN_REFETCH_MS,
   rateLimitWindowTooltip,
@@ -133,6 +134,34 @@ describe("parseClaudeOAuthUsage", () => {
     const limits = parseClaudeOAuthUsage("not json");
     expect(limits.status).toBe("error");
     expect(limits.session).toBeNull();
+  });
+});
+
+describe("parseOpencodeUsage", () => {
+  it("maps rolling, weekly, and monthly windows", () => {
+    const limits = parseOpencodeUsage(
+      JSON.stringify({
+        usage: {
+          rolling: { status: "ok", percent: 5, resetsAt: "2026-09-11T06:22:34.699Z" },
+          weekly: { status: "ok", percent: 30, resetsAt: "2026-09-14T00:00:00.699Z" },
+          monthly: { status: "ok", percent: 15, resetsAt: "2026-10-10T14:47:41.699Z" },
+        },
+      }),
+    );
+    expect(limits.provider).toBe("opencode");
+    expect(limits.session).toEqual({
+      usedPercent: 5,
+      windowMinutes: 300,
+      resetsAt: Date.parse("2026-09-11T06:22:34.699Z"),
+    });
+    expect(limits.weekly?.usedPercent).toBe(30);
+    expect(limits.monthly?.usedPercent).toBe(15);
+    expect(limits.monthly?.windowMinutes).toBe(43_200);
+  });
+
+  it("returns an error for garbage", () => {
+    expect(parseOpencodeUsage("not json").status).toBe("error");
+    expect(parseOpencodeUsage("{}").session).toBeNull();
   });
 });
 

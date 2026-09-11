@@ -5,6 +5,7 @@ import { Popover } from "./Popover";
 import {
   fetchClaudeRateLimits,
   fetchCodexRateLimits,
+  fetchOpencodeRateLimits,
 } from "../lib/rateLimitsFetch";
 import {
   clampUsedPercent,
@@ -65,6 +66,7 @@ export function UsageFooter({
 }) {
   const wantClaude = providers.includes("claude");
   const wantCodex = providers.includes("codex");
+  const wantOpencode = providers.includes("opencode");
   const wantCost =
     session != null &&
     supportsUsageCost(session.harness) &&
@@ -75,15 +77,20 @@ export function UsageFooter({
   const [codex, setCodex] = useState<ProviderRateLimits>(() =>
     idleRateLimits("codex"),
   );
+  const [opencode, setOpencode] = useState<ProviderRateLimits>(() =>
+    idleRateLimits("opencode"),
+  );
   const [cost, setCost] = useState<UsageCostState>(() => usageCostSnapshot());
   const [now, setNow] = useState(() => Date.now());
   const [refreshing, setRefreshing] = useState(false);
   const inflight = useRef<Promise<void> | null>(null);
   const claudeRef = useRef(claude);
   const codexRef = useRef(codex);
+  const opencodeRef = useRef(opencode);
   const costRef = useRef(cost);
   claudeRef.current = claude;
   codexRef.current = codex;
+  opencodeRef.current = opencode;
   costRef.current = cost;
 
   const refresh = useCallback((force = false) => {
@@ -95,9 +102,12 @@ export function UsageFooter({
     const fetchCodex =
       wantCodex &&
       shouldFetchProvider(codexRef.current, { force, visible });
+    const fetchOpencode =
+      wantOpencode &&
+      shouldFetchProvider(opencodeRef.current, { force, visible });
     const fetchCost =
       wantCost && shouldFetchUsageCost(costRef.current, { force, visible });
-    if (!fetchClaude && !fetchCodex && !fetchCost) return;
+    if (!fetchClaude && !fetchCodex && !fetchOpencode && !fetchCost) return;
     if (force) setRefreshing(true);
     const jobs: Promise<unknown>[] = [];
     if (fetchClaude) {
@@ -116,6 +126,14 @@ export function UsageFooter({
         }),
       );
     }
+    if (fetchOpencode) {
+      setOpencode((current) => fetchingRateLimits("opencode", current));
+      jobs.push(
+        fetchOpencodeRateLimits().then((value) => {
+          setOpencode(value);
+        }),
+      );
+    }
     if (fetchCost) {
       jobs.push(fetchUsageCost(force).then((value) => setCost(value)));
     }
@@ -127,7 +145,7 @@ export function UsageFooter({
       });
     inflight.current = run;
     return run;
-  }, [wantClaude, wantCodex, wantCost]);
+  }, [wantClaude, wantCodex, wantOpencode, wantCost]);
 
   useEffect(() => {
     void refresh();
@@ -168,7 +186,7 @@ export function UsageFooter({
     wantCost && session
       ? findSessionCost(cost.report, session.harness, session.providerSessionId)
       : null;
-  const showUsage = wantClaude || wantCodex;
+  const showUsage = wantClaude || wantCodex || wantOpencode;
   const showTerminals = terminals.length > 0;
   const showRefresh = showUsage || wantCost;
   const showRight = showUsage || showTerminals || showRefresh;
@@ -189,6 +207,7 @@ export function UsageFooter({
         <>
           {wantClaude ? <ProviderChip limits={claude} now={now} /> : null}
           {wantCodex ? <ProviderChip limits={codex} now={now} /> : null}
+          {wantOpencode ? <ProviderChip limits={opencode} now={now} /> : null}
         </>
       ) : session ? (
         <SessionChip session={session} />
@@ -476,11 +495,15 @@ function ProviderChip({
 }) {
   const loading =
     limits.status === "idle" ||
-    (limits.status === "fetching" && !limits.session && !limits.weekly);
+    (limits.status === "fetching" &&
+      !limits.session &&
+      !limits.weekly &&
+      !limits.monthly);
   const disconnected = limits.status === "unavailable";
   const windows = [
     limits.session ? { key: "session", window: limits.session } : null,
     limits.weekly ? { key: "weekly", window: limits.weekly } : null,
+    limits.monthly ? { key: "monthly", window: limits.monthly } : null,
   ].filter((entry): entry is { key: string; window: RateLimitWindow } => {
     return entry != null;
   });
