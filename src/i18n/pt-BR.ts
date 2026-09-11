@@ -304,6 +304,14 @@ export const PT_BR: Record<string, string> = {
   "No Jira issues match these filters":
     "Nenhuma issue do Jira corresponde a estes filtros",
   "No Jira issues": "Nenhuma issue do Jira",
+  ClickUp: "ClickUp",
+  "ClickUp API token": "Token de API do ClickUp",
+  "Connect ClickUp with a personal API token from Settings → Apps. Assigned tasks appear in the Inbox; Disconnect deletes the token.":
+    "Conecte o ClickUp com um token pessoal de API (Ajustes → Apps). As tarefas atribuídas aparecem no Inbox; Desconectar apaga o token.",
+  "No matching ClickUp tasks": "Nenhuma tarefa do ClickUp correspondente",
+  "No ClickUp tasks match these filters":
+    "Nenhuma tarefa do ClickUp corresponde a estes filtros",
+  "No ClickUp tasks": "Nenhuma tarefa do ClickUp",
   "Import session": "Importar sessão",
   "Recent exports": "Exports recentes",
   "Paste a file path": "Cole um caminho de arquivo",

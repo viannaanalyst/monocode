@@ -42,6 +42,20 @@ export function InboxProviderMark({
       </svg>
     );
   }
+  if (provider === "clickup") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>
+        <path
+          d="M2 18.5 4.9 16c1.7 2 3.9 3.1 7.1 3.1S17.4 18 19.1 16l2.9 2.5C19.7 21.2 16.4 22.5 12 22.5S4.3 21.2 2 18.5Z"
+          fill="#7B68EE"
+        />
+        <path
+          d="M11.9 7.5 6.4 13 3.3 10 11.9 0l8.6 10-3.1 3-5.5-5.5Z"
+          fill="#7B68EE"
+        />
+      </svg>
+    );
+  }
   if (provider === "jira") {
     return (
       <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>

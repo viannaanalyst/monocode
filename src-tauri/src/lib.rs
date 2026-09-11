@@ -3,6 +3,7 @@ use tauri::Manager;
 mod browser;
 mod chat_background;
 mod checkpoint;
+mod clickup;
 mod cursor_store;
 mod fonts;
 mod fs;
@@ -266,6 +267,12 @@ pub fn run() {
             jira::jira_issue_details,
             jira::jira_issue_thread,
             jira::jira_issue_comment,
+            clickup::clickup_status,
+            clickup::clickup_set_token,
+            clickup::clickup_list_tasks,
+            clickup::clickup_task_details,
+            clickup::clickup_task_thread,
+            clickup::clickup_task_comment,
             fs::git_branches,
             fs::git_checkout,
             fs::git_create_branch,

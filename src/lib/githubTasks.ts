@@ -16,6 +16,11 @@ import {
 } from "./gitlab";
 import { jiraConnected, listJiraIssues, type JiraIssue } from "./jira";
 import {
+  clickUpConnected,
+  listClickUpTasks,
+  type ClickUpTask,
+} from "./clickup";
+import {
   collectRailProjects,
   normalizeProjectPath,
   sameProjectPath,
@@ -23,7 +28,7 @@ import {
 } from "./recents";
 
 export type GithubTaskKind = "issue" | "pr";
-export type InboxKind = GithubTaskKind | "linear" | "jira";
+export type InboxKind = GithubTaskKind | "linear" | "jira" | "clickup";
 
 export type GithubLabel = {
   name: string;
@@ -48,7 +53,12 @@ export type GithubWorkItem = {
   repo: string;
 };
 
-export type InboxProvider = "github" | "linear" | "gitlab" | "jira";
+export type InboxProvider =
+  | "github"
+  | "linear"
+  | "gitlab"
+  | "jira"
+  | "clickup";
 
 export type InboxItem = Omit<GithubWorkItem, "kind"> & {
   kind: InboxKind;
@@ -129,6 +139,7 @@ export type InboxProviders = {
   linear: boolean;
   gitlab: boolean;
   jira: boolean;
+  clickup: boolean;
 };
 
 export type InboxListResult = {
@@ -136,6 +147,15 @@ export type InboxListResult = {
   errors: InboxProviderErrors;
   providers: InboxProviders;
 };
+
+/** Providers whose items are issues/tasks rather than repo work items. */
+export function isTrackerProvider(provider?: InboxProvider): boolean {
+  return provider === "linear" || provider === "jira" || provider === "clickup";
+}
+
+export function isTrackerKind(kind: InboxKind): boolean {
+  return kind === "linear" || kind === "jira" || kind === "clickup";
+}
 
 const INBOX_CACHE_FRESH_MS = 30_000;
 
@@ -495,7 +515,13 @@ export async function listInboxItems(
       peekInboxList(projects, query) ?? {
         items: [],
         errors: {},
-        providers: { github: false, linear: false, gitlab: false, jira: false },
+        providers: {
+          github: false,
+          linear: false,
+          gitlab: false,
+          jira: false,
+          clickup: false,
+        },
       }
     );
   }
@@ -556,11 +582,13 @@ async function fetchInboxItems(
   const linearOn = (await linearConnected()).connected;
   const gitlabOn = (await gitlabConnected()).connected;
   const jiraOn = (await jiraConnected()).connected;
+  const clickUpOn = (await clickUpConnected()).connected;
   const providers: InboxProviders = {
     github: grouped.length > 0,
     linear: linearOn,
     gitlab: gitlabOn,
     jira: jiraOn,
+    clickup: clickUpOn,
   };
 
   let linearItems: InboxItem[] = [];
@@ -588,13 +616,61 @@ async function fetchInboxItems(
     }
   }
 
+  let clickUpItems: InboxItem[] = [];
+  if (clickUpOn) {
+    try {
+      clickUpItems = await fetchClickUpInboxItems(query);
+    } catch (error) {
+      errors.clickup = inboxErrorMessage(error);
+    }
+  }
+
   return {
     items: dedupeInboxItems(
-      [...github.items, ...linearItems, ...gitlabItems, ...jiraItems],
+      [
+        ...github.items,
+        ...linearItems,
+        ...gitlabItems,
+        ...jiraItems,
+        ...clickUpItems,
+      ],
       preferredPaths,
     ),
     errors,
     providers,
+  };
+}
+
+async function fetchClickUpInboxItems(query: InboxQuery): Promise<InboxItem[]> {
+  const tasks = await listClickUpTasks({
+    assignedToMe: query.assignedToMe,
+    state: query.state,
+    limit: query.state === "all" ? INBOX_ALL_LIMIT : undefined,
+  });
+  return tasks.map(clickUpTaskToInboxItem);
+}
+
+function clickUpTaskToInboxItem(task: ClickUpTask): InboxItem {
+  return {
+    provider: "clickup",
+    kind: "clickup",
+    id: task.id,
+    identifier: task.identifier,
+    number: task.number,
+    title: task.title,
+    url: task.url,
+    state: task.state,
+    stateType: task.stateType,
+    updatedAt: task.updatedAt,
+    labels: task.labels,
+    assignees: task.assignees,
+    draft: false,
+    repo: task.repo,
+    teamId: task.teamId,
+    teamName: task.teamName,
+    projectId: task.projectId || "",
+    projectName: task.projectName || "",
+    projectPath: task.projectPath || "",
   };
 }
 
@@ -796,7 +872,7 @@ export function inboxIdentityKey(item: {
   identifier?: string;
   id?: string;
 }): string {
-  if (item.provider === "linear" || item.provider === "jira") {
+  if (isTrackerProvider(item.provider)) {
     const identity = item.identifier?.trim() || item.id?.trim();
     if (identity) return identity.toLowerCase();
     return `${item.provider}:${item.number}`;
@@ -866,9 +942,14 @@ export function inboxItemStatus(item: {
   draft: boolean;
   stateType?: string;
 }): string {
-  if (item.kind === "linear" || item.kind === "jira") {
+  if (isTrackerKind(item.kind)) {
     const type = item.stateType?.trim().toLowerCase();
-    if (type === "completed" || type === "canceled" || type === "done") {
+    if (
+      type === "completed" ||
+      type === "canceled" ||
+      type === "done" ||
+      type === "closed"
+    ) {
       return "Closed";
     }
     return "Open";
@@ -891,7 +972,9 @@ export function matchesInboxQuery(item: InboxItem, query: string): boolean {
         ? "linear issue"
         : item.kind === "jira"
           ? "jira issue"
-          : "issue";
+          : item.kind === "clickup"
+            ? "clickup task"
+            : "issue";
   const haystack = [
     item.title,
     item.repo,
@@ -922,15 +1005,20 @@ export function inboxItemRef(item: {
   number: number;
   identifier?: string;
 }): string {
-  if (item.provider === "linear" || item.provider === "jira") {
+  if (isTrackerProvider(item.provider)) {
     return item.identifier?.trim() || `#${item.number}`;
   }
   return `#${item.number}`;
 }
 
 export function inboxStartDraft(item: InboxItem, body?: string): string {
-  if (item.provider === "linear" || item.provider === "jira") {
-    const provider = item.provider === "jira" ? "Jira" : "Linear";
+  if (isTrackerProvider(item.provider)) {
+    const provider =
+      item.provider === "jira"
+        ? "Jira"
+        : item.provider === "clickup"
+          ? "ClickUp"
+          : "Linear";
     const id = item.identifier?.trim() || `${provider} #${item.number}`;
     const title = item.title.trim() || id;
     const lines = [`Work on this ${provider} issue:`, "", `${id} ${title}`];
@@ -974,7 +1062,7 @@ export function inboxComposerCard(
   item: InboxItem,
   body?: string,
 ): InboxComposerCard {
-  const tracker = item.provider === "linear" || item.provider === "jira";
+  const tracker = isTrackerProvider(item.provider);
   return {
     provider: item.provider,
     kind: item.kind,

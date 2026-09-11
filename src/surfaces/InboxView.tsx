@@ -49,6 +49,7 @@ import {
   inboxItemRef,
   inboxItemStatus,
   inboxListIsFresh,
+  isTrackerProvider,
   inboxProjectsForRail,
   listInboxItems,
   peekGithubPrDiff,
@@ -116,6 +117,15 @@ import {
   peekJiraIssueThread,
   type JiraIssueThread,
 } from "../lib/jira";
+import {
+  CLICKUP_CHANGE_EVENT,
+  clickUpTaskComment,
+  clickUpTaskDetails,
+  clickUpTaskThread,
+  peekClickUpTaskDetails,
+  peekClickUpTaskThread,
+  type ClickUpTaskThread,
+} from "../lib/clickup";
 import {
   GITLAB_CHANGE_EVENT,
   gitlabMrDiff,
@@ -234,6 +244,38 @@ function peekInboxForRail(recents: RecentProject[], cwd: string) {
   });
 }
 
+function inboxEmptyMessage(
+  source: InboxSource,
+  options: {
+    narrowedByUser: boolean;
+    searchNarrowed: boolean;
+    hasProjects: boolean;
+  },
+): string {
+  const { narrowedByUser, searchNarrowed, hasProjects } = options;
+  if (narrowedByUser) {
+    if (searchNarrowed) {
+      if (source === "linear") return t("No matching Linear issues");
+      if (source === "jira") return t("No matching Jira issues");
+      if (source === "clickup") return t("No matching ClickUp tasks");
+      if (source === "gitlab") return t("No matching issues or merge requests");
+      return t("No matching issues or pull requests");
+    }
+    if (source === "linear") return t("No Linear issues match these filters");
+    if (source === "jira") return t("No Jira issues match these filters");
+    if (source === "clickup") return t("No ClickUp tasks match these filters");
+    if (source === "gitlab") return t("No GitLab items match these filters");
+    return t("No issues or pull requests match these filters");
+  }
+  if (source === "linear") return t("No Linear issues");
+  if (source === "jira") return t("No Jira issues");
+  if (source === "clickup") return t("No ClickUp tasks");
+  if (!hasProjects) return t("Open a project to fill the inbox");
+  return source === "gitlab"
+    ? t("No matching issues or merge requests")
+    : t("No matching issues or pull requests");
+}
+
 function InboxSourceTab({
   source,
   selected,
@@ -248,9 +290,11 @@ function InboxSourceTab({
       ? "Linear"
       : source === "jira"
         ? "Jira"
-        : source === "gitlab"
-          ? t("GitLab")
-          : "GitHub";
+        : source === "clickup"
+          ? "ClickUp"
+          : source === "gitlab"
+            ? t("GitLab")
+            : "GitHub";
   return (
     <button
       type="button"
@@ -364,6 +408,7 @@ export function InboxView({
     linear: true,
     gitlab: true,
     jira: true,
+    clickup: true,
   });
   const [filterMenu, setFilterMenu] = useState<{ x: number; y: number } | null>(
     null,
@@ -459,6 +504,12 @@ export function InboxView({
     return () => window.removeEventListener(JIRA_CHANGE_EVENT, onChange);
   }, []);
 
+  useEffect(() => {
+    const onChange = () => setRefresh((value) => value + 1);
+    window.addEventListener(CLICKUP_CHANGE_EVENT, onChange);
+    return () => window.removeEventListener(CLICKUP_CHANGE_EVENT, onChange);
+  }, []);
+
   // The roster has to come from Linear, not from the fetched issues: hiding a
   // team drops its issues, so a derived list could never offer it back.
   useEffect(() => {
@@ -513,6 +564,7 @@ export function InboxView({
           linear: message,
           gitlab: message,
           jira: message,
+          clickup: message,
         });
       })
       .finally(() => {
@@ -632,7 +684,13 @@ export function InboxView({
   // A source only deserves a tab when its provider is actually available, so
   // the current selection falls back to the first connected provider.
   useEffect(() => {
-    const order: InboxSource[] = ["github", "linear", "gitlab", "jira"];
+    const order: InboxSource[] = [
+      "github",
+      "linear",
+      "gitlab",
+      "jira",
+      "clickup",
+    ];
     const available = order.filter((provider) => providers[provider]);
     if (available.length === 0 || providers[source]) return;
     setSource(available[0]);
@@ -686,6 +744,13 @@ export function InboxView({
           <InboxSourceTab
             source="jira"
             selected={source === "jira"}
+            onSelect={onSourceChange}
+          />
+        ) : null}
+        {providers.clickup ? (
+          <InboxSourceTab
+            source="clickup"
+            selected={source === "clickup"}
             onSelect={onSourceChange}
           />
         ) : null}
@@ -754,33 +819,11 @@ export function InboxView({
           </div>
         ) : visibleItems.length === 0 ? (
           <p className="px-3 py-2 text-[12px] text-content/50">
-            {narrowedByUser
-              ? searchNarrowed
-                ? source === "linear"
-                  ? t("No matching Linear issues")
-                  : source === "jira"
-                    ? t("No matching Jira issues")
-                    : source === "gitlab"
-                      ? t("No matching issues or merge requests")
-                      : t("No matching issues or pull requests")
-                : source === "linear"
-                  ? t("No Linear issues match these filters")
-                  : source === "jira"
-                    ? t("No Jira issues match these filters")
-                    : source === "gitlab"
-                      ? t("No GitLab items match these filters")
-                      : t("No issues or pull requests match these filters")
-              : source === "linear"
-                ? t("No Linear issues")
-                : source === "jira"
-                  ? t("No Jira issues")
-                  : source === "gitlab"
-                    ? projects.length === 0
-                      ? t("Open a project to fill the inbox")
-                      : t("No matching issues or merge requests")
-                    : projects.length === 0
-                      ? t("Open a project to fill the inbox")
-                      : t("No matching issues or pull requests")}
+            {inboxEmptyMessage(source, {
+              narrowedByUser,
+              searchNarrowed,
+              hasProjects: projects.length > 0,
+            })}
           </p>
         ) : (
           <ul className="flex flex-col gap-0.5 p-1.5">
@@ -1012,8 +1055,8 @@ function InboxCard({
       : "Issue";
   const time = formatRelativeTime(item.updatedAt);
   const name = projectName(item.projectPath);
-  const linear = item.provider === "linear";
-  const source = linear ? item.teamName || item.repo : item.repo || name;
+  const tracker = isTrackerProvider(item.provider);
+  const source = tracker ? item.teamName || item.repo : item.repo || name;
   const unseen = isInboxEntryUnseen({
     key: inboxItemKey(item),
     updatedAt: item.updatedAt,
@@ -1080,7 +1123,7 @@ function InboxCard({
       </span>
       <span className="mt-1 flex min-w-0 items-center gap-2">
         <span className="flex min-w-0 flex-1 items-center gap-1.5 text-[11px] text-content/45">
-          {linear ? null : logoPath ? (
+          {tracker ? null : logoPath ? (
             <ProjectLogoIcon
               path={logoPath}
               className="size-3.5 shrink-0 rounded-sm"
@@ -1129,7 +1172,8 @@ function InboxDetail({
 }) {
   const linear = item.provider === "linear";
   const jira = item.provider === "jira";
-  const tracker = linear || jira;
+  const clickup = item.provider === "clickup";
+  const tracker = linear || jira || clickup;
   const gitlab = item.provider === "gitlab";
   const isPr = !tracker && item.kind === "pr";
   const githubKind =
@@ -1142,11 +1186,17 @@ function InboxDetail({
     ? peekLinearIssueDetails(item.id ?? "")
     : jira
       ? peekJiraIssueDetails(item.id ?? "")
-      : gitlabKind
-        ? peekGitlabWorkItemDetails(item.projectPath, gitlabKind, item.number)
-        : githubKind
-          ? peekGithubWorkItemDetails(item.projectPath, githubKind, item.number)
-          : null;
+      : clickup
+        ? peekClickUpTaskDetails(item.id ?? "")
+        : gitlabKind
+          ? peekGitlabWorkItemDetails(item.projectPath, gitlabKind, item.number)
+          : githubKind
+            ? peekGithubWorkItemDetails(
+                item.projectPath,
+                githubKind,
+                item.number,
+              )
+            : null;
   const cachedDiff = isPr
     ? gitlab
       ? peekGitlabMrDiff(item.projectPath, item.number)
@@ -1156,11 +1206,13 @@ function InboxDetail({
     ? peekLinearIssueThread(item.id ?? "")
     : jira
       ? peekJiraIssueThread(item.id ?? "")
-      : gitlabKind
-        ? peekGitlabWorkItemThread(item.projectPath, gitlabKind, item.number)
-        : githubKind
-          ? peekGithubWorkItemThread(item.projectPath, githubKind, item.number)
-          : null;
+      : clickup
+        ? peekClickUpTaskThread(item.id ?? "")
+        : gitlabKind
+          ? peekGitlabWorkItemThread(item.projectPath, gitlabKind, item.number)
+          : githubKind
+            ? peekGithubWorkItemThread(item.projectPath, githubKind, item.number)
+            : null;
   const [details, setDetails] = useState<GithubWorkItemDetails | null>(cached);
   const bodyScroll = useLockOverscroll<HTMLDivElement>();
   const [loading, setLoading] = useState(cached == null);
@@ -1173,6 +1225,7 @@ function InboxDetail({
     | GithubWorkItemThread
     | LinearIssueThread
     | JiraIssueThread
+    | ClickUpTaskThread
     | GitlabWorkItemThread
     | null
   >(cachedThread);
@@ -1225,11 +1278,21 @@ function InboxDetail({
       ? peekLinearIssueDetails(item.id ?? "")
       : jira
         ? peekJiraIssueDetails(item.id ?? "")
-        : gitlabKind
-          ? peekGitlabWorkItemDetails(item.projectPath, gitlabKind, item.number)
-          : githubKind
-            ? peekGithubWorkItemDetails(item.projectPath, githubKind, item.number)
-            : null;
+        : clickup
+          ? peekClickUpTaskDetails(item.id ?? "")
+          : gitlabKind
+            ? peekGitlabWorkItemDetails(
+                item.projectPath,
+                gitlabKind,
+                item.number,
+              )
+            : githubKind
+              ? peekGithubWorkItemDetails(
+                  item.projectPath,
+                  githubKind,
+                  item.number,
+                )
+              : null;
     if (cachedDetails) {
       setDetails(cachedDetails);
       setLoading(false);
@@ -1247,11 +1310,15 @@ function InboxDetail({
         ? item.id
           ? jiraIssueDetails(item.id)
           : Promise.reject(new Error("Missing Jira issue"))
-        : gitlabKind
-          ? gitlabWorkItemDetails(item.projectPath, gitlabKind, item.number)
-          : githubKind
-            ? githubWorkItemDetails(item.projectPath, githubKind, item.number)
-            : Promise.reject(new Error("Unknown inbox item"));
+        : clickup
+          ? item.id
+            ? clickUpTaskDetails(item.id)
+            : Promise.reject(new Error("Missing ClickUp task"))
+          : gitlabKind
+            ? gitlabWorkItemDetails(item.projectPath, gitlabKind, item.number)
+            : githubKind
+              ? githubWorkItemDetails(item.projectPath, githubKind, item.number)
+              : Promise.reject(new Error("Unknown inbox item"));
     void pending
       .then((next) => {
         if (cancelled) return;
@@ -1276,6 +1343,8 @@ function InboxDetail({
     item.number,
     item.projectPath,
     linear,
+    jira,
+    clickup,
     revision,
   ]);
 
@@ -1285,7 +1354,9 @@ function InboxDetail({
       const id = item.id ?? "";
       const cachedThread = linear
         ? peekLinearIssueThread(id)
-        : peekJiraIssueThread(id);
+        : jira
+          ? peekJiraIssueThread(id)
+          : peekClickUpTaskThread(id);
       if (cachedThread) {
         setThread(cachedThread);
         setThreadLoading(false);
@@ -1295,7 +1366,11 @@ function InboxDetail({
         setThreadError(null);
         setThread(null);
       }
-      void (linear ? linearIssueThread(id) : jiraIssueThread(id))
+      void (linear
+        ? linearIssueThread(id)
+        : jira
+          ? jiraIssueThread(id)
+          : clickUpTaskThread(id))
         .then((next) => {
           if (cancelled) return;
           setThread(next);
@@ -1386,6 +1461,7 @@ function InboxDetail({
     item.projectPath,
     linear,
     jira,
+    clickup,
     tracker,
     revision,
   ]);
@@ -1435,13 +1511,17 @@ function InboxDetail({
         const id = item.id ?? "";
         await (linear
           ? linearIssueComment(id, body, { parentId: replyTo?.id })
-          : jiraIssueComment(id, body, { parentId: replyTo?.id }));
+          : jira
+            ? jiraIssueComment(id, body, { parentId: replyTo?.id })
+            : clickUpTaskComment(id, body, { parentId: replyTo?.id }));
         setReplyTo(null);
         try {
           setThread(
             await (linear
               ? linearIssueThread(id, { force: true })
-              : jiraIssueThread(id, { force: true })),
+              : jira
+                ? jiraIssueThread(id, { force: true })
+                : clickUpTaskThread(id, { force: true })),
           );
         } catch (err: unknown) {
           setPostError(err instanceof Error ? err.message : String(err));
@@ -1559,7 +1639,7 @@ function InboxDetail({
               )}
             </>
           ) : null}
-          {linear ? null : (
+          {tracker ? null : (
             <>
               <span aria-hidden>·</span>
               <span>{projectName(item.projectPath)}</span>

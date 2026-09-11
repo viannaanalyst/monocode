@@ -62,7 +62,10 @@ const SOURCE_KEY = "monocode.inboxSource";
 export function loadInboxSource(): InboxSource {
   try {
     const raw = localStorage.getItem(SOURCE_KEY);
-    return raw === "linear" || raw === "gitlab" || raw === "jira"
+    return raw === "linear" ||
+      raw === "gitlab" ||
+      raw === "jira" ||
+      raw === "clickup"
       ? raw
       : "github";
   } catch {
@@ -159,9 +162,9 @@ export function hasActiveInboxFilters(
   );
 }
 
-/** Linear and Jira share the same issue-tracker filter model. */
+/** Linear, Jira, and ClickUp share the same issue-tracker filter model. */
 export function isTrackerSource(source?: InboxSource): boolean {
-  return source === "linear" || source === "jira";
+  return source === "linear" || source === "jira" || source === "clickup";
 }
 
 /** No status box checked means "no restriction", so the fetch has to widen with it. */

@@ -194,6 +194,12 @@ import {
   notifyJiraChange,
   saveJiraConfig,
 } from "../lib/jira";
+import {
+  clickUpConnected,
+  disconnectClickUp,
+  notifyClickUpChange,
+  saveClickUpToken,
+} from "../lib/clickup";
 import { loadTabGroupLabels, resolveTabGroupLabel } from "../lib/tabGroups";
 import {
   filterKeybindings,
@@ -727,6 +733,9 @@ function GeneralPage({
       <Heading title={t("Jira")} />
       <JiraSettings />
 
+      <Heading title={t("ClickUp")} />
+      <ClickUpSettings />
+
       <Heading title={t("Browser")} />
       <Row
         label={t("Open localhost in Browser")}
@@ -883,6 +892,111 @@ function GitlabSettings() {
                 }}
                 placeholder="glpat-…"
                 aria-label={t("GitLab access token")}
+                autoComplete="off"
+                spellCheck={false}
+                className="min-w-0 flex-1 bg-transparent text-[12px] text-content outline-none placeholder:text-content/35"
+              />
+            </label>
+            <SecondaryButton
+              onClick={() => void onSave()}
+              disabled={busy || !token.trim()}
+            >
+              {busy ? t("Saving") : t("Connect")}
+            </SecondaryButton>
+          </div>
+        )}
+      </Row>
+      {error ? (
+        <p className="pb-2 text-[12px] text-red-400/90">{error}</p>
+      ) : null}
+    </>
+  );
+}
+
+function ClickUpSettings() {
+  const [token, setToken] = useState("");
+  const [connected, setConnected] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void clickUpConnected()
+      .then((status) => {
+        if (!cancelled) setConnected(status.connected);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled)
+          setError(err instanceof Error ? err.message : String(err));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const onSave = async () => {
+    if (!token.trim() || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const status = await saveClickUpToken(token);
+      setConnected(status.connected);
+      setToken("");
+      clearInboxCache();
+      notifyClickUpChange();
+    } catch (err: unknown) {
+      setConnected(false);
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onDisconnect = async () => {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await disconnectClickUp();
+      setConnected(false);
+      clearInboxCache();
+      notifyClickUpChange();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <Row
+        label={
+          <span className="flex items-center gap-2">
+            <InboxProviderMark provider="clickup" className="size-4 shrink-0" />
+            Connection
+          </span>
+        }
+        description={t(
+          "Connect ClickUp with a personal API token from Settings → Apps. Assigned tasks appear in the Inbox; Disconnect deletes the token.",
+        )}
+      >
+        {connected ? (
+          <SecondaryButton onClick={() => void onDisconnect()} disabled={busy}>
+            {t("Disconnect")}
+          </SecondaryButton>
+        ) : (
+          <div className="flex min-w-0 items-center gap-2">
+            <label className="flex h-7 w-64 shrink-0 items-center rounded-md border border-content/10 px-2 focus-within:border-content/20">
+              <input
+                type="password"
+                value={token}
+                onChange={(event) => setToken(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") void onSave();
+                }}
+                placeholder="pk_…"
+                aria-label={t("ClickUp API token")}
                 autoComplete="off"
                 spellCheck={false}
                 className="min-w-0 flex-1 bg-transparent text-[12px] text-content outline-none placeholder:text-content/35"
