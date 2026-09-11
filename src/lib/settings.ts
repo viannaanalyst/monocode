@@ -314,6 +314,48 @@ export function subscribeDiffViewer(onStoreChange: () => void) {
     window.removeEventListener(DIFF_VIEWER_CHANGE_EVENT, onStoreChange);
 }
 
+const SESSION_ACTIVITY_KEY = "monocode.sessionActivityEnabled";
+
+export const SESSION_ACTIVITY_ENABLED_DEFAULT = true;
+
+/** Fired on `window` when the transcript activity card setting flips. */
+export const SESSION_ACTIVITY_ENABLED_CHANGE_EVENT =
+  "monocode:session-activity-enabled-change";
+
+export function loadSessionActivityEnabled(): boolean {
+  try {
+    const raw = localStorage.getItem(SESSION_ACTIVITY_KEY);
+    if (raw == null) return SESSION_ACTIVITY_ENABLED_DEFAULT;
+    return raw === "1" || raw === "true";
+  } catch {
+    return SESSION_ACTIVITY_ENABLED_DEFAULT;
+  }
+}
+
+export function saveSessionActivityEnabled(value: boolean) {
+  try {
+    localStorage.setItem(SESSION_ACTIVITY_KEY, value ? "1" : "0");
+  } catch {
+    // private mode / quota
+  }
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent<boolean>(SESSION_ACTIVITY_ENABLED_CHANGE_EVENT, {
+      detail: value,
+    }),
+  );
+}
+
+export function subscribeSessionActivityEnabled(onStoreChange: () => void) {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener(SESSION_ACTIVITY_ENABLED_CHANGE_EVENT, onStoreChange);
+  return () =>
+    window.removeEventListener(
+      SESSION_ACTIVITY_ENABLED_CHANGE_EVENT,
+      onStoreChange,
+    );
+}
+
 const LOCALHOST_IN_BROWSER_KEY = "monocode.localhostInBrowser";
 
 export const LOCALHOST_IN_BROWSER_DEFAULT = true;

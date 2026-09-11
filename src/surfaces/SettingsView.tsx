@@ -199,6 +199,7 @@ import {
   loadGridArcadeEnabled,
   loadLiveAgentsEnabled,
   loadNotesEnabled,
+  loadSessionActivityEnabled,
   loadLocalhostInBrowser,
   loadBrowserAgentEnabled,
   loadBrowserAgentAllowlistText,
@@ -216,6 +217,7 @@ import {
   saveGridArcadeEnabled,
   saveLiveAgentsEnabled,
   saveNotesEnabled,
+  saveSessionActivityEnabled,
   saveVoiceEnabled,
   saveVoiceLanguage,
   saveVoiceModel,
@@ -403,6 +405,9 @@ function GeneralPage({
     loadGridArcadeEnabled,
   );
   const [notesEnabled, setNotesEnabled] = useState(loadNotesEnabled);
+  const [sessionActivity, setSessionActivity] = useState(
+    loadSessionActivityEnabled,
+  );
   const [liveAgentsEnabled, setLiveAgentsEnabled] = useState(
     loadLiveAgentsEnabled,
   );
@@ -461,6 +466,10 @@ function GeneralPage({
   const onDiffViewer = (next: DiffViewer) => {
     saveDiffViewer(next);
     setDiffViewer(next);
+  };
+  const onSessionActivity = (next: boolean) => {
+    saveSessionActivityEnabled(next);
+    setSessionActivity(next);
   };
 
   const onFollowUpBehavior = (next: FollowUpBehavior) => {
@@ -557,6 +566,18 @@ function GeneralPage({
             { value: "unified", label: t("Unified") },
           ]}
           onChange={onDiffViewer}
+        />
+      </Row>
+      <Row
+        label={t("Session activity card")}
+        description={t(
+          "Shows a card at the end of a turn summarizing the commands the agent ran, with tests and commits called out.",
+        )}
+      >
+        <Toggle
+          label={t("Session activity card")}
+          on={sessionActivity}
+          onChange={onSessionActivity}
         />
       </Row>
       <Row

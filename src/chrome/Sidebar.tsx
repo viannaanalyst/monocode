@@ -1111,7 +1111,13 @@ function SidebarComponent({
             <span className="min-w-0 flex-1 truncate text-sm font-medium leading-tight">
               {t("Workspace")}
             </span>
-            <WorkspaceTitleActions onSearch={onGoToFile} onNew={onNew} />
+            <WorkspaceTitleActions
+              cwd={cwd}
+              recents={recents}
+              onSearch={onGoToFile}
+              onNew={onNew}
+              onSelectProject={onSelectProject}
+            />
           </div>
           <div
             role="tablist"
@@ -1891,13 +1897,25 @@ function SidebarProjectPicker({
 }
 
 function WorkspaceTitleActions({
+  cwd,
+  recents,
   onSearch,
   onNew,
+  onSelectProject,
 }: {
+  cwd?: string;
+  recents?: RecentProject[];
   onSearch?: () => void;
   onNew?: () => void;
+  onSelectProject?: (path: string) => void;
 }) {
+  const root = useRef<HTMLButtonElement>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   if (!onSearch && !onNew) return null;
+  const otherProjects = (recents ?? []).filter(
+    (item) => !cwd || !sameProjectPath(item.path, cwd),
+  );
+  const canChooseProject = Boolean(onSelectProject && otherProjects.length > 0);
   return (
     <div
       className="flex shrink-0 items-center gap-0.5"
@@ -1909,9 +1927,72 @@ function WorkspaceTitleActions({
         </IconButton>
       ) : null}
       {onNew ? (
-        <IconButton label={withShortcut("New session", `${MOD}T`)} onClick={onNew}>
-          <Plus className="size-3.5" strokeWidth={1.75} />
-        </IconButton>
+        <>
+          <span ref={root} className="inline-flex">
+            <IconButton
+              label={withShortcut("New session", `${MOD}T`)}
+              active={menuOpen}
+              onClick={() => {
+                if (canChooseProject) setMenuOpen((open) => !open);
+                else onNew();
+              }}
+            >
+              <Plus className="size-3.5" strokeWidth={1.75} />
+            </IconButton>
+          </span>
+          {menuOpen ? (
+            <Popover
+              anchor={root}
+              side="bottom"
+              align="end"
+              width={260}
+              onDismiss={() => setMenuOpen(false)}
+              role="menu"
+              aria-label={t("New tab")}
+              className="p-1"
+            >
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onNew();
+                }}
+                className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-[13px] text-content hover:bg-content/10"
+              >
+                <Plus className="size-3.5 shrink-0" strokeWidth={1.75} />
+                {t("New tab in this project")}
+              </button>
+              {otherProjects.length > 0 ? (
+                <>
+                  <p className="px-2 pb-1 pt-2 text-[10px] uppercase tracking-widest text-content/45">
+                    {t("Another project")}
+                  </p>
+                  {otherProjects.slice(0, 8).map((item) => (
+                    <button
+                      key={item.path}
+                      type="button"
+                      role="menuitem"
+                      title={item.path}
+                      onClick={() => {
+                        setMenuOpen(false);
+                        onSelectProject?.(item.path);
+                      }}
+                      className="flex w-full items-center justify-between gap-3 rounded-lg px-2 py-2 text-left text-content/80 hover:bg-content/10 hover:text-content"
+                    >
+                      <span className="min-w-0 truncate text-[13px]">
+                        {basename(item.path) || projectName(item.path)}
+                      </span>
+                      <span className="max-w-28 shrink-0 truncate font-mono text-[11px] text-content/45">
+                        {prettyParent(item.path)}
+                      </span>
+                    </button>
+                  ))}
+                </>
+              ) : null}
+            </Popover>
+          ) : null}
+        </>
       ) : null}
     </div>
   );

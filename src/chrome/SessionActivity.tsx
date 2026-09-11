@@ -1,7 +1,12 @@
 import { Terminal } from "./icons";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Popover } from "./Popover";
 import { sessionActivity } from "../lib/sessionActivity";
+import {
+  loadSessionActivityEnabled,
+  SESSION_ACTIVITY_ENABLED_DEFAULT,
+  subscribeSessionActivityEnabled,
+} from "../lib/settings";
 import type { Session } from "../lib/session";
 import { t } from "../i18n";
 
@@ -12,8 +17,13 @@ import { t } from "../i18n";
 export function SessionActivity({ session }: { session: Session }) {
   const root = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
+  const enabled = useSyncExternalStore(
+    subscribeSessionActivityEnabled,
+    loadSessionActivityEnabled,
+    () => SESSION_ACTIVITY_ENABLED_DEFAULT,
+  );
   const activity = useMemo(() => sessionActivity(session), [session.blocks]);
-  if (activity.commands.length === 0) return null;
+  if (!enabled || activity.commands.length === 0) return null;
 
   const summary = t(
     activity.commands.length === 1 ? "{count} command" : "{count} commands",

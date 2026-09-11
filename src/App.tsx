@@ -20,6 +20,7 @@ import { TooltipLayer } from "./chrome/Tooltip";
 import { MenuBar } from "./chrome/MenuBar";
 import { FilePicker } from "./chrome/FilePicker";
 import { UsageFooter } from "./chrome/UsageFooter";
+import { ImportSessionDialog } from "./chrome/ImportSessionDialog";
 import { useProjectBranches } from "./hooks/useProjectBranches";
 import {
   loadProjectRailOpen,
@@ -283,10 +284,7 @@ import {
   suggestExportFilename,
   type SessionExportFormat,
 } from "./lib/sessionExport";
-import {
-  pickSessionImportFile,
-  saveSessionExport,
-} from "./lib/sessionExportIo";
+import { saveSessionExport } from "./lib/sessionExportIo";
 import { syncDockBadge } from "./lib/dockBadge";
 import { liveAgentsFromSessions } from "./lib/liveAgents";
 import { hiddenApprovalNotices } from "./lib/approvalToast";
@@ -672,6 +670,7 @@ export default function App({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [updateNotice, setUpdateNotice] = useState(installedUpdate);
   const [whatsNewVersion, setWhatsNewVersion] = useState<string | null>(null);
+  const [importDialogCwd, setImportDialogCwd] = useState<string | null>(null);
   const [settingsSection, setSettingsSection] =
     useState<SettingsSectionId>(loadSettingsSection);
   const [editorNavigation, setEditorNavigation] =
@@ -2949,30 +2948,14 @@ export default function App({
     [],
   );
 
-  const onImportSessionIntoProject = useCallback(
-    async (cwd: string) => {
-      let picked: Awaited<ReturnType<typeof pickSessionImportFile>>;
-      try {
-        picked = await pickSessionImportFile();
-      } catch (error) {
-        await message(error instanceof Error ? error.message : String(error), {
-          kind: "error",
-        });
-        return;
-      }
-      if (!picked) return;
-      const imported = parseImportedSession(picked.text);
+  const importSessionText = useCallback(
+    async (cwd: string, text: string) => {
+      const imported = parseImportedSession(text);
       if (!imported) {
-        await message("This file is not a MonoCode session export.", {
-          kind: "error",
-        });
-        return;
+        throw new Error("This file is not a MonoCode session export.");
       }
       if (!shouldPersistSession({ ...imported, cwd })) {
-        await message("This export has no messages to import.", {
-          kind: "warning",
-        });
-        return;
+        throw new Error("This export has no messages to import.");
       }
       imported.cwd = cwd;
       await upsertSession(imported);
@@ -2980,6 +2963,13 @@ export default function App({
       await onSelectHistorySession(imported.id);
     },
     [onSelectHistorySession, refreshHistory],
+  );
+
+  const onImportSessionIntoProject = useCallback(
+    (cwd: string) => {
+      setImportDialogCwd(cwd);
+    },
+    [],
   );
 
   const onPlaceSessionOnPane = useCallback(
@@ -6028,6 +6018,12 @@ export default function App({
         <WhatsNewDialog
           version={whatsNewVersion}
           onClose={() => setWhatsNewVersion(null)}
+        />
+      ) : null}
+      {importDialogCwd ? (
+        <ImportSessionDialog
+          onClose={() => setImportDialogCwd(null)}
+          onImport={(text) => importSessionText(importDialogCwd, text)}
         />
       ) : null}
       </div>

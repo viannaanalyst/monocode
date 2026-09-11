@@ -2,11 +2,66 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import { readTextFile, writeTextFile } from "./fs";
 import type { SessionExportFormat } from "./sessionExport";
 
+const RECENT_KEY = "monocode.sessionExports";
+const RECENT_MAX = 20;
+
+export type RecentSessionExport = {
+  path: string;
+  name: string;
+  format: SessionExportFormat;
+  at: number;
+};
+
+export function loadRecentSessionExports(): RecentSessionExport[] {
+  try {
+    const raw = localStorage.getItem(RECENT_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.flatMap((entry) => {
+      if (!entry || typeof entry !== "object") return [];
+      const row = entry as Partial<RecentSessionExport>;
+      if (
+        typeof row.path !== "string" ||
+        typeof row.name !== "string" ||
+        typeof row.at !== "number" ||
+        (row.format !== "json" && row.format !== "markdown")
+      ) {
+        return [];
+      }
+      return [{ path: row.path, name: row.name, format: row.format, at: row.at }];
+    });
+  } catch {
+    return [];
+  }
+}
+
+function writeRecentSessionExports(entries: RecentSessionExport[]): void {
+  try {
+    localStorage.setItem(RECENT_KEY, JSON.stringify(entries));
+  } catch {
+    // private mode / quota
+  }
+}
+
+function rememberSessionExport(entry: RecentSessionExport): void {
+  const others = loadRecentSessionExports().filter(
+    (existing) => existing.path !== entry.path,
+  );
+  writeRecentSessionExports([entry, ...others].slice(0, RECENT_MAX));
+}
+
+export function forgetSessionExport(path: string): void {
+  writeRecentSessionExports(
+    loadRecentSessionExports().filter((entry) => entry.path !== path),
+  );
+}
+
 export async function saveSessionExport(
   defaultName: string,
   content: string,
   format: SessionExportFormat,
-): Promise<boolean> {
+): Promise<string | null> {
   const extension = format === "json" ? "json" : "md";
   const path = await save({
     title: "Export session",
@@ -18,9 +73,13 @@ export async function saveSessionExport(
       },
     ],
   });
-  if (!path) return false;
+  if (!path) return null;
   await writeTextFile(path, content);
-  return true;
+  // Only JSON re-imports, so only those are worth offering back in the dialog.
+  if (format === "json") {
+    rememberSessionExport({ path, name: defaultName, format, at: Date.now() });
+  }
+  return path;
 }
 
 export async function pickSessionImportFile(): Promise<{
