@@ -378,6 +378,8 @@ export const PT_BR: Record<string, string> = {
   "Review only": "Somente revisão",
   "Read, search, and analyze. The agent cannot change files.":
     "Pode ler, pesquisar e analisar. O agente não consegue alterar arquivos.",
+  "An AI reviewer can approve or deny actions.":
+    "Um revisor de IA pode aprovar ou negar ações.",
   "Due reminders": "Lembretes vencidos",
   Snooze: "Adiar",
   Dismiss: "Dispensar",
