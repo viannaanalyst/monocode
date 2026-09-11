@@ -12,6 +12,7 @@ import {
 import { Composer } from "../chrome/Composer";
 import { DiscussionEmpty } from "../chrome/DiscussionEmpty";
 import { SessionReview } from "../chrome/SessionReview";
+import { SessionActivity } from "../chrome/SessionActivity";
 import { PromptOutline } from "../chrome/PromptOutline";
 import {
   canCompactHarnessContext,
@@ -475,14 +476,17 @@ export const SessionPane = memo(function SessionPane({
               onRevealReady={onRevealReady}
               latestTurnAccessory={
                 session.inboxAsk ? undefined : (
-                  <SessionReview
-                    sessionId={session.id}
-                    cwd={workCwd}
-                    enabled={visible}
-                    busy={!!session.busy}
-                    undoLocked={reviewUndoLocked}
-                    onOpenDiff={onOpenDiff}
-                  />
+                  <>
+                    <SessionReview
+                      sessionId={session.id}
+                      cwd={workCwd}
+                      enabled={visible}
+                      busy={!!session.busy}
+                      undoLocked={reviewUndoLocked}
+                      onOpenDiff={onOpenDiff}
+                    />
+                    <SessionActivity session={session} />
+                  </>
                 )
               }
             />
