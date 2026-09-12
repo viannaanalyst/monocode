@@ -25,6 +25,7 @@ import {
   type AgentModel,
   type ModelPickerTab,
   type ModelSetting,
+  type ModelSettingChoice,
 } from "../lib/models";
 import {
   harnessUnavailableHint,
@@ -95,6 +96,22 @@ function pickerSettings(model: AgentModel): ModelSetting[] {
       const bi = SETTING_ORDER.indexOf(b.id);
       return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
     });
+}
+
+const EFFORT_RANK: Record<string, number> = {
+  minimal: 0,
+  low: 1,
+  medium: 2,
+  high: 3,
+  xhigh: 4,
+  max: 5,
+};
+
+/** Effort options ordered low → high for the inline slider. */
+function orderedSettingOptions(setting: ModelSetting): ModelSettingChoice[] {
+  return [...setting.options].sort(
+    (a, b) => (EFFORT_RANK[a.value] ?? 99) - (EFFORT_RANK[b.value] ?? 99),
+  );
 }
 
 function settingLabel(setting: ModelSetting): string {
@@ -194,6 +211,12 @@ export function ModelPicker({
   );
 
   const triggerLabel = current.name;
+  const effortSetting = settings.find(
+    (setting) => setting.id === "effort" || setting.id === "reasoning",
+  );
+  const triggerEffort = effortSetting
+    ? settingValueLabel(effortSetting, values)
+    : undefined;
 
   const pickerHarnesses = useMemo(() => {
     void availabilityVersion;
@@ -533,6 +556,11 @@ export function ModelPicker({
       >
         <ModelBrandIcon model={current} className="size-4 shrink-0" />
         <span className="min-w-0 truncate text-[11px]">{triggerLabel}</span>
+        {triggerEffort ? (
+          <span className="shrink-0 text-[11px] text-content/45">
+            {triggerEffort}
+          </span>
+        ) : null}
         <ChevronDown
           className={`size-3 shrink-0 text-content/50 ${open ? "rotate-180" : ""}`}
           strokeWidth={1.75}
@@ -599,6 +627,50 @@ export function ModelPicker({
               const setting = entry.setting;
               const value = settingValue(setting, values);
               const isToggle = setting.kind === "toggle";
+              // Effort is the reasoning dial, so it reads as a slider the way
+              // Codex presents it rather than another submenu.
+              if (!isToggle && (setting.id === "effort" || setting.id === "reasoning")) {
+                const options = orderedSettingOptions(setting);
+                const selected = Math.max(
+                  0,
+                  options.findIndex((option) => option.value === value),
+                );
+                return (
+                  <div
+                    key={setting.id}
+                    onMouseEnter={() => {
+                      setActive(index);
+                      setSubmenu(null);
+                    }}
+                    className="px-2 pb-2 pt-2"
+                  >
+                    <div className="flex items-center justify-between text-[12px]">
+                      <span className="text-content">
+                        {settingLabel(setting)}
+                      </span>
+                      <span className="text-content/55">
+                        {settingValueLabel(setting, values)}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={options.length - 1}
+                      step={1}
+                      value={selected}
+                      aria-label={settingLabel(setting)}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onChange={(event) =>
+                        pickSetting(
+                          setting,
+                          options[Number(event.target.value)].value,
+                        )
+                      }
+                      className="sidebar-opacity-slider mt-2.5 w-full"
+                    />
+                  </div>
+                );
+              }
               return (
                 <button
                   key={setting.id}

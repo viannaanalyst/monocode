@@ -191,14 +191,19 @@ describe("model picker", () => {
       container.querySelector('input[aria-label="Search models"]'),
     ).not.toBeNull();
 
-    const effortRow = [
-      ...container.querySelectorAll<HTMLButtonElement>("button"),
-    ].find((button) => button.textContent?.startsWith("Effort"))!;
-    hover(effortRow);
-    const extraHigh = [
-      ...container.querySelectorAll<HTMLButtonElement>("button"),
-    ].find((button) => button.textContent === "Extra High")!;
-    act(() => extraHigh.click());
+    const effortSlider = container.querySelector<HTMLInputElement>(
+      'input[aria-label="Effort"]',
+    )!;
+    expect(effortSlider).not.toBeNull();
+    act(() => {
+      const setValue = Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value",
+      )!.set!;
+      setValue.call(effortSlider, "3");
+      effortSlider.dispatchEvent(new Event("input", { bubbles: true }));
+      effortSlider.dispatchEvent(new Event("change", { bubbles: true }));
+    });
 
     expect(onSettingsChange).toHaveBeenCalledWith({ effort: "xhigh" });
     expect(onChange).not.toHaveBeenCalled();
