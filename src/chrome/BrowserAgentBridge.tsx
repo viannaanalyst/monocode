@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { readTextFile, writeTextFile } from "../lib/fs";
+import { deletePath, readTextFile, writeTextFile } from "../lib/fs";
 import { joinPath } from "../lib/paths";
 import {
   BROWSER_REQUEST_FILE,
@@ -62,6 +62,7 @@ export function BrowserAgentBridge({ cwd, onEnsurePane, onTool }: Props) {
       const request = parseBrowserAgentRequest(raw);
       if (!request || seen.current.has(request.id)) return;
       seen.current.add(request.id);
+      await deletePath(requestPath).catch(() => undefined);
       if (request.op === "navigate" && !hasBrowserPane()) {
         onEnsurePane(request.url);
         for (let i = 0; i < 8 && !hasBrowserPane(); i += 1) {

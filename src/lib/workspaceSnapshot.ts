@@ -512,12 +512,6 @@ function sanitizeFile(raw: unknown): FilePaneTab | null {
       ? { changeKind: value.changeKind }
       : {}),
     ...(value.terminal === true ? { terminal: true } : {}),
-    ...(value.browser === true ? { browser: true } : {}),
-    ...(value.browser === true &&
-    typeof value.browserTitle === "string" &&
-    value.browserTitle.trim()
-      ? { browserTitle: value.browserTitle.trim() }
-      : {}),
   };
 }
 
