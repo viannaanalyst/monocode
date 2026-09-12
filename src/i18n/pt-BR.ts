@@ -1191,4 +1191,6 @@ export const PT_BR: Record<string, string> = {
   "Cache {percent}": "Cache {percent}",
   "Choose which models appear": "Escolher quais modelos aparecem",
   "{shown} of {total}": "{shown} de {total}",
+  "Select model": "Selecionar modelo",
+  "No models found": "Nenhum modelo encontrado",
 };
