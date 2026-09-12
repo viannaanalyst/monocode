@@ -200,6 +200,22 @@ describe("collectInboxResults", () => {
       ]),
     ).toEqual({ items: [], error: "not a github repo" });
   });
+
+  it("maps GraphQL rate limits to a short refresh hint", () => {
+    expect(
+      collectInboxResults([
+        {
+          status: "rejected",
+          reason: new Error(
+            "GraphQL: API rate limit already exceeded for user ID 171621952.",
+          ),
+        },
+      ]),
+    ).toEqual({
+      items: [],
+      error: "This service hit its API limit. Wait a few minutes and refresh.",
+    });
+  });
 });
 
 describe("dedupeInboxItems", () => {

@@ -19,7 +19,7 @@
     "setup:linux:deb": "bash scripts/install-linux-deps-debian.sh",
     "build:linux": "tauri build --bundles deb,appimage",
     "build:windows": "set \"RUSTUP_TOOLCHAIN=stable-x86_64-pc-windows-msvc\" && tauri build --bundles nsis",
-    "app:mac": "tauri build --bundles app; test -d target/release/bundle/macos/MonoCode.app && rm -rf /Applications/MonoCode.app && cp -R target/release/bundle/macos/MonoCode.app /Applications/ && rm -rf target/release/bundle/macos/MonoCode.app && echo 'MonoCode instalado em /Applications'"
+    "app:mac": "tauri build --bundles app; test -d target/release/bundle/macos/MonoCode.app && rm -rf /Applications/MonoCode.app target/debug/MonoCode.app && cp -R target/release/bundle/macos/MonoCode.app /Applications/ && rm -rf target/release/bundle/macos/MonoCode.app && echo 'MonoCode instalado em /Applications'"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.3",

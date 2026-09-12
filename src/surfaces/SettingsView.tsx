@@ -160,7 +160,6 @@ import {
 } from "../lib/modelVisibility";
 import { supportsCustomModels } from "../lib/customModels";
 import {
-  AGENTS_FILENAME,
   loadProjectInstructions,
   saveProjectInstructions,
   type ProjectInstructions,
@@ -188,6 +187,7 @@ import {
   clearInboxCache,
   githubStatus,
   type GithubStatus,
+  type InboxProvider,
 } from "../lib/githubTasks";
 import {
   disconnectGitlab,
@@ -843,25 +843,100 @@ function GeneralPage({
 
 function InboxPage() {
   return (
-    <>
-      <Heading title="GitHub" id={ANCHOR_IDS.github} first />
+    <div className="flex flex-col gap-4">
       <GithubSettings />
-
-      <Heading title="GitLab" id={ANCHOR_IDS.gitlab} />
       <GitlabSettings />
-
-      <Heading title="Linear" id={ANCHOR_IDS.linear} />
       <LinearSettings />
-
-      <Heading title={t("Jira")} id={ANCHOR_IDS.jira} />
       <JiraSettings />
-
-      <Heading title={t("ClickUp")} id={ANCHOR_IDS.clickup} />
       <ClickUpSettings />
-
-      <Heading title={t("Notion")} id={ANCHOR_IDS.notion} />
       <NotionSettings />
-    </>
+    </div>
+  );
+}
+
+function InboxCard({
+  provider,
+  title,
+  description,
+  status,
+  anchor,
+  children,
+}: {
+  provider: InboxProvider;
+  title: string;
+  description: string;
+  status?: string;
+  anchor?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <section
+      id={anchor}
+      className="scroll-mt-8 rounded-xl border border-content/10 px-4 py-4"
+    >
+      <div className="flex items-start gap-3">
+        <InboxProviderMark
+          provider={provider}
+          className="mt-0.5 size-4 shrink-0"
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-baseline justify-between gap-3">
+            <h2 className="text-[13px] font-medium text-content">{title}</h2>
+            {status ? (
+              <span className="shrink-0 text-[12px] text-content/50">
+                {status}
+              </span>
+            ) : null}
+          </div>
+          <p className="mt-1 text-pretty text-[12px] leading-relaxed text-content/45">
+            {description}
+          </p>
+        </div>
+      </div>
+      {children ? (
+        <div className="mt-3 flex min-w-0 flex-col gap-2">{children}</div>
+      ) : null}
+    </section>
+  );
+}
+
+function InboxTextField({
+  value,
+  onChange,
+  onSubmit,
+  type = "text",
+  placeholder,
+  label,
+  autoComplete = "off",
+  mono = false,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  onSubmit?: () => void;
+  type?: "text" | "password" | "email" | "url";
+  placeholder?: string;
+  label: string;
+  autoComplete?: string;
+  mono?: boolean;
+}) {
+  return (
+    <label className="flex h-8 min-w-0 w-full items-center rounded-md border border-content/10 px-2.5 focus-within:border-content/20">
+      <input
+        type={type}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") onSubmit?.();
+        }}
+        placeholder={placeholder}
+        aria-label={label}
+        autoComplete={autoComplete}
+        spellCheck={false}
+        className={`min-w-0 w-full bg-transparent text-[12px] text-content outline-none placeholder:text-content/35 ${
+          mono ? "font-mono" : ""
+        }`}
+      />
+    </label>
   );
 }
 
@@ -914,17 +989,14 @@ function GithubSettings() {
         : t("Not installed");
 
   return (
-    <>
-      <Row
-        label={
-          <span className="flex items-center gap-2">
-            <InboxProviderMark provider="github" className="size-4 shrink-0" />
-            {t("Connection")}
-          </span>
-        }
-        description={description}
-      >
-        <span className="text-[12px] text-content/50">{label}</span>
+    <InboxCard
+      provider="github"
+      title="GitHub"
+      description={description}
+      status={label}
+      anchor={ANCHOR_IDS.github}
+    >
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
         {!checking && !status?.installed ? (
           <SecondaryButton
             onClick={() => {
@@ -937,11 +1009,11 @@ function GithubSettings() {
         <SecondaryButton onClick={() => void checkStatus()} disabled={checking}>
           {checking ? t("Checking") : t("Check again")}
         </SecondaryButton>
-      </Row>
+      </div>
       {error ? (
-        <p className="pb-2 text-[12px] text-red-400/90">{error}</p>
+        <p className="text-[12px] text-red-400/90">{error}</p>
       ) : null}
-    </>
+    </InboxCard>
   );
 }
 
@@ -1004,57 +1076,46 @@ function GitlabSettings() {
   };
 
   return (
-    <>
-      <Row
-        label={
-          <span className="flex items-center gap-2">
-            <InboxProviderMark provider="gitlab" className="size-4 shrink-0" />
-            {t("Connection")}
+    <InboxCard
+      provider="gitlab"
+      title="GitLab"
+      description={t(
+        "Connect GitLab.com or a self-managed GitLab instance. Use a personal access token with API access; the token is stored locally and Disconnect deletes it.",
+      )}
+      status={connected ? t("Connected") : t("Not connected")}
+      anchor={ANCHOR_IDS.gitlab}
+    >
+      {connected ? (
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <span className="min-w-0 flex-1 truncate text-[12px] text-content/50">
+            {url}
           </span>
-        }
-        description={t("Connect GitLab.com or a self-managed GitLab instance. Use a personal access token with API access; the token is stored locally and Disconnect deletes it.")}
-      >
-        {connected ? (
-          <div className="flex min-w-0 items-center gap-2">
-            <span className="max-w-56 truncate text-[12px] text-content/50">
-              {url}
-            </span>
-            <SecondaryButton
-              onClick={() => void onDisconnect()}
-              disabled={busy}
-            >
-              {t("Disconnect")}
-            </SecondaryButton>
-          </div>
-        ) : (
-          <div className="flex min-w-0 items-center gap-2">
-            <label className="flex h-7 w-52 shrink-0 items-center rounded-md border border-content/10 px-2 focus-within:border-content/20">
-              <input
-                type="url"
-                value={url}
-                onChange={(event) => setUrl(event.target.value)}
-                placeholder="https://gitlab.com"
-                aria-label={t("GitLab URL")}
-                autoComplete="url"
-                spellCheck={false}
-                className="min-w-0 flex-1 bg-transparent text-[12px] text-content outline-none placeholder:text-content/35"
-              />
-            </label>
-            <label className="flex h-7 w-52 shrink-0 items-center rounded-md border border-content/10 px-2 focus-within:border-content/20">
-              <input
-                type="password"
-                value={token}
-                onChange={(event) => setToken(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") void onSave();
-                }}
-                placeholder="glpat-…"
-                aria-label={t("GitLab access token")}
-                autoComplete="off"
-                spellCheck={false}
-                className="min-w-0 flex-1 bg-transparent text-[12px] text-content outline-none placeholder:text-content/35"
-              />
-            </label>
+          <SecondaryButton
+            onClick={() => void onDisconnect()}
+            disabled={busy}
+          >
+            {t("Disconnect")}
+          </SecondaryButton>
+        </div>
+      ) : (
+        <div className="flex min-w-0 flex-col gap-2">
+          <InboxTextField
+            type="url"
+            value={url}
+            onChange={setUrl}
+            placeholder="https://gitlab.com"
+            label={t("GitLab URL")}
+            autoComplete="url"
+          />
+          <InboxTextField
+            type="password"
+            value={token}
+            onChange={setToken}
+            onSubmit={() => void onSave()}
+            placeholder="glpat-…"
+            label={t("GitLab access token")}
+          />
+          <div className="flex flex-wrap items-center gap-2">
             <SecondaryButton
               onClick={() => void onSave()}
               disabled={busy || !token.trim()}
@@ -1062,12 +1123,12 @@ function GitlabSettings() {
               {busy ? t("Saving") : t("Connect")}
             </SecondaryButton>
           </div>
-        )}
-      </Row>
+        </div>
+      )}
       {error ? (
-        <p className="pb-2 text-[12px] text-red-400/90">{error}</p>
+        <p className="text-[12px] text-red-400/90">{error}</p>
       ) : null}
-    </>
+    </InboxCard>
   );
 }
 
@@ -1127,39 +1188,32 @@ function ClickUpSettings() {
   };
 
   return (
-    <>
-      <Row
-        label={
-          <span className="flex items-center gap-2">
-            <InboxProviderMark provider="clickup" className="size-4 shrink-0" />
-            {t("Connection")}
-          </span>
-        }
-        description={t(
-          "Connect ClickUp with a personal API token from Settings → Apps. Assigned tasks appear in the Inbox; Disconnect deletes the token.",
-        )}
-      >
-        {connected ? (
+    <InboxCard
+      provider="clickup"
+      title="ClickUp"
+      description={t(
+        "Connect ClickUp with a personal API token from Settings → Apps. Assigned tasks appear in the Inbox; Disconnect deletes the token.",
+      )}
+      status={connected ? t("Connected") : t("Not connected")}
+      anchor={ANCHOR_IDS.clickup}
+    >
+      {connected ? (
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <SecondaryButton onClick={() => void onDisconnect()} disabled={busy}>
             {t("Disconnect")}
           </SecondaryButton>
-        ) : (
-          <div className="flex min-w-0 items-center gap-2">
-            <label className="flex h-7 w-64 shrink-0 items-center rounded-md border border-content/10 px-2 focus-within:border-content/20">
-              <input
-                type="password"
-                value={token}
-                onChange={(event) => setToken(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") void onSave();
-                }}
-                placeholder="pk_…"
-                aria-label={t("ClickUp API token")}
-                autoComplete="off"
-                spellCheck={false}
-                className="min-w-0 flex-1 bg-transparent text-[12px] text-content outline-none placeholder:text-content/35"
-              />
-            </label>
+        </div>
+      ) : (
+        <div className="flex min-w-0 flex-col gap-2">
+          <InboxTextField
+            type="password"
+            value={token}
+            onChange={setToken}
+            onSubmit={() => void onSave()}
+            placeholder="pk_…"
+            label={t("ClickUp API token")}
+          />
+          <div className="flex flex-wrap items-center gap-2">
             <SecondaryButton
               onClick={() => void onSave()}
               disabled={busy || !token.trim()}
@@ -1167,12 +1221,12 @@ function ClickUpSettings() {
               {busy ? t("Saving") : t("Connect")}
             </SecondaryButton>
           </div>
-        )}
-      </Row>
+        </div>
+      )}
       {error ? (
-        <p className="pb-2 text-[12px] text-red-400/90">{error}</p>
+        <p className="text-[12px] text-red-400/90">{error}</p>
       ) : null}
-    </>
+    </InboxCard>
   );
 }
 
@@ -1236,59 +1290,45 @@ function NotionSettings() {
   };
 
   return (
-    <>
-      <Row
-        label={
-          <span className="flex items-center gap-2">
-            <InboxProviderMark provider="notion" className="size-4 shrink-0" />
-            {t("Connection")}
+    <InboxCard
+      provider="notion"
+      title="Notion"
+      description={t(
+        "Create a Notion integration, share a Tasks database with it, and paste the integration token + database id. Each row becomes an Inbox item.",
+      )}
+      status={connected ? t("Connected") : t("Not connected")}
+      anchor={ANCHOR_IDS.notion}
+    >
+      {connected ? (
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-content/50">
+            {databaseId}
           </span>
-        }
-        description={t(
-          "Create a Notion integration, share a Tasks database with it, and paste the integration token + database id. Each row becomes an Inbox item.",
-        )}
-      >
-        {connected ? (
-          <div className="flex min-w-0 items-center gap-2">
-            <span className="max-w-56 truncate font-mono text-[12px] text-content/50">
-              {databaseId}
-            </span>
-            <SecondaryButton
-              onClick={() => void onDisconnect()}
-              disabled={busy}
-            >
-              {t("Disconnect")}
-            </SecondaryButton>
-          </div>
-        ) : (
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <label className="flex h-7 w-52 shrink-0 items-center rounded-md border border-content/10 px-2 focus-within:border-content/20">
-              <input
-                type="password"
-                value={token}
-                onChange={(event) => setToken(event.target.value)}
-                placeholder="secret_…"
-                aria-label={t("Notion integration token")}
-                autoComplete="off"
-                spellCheck={false}
-                className="min-w-0 flex-1 bg-transparent text-[12px] text-content outline-none placeholder:text-content/35"
-              />
-            </label>
-            <label className="flex h-7 w-64 shrink-0 items-center rounded-md border border-content/10 px-2 focus-within:border-content/20">
-              <input
-                type="text"
-                value={databaseId}
-                onChange={(event) => setDatabaseId(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") void onSave();
-                }}
-                placeholder={t("Database id or URL")}
-                aria-label={t("Notion database")}
-                autoComplete="off"
-                spellCheck={false}
-                className="min-w-0 flex-1 bg-transparent font-mono text-[12px] text-content outline-none placeholder:text-content/35"
-              />
-            </label>
+          <SecondaryButton
+            onClick={() => void onDisconnect()}
+            disabled={busy}
+          >
+            {t("Disconnect")}
+          </SecondaryButton>
+        </div>
+      ) : (
+        <div className="flex min-w-0 flex-col gap-2">
+          <InboxTextField
+            type="password"
+            value={token}
+            onChange={setToken}
+            placeholder="secret_…"
+            label={t("Notion integration token")}
+          />
+          <InboxTextField
+            value={databaseId}
+            onChange={setDatabaseId}
+            onSubmit={() => void onSave()}
+            placeholder={t("Database id or URL")}
+            label={t("Notion database")}
+            mono
+          />
+          <div className="flex flex-wrap items-center gap-2">
             <SecondaryButton
               onClick={() => void onSave()}
               disabled={busy || !token.trim() || !databaseId.trim()}
@@ -1296,12 +1336,12 @@ function NotionSettings() {
               {busy ? t("Saving") : t("Connect")}
             </SecondaryButton>
           </div>
-        )}
-      </Row>
+        </div>
+      )}
       {error ? (
-        <p className="pb-2 text-[12px] text-red-400/90">{error}</p>
+        <p className="text-[12px] text-red-400/90">{error}</p>
       ) : null}
-    </>
+    </InboxCard>
   );
 }
 
@@ -1366,71 +1406,52 @@ function JiraSettings() {
   };
 
   return (
-    <>
-      <Row
-        label={
-          <span className="flex items-center gap-2">
-            <InboxProviderMark provider="jira" className="size-4 shrink-0" />
-            {t("Connection")}
+    <InboxCard
+      provider="jira"
+      title="Jira"
+      description={t(
+        "Connect Jira Cloud with your site, e-mail, and an API token from id.atlassian.com. The token is stored locally and Disconnect deletes it.",
+      )}
+      status={connected ? t("Connected") : t("Not connected")}
+      anchor={ANCHOR_IDS.jira}
+    >
+      {connected ? (
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <span className="min-w-0 flex-1 truncate text-[12px] text-content/50">
+            {site}
           </span>
-        }
-        description={t(
-          "Connect Jira Cloud with your site, e-mail, and an API token from id.atlassian.com. The token is stored locally and Disconnect deletes it.",
-        )}
-      >
-        {connected ? (
-          <div className="flex min-w-0 items-center gap-2">
-            <span className="max-w-56 truncate text-[12px] text-content/50">
-              {site}
-            </span>
-            <SecondaryButton
-              onClick={() => void onDisconnect()}
-              disabled={busy}
-            >
-              {t("Disconnect")}
-            </SecondaryButton>
-          </div>
-        ) : (
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <label className="flex h-7 w-44 shrink-0 items-center rounded-md border border-content/10 px-2 focus-within:border-content/20">
-              <input
-                type="text"
-                value={site}
-                onChange={(event) => setSite(event.target.value)}
-                placeholder="team.atlassian.net"
-                aria-label={t("Jira site")}
-                autoComplete="off"
-                spellCheck={false}
-                className="min-w-0 flex-1 bg-transparent text-[12px] text-content outline-none placeholder:text-content/35"
-              />
-            </label>
-            <label className="flex h-7 w-44 shrink-0 items-center rounded-md border border-content/10 px-2 focus-within:border-content/20">
-              <input
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="you@company.com"
-                aria-label={t("Jira e-mail")}
-                autoComplete="email"
-                spellCheck={false}
-                className="min-w-0 flex-1 bg-transparent text-[12px] text-content outline-none placeholder:text-content/35"
-              />
-            </label>
-            <label className="flex h-7 w-44 shrink-0 items-center rounded-md border border-content/10 px-2 focus-within:border-content/20">
-              <input
-                type="password"
-                value={token}
-                onChange={(event) => setToken(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") void onSave();
-                }}
-                placeholder={t("API token")}
-                aria-label={t("Jira API token")}
-                autoComplete="off"
-                spellCheck={false}
-                className="min-w-0 flex-1 bg-transparent text-[12px] text-content outline-none placeholder:text-content/35"
-              />
-            </label>
+          <SecondaryButton
+            onClick={() => void onDisconnect()}
+            disabled={busy}
+          >
+            {t("Disconnect")}
+          </SecondaryButton>
+        </div>
+      ) : (
+        <div className="flex min-w-0 flex-col gap-2">
+          <InboxTextField
+            value={site}
+            onChange={setSite}
+            placeholder="team.atlassian.net"
+            label={t("Jira site")}
+          />
+          <InboxTextField
+            type="email"
+            value={email}
+            onChange={setEmail}
+            placeholder="you@company.com"
+            label={t("Jira e-mail")}
+            autoComplete="email"
+          />
+          <InboxTextField
+            type="password"
+            value={token}
+            onChange={setToken}
+            onSubmit={() => void onSave()}
+            placeholder={t("API token")}
+            label={t("Jira API token")}
+          />
+          <div className="flex flex-wrap items-center gap-2">
             <SecondaryButton
               onClick={() => void onSave()}
               disabled={
@@ -1440,12 +1461,12 @@ function JiraSettings() {
               {busy ? t("Saving") : t("Connect")}
             </SecondaryButton>
           </div>
-        )}
-      </Row>
+        </div>
+      )}
       {error ? (
-        <p className="pb-2 text-[12px] text-red-400/90">{error}</p>
+        <p className="text-[12px] text-red-400/90">{error}</p>
       ) : null}
-    </>
+    </InboxCard>
   );
 }
 
@@ -1532,35 +1553,32 @@ function LinearSettings() {
   };
 
   return (
-    <>
-      <Row
-        label={
-          <span className="flex items-center gap-2">
-            <InboxProviderMark provider="linear" className="size-4 shrink-0" />{t("API key")}</span>
-        }
-        description={t("Create a personal API key in Linear → Settings → Security & Access. Disconnect deletes it.")}
-      >
-        {connected ? (
+    <InboxCard
+      provider="linear"
+      title="Linear"
+      description={t(
+        "Create a personal API key in Linear → Settings → Security & Access. Disconnect deletes it.",
+      )}
+      status={connected ? t("Connected") : t("Not connected")}
+      anchor={ANCHOR_IDS.linear}
+    >
+      {connected ? (
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <SecondaryButton onClick={() => void onDisconnect()} disabled={busy}>
             {t("Disconnect")}
           </SecondaryButton>
-        ) : (
-          <div className="flex items-center gap-2">
-            <label className="flex h-7 w-52 shrink-0 items-center rounded-md border border-content/10 px-2 focus-within:border-content/20">
-              <input
-                type="password"
-                value={token}
-                onChange={(event) => setToken(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") void onSave();
-                }}
-                placeholder="lin_api_…"
-                aria-label={t("Linear API key")}
-                autoComplete="off"
-                spellCheck={false}
-                className="min-w-0 flex-1 bg-transparent text-[12px] text-content outline-none placeholder:text-content/35"
-              />
-            </label>
+        </div>
+      ) : (
+        <div className="flex min-w-0 flex-col gap-2">
+          <InboxTextField
+            type="password"
+            value={token}
+            onChange={setToken}
+            onSubmit={() => void onSave()}
+            placeholder="lin_api_…"
+            label={t("Linear API key")}
+          />
+          <div className="flex flex-wrap items-center gap-2">
             <SecondaryButton
               onClick={() => void onSave()}
               disabled={busy || !token.trim()}
@@ -1568,16 +1586,20 @@ function LinearSettings() {
               {busy ? t("Saving") : t("Connect")}
             </SecondaryButton>
           </div>
-        )}
-      </Row>
+        </div>
+      )}
       {error ? (
-        <p className="pb-2 text-[12px] text-red-400/90">{error}</p>
+        <p className="text-[12px] text-red-400/90">{error}</p>
       ) : null}
       {connected && teams.length > 0 ? (
-        <div className="border-b border-content/5 py-4">
-          <div className="text-[13px] font-medium text-content">{t("Linear Teams")}</div>
-          <p className="mt-1 text-[12px] leading-relaxed text-content/45">{t("Unchecked teams stay out of the inbox.")}</p>
-          <div className="mt-3 flex flex-col gap-0.5 -mx-2">
+        <div className="border-t border-content/10 pt-3">
+          <div className="text-[13px] font-medium text-content">
+            {t("Linear Teams")}
+          </div>
+          <p className="mt-1 text-pretty text-[12px] leading-relaxed text-content/45">
+            {t("Unchecked teams stay out of the inbox.")}
+          </p>
+          <div className="mt-2 flex flex-col gap-0.5">
             {teams.map((team) => {
               const checked = !hiddenTeamIds.includes(team.id);
               return (
@@ -1602,7 +1624,7 @@ function LinearSettings() {
           </div>
         </div>
       ) : null}
-    </>
+    </InboxCard>
   );
 }
 
@@ -3182,46 +3204,60 @@ function ArchivePage({
   };
 
   return (
-    <>
-      <Heading title={t("Archived projects")} first />
-      {archivedProjects.length === 0 ? (
-        <p className="py-3 text-[12px] text-content/45">
-          Archive a project from the rail to keep its chats without listing it
-          in the sidebar.
-        </p>
-      ) : (
-        <div className="overflow-hidden rounded-lg border border-content/10">
-          {archivedProjects.map((project) => (
-            <div
-              key={project.path}
-              className="flex items-center gap-3 border-b border-content/5 px-3 py-2 last:border-b-0"
-            >
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-[13px]">
-                  {archivedProjectLabel(project.path)}
+    <div className="flex flex-col gap-4">
+      <section className="rounded-xl border border-content/10 px-4 py-4">
+        <h2 className="text-[13px] font-medium text-content">
+          {t("Archived projects")}
+        </h2>
+        {archivedProjects.length === 0 ? (
+          <p className="mt-1 text-pretty text-[12px] leading-relaxed text-content/45">
+            {t(
+              "Archive a project from the rail to keep its chats without listing it in the sidebar.",
+            )}
+          </p>
+        ) : (
+          <div className="mt-3 flex flex-col gap-1">
+            {archivedProjects.map((project) => (
+              <div
+                key={project.path}
+                className="flex min-w-0 flex-wrap items-center gap-2 py-1.5"
+              >
+                <div className="min-w-0 flex-1 basis-48">
+                  <div className="truncate text-[13px]">
+                    {archivedProjectLabel(project.path)}
+                  </div>
+                  <div className="truncate text-[11px] text-content/40">
+                    {prettyCwd(project.path)}
+                  </div>
                 </div>
-                <div className="truncate text-[11px] text-content/40">
-                  {prettyCwd(project.path)}
+                <div className="flex shrink-0 flex-wrap items-center gap-2">
+                  {onRestoreProject ? (
+                    <SecondaryButton
+                      onClick={() => onRestoreProject(project.path)}
+                    >
+                      {t("Restore")}
+                    </SecondaryButton>
+                  ) : null}
+                  {onDeleteProject ? (
+                    <SecondaryButton
+                      danger
+                      onClick={() => setDeleting(project)}
+                    >
+                      {t("Delete")}
+                    </SecondaryButton>
+                  ) : null}
                 </div>
               </div>
-              {onRestoreProject ? (
-                <SecondaryButton onClick={() => onRestoreProject(project.path)}>
-                  Restore
-                </SecondaryButton>
-              ) : null}
-              {onDeleteProject ? (
-                <SecondaryButton danger onClick={() => setDeleting(project)}>
-                  Delete
-                </SecondaryButton>
-              ) : null}
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </section>
 
       <Row
         label={t("Show archived in the sidebar")}
-        description={t("Keep archived conversations listed alongside the active ones.")}
+        description={t(
+          "Keep archived conversations listed alongside the active ones.",
+        )}
       >
         <Toggle
           label={t("Show archived in the sidebar")}
@@ -3230,58 +3266,59 @@ function ArchivePage({
         />
       </Row>
 
-      <Heading
-        title={
-          looksLikeProject(cwd)
+      <section className="rounded-xl border border-content/10 px-4 py-4">
+        <h2 className="text-[13px] font-medium text-content">
+          {looksLikeProject(cwd)
             ? t("Archived in {project}", { project: projectName(cwd) })
-            : t("Archived conversations")
-        }
-      />
-
-      {!looksLikeProject(cwd) ? (
-        <p className="py-3 text-[12px] text-content/45">
-          {t("Open a project to see its archived conversations.")}
-        </p>
-      ) : archived.length === 0 ? (
-        <p className="py-3 text-[12px] text-content/45">
-          {t("No archived conversations in this project.")}
-        </p>
-      ) : (
-        <div className="overflow-hidden rounded-lg border border-content/10">
-          {archived.map((session) => (
-            <div
-              key={session.id}
-              className="flex items-center gap-3 border-b border-content/5 px-3 py-2 last:border-b-0"
-            >
-              <HarnessIcon
-                harness={session.harness}
-                className="size-3.5 shrink-0"
-              />
-              <button
-                type="button"
-                onClick={() => onOpenSession(session.id)}
-                className="min-w-0 flex-1 truncate text-left text-[13px] hover:text-content"
+            : t("Archived conversations")}
+        </h2>
+        {!looksLikeProject(cwd) ? (
+          <p className="mt-1 text-pretty text-[12px] leading-relaxed text-content/45">
+            {t("Open a project to see its archived conversations.")}
+          </p>
+        ) : archived.length === 0 ? (
+          <p className="mt-1 text-pretty text-[12px] leading-relaxed text-content/45">
+            {t("No archived conversations in this project.")}
+          </p>
+        ) : (
+          <div className="mt-3 flex flex-col gap-1">
+            {archived.map((session) => (
+              <div
+                key={session.id}
+                className="flex min-w-0 flex-wrap items-center gap-2 py-1.5"
               >
-                {sessionDisplayTitle(session.title, session.harness)}
-              </button>
-              <span className="shrink-0 text-[11px] text-content/35 tabular-nums">
-                {formatDate(session.updatedAt)}
-              </span>
-              <SecondaryButton
-                onClick={() => onArchiveSession(session.id, false)}
-              >
-                Unarchive
-              </SecondaryButton>
-              <SecondaryButton
-                danger
-                onClick={() => onDeleteSession(session.id)}
-              >
-                Delete
-              </SecondaryButton>
-            </div>
-          ))}
-        </div>
-      )}
+                <HarnessIcon
+                  harness={session.harness}
+                  className="size-3.5 shrink-0"
+                />
+                <button
+                  type="button"
+                  onClick={() => onOpenSession(session.id)}
+                  className="min-w-0 flex-1 basis-40 truncate text-left text-[13px] hover:text-content"
+                >
+                  {sessionDisplayTitle(session.title, session.harness)}
+                </button>
+                <span className="shrink-0 text-[11px] text-content/35 tabular-nums">
+                  {formatDate(session.updatedAt)}
+                </span>
+                <div className="flex shrink-0 flex-wrap items-center gap-2">
+                  <SecondaryButton
+                    onClick={() => onArchiveSession(session.id, false)}
+                  >
+                    {t("Unarchive")}
+                  </SecondaryButton>
+                  <SecondaryButton
+                    danger
+                    onClick={() => onDeleteSession(session.id)}
+                  >
+                    {t("Delete")}
+                  </SecondaryButton>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       {deleting ? (
         <RemoveProjectDialog
@@ -3294,7 +3331,7 @@ function ArchivePage({
           }}
         />
       ) : null}
-    </>
+    </div>
   );
 }
 
@@ -3364,13 +3401,7 @@ function ProjectPage({ cwd }: { cwd: string }) {
   };
 
   return (
-    <>
-      <Heading title={AGENTS_FILENAME} first />
-      <p className="max-w-2xl pb-3 text-[13px] leading-relaxed text-content/45">
-        {t(
-          "Written to the project root and read by Codex and opencode automatically. Claude Code reads CLAUDE.md, so the bridge below imports it there.",
-        )}
-      </p>
+    <div className="flex flex-col gap-4">
       {data == null ? (
         <p className="text-[13px] text-content/40">{t("Loading…")}</p>
       ) : (
@@ -3385,9 +3416,9 @@ function ProjectPage({ cwd }: { cwd: string }) {
             placeholder={t(
               "# Project instructions\n\nRules every agent should follow in this project.",
             )}
-            className="h-80 w-full resize-y rounded-lg border border-content/10 bg-content/5 px-3 py-2 font-mono text-[12px] leading-relaxed text-content outline-none focus:border-content/25"
+            className="h-80 w-full resize-y rounded-xl border border-content/10 bg-content/5 px-3 py-2.5 font-mono text-[12px] leading-relaxed text-content outline-none focus:border-content/25"
           />
-          <div className="flex flex-wrap items-center gap-3 pt-3">
+          <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
               onClick={() => void save()}
@@ -3403,26 +3434,24 @@ function ProjectPage({ cwd }: { cwd: string }) {
               <span className="text-[12px] text-red-400">{error}</span>
             ) : null}
           </div>
-          <div className="pt-6">
-            <Row label={t("Link from CLAUDE.md")}>
-              <Toggle
-                label={t("Add @AGENTS.md import")}
-                on={bridge}
-                onChange={setBridge}
-              />
-            </Row>
-            <p className="max-w-2xl pb-2 text-[12px] leading-relaxed text-content/40">
-              {t(
-                "Creates or appends an @AGENTS.md import to CLAUDE.md so Claude Code reads the same instructions. Existing content is kept.",
-              )}
-            </p>
-          </div>
-          <p className="pt-4 text-[12px] text-content/35">
+          <Row
+            label={t("Link from CLAUDE.md")}
+            description={t(
+              "Adds @AGENTS.md so Claude Code reads the same instructions.",
+            )}
+          >
+            <Toggle
+              label={t("Add @AGENTS.md import")}
+              on={bridge}
+              onChange={setBridge}
+            />
+          </Row>
+          <p className="text-[12px] text-content/35">
             {t("Project folder: {path}", { path: prettyCwd(cwd) })}
           </p>
         </>
       )}
-    </>
+    </div>
   );
 }
 
@@ -3439,7 +3468,7 @@ function PageHeader({
         {title}
       </h1>
       {description ? (
-        <p className="mt-1.5 max-w-lg text-[13px] leading-relaxed text-content/45">
+        <p className="mt-1.5 max-w-lg text-pretty text-[13px] leading-relaxed text-content/45">
           {description}
         </p>
       ) : null}
@@ -3478,8 +3507,8 @@ function Row({
   children?: ReactNode;
 }) {
   return (
-    <div className="flex items-start gap-6 border-b border-content/5 py-4 last:border-b-0">
-      <div className="min-w-0 flex-1">
+    <div className="flex flex-wrap items-start gap-x-6 gap-y-3 border-b border-content/5 py-4 last:border-b-0">
+      <div className="min-w-0 grow basis-72">
         <div className="text-[13px] font-medium text-content">{label}</div>
         {description ? (
           <p className="mt-1 text-[12px] leading-relaxed text-content/45">
@@ -3487,7 +3516,7 @@ function Row({
           </p>
         ) : null}
       </div>
-      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
         {children}
       </div>
     </div>

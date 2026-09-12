@@ -114,7 +114,9 @@ export function SkillsPage({
       .catch((err: unknown) => {
         if (!cancelled) {
           setPreviewError(
-            `Could not read SKILL.md. ${err instanceof Error ? err.message : String(err)}`,
+            t("Could not read SKILL.md. {error}", {
+              error: err instanceof Error ? err.message : String(err),
+            }),
           );
         }
       });
@@ -170,7 +172,7 @@ export function SkillsPage({
       saveDisabledSkillPaths(next);
       setActionError(null);
     } catch {
-      setActionError("Could not save the skill preference. Try again.");
+      setActionError(t("Could not save the skill preference. Try again."));
     }
   };
 
@@ -178,7 +180,9 @@ export function SkillsPage({
     setActionError(null);
     void revealItemInDir(path).catch((err: unknown) => {
       setActionError(
-        `Could not open the folder: ${err instanceof Error ? err.message : String(err)}`,
+        t("Could not open the folder: {error}", {
+          error: err instanceof Error ? err.message : String(err),
+        }),
       );
     });
   };
@@ -186,7 +190,7 @@ export function SkillsPage({
   const onCopyPath = (path: string): void => {
     setActionError(null);
     void copyText(path).catch(() => {
-      setActionError("Could not copy the path to the clipboard.");
+      setActionError(t("Could not copy the path to the clipboard."));
     });
   };
 
@@ -217,16 +221,9 @@ export function SkillsPage({
             className={`mx-auto w-full max-w-5xl py-8 ${previewOpen ? "px-4" : "px-8"}`}
           >
             {header}
-            <div className="flex flex-wrap items-center justify-between gap-3 pb-3">
-              <div className="flex min-w-0 flex-1 items-center gap-3">
-                <span className="shrink-0 text-[12px] text-content/40 tabular-nums">
-                  {skills == null
-                    ? "…"
-                    : filtered.length === 1
-                      ? t("{count} skill", { count: filtered.length })
-                      : t("{count} skills", { count: filtered.length })}
-                </span>
-                <label className="flex h-7 w-52 min-w-0 flex-1 items-center gap-2 rounded-md border border-content/10 px-2 text-content/45 focus-within:border-content/20">
+            <div className="flex flex-col gap-3 pb-4">
+              <div className="flex min-w-0 items-center gap-2">
+                <label className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md border border-content/10 px-2.5 text-content/45 focus-within:border-content/20">
                   <Search className="size-3.5 shrink-0" strokeWidth={1.75} />
                   <input
                     ref={filterInput}
@@ -249,18 +246,16 @@ export function SkillsPage({
                     window.dispatchEvent(new Event(SKILLS_CHANGE_EVENT));
                     setReload((value) => value + 1);
                   }}
-                  className="grid size-6 shrink-0 place-items-center rounded-md text-content/45 hover:bg-content/10 hover:text-content"
+                  className="grid size-8 shrink-0 place-items-center rounded-md text-content/45 hover:bg-content/10 hover:text-content"
                 >
                   <RefreshCw className="size-3.5" strokeWidth={1.75} />
                 </button>
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
                 <button
                   type="button"
                   aria-label={adding ? t("Close skill form") : t("Add skill")}
                   ref={addSkillButton}
                   disabled={busy}
-                  className="rounded-md border border-content/10 px-2.5 py-1 text-[12px] text-content/70 hover:bg-content/10 disabled:opacity-40"
+                  className="h-8 shrink-0 rounded-md border border-content/10 px-2.5 text-[12px] text-content/70 hover:bg-content/10 disabled:opacity-40"
                   onClick={() => {
                     setAdding((value) => !value);
                     setCreateError(null);
@@ -270,6 +265,13 @@ export function SkillsPage({
                   {adding ? t("Close") : t("Add skill")}
                 </button>
               </div>
+              <span className="text-[12px] text-content/40 tabular-nums">
+                {skills == null
+                  ? "…"
+                  : filtered.length === 1
+                    ? t("{count} skill", { count: filtered.length })
+                    : t("{count} skills", { count: filtered.length })}
+              </span>
             </div>
 
             {adding ? (
@@ -316,101 +318,116 @@ export function SkillsPage({
                 ) : (
                   filtered.map((skill) => {
                     const disabled = disabledPaths.includes(skill.path);
+                    const scopeLabel =
+                      skill.scope === "user"
+                        ? t("Personal")
+                        : skill.scope === "builtin"
+                          ? "MonoCode"
+                          : t("Project");
                     return (
                       <div
                         key={skill.path}
-                        className={`border-b border-content/5 px-3 py-2 last:border-b-0 ${previewSkill?.path === skill.path ? "bg-content/5" : ""} ${
+                        className={`border-b border-content/5 px-3 py-2.5 last:border-b-0 ${previewSkill?.path === skill.path ? "bg-content/5" : ""} ${
                           disabled ? "opacity-50" : ""
                         }`}
                       >
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            className="mr-auto min-w-0 truncate rounded text-left font-sans text-[12px] text-content hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                            title={t("Preview {name}", { name: skill.name })}
-                            ref={registerPreviewButton(`name:${skill.path}`)}
-                            aria-controls={previewOpen ? previewId : undefined}
-                            aria-expanded={previewSkill?.path === skill.path}
-                            onClick={() => onPreview(skill, "name")}
-                          >
-                            {skill.name}
-                          </button>
-                          <span className="shrink-0 rounded-full bg-content/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-content/60">
-                            {skill.scope === "user"
-                              ? t("Personal")
-                              : skill.scope === "builtin"
-                                ? "MonoCode"
-                                : t("Project")}
-                          </span>
-                          <span className="w-20 shrink-0 truncate text-right font-sans text-[11px] text-content/40">
-                            {skill.source}
-                          </span>
-                          <button
-                            type="button"
-                            role="switch"
-                            aria-label={t("Include {name} in MonoCode catalog", {
-                              name: skill.name,
-                            })}
-                            aria-checked={!disabled}
-                            onClick={() => onToggle(skill.path, disabled)}
-                            className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${disabled ? "bg-content/20" : "bg-accent"}`}
-                          >
-                            <span
-                              className={`absolute top-0.5 size-4 rounded-full bg-white transition-[left] ${disabled ? "left-0.5" : "left-4.5"}`}
-                            />
-                          </button>
-                        </div>
-                        {skill.description ? (
-                          <p
-                            className="mt-0.5 truncate text-[12px] text-content/55"
-                            title={skill.description}
-                          >
-                            {skill.description}
-                          </p>
-                        ) : null}
-                        <div className="mt-0.5 flex items-center gap-1">
-                          <p
-                            className="min-w-0 flex-1 truncate font-sans text-[11px] text-content/35"
-                            title={skill.path}
-                          >
-                            {skill.path}
-                          </p>
-                          <button
-                            type="button"
-                            aria-label={t("Preview skill {name}", {
-                              name: skill.name,
-                            })}
-                            title={t("Preview skill")}
-                            ref={registerPreviewButton(`icon:${skill.path}`)}
-                            aria-controls={previewOpen ? previewId : undefined}
-                            aria-expanded={previewSkill?.path === skill.path}
-                            onClick={() => onPreview(skill, "icon")}
-                            className="grid size-5 shrink-0 place-items-center rounded text-content/40 hover:bg-content/10 hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                          >
-                            <Eye
-                              className="size-3"
-                              strokeWidth={1.75}
-                              aria-hidden="true"
-                            />
-                          </button>
-                          <button
-                            type="button"
-                            aria-label={t("Copy path of {name}", { name: skill.name })}
-                            title={t("Copy path")}
-                            onClick={() => onCopyPath(skill.path)}
-                            className="grid size-5 shrink-0 place-items-center rounded text-content/40 hover:bg-content/10 hover:text-content"
-                          >
-                            <Copy className="size-3" strokeWidth={1.75} />
-                          </button>
-                          <button
-                            type="button"
-                            aria-label={t("Reveal {name} in file explorer", { name: skill.name })}
-                            title={t("Reveal in file manager")}
-                            onClick={() => onReveal(skill.path)}
-                            className="grid size-5 shrink-0 place-items-center rounded text-content/40 hover:bg-content/10 hover:text-content"
-                          >
-                            <FolderOpen className="size-3" strokeWidth={1.75} />
-                          </button>
+                        <div className="flex items-start gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex min-w-0 items-center gap-2">
+                              <button
+                                type="button"
+                                className="min-w-0 truncate rounded text-left font-sans text-[13px] font-medium text-content hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                                title={t("Preview {name}", { name: skill.name })}
+                                ref={registerPreviewButton(`name:${skill.path}`)}
+                                aria-controls={previewOpen ? previewId : undefined}
+                                aria-expanded={previewSkill?.path === skill.path}
+                                onClick={() => onPreview(skill, "name")}
+                              >
+                                {skill.name}
+                              </button>
+                              <span className="shrink-0 rounded-full bg-content/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-content/60">
+                                {scopeLabel}
+                              </span>
+                            </div>
+                            {skill.description ? (
+                              <p
+                                className="mt-0.5 line-clamp-2 text-pretty text-[12px] text-content/55"
+                                title={skill.description}
+                              >
+                                {skill.description}
+                              </p>
+                            ) : null}
+                            <p
+                              className="mt-0.5 truncate font-sans text-[11px] text-content/35"
+                              title={skill.path}
+                            >
+                              {skill.source}
+                              <span className="text-content/20"> · </span>
+                              {skill.path}
+                            </p>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-0.5">
+                            <button
+                              type="button"
+                              aria-label={t("Preview skill {name}", {
+                                name: skill.name,
+                              })}
+                              title={t("Preview skill")}
+                              ref={registerPreviewButton(`icon:${skill.path}`)}
+                              aria-controls={previewOpen ? previewId : undefined}
+                              aria-expanded={previewSkill?.path === skill.path}
+                              onClick={() => onPreview(skill, "icon")}
+                              className="grid size-7 place-items-center rounded-md text-content/40 hover:bg-content/10 hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                            >
+                              <Eye
+                                className="size-3.5"
+                                strokeWidth={1.75}
+                                aria-hidden="true"
+                              />
+                            </button>
+                            <button
+                              type="button"
+                              aria-label={t("Copy path of {name}", {
+                                name: skill.name,
+                              })}
+                              title={t("Copy path")}
+                              onClick={() => onCopyPath(skill.path)}
+                              className="grid size-7 place-items-center rounded-md text-content/40 hover:bg-content/10 hover:text-content"
+                            >
+                              <Copy className="size-3.5" strokeWidth={1.75} />
+                            </button>
+                            <button
+                              type="button"
+                              aria-label={t("Reveal {name} in file explorer", {
+                                name: skill.name,
+                              })}
+                              title={t("Reveal in file manager")}
+                              onClick={() => onReveal(skill.path)}
+                              className="grid size-7 place-items-center rounded-md text-content/40 hover:bg-content/10 hover:text-content"
+                            >
+                              <FolderOpen
+                                className="size-3.5"
+                                strokeWidth={1.75}
+                              />
+                            </button>
+                            <button
+                              type="button"
+                              role="switch"
+                              aria-label={t(
+                                "Include {name} in MonoCode catalog",
+                                {
+                                  name: skill.name,
+                                },
+                              )}
+                              aria-checked={!disabled}
+                              onClick={() => onToggle(skill.path, disabled)}
+                              className={`relative ml-1 h-5 w-9 shrink-0 rounded-full transition-colors ${disabled ? "bg-content/20" : "bg-accent"}`}
+                            >
+                              <span
+                                className={`absolute top-0.5 size-4 rounded-full bg-white transition-[left] ${disabled ? "left-0.5" : "left-4.5"}`}
+                              />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );
@@ -419,9 +436,9 @@ export function SkillsPage({
               </div>
             )}
 
-            <p className="pt-3 text-[12px] text-content/40">
+            <p className="pt-3 text-pretty text-[12px] text-content/40">
               {t(
-                "Hidden skills stay on disk and are excluded from MonoCode's file-skill catalog. Provider-managed skills and native commands are unaffected. Skills live in .agents/skills for this project and ~/.agents/skills for you personally; harness folders are also picked up.",
+                "Off skills stay on disk and leave MonoCode's catalog. Yours live in .agents/skills or ~/.agents/skills.",
               )}
             </p>
           </div>

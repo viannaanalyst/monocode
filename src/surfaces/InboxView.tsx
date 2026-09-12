@@ -61,6 +61,7 @@ import {
   peekGithubWorkItemDetails,
   peekGithubWorkItemThread,
   peekInboxList,
+  classifyInboxError,
   formatRelativeTime,
   inboxPersonAvatarUrl,
   type GithubLabel,
@@ -882,34 +883,56 @@ export function InboxView({
         {noSourcesConnected ? (
           <p className="px-3 py-3 text-[12px] text-content/50">{t("Add a connection to start using the Inbox.")}</p>
         ) : sourceError && visibleItems.length === 0 ? (
-          <p className="px-3 py-2 text-[12px] text-content/50">{sourceError}</p>
+          <p className="px-3 py-2 text-pretty text-[12px] text-content/50">
+            {t(classifyInboxError(sourceError))}
+          </p>
         ) : loading && items.length === 0 ? (
           <div className="flex justify-center py-10 text-content/40">
             <LoaderCircle className="size-4 animate-spin" strokeWidth={1.75} />
           </div>
         ) : visibleItems.length === 0 ? (
-          <p className="px-3 py-2 text-[12px] text-content/50">
-            {narrowedByUser
-              ? searchNarrowed
-                ? source === "linear"
-                  ? "No matching Linear issues"
-                  : source === "gitlab"
-                    ? "No matching issues or merge requests"
-                    : "No matching issues or pull requests"
+          <p className="px-3 py-2 text-pretty text-[12px] text-content/50">
+            {t(
+              narrowedByUser
+                ? searchNarrowed
+                  ? source === "linear"
+                    ? "No matching Linear issues"
+                    : source === "gitlab"
+                      ? "No matching issues or merge requests"
+                      : source === "jira"
+                        ? "No matching Jira issues"
+                        : source === "clickup"
+                          ? "No matching ClickUp tasks"
+                          : source === "notion"
+                            ? "No matching Notion pages"
+                            : "No matching issues or pull requests"
+                  : source === "linear"
+                    ? "No Linear issues match these filters"
+                    : source === "gitlab"
+                      ? "No GitLab items match these filters"
+                      : source === "jira"
+                        ? "No Jira issues match these filters"
+                        : source === "clickup"
+                          ? "No ClickUp tasks match these filters"
+                          : source === "notion"
+                            ? "No Notion pages match these filters"
+                            : "No issues or pull requests match these filters"
                 : source === "linear"
-                  ? "No Linear issues match these filters"
+                  ? "No Linear issues"
                   : source === "gitlab"
-                    ? "No GitLab items match these filters"
-                    : "No issues or pull requests match these filters"
-              : source === "linear"
-                ? "No Linear issues"
-                : source === "gitlab"
-                  ? projects.length === 0
-                    ? "Open a project to fill the inbox"
-                    : "No matching issues or merge requests"
-                  : projects.length === 0
-                    ? "Open a project to fill the inbox"
-                    : "No matching issues or pull requests"}
+                    ? projects.length === 0
+                      ? "Open a project to fill the inbox"
+                      : "No matching issues or merge requests"
+                    : projects.length === 0
+                      ? "Open a project to fill the inbox"
+                      : source === "jira"
+                        ? "No Jira issues"
+                        : source === "clickup"
+                          ? "No ClickUp tasks"
+                          : source === "notion"
+                            ? "No Notion pages"
+                            : "No matching issues or pull requests",
+            )}
           </p>
         ) : (
           <ul className="flex flex-col gap-0.5 p-1.5">

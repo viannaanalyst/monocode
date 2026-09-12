@@ -25,51 +25,47 @@ export const SETTINGS_SECTIONS: {
   {
     id: "general",
     label: "General",
-    description: "App-wide behavior and the build you are running.",
+    description: "App behavior and the current build.",
   },
   {
     id: "appearance",
     label: "Appearance",
-    description: "Theme, translucency, tint, and fonts applied to the chrome.",
+    description: "Theme, tint, and fonts.",
   },
   {
     id: "keybindings",
     label: "Keybindings",
-    description:
-      "Every shortcut the workspace handles, from the app menu and the key handler.",
+    description: "Shortcuts used by the workspace.",
   },
   {
     id: "providers",
     label: "Agent providers",
-    description:
-      "Agent CLIs MonoCode can drive, and the model new sessions start with.",
+    description: "CLIs and the default model for new sessions.",
   },
   {
     id: "inbox",
     label: "Inbox",
-    description: "Connect and manage the services that appear in your Inbox.",
+    description: "Services that feed the Inbox.",
   },
   {
     id: "project",
     label: "Project instructions",
-    description:
-      "AGENTS.md shared with every agent working in this project.",
+    description: "Shared AGENTS.md for this project.",
   },
   {
     id: "voice",
     label: "Voice input",
-    description: "Dictate prompts with OpenAI transcription.",
+    description: "Dictate prompts with OpenAI.",
   },
   {
     id: "skills",
     label: "Agent skills",
-    description:
-      "Discover and manage file skills from project, personal, and harness folders.",
+    description: "File skills from the project, you, and harnesses.",
   },
   {
     id: "archive",
     label: "Archived",
-    description: "Projects and conversations you have archived.",
+    description: "Archived projects and conversations.",
   },
 ];
 

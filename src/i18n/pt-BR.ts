@@ -12,6 +12,8 @@ export const PT_BR: Record<string, string> = {
   "Anchor prompts to top": "Ancorar prompts no topo",
   "App-wide behavior and the build you are running.":
     "Comportamento do app e a build em execução.",
+  "App behavior and the current build.":
+    "Comportamento do app e a build atual.",
   "App: Find in Files": "App: Buscar nos arquivos",
   "App: Go to File": "App: Ir para arquivo",
   "App: New Window": "App: Nova janela",
@@ -81,7 +83,7 @@ export const PT_BR: Record<string, string> = {
   "Couldn’t load commit": "Não foi possível carregar o commit",
   "Couldn’t load session changes": "Não foi possível carregar as alterações da sessão",
   "Create a personal API key in Linear → Settings → Security & Access. Disconnect deletes it.":
-    "Crie uma chave de API em Linear → Settings → Security & Access. Desconectar a apaga.",
+    "Crie uma chave de API pessoal no Linear em Ajustes → Security & Access. Desconectar a apaga.",
   "Custom color": "Cor personalizada",
   Cut: "Recortar",
   Dark: "Escuro",
@@ -157,6 +159,37 @@ export const PT_BR: Record<string, string> = {
   Hue: "Tonalidade",
   "In progress": "Em andamento",
   Inbox: "Inbox",
+  "Connect and manage the services that appear in your Inbox.":
+    "Conecte e gerencie os serviços que aparecem no Inbox.",
+  "Services that feed the Inbox.": "Serviços que alimentam o Inbox.",
+  "This service hit its API limit. Wait a few minutes and refresh.":
+    "Este serviço atingiu o limite da API. Espere alguns minutos e atualize.",
+  "GitHub sign-in expired. Run gh auth login and check again.":
+    "O login do GitHub expirou. Rode gh auth login e verifique de novo.",
+  "No matching Linear issues": "Nenhuma issue do Linear correspondente",
+  "No matching issues or merge requests":
+    "Nenhuma issue ou merge request correspondente",
+  "No matching issues or pull requests":
+    "Nenhuma issue ou pull request correspondente",
+  "No Linear issues match these filters":
+    "Nenhuma issue do Linear corresponde a estes filtros",
+  "No GitLab items match these filters":
+    "Nenhum item do GitLab corresponde a estes filtros",
+  "No issues or pull requests match these filters":
+    "Nenhuma issue ou pull request corresponde a estes filtros",
+  "No Linear issues": "Nenhuma issue do Linear",
+  "Open a project to fill the inbox": "Abra um projeto para preencher o Inbox.",
+  "Shared AGENTS.md for this project.":
+    "AGENTS.md compartilhado neste projeto.",
+  "File skills from the project, you, and harnesses.":
+    "Skills em arquivo do projeto, da sua pasta e dos harnesses.",
+  "Archived projects and conversations.":
+    "Projetos e conversas arquivados.",
+  "Theme, tint, and fonts.": "Tema, tom e fontes.",
+  "Shortcuts used by the workspace.": "Atalhos usados no workspace.",
+  "CLIs and the default model for new sessions.":
+    "CLIs e o modelo padrão das sessões novas.",
+  "Dictate prompts with OpenAI.": "Dite prompts com a OpenAI.",
   "Inbox source": "Fonte da inbox",
   "Interface scale": "Escala da interface",
   Issues: "Issues",
@@ -342,6 +375,7 @@ export const PT_BR: Record<string, string> = {
   "Updated {time}": "Atualizado {time}",
   Page: "Página",
   "Open in Notion": "Abrir no Notion",
+  "Connect {name}": "Conectar {name}",
   "Connect an inbox source": "Conectar uma fonte do Inbox",
   "Add connection": "Adicionar conexão",
   "Add a connection to start using the Inbox.":
@@ -1118,6 +1152,20 @@ export const PT_BR: Record<string, string> = {
   "Hand this session to another agent": "Passar esta sessão para outro agente",
   "Hidden skills stay on disk and are excluded from MonoCode's file-skill catalog. Provider-managed skills and native commands are unaffected. Skills live in .agents/skills for this project and ~/.agents/skills for you personally; harness folders are also picked up.":
     "Skills ocultas continuam no disco e ficam fora do catálogo de skills em arquivo do MonoCode. Skills gerenciadas pelo provedor e comandos nativos não são afetados. As skills ficam em .agents/skills neste projeto e em ~/.agents/skills para você; pastas de harness também são consideradas.",
+  "Off skills stay on disk and leave MonoCode's catalog. Yours live in .agents/skills or ~/.agents/skills.":
+    "Skills desligadas ficam no disco e saem do catálogo do MonoCode. As suas ficam em .agents/skills ou ~/.agents/skills.",
+  "Could not save the skill preference. Try again.":
+    "Não foi possível salvar a preferência da skill. Tente de novo.",
+  "Could not copy the path to the clipboard.":
+    "Não foi possível copiar o caminho.",
+  "Could not open the folder: {error}":
+    "Não foi possível abrir a pasta: {error}",
+  "Could not read SKILL.md. {error}":
+    "Não foi possível ler o SKILL.md. {error}",
+  "Archive a project from the rail to keep its chats without listing it in the sidebar.":
+    "Arquive um projeto na barra para manter os chats sem listá-lo na barra lateral.",
+  "Adds @AGENTS.md so Claude Code reads the same instructions.":
+    "Adiciona @AGENTS.md para o Claude Code ler as mesmas instruções.",
   "Include {name} in MonoCode catalog":
     "Incluir {name} no catálogo do MonoCode",
   "Install another provider for a second opinion":

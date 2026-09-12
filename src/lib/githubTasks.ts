@@ -932,8 +932,31 @@ export function collectInboxResults(
   return { items: dedupeInboxItems(batches.flat(), preferredPaths) };
 }
 
-function inboxErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+export function inboxErrorMessage(error: unknown): string {
+  return classifyInboxError(
+    error instanceof Error ? error.message : String(error),
+  );
+}
+
+/** Maps provider/API failures to a short English key for `t()`. */
+export function classifyInboxError(raw: string): string {
+  const text = raw.replace(/^GraphQL:\s*/i, "").trim();
+  const lower = `${raw} ${text}`.toLowerCase();
+  if (
+    lower.includes("rate limit") ||
+    lower.includes("rate_limit") ||
+    lower.includes("secondary rate") ||
+    /\b429\b/.test(lower)
+  ) {
+    return "This service hit its API limit. Wait a few minutes and refresh.";
+  }
+  if (
+    lower.includes("bad credentials") ||
+    lower.includes("requires authentication")
+  ) {
+    return "GitHub sign-in expired. Run gh auth login and check again.";
+  }
+  return raw.trim();
 }
 
 export function inboxIdentityKey(item: {

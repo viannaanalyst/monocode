@@ -48,7 +48,7 @@ export function InboxConnectMenu({
             className="block size-3.5 shrink-0"
           />
           <span className="min-w-0 flex-1 truncate">
-            Connect {INBOX_SOURCE_LABELS[source]}
+            {t("Connect {name}", { name: INBOX_SOURCE_LABELS[source] })}
           </span>
         </button>
       ))}
