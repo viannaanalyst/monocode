@@ -1021,7 +1021,11 @@ export function contextUsedFromAssistant(
  */
 export function contextFromResult(
   rec: Record<string, unknown>,
-): { used?: number; window?: number } | undefined {
+): {
+  used?: number;
+  window?: number;
+  stats?: { input?: number; cached?: number; output?: number };
+} | undefined {
   const usage = asRecord(rec.usage);
   const iterations = Array.isArray(usage?.iterations) ? usage.iterations : [];
   const last = asRecord(iterations[iterations.length - 1]);
@@ -1037,5 +1041,14 @@ export function contextFromResult(
   }
 
   if (!used && !window) return undefined;
-  return { used: used > 0 ? used : undefined, window };
+  // The top-level usage sums every iteration of the turn, so it is the turn's
+  // spend rather than one request's.
+  const input = numberField(usage, "input_tokens");
+  const cached =
+    numberField(usage, "cache_read_input_tokens") +
+    numberField(usage, "cache_creation_input_tokens");
+  const output = numberField(usage, "output_tokens");
+  const stats =
+    input + cached + output > 0 ? { input, cached, output } : undefined;
+  return { used: used > 0 ? used : undefined, window, ...(stats ? { stats } : {}) };
 }

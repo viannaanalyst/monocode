@@ -366,6 +366,24 @@ export function contextUsedFromMessageInfo(
   return used > 0 ? used : undefined;
 }
 
+/** Per-turn token breakdown for the composer's cache-hit and speed readout. */
+export function turnStatsFromMessageInfo(
+  info: Record<string, unknown> | null,
+): { input: number; cached: number; output: number } | undefined {
+  const tokens = asRecord(info?.tokens);
+  if (!tokens) return undefined;
+  const cache = asRecord(tokens.cache);
+  const num = (rec: Record<string, unknown> | null, key: string): number => {
+    const value = rec?.[key];
+    return typeof value === "number" && Number.isFinite(value) ? value : 0;
+  };
+  const input = num(tokens, "input");
+  const cached = num(cache, "read") + num(cache, "write");
+  const output = num(tokens, "output") + num(tokens, "reasoning");
+  if (input + cached + output === 0) return undefined;
+  return { input, cached, output };
+}
+
 export function eventSessionId(event: Record<string, unknown>): string | undefined {
   const properties = asRecord(event.properties);
   if (!properties) return undefined;

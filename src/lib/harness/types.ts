@@ -96,7 +96,16 @@ export type HarnessEvent =
       streaming?: boolean;
     }
   /** Context-window level after the harness's latest request. */
-  | { type: "context"; used?: number; window?: number };
+  | {
+      type: "context";
+      used?: number;
+      window?: number;
+      /**
+       * Tokens this turn spent, for the session-level cache and speed readout.
+       * Omitted by harnesses that do not report the breakdown.
+       */
+      stats?: { input?: number; cached?: number; output?: number };
+    };
 
 export type ApprovalDecision = "allow" | "deny";
 

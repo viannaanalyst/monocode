@@ -47,6 +47,7 @@ import {
 } from "../lib/attachments";
 import { resizeComposer } from "../lib/composerResize";
 import type { ContextUsage } from "../lib/contextUsage";
+import { formatSpeed, type SessionTurnStats } from "../lib/turnStats";
 import {
   loadProjectFiles,
   peekProjectFiles,
@@ -170,6 +171,7 @@ type Props = {
   hideBranchPicker?: boolean;
   hideTopBar?: boolean;
   context?: ContextUsage;
+  turnStats?: SessionTurnStats | null;
   compactSupported?: boolean;
   quoteRequest?: QuoteRequest;
   initialDraft?: string;
@@ -408,6 +410,25 @@ function MessageQueue({
 }
 
 /** Where a turn runs. Only the local machine exists today. */
+function TurnStatsReadout({ stats }: { stats?: SessionTurnStats | null }) {
+  if (!stats) return null;
+  const cache =
+    stats.cacheHit === null ? null : `${Math.round(stats.cacheHit * 100)}%`;
+  const speed =
+    stats.speed === null ? null : `${formatSpeed(stats.speed)} tok/s`;
+  if (!cache && !speed) return null;
+  return (
+    <span
+      data-no-tooltip
+      className="flex shrink-0 items-center gap-1.5 text-[11px] tabular-nums text-content/40"
+    >
+      {cache ? <span>{t("Cache {percent}", { percent: cache })}</span> : null}
+      {cache && speed ? <span className="text-content/20">·</span> : null}
+      {speed ? <span>{speed}</span> : null}
+    </span>
+  );
+}
+
 function ExecutionTargetChip() {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
@@ -473,6 +494,7 @@ export function Composer({
   hideBranchPicker = false,
   hideTopBar = false,
   context,
+  turnStats,
   compactSupported = false,
   quoteRequest,
   initialDraft,
@@ -1723,7 +1745,8 @@ export function Composer({
                 onClose={() => ref.current?.focus()}
               />
             )}
-            <div className="ml-auto flex shrink-0 items-center">
+            <div className="ml-auto flex shrink-0 items-center gap-2.5">
+              <TurnStatsReadout stats={turnStats} />
               <ContextMeter
                 usage={context}
                 onCompact={compactSupported ? onCompactContext : undefined}

@@ -274,6 +274,11 @@ export type Session = {
   /** Context-window level reported by the harness. Absent until it reports. */
   context?: ContextUsage;
   /**
+   * Running token totals for the whole thread, summed from each turn's usage.
+   * Feeds the cache-hit and speed readout under the composer.
+   */
+  tokenStats?: { input: number; cached: number; output: number };
+  /**
    * Composer switched providers, but the previous child is still live.
    * Handoff runs on the next send, not on picker change.
    */

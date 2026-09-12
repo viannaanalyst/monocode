@@ -576,7 +576,11 @@ describe("contextFromResult", () => {
         "claude-sonnet-5": { contextWindow: 1000000, maxOutputTokens: 64000 },
       },
     };
-    expect(contextFromResult(rec)).toEqual({ used: 29608, window: 1000000 });
+    expect(contextFromResult(rec)).toEqual({
+      used: 29608,
+      window: 1000000,
+      stats: { input: 2, cached: 29593, output: 13 },
+    });
   });
 
   it("uses the last iteration, since top-level usage sums the whole turn", () => {
@@ -593,7 +597,11 @@ describe("contextFromResult", () => {
       },
       modelUsage: { "claude-opus-5": { contextWindow: 200000 } },
     };
-    expect(contextFromResult(rec)).toEqual({ used: 70_305, window: 200000 });
+    expect(contextFromResult(rec)).toEqual({
+      used: 70_305,
+      window: 200000,
+      stats: { input: 10, cached: 90_000, output: 500 },
+    });
   });
 
   it("has nothing to report for a turn that never called the API", () => {

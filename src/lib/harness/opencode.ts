@@ -17,6 +17,7 @@ import {
   buildOpenCodePermissionRules,
   compareSemver,
   contextUsedFromMessageInfo,
+  turnStatsFromMessageInfo,
   detailFromToolPart,
   eventSessionId,
   isOpenCodeNotFound,
@@ -767,7 +768,13 @@ function emitContext(live: Live, info: Record<string, unknown> | null): void {
     providerID && modelID
       ? modelContextWindow(`opencode:${providerID}/${modelID}`)
       : undefined;
-  live.onEvent({ type: "context", used, ...(window ? { window } : {}) });
+  const stats = turnStatsFromMessageInfo(info);
+  live.onEvent({
+    type: "context",
+    used,
+    ...(window ? { window } : {}),
+    ...(stats ? { stats } : {}),
+  });
 }
 
 function emitAssistantText(live: Live, part: OpenCodePart): void {

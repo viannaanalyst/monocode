@@ -32,6 +32,7 @@ import {
   type Session,
   type TurnIntent,
 } from "../lib/session";
+import { sessionTurnStats } from "../lib/turnStats";
 import { AgentTranscript } from "./AgentTranscript";
 import { EmptySession } from "./EmptySession";
 import { MOD } from "../lib/platform";
@@ -328,6 +329,7 @@ export const SessionPane = memo(function SessionPane({
       hideBranchPicker={!!session.inboxAsk}
       hideTopBar={!!session.inboxAsk}
       context={session.context}
+      turnStats={sessionTurnStats(session)}
       quoteRequest={quoteRequest}
       initialDraft={
         draftRef.current ??

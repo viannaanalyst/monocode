@@ -98,6 +98,7 @@ export function applyHarnessEvent(
           used: event.used,
           window: event.window,
         }),
+        ...(event.stats ? { tokenStats: addTokenStats(session.tokenStats, event.stats) } : {}),
       };
     case "tasks.updated":
       return upsertTaskList(session, event);
@@ -931,5 +932,16 @@ function finishRole(session: Session, role: Block["role"]): Session {
         ? { ...block, streaming: false }
         : block,
     ),
+  };
+}
+
+function addTokenStats(
+  previous: Session["tokenStats"],
+  stats: { input?: number; cached?: number; output?: number },
+): Session["tokenStats"] {
+  return {
+    input: (previous?.input ?? 0) + Math.max(0, stats.input ?? 0),
+    cached: (previous?.cached ?? 0) + Math.max(0, stats.cached ?? 0),
+    output: (previous?.output ?? 0) + Math.max(0, stats.output ?? 0),
   };
 }
