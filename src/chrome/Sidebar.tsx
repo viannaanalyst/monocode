@@ -131,6 +131,7 @@ import {
 } from "../lib/recents";
 import { ColorPickerPopover, ColorSwatchRow } from "./ColorPickerPopover";
 import { ExplorerMenu, type ExplorerMenuItem } from "./ExplorerMenu";
+import { SessionHoverCard } from "./SessionHoverCard";
 import type { SessionExportFormat } from "../lib/sessionExport";
 import { FileTree } from "./FileTree";
 import { ModelBrandIcon } from "./ModelBrandIcon";
@@ -2497,14 +2498,33 @@ function SessionCard({
   onDelete?: () => void;
 }) {
   const skipClickUntil = useRef(0);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [hovering, setHovering] = useState(false);
   const [dragging, setDragging] = useState(false);
   const rawTitle = sessionDisplayTitle(session.title, session.harness);
   const title = rawTitle === "New session" ? t("New session") : rawTitle;
   const gitLabel = formatGitLabel(session.repo, session.branch);
-  // Organized hover: title, then branch, then the project folder.
-  const sessionTooltip = [title, gitLabel, session.cwd ? prettyCwd(session.cwd) : ""]
-    .filter(Boolean)
-    .join("\n");
+
+  useEffect(
+    () => () => {
+      if (hoverTimer.current != null) clearTimeout(hoverTimer.current);
+    },
+    [],
+  );
+
+  const openHoverCard = () => {
+    if (hoverTimer.current != null) clearTimeout(hoverTimer.current);
+    hoverTimer.current = setTimeout(() => setHovering(true), 220);
+  };
+
+  const closeHoverCard = () => {
+    if (hoverTimer.current != null) {
+      clearTimeout(hoverTimer.current);
+      hoverTimer.current = null;
+    }
+    setHovering(false);
+  };
   const time = formatRelative(session.updatedAt, now);
   const modelChoice = resolveModel(session.harness, session.model);
   const model = compact ? null : modelChoice.name;
@@ -2715,16 +2735,20 @@ function SessionCard({
   return (
     <div className="group relative">
       <div
+        ref={cardRef}
         role="button"
         tabIndex={0}
-        title={sessionTooltip}
         aria-current={isActive ? "true" : undefined}
         aria-pressed={isSelected}
         data-session-card={session.id}
         data-session-selected={isSelected ? "true" : undefined}
         data-tauri-drag-region="false"
         onPointerDown={onPointerDown}
-        onPointerEnter={() => onPrefetch?.(session.id)}
+        onPointerEnter={() => {
+          onPrefetch?.(session.id);
+          openHoverCard();
+        }}
+        onPointerLeave={closeHoverCard}
         onClick={(event) => {
           if (performance.now() < skipClickUntil.current) return;
           onSelect(session.id, event);
@@ -2831,6 +2855,13 @@ function SessionCard({
           <Archive className="size-3.5" strokeWidth={1.75} />
         </button>
       ) : null}
+      <SessionHoverCard
+        anchor={cardRef}
+        open={hovering && !dragging}
+        title={title}
+        branch={gitLabel}
+        path={session.cwd ? prettyCwd(session.cwd) : undefined}
+      />
     </div>
   );
 }
