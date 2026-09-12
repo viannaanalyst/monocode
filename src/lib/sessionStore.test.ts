@@ -42,6 +42,22 @@ describe("sanitizeSessionForPersist", () => {
     });
   });
 
+  it("persists the checkpoint turn id so a prompt keeps its rewind", () => {
+    const session = newSession("claude", "/tmp/project", "claude:opus-5");
+    session.blocks = [
+      {
+        id: "u1",
+        role: "user",
+        text: "do the thing",
+        checkpointTurnId: "turn-abc",
+      },
+    ];
+
+    expect(
+      sanitizeSessionForPersist(session).blocks[0]?.checkpointTurnId,
+    ).toBe("turn-abc");
+  });
+
   it("persists a canonical GitHub work-item identity", () => {
     const session = newSession("codex", "/tmp/project");
     session.blocks = [{ id: "u1", role: "user", text: "fix PR #42" }];

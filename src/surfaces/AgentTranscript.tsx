@@ -1279,7 +1279,7 @@ function UserMessageBlock({
           event.stopPropagation();
           onRewind(block.checkpointTurnId!);
         }}
-        className={`shrink-0 rounded-md p-1 text-content/40 opacity-0 transition-opacity hover:bg-content/8 hover:text-content/70 group-hover:opacity-100 focus-visible:opacity-100 ${
+        className={`shrink-0 rounded-md p-1 text-content/40 opacity-45 transition-opacity hover:bg-content/8 hover:text-content/70 hover:opacity-100 focus-visible:opacity-100 ${
           chat ? "" : "absolute right-1.5 top-1.5"
         }`}
       >
