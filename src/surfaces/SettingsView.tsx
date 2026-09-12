@@ -22,6 +22,7 @@ import {
 } from "react";
 import { ask, message } from "@tauri-apps/plugin-dialog";
 import { HarnessIcon } from "../chrome/HarnessIcon";
+import { ModelBrandIcon } from "../chrome/ModelBrandIcon";
 import { Popover } from "../chrome/Popover";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
@@ -151,9 +152,10 @@ import {
   type AgentModel,
 } from "../lib/models";
 import {
-  isModelHidden,
+  isModelEnabled,
   modelVisibilityVersion,
-  setModelHidden,
+  setHarnessModelsEnabled,
+  setModelEnabled,
   subscribeModelVisibility,
 } from "../lib/modelVisibility";
 import { supportsCustomModels } from "../lib/customModels";
@@ -430,10 +432,12 @@ export function SettingsView({
           ref={lockOverscroll}
           className="min-h-0 flex-1 overflow-y-auto overscroll-none"
         >
-          <div className="mx-auto w-full max-w-5xl px-8 py-8">
+          <div className="mx-auto w-full max-w-[680px] px-8 py-10">
             <PageHeader
               title={settingsSectionLabel(section)}
-              description={settingsSectionDescription(section)}
+              description={
+                section === "voice" ? "" : settingsSectionDescription(section)
+              }
             />
             {section === "general" ? (
               <GeneralPage onOpenWhatsNew={onOpenWhatsNew} />
@@ -2712,12 +2716,7 @@ function ProvidersPage() {
   };
 
   return (
-    <>
-      <p className="pb-2 text-[12px] leading-relaxed text-content/45">
-        {t(
-          "A provider is listed as installed once its CLI is found on your PATH. Uninstalled CLIs stay listed here but are omitted from the model picker. Turn off Show in picker to hide an installed provider from those tabs. The model beside each provider is what new conversations use when that provider is selected; Use by default picks the provider itself.",
-        )}
-      </p>
+    <div className="flex flex-col gap-3">
       {HARNESSES.map((harness) => (
         <ProviderRow
           key={harness}
@@ -2733,7 +2732,7 @@ function ProvidersPage() {
           onModelChange={onModelChange}
         />
       ))}
-    </>
+    </div>
   );
 }
 
@@ -2799,30 +2798,45 @@ function ProviderRow({
   };
 
   return (
-    <div className="border-b border-content/5 last:border-b-0">
-      <Row
-        label={
-          <span className="flex items-center gap-2">
-            <HarnessIcon harness={harness} className="size-4 shrink-0" />
-            {HARNESS_TITLE[harness]}
+    <section className="rounded-xl border border-content/10 px-4 py-3">
+      <div className="flex items-start gap-3">
+        <HarnessIcon harness={harness} className="mt-0.5 size-4 shrink-0" />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-[13px] font-medium text-content">
+              {HARNESS_TITLE[harness]}
+            </h2>
             {isDefault ? (
               <span className="rounded-full bg-content/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-content/60">
                 {t("Default")}
               </span>
             ) : null}
+          </div>
+          <p className="mt-0.5 text-[12px] leading-relaxed text-content/45">
+            {available
+              ? t(
+                  models.length === 1
+                    ? "{count} model available."
+                    : "{count} models available.",
+                  { count: models.length },
+                )
+              : harnessUnavailableHint(harness)}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2 pt-0.5">
+          <span className="text-[12px] text-content/50">
+            {t("Show in picker")}
           </span>
-        }
-        description={
-          available
-            ? t(
-                models.length === 1
-                  ? "{count} model available."
-                  : "{count} models available.",
-                { count: models.length },
-              )
-            : harnessUnavailableHint(harness)
-        }
-      >
+          <Toggle
+            label={t("Show {name} in the model picker", {
+              name: HARNESS_TITLE[harness],
+            })}
+            on={inPicker}
+            onChange={onPickerVisible}
+          />
+        </div>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         {current ? (
           <Select
             label={t("{name} model", { name: HARNESS_TITLE[harness] })}
@@ -2845,80 +2859,119 @@ function ProviderRow({
         >
           {isDefault ? t("Default") : t("Use by default")}
         </SecondaryButton>
-        {available ? (
-          <div className="flex items-center gap-2">
-            <span className="text-[12px] text-content/50">
-              {t("Show in picker")}
-            </span>
-            <Toggle
-              label={t("Show {name} in the model picker", {
-                name: HARNESS_TITLE[harness],
-              })}
-              on={inPicker}
-              onChange={onPickerVisible}
-            />
-          </div>
-        ) : null}
-      </Row>
+      </div>
       {models.length > 1 ? (
-        <ModelVisibilityList models={models} />
+        <ModelVisibilityList harness={harness} models={models} />
       ) : null}
       {supportsCustomModels(harness) ? (
         <CustomModelsSection harness={harness} />
       ) : null}
-    </div>
+    </section>
   );
 }
 
-function ModelVisibilityList({ models }: { models: AgentModel[] }) {
+function ModelVisibilityList({
+  harness,
+  models,
+}: {
+  harness: HarnessId;
+  models: AgentModel[];
+}) {
   useSyncExternalStore(
     subscribeModelVisibility,
     modelVisibilityVersion,
     modelVisibilityVersion,
   );
   const [expanded, setExpanded] = useState(false);
-  const shown = models.filter((model) => !isModelHidden(model.id)).length;
+  const [query, setQuery] = useState("");
+  const shown = models.filter((model) => isModelEnabled(model.id)).length;
+  const needle = query.trim().toLowerCase();
+  const visible = needle
+    ? models.filter((model) => model.name.toLowerCase().includes(needle))
+    : models;
 
   return (
-    <div className="px-4 pb-3">
-      <button
-        type="button"
-        onClick={() => setExpanded((value) => !value)}
-        aria-expanded={expanded}
-        className="flex h-8 w-full items-center gap-2 rounded-lg border border-content/10 px-2.5 text-left text-[12px] text-content/70 hover:bg-content/5 hover:text-content"
-      >
-        <span className="min-w-0 flex-1">
-          {t("Choose which models appear")}
-        </span>
-        <span className="shrink-0 tabular-nums text-content/40">
-          {t("{shown} of {total}", { shown, total: models.length })}
-        </span>
-        <ChevronDown
-          className={`size-3.5 shrink-0 text-content/45 ${expanded ? "rotate-180" : ""}`}
-          strokeWidth={1.75}
-        />
-      </button>
-      {expanded ? (
-        <div className="mt-2 overflow-hidden rounded-lg border border-content/10">
-          {models.map((model) => (
-            <div
-              key={model.id}
-              className="flex items-center justify-between gap-3 border-b border-content/5 px-3 py-1.5 last:border-b-0"
-            >
-              <span className="min-w-0 truncate text-[12px] text-content/80">
-                {model.name}
-              </span>
-              <Toggle
-                label={t("Show {name} in the model picker", {
-                  name: model.name,
-                })}
-                on={!isModelHidden(model.id)}
-                onChange={(on) => setModelHidden(model.id, !on)}
-              />
+    <div className="pt-3">
+      <div className="overflow-hidden rounded-lg border border-content/10">
+        <button
+          type="button"
+          onClick={() => setExpanded((value) => !value)}
+          aria-expanded={expanded}
+          className="flex h-9 w-full items-center gap-2 px-3 text-left text-[12px] text-content/70 hover:bg-content/5 hover:text-content"
+        >
+          <span className="min-w-0 flex-1">
+            {t("Choose which models appear")}
+          </span>
+          <span className="shrink-0 tabular-nums text-content/40">
+            {t("{shown} of {total}", { shown, total: models.length })}
+          </span>
+          <ChevronDown
+            className={`size-3.5 shrink-0 text-content/45 ${expanded ? "rotate-180" : ""}`}
+            strokeWidth={1.75}
+          />
+        </button>
+        {expanded ? (
+          <div className="border-t border-content/10">
+            <div className="flex items-center gap-2 border-b border-content/8 px-3 py-2">
+              <label className="flex h-7 min-w-0 flex-1 items-center gap-2 rounded-md bg-content/5 px-2 text-content/40">
+                <Search className="size-3.5 shrink-0" strokeWidth={1.75} />
+                <input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder={t("Search models")}
+                  aria-label={t("Search models")}
+                  className="min-w-0 flex-1 bg-transparent text-[12px] text-content outline-none placeholder:text-content/35"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => setHarnessModelsEnabled(harness, true)}
+                className="shrink-0 rounded-md px-2 py-1 text-[11px] text-content/55 hover:bg-content/8 hover:text-content"
+              >
+                {t("Select all")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setHarnessModelsEnabled(harness, false)}
+                className="shrink-0 rounded-md px-2 py-1 text-[11px] text-content/55 hover:bg-content/8 hover:text-content"
+              >
+                {t("Clear all")}
+              </button>
             </div>
-          ))}
-        </div>
-      ) : null}
+            <div className="max-h-56 overflow-y-auto overscroll-none">
+              {visible.length === 0 ? (
+                <p className="px-3 py-3 text-[12px] text-content/40">
+                  {t("No models found")}
+                </p>
+              ) : (
+                visible.map((model) => (
+                  <div
+                    key={model.id}
+                    className="flex items-center justify-between gap-3 border-b border-content/5 px-3 py-1.5 last:border-b-0"
+                  >
+                    <span className="flex min-w-0 items-center gap-2">
+                      <ModelBrandIcon
+                        model={model}
+                        className="size-3.5 shrink-0"
+                      />
+                      <span className="min-w-0 truncate text-[12px] text-content/80">
+                        {model.name}
+                      </span>
+                    </span>
+                    <Toggle
+                      label={t("Show {name} in the model picker", {
+                        name: model.name,
+                      })}
+                      on={isModelEnabled(model.id)}
+                      onChange={(on) => setModelEnabled(model.id, on)}
+                    />
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -2973,7 +3026,7 @@ function VoicePage() {
     <>
       <Row
         label={t("Enable dictation")}
-        description={t("Show a microphone button in the composer.")}
+        description={t("Mic button in the composer.")}
       >
         <Toggle
           label={t("Enable dictation")}
@@ -3008,16 +3061,15 @@ function VoicePage() {
           ]}
         />
       </Row>
-      <Row
-        label={t("Language")}
-        description={t("Auto lets OpenAI detect the language.")}
-      >
+      <Row label={t("Language")} description={t("Auto detects the language.")}>
         <Select
           label={t("Language")}
           value={language}
           onChange={(value) => {
             const next =
-              value === "pt" || value === "en" || value === "es" ? value : "auto";
+              value === "pt" || value === "en" || value === "es"
+                ? value
+                : "auto";
             setLanguage(next);
             saveVoiceLanguage(next);
           }}
@@ -3029,35 +3081,21 @@ function VoicePage() {
           ]}
         />
       </Row>
-      <Row
-        label={t("Context prompt")}
-        description={t("Names and terms the transcription should expect.")}
-      >
-        <input
-          type="text"
-          value={prompt}
-          aria-label={t("Context prompt")}
-          onChange={(event) => setPrompt(event.target.value)}
-          onBlur={() => saveVoicePrompt(prompt)}
-          className="w-64 rounded-md border border-content/10 bg-content/5 px-2 py-1 text-[12px] text-content outline-none"
-        />
-      </Row>
-      <Row
-        label={t("OpenAI API key")}
-        description={
-          hasKey
-            ? t("Saved in the macOS Keychain. The value is never shown again.")
-            : t("Stored in the macOS Keychain, never in this app's storage.")
-        }
-      >
-        <div className="flex items-center gap-2">
+      <div className="border-b border-content/5 py-4">
+        <label className="block text-[13px] font-medium text-content">
+          {t("OpenAI API key")}
+        </label>
+        <p className="mt-1 text-[12px] leading-relaxed text-content/45">
+          {t("Kept in the macOS Keychain.")}
+        </p>
+        <div className="mt-2 flex items-center gap-2">
           <input
             type="password"
             value={keyDraft}
             aria-label={t("OpenAI API key")}
             placeholder={hasKey ? "••••••••" : "sk-…"}
             onChange={(event) => setKeyDraft(event.target.value)}
-            className="w-48 rounded-md border border-content/10 bg-content/5 px-2 py-1 text-[12px] text-content outline-none"
+            className="h-8 min-w-0 flex-1 rounded-md border border-content/10 bg-content/5 px-3 text-[13px] text-content outline-none"
           />
           <SecondaryButton onClick={saveKey} disabled={busy || !keyDraft.trim()}>
             {t("Save")}
@@ -3068,11 +3106,25 @@ function VoicePage() {
             </SecondaryButton>
           ) : null}
         </div>
-      </Row>
+      </div>
+      <div className="border-b border-content/5 py-4 last:border-b-0">
+        <label className="block text-[13px] font-medium text-content">
+          {t("Context prompt")}
+        </label>
+        <p className="mt-1 text-[12px] leading-relaxed text-content/45">
+          {t("Names and terms to expect.")}
+        </p>
+        <textarea
+          value={prompt}
+          aria-label={t("Context prompt")}
+          rows={5}
+          onChange={(event) => setPrompt(event.target.value)}
+          onBlur={() => saveVoicePrompt(prompt)}
+          className="mt-2 min-h-24 w-full resize-y rounded-md border border-content/10 bg-content/5 px-3 py-2 text-[13px] leading-relaxed text-content outline-none"
+        />
+      </div>
       {status ? (
-        <Row label={t("Status")} description={status}>
-          <span />
-        </Row>
+        <p className="pt-3 text-[12px] text-content/50">{status}</p>
       ) : null}
     </>
   );
@@ -3382,12 +3434,12 @@ function PageHeader({
   description: string;
 }) {
   return (
-    <header className="pb-4">
-      <h1 className="text-[20px] font-semibold leading-tight text-content">
+    <header className="pb-6">
+      <h1 className="text-[22px] font-semibold tracking-tight text-content">
         {title}
       </h1>
       {description ? (
-        <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed text-content/45">
+        <p className="mt-1.5 max-w-lg text-[13px] leading-relaxed text-content/45">
           {description}
         </p>
       ) : null}
@@ -3561,6 +3613,7 @@ function Toggle({
     <button
       type="button"
       role="switch"
+      data-no-tooltip
       aria-label={label}
       aria-checked={on}
       disabled={disabled}
@@ -3669,6 +3722,7 @@ function Select({
       <button
         type="button"
         ref={trigger}
+        data-no-tooltip
         aria-label={`${label}: ${selected?.label ?? value}`}
         aria-expanded={open}
         aria-haspopup="listbox"

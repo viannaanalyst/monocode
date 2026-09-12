@@ -40,7 +40,7 @@ export const SETTINGS_SECTIONS: {
   },
   {
     id: "providers",
-    label: "Providers",
+    label: "Agent providers",
     description:
       "Agent CLIs MonoCode can drive, and the model new sessions start with.",
   },
@@ -62,18 +62,31 @@ export const SETTINGS_SECTIONS: {
   },
   {
     id: "skills",
-    label: "Skills",
+    label: "Agent skills",
     description:
       "Discover and manage file skills from project, personal, and harness folders.",
   },
   {
     id: "archive",
-    label: "Archive",
+    label: "Archived",
     description: "Projects and conversations you have archived.",
   },
 ];
 
 export const SETTINGS_SECTION_DEFAULT: SettingsSectionId = "general";
+
+export const SETTINGS_NAV_GROUPS: {
+  label: string;
+  ids: SettingsSectionId[];
+}[] = [
+  {
+    label: "Personal",
+    ids: ["general", "appearance", "keybindings", "voice"],
+  },
+  { label: "Integrations", ids: ["inbox"] },
+  { label: "Coding", ids: ["providers", "skills", "project"] },
+  { label: "System", ids: ["archive"] },
+];
 
 export function isSettingsSectionId(
   value: unknown,

@@ -1,4 +1,4 @@
-import { Check, ChevronDown, ChevronRight, Search, Zap } from "./icons";
+import { Check, ChevronDown, ChevronRight, RotateCcw, Zap } from "./icons";
 import {
   useEffect,
   useId,
@@ -7,15 +7,15 @@ import {
   useState,
   useSyncExternalStore,
   type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
 } from "react";
-import { createPortal } from "react-dom";
 import {
   findModel,
   getModelSnapshot,
   getPickerVisibilitySnapshot,
   loadRecentModelChoices,
   resolveModel,
-  showProviderInModelPicker,
+  isPickerProviderVisible,
   subscribeModels,
   subscribePickerVisibility,
   type AgentModel,
@@ -24,7 +24,6 @@ import {
 } from "../lib/models";
 import {
   harnessUnavailableHint,
-  hasProbedHarnessAvailability,
   isHarnessAvailable,
   probeHarnessAvailability,
   subscribeHarnessAvailability,
@@ -54,13 +53,13 @@ type Props = {
   onClose?: () => void;
 };
 
-type MenuEntry = { kind: "setting"; setting: ModelSetting } | { kind: "model" };
+type MenuEntry = { kind: "setting"; setting: ModelSetting };
 
-type Submenu = { kind: "setting"; setting: ModelSetting } | { kind: "models" };
+type Submenu = { kind: "setting"; setting: ModelSetting };
 
 type RecentMenu = { models: AgentModel[] };
 
-const MENU_WIDTH = 250;
+const MENU_WIDTH = 268;
 const SETTING_MENU_WIDTH = 210;
 const SUBMENU_OVERLAP = -4;
 const SELF = "[data-model-picker]";
@@ -94,8 +93,6 @@ function pickerSettings(model: AgentModel): ModelSetting[] {
       const bi = SETTING_ORDER.indexOf(b.id);
       return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
     });
-  // Every model gets the effort slider; models that do not declare one still
-  // show it, and the harness simply ignores a value it never advertised.
   if (!settings.some(isEffortSetting)) {
     settings.unshift({
       id: "effort",
@@ -128,7 +125,6 @@ const EFFORT_LABEL: Record<string, string> = {
 };
 
 function isEffortSetting(setting: ModelSetting): boolean {
-  // `variant` is OpenCode's name for the same reasoning dial.
   return (
     setting.id === "effort" ||
     setting.id === "reasoning" ||
@@ -136,7 +132,6 @@ function isEffortSetting(setting: ModelSetting): boolean {
   );
 }
 
-/** Effort options ordered low → high for the inline slider. */
 function orderedSettingOptions(setting: ModelSetting): ModelSettingChoice[] {
   return [...setting.options].sort(
     (a, b) => (EFFORT_RANK[a.value] ?? 99) - (EFFORT_RANK[b.value] ?? 99),
@@ -176,6 +171,117 @@ function recentMenuModels(current: AgentModel): AgentModel[] {
   return models.slice(0, 6);
 }
 
+const SLIDER_INSET = 10;
+
+function effortStop(ratio: number): string {
+  return `calc(${SLIDER_INSET}px + ${ratio} * (100% - ${SLIDER_INSET * 2}px))`;
+}
+
+function EffortSlider({
+  options,
+  value,
+  label,
+  valueText,
+  onChange,
+}: {
+  options: ModelSettingChoice[];
+  value: string;
+  label: string;
+  valueText: string;
+  onChange: (value: string) => void;
+}) {
+  const track = useRef<HTMLDivElement>(null);
+  const selected = Math.max(
+    0,
+    options.findIndex((option) => option.value === value),
+  );
+  const max = Math.max(1, options.length - 1);
+  const ratio = selected / max;
+
+  const applyFromX = (clientX: number) => {
+    const el = track.current;
+    if (!el || options.length === 0) return;
+    const rect = el.getBoundingClientRect();
+    const inner = Math.max(1, rect.width - SLIDER_INSET * 2);
+    const t = Math.min(
+      1,
+      Math.max(0, (clientX - rect.left - SLIDER_INSET) / inner),
+    );
+    const index = Math.round(t * max);
+    const next = options[index];
+    if (next) onChange(next.value);
+  };
+
+  const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    applyFromX(event.clientX);
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      // happy-dom and some webviews omit pointer capture
+    }
+  };
+
+  const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const captured =
+      typeof event.currentTarget.hasPointerCapture === "function" &&
+      event.currentTarget.hasPointerCapture(event.pointerId);
+    if (!captured && event.buttons !== 1) return;
+    applyFromX(event.clientX);
+  };
+
+  return (
+    <div
+      ref={track}
+      role="slider"
+      tabIndex={0}
+      aria-label={label}
+      aria-valuemin={0}
+      aria-valuemax={max}
+      aria-valuenow={selected}
+      aria-valuetext={valueText}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onKeyDown={(event) => {
+        if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+        event.preventDefault();
+        event.stopPropagation();
+        const delta = event.key === "ArrowRight" ? 1 : -1;
+        const next = options[Math.min(max, Math.max(0, selected + delta))];
+        if (next) onChange(next.value);
+      }}
+      className="relative mt-3 h-8 w-full cursor-pointer touch-none outline-none"
+    >
+      <div className="absolute inset-x-0 top-1/2 h-3.5 -translate-y-1/2 rounded-full bg-content/12" />
+      <div
+        className="absolute top-1/2 left-0 h-3.5 -translate-y-1/2 rounded-full bg-accent"
+        style={{
+          width:
+            ratio >= 1
+              ? "100%"
+              : `calc(${effortStop(ratio)} + 10px)`,
+        }}
+      />
+      {options.map((option, index) => (
+        <span
+          key={option.value}
+          aria-hidden="true"
+          className={`pointer-events-none absolute top-1/2 size-1 -translate-x-1/2 -translate-y-1/2 rounded-full ${
+            index <= selected ? "bg-white/70" : "bg-content/30"
+          }`}
+          style={{ left: effortStop(index / max) }}
+        />
+      ))}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute top-1/2 size-5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-[0_1px_4px_rgba(0,0,0,0.45)]"
+        style={{ left: effortStop(ratio) }}
+      />
+    </div>
+  );
+}
+
 export function ModelPicker({
   harness,
   model,
@@ -206,6 +312,7 @@ export function ModelPicker({
     modelVisibilityVersion,
   );
   const [open, setOpen] = useState(false);
+  const [panel, setPanel] = useState<"effort" | "models">("effort");
   const [active, setActive] = useState(0);
   const [activeModel, setActiveModel] = useState(0);
   const [activeSetting, setActiveSetting] = useState(0);
@@ -213,7 +320,6 @@ export function ModelPicker({
   const [recentActive, setRecentActive] = useState(0);
   const [submenu, setSubmenu] = useState<Submenu | null>(null);
   const [activeRow, setActiveRow] = useState<HTMLButtonElement | null>(null);
-  const [query, setQuery] = useState("");
   const recentMenuId = useId();
   const button = useRef<HTMLButtonElement>(null);
   const onCloseRef = useRef(onClose);
@@ -231,16 +337,14 @@ export function ModelPicker({
     void catalogVersion;
     return pickerSettings(current);
   }, [catalogVersion, current]);
-  const entries = useMemo<MenuEntry[]>(
-    () => [
-      ...settings.map((setting) => ({
-        kind: "setting" as const,
-        setting,
-      })),
-      { kind: "model" as const },
-    ],
+  const extraEntries = useMemo<MenuEntry[]>(
+    () =>
+      settings
+        .filter((setting) => setting.id !== "fast" && !isEffortSetting(setting))
+        .map((setting) => ({ kind: "setting" as const, setting })),
     [settings],
   );
+  const entries = extraEntries;
 
   const triggerLabel = current.name;
   const fastSetting = settings.find((setting) => setting.id === "fast");
@@ -251,41 +355,32 @@ export function ModelPicker({
     : undefined;
 
   const pickerHarnesses = useMemo(() => {
-    void availabilityVersion;
     void visibilityVersion;
-    return HARNESSES.filter((id) =>
-      showProviderInModelPicker(
-        id,
-        isHarnessAvailable(id),
-        hasProbedHarnessAvailability(),
-      ),
-    );
-  }, [availabilityVersion, visibilityVersion]);
-  // The centered "Select model" modal lists every enabled model, grouped by
-  // provider, without the provider rail.
+    return HARNESSES.filter((id) => isPickerProviderVisible(id));
+  }, [visibilityVersion]);
   const providerGroups = useMemo(() => {
     void catalogVersion;
     void modelVisibility;
-    const needle = query.trim().toLowerCase();
+    void availabilityVersion;
     return pickerHarnesses
       .map((id) => ({
         harness: id,
-        models: pickerModelsFor(id).filter(
-          (model) =>
-            !needle ||
-            `${model.name} ${HARNESS_TITLE[id]}`.toLowerCase().includes(needle),
-        ),
+        models: pickerModelsFor(id),
       }))
       .filter((group) => group.models.length > 0);
-  }, [catalogVersion, modelVisibility, pickerHarnesses, query]);
+  }, [availabilityVersion, catalogVersion, modelVisibility, pickerHarnesses]);
 
   const visibleModels = useMemo(
-    () => providerGroups.flatMap((group) => group.models),
-    [providerGroups],
+    () => {
+      void availabilityVersion;
+      return providerGroups.flatMap((group) => group.models);
+    },
+    [availabilityVersion, providerGroups],
   );
 
   const dismiss = (restore: boolean) => {
     setOpen(false);
+    setPanel("effort");
     setRecentMenu(null);
     setSubmenu(null);
     if (restore) onCloseRef.current?.();
@@ -295,6 +390,7 @@ export function ModelPicker({
     if (openRef.current) dismiss(true);
     else {
       setRecentMenu(null);
+      setPanel("effort");
       setOpen(true);
     }
   };
@@ -305,6 +401,7 @@ export function ModelPicker({
     const models = recentMenuModels(selected);
     const selectedIndex = models.findIndex((item) => item.id === selected.id);
     setOpen(false);
+    setPanel("effort");
     setSubmenu(null);
     setRecentActive(selectedIndex >= 0 ? selectedIndex : 0);
     setRecentMenu({ models });
@@ -332,13 +429,12 @@ export function ModelPicker({
     void refreshHarnessCatalogs([current.harness]);
     setActive(0);
     setSubmenu(null);
-    setQuery("");
   }, [open, current.harness]);
 
   useEffect(() => {
-    if (!open || submenu?.kind !== "models") return;
+    if (!open || panel !== "models") return;
     void refreshHarnessCatalogs(pickerHarnesses);
-  }, [open, submenu?.kind, pickerHarnesses]);
+  }, [open, panel, pickerHarnesses]);
 
   useEffect(() => {
     if (!open) return;
@@ -346,10 +442,10 @@ export function ModelPicker({
   }, [entries.length, open]);
 
   useEffect(() => {
-    if (!open || submenu?.kind !== "models") return;
+    if (!open || panel !== "models") return;
     const index = visibleModels.findIndex((item) => item.id === current.id);
     setActiveModel(index >= 0 ? index : 0);
-  }, [open, submenu?.kind, query, visibleModels, current.id]);
+  }, [open, panel, visibleModels, current.id]);
 
   useEffect(() => {
     if (submenu?.kind !== "setting") return;
@@ -390,6 +486,10 @@ export function ModelPicker({
       if (!openRef.current || event.key !== "Escape") return;
       event.preventDefault();
       event.stopPropagation();
+      if (panel === "models") {
+        setPanel("effort");
+        return;
+      }
       dismiss(true);
     };
 
@@ -405,7 +505,7 @@ export function ModelPicker({
       window.removeEventListener("keydown", onKey, true);
       window.removeEventListener("open_model_picker", onMenu);
     };
-  }, [hotkeys]);
+  }, [hotkeys, panel]);
 
   const setSetting = (setting: ModelSetting, value: string) => {
     onSettingsChange({ ...values, [setting.id]: value });
@@ -445,14 +545,10 @@ export function ModelPicker({
 
   const pickSetting = (setting: ModelSetting, value: string) => {
     setSetting(setting, value);
-    dismiss(true);
+    setSubmenu(null);
   };
 
   const showEntrySubmenu = (entry: MenuEntry) => {
-    if (entry.kind === "model") {
-      setSubmenu({ kind: "models" });
-      return;
-    }
     if (entry.setting.kind === "select") {
       setSubmenu({ kind: "setting", setting: entry.setting });
       return;
@@ -462,14 +558,14 @@ export function ModelPicker({
 
   const moveEntry = (direction: 1 | -1) => {
     setSubmenu(null);
+    if (entries.length === 0) return;
     setActive((index) => (index + direction + entries.length) % entries.length);
   };
 
   const onMenuKey = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (event.target instanceof HTMLInputElement) return;
     if (event.key === "ArrowDown") {
       event.preventDefault();
-      if (submenu?.kind === "models") {
+      if (panel === "models") {
         setActiveModel((index) =>
           Math.min(visibleModels.length - 1, index + 1),
         );
@@ -484,7 +580,7 @@ export function ModelPicker({
     }
     if (event.key === "ArrowUp") {
       event.preventDefault();
-      if (submenu?.kind === "models") {
+      if (panel === "models") {
         setActiveModel((index) => Math.max(0, index - 1));
       } else if (submenu?.kind === "setting") {
         setActiveSetting((index) => Math.max(0, index - 1));
@@ -495,18 +591,26 @@ export function ModelPicker({
     }
     if (event.key === "ArrowRight") {
       event.preventDefault();
+      if (panel === "effort") {
+        setPanel("models");
+        return;
+      }
       const entry = entries[active];
       if (entry) showEntrySubmenu(entry);
       return;
     }
     if (event.key === "ArrowLeft") {
       event.preventDefault();
+      if (panel === "models") {
+        setPanel("effort");
+        return;
+      }
       setSubmenu(null);
       return;
     }
     if (event.key !== "Enter") return;
     event.preventDefault();
-    if (submenu?.kind === "models") {
+    if (panel === "models") {
       const item = visibleModels[activeModel];
       if (item) pickModel(item);
       return;
@@ -518,7 +622,7 @@ export function ModelPicker({
     }
     const entry = entries[active];
     if (!entry) return;
-    if (entry.kind === "model" || entry.setting.kind === "select") {
+    if (entry.setting.kind === "select") {
       showEntrySubmenu(entry);
       return;
     }
@@ -526,14 +630,21 @@ export function ModelPicker({
     setSetting(entry.setting, value === "true" ? "false" : "true");
   };
 
-  const showSubmenu = open && submenu != null && activeRow != null;
+  const showSubmenu =
+    open && panel === "effort" && submenu != null && activeRow != null;
+  const effortOptions = effortSetting
+    ? orderedSettingOptions(effortSetting)
+    : [];
+  const effortValue = effortSetting
+    ? settingValue(effortSetting, values)
+    : "";
 
   return (
     <>
       <button
         ref={button}
         type="button"
-        title={`${HARNESS_TITLE[current.harness]} · ${current.name} · Recent models: right-click or ${MOD}.`}
+        data-no-tooltip
         aria-label={`${HARNESS_TITLE[current.harness]} ${current.name}`}
         aria-keyshortcuts={`${MOD}.`}
         aria-expanded={open || recentMenu != null}
@@ -545,14 +656,14 @@ export function ModelPicker({
           openRecentMenu();
         }}
         onClick={() => togglePicker()}
-        className={`flex h-6.5 max-w-40 items-center gap-1 rounded-full px-1.5 ${
+        className={`flex h-6.5 items-center gap-1 rounded-full px-1.5 ${
           open
             ? "bg-content/10 text-content"
             : "text-content hover:bg-content/10"
         }`}
       >
         <ModelBrandIcon model={current} className="size-4 shrink-0" />
-        <span className="min-w-0 truncate text-[11px]">{triggerLabel}</span>
+        <span className="whitespace-nowrap text-[11px]">{triggerLabel}</span>
         {triggerEffort ? (
           <span className="shrink-0 text-[11px] text-content/45">
             {triggerEffort}
@@ -569,185 +680,191 @@ export function ModelPicker({
           <Popover
             anchor={button}
             side="top"
+            align="center"
             width={MENU_WIDTH}
+            maxHeight={panel === "models" ? 420 : undefined}
             autoFocus
             dismissOnEscape={false}
             ignore={SELF}
             onDismiss={() => dismiss(false)}
             role="menu"
-            aria-label={t("Model and effort")}
+            aria-label={
+              panel === "models" ? t("Select model") : t("Model and effort")
+            }
             tabIndex={-1}
             onKeyDown={onMenuKey}
             data-model-picker
-            className="p-1 font-sans"
+            className={`font-sans ${
+              panel === "models"
+                ? "overflow-y-auto overscroll-none p-1"
+                : "p-1"
+            }`}
           >
-            {/* Codex-style header: the bolt toggles Fast and the model name
-                opens the second modal with the enabled models. */}
-            <div className="flex items-center gap-1 px-1 pt-1 pb-0.5">
-              {fastSetting ? (
-                <button
-                  type="button"
-                  role="menuitemcheckbox"
-                  aria-checked={fastValue === "true"}
-                  aria-label={t("Fast")}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() =>
-                    setSetting(
-                      fastSetting,
-                      fastValue === "true" ? "false" : "true",
-                    )
-                  }
-                  className={`grid size-7 shrink-0 place-items-center rounded-md ${
-                    fastValue === "true"
-                      ? "bg-content/15 text-content"
-                      : "text-content/45 hover:bg-content/10 hover:text-content"
-                  }`}
-                >
-                  <Zap className="size-3.5" strokeWidth={1.75} />
-                </button>
-              ) : (
-                <span className="size-7 shrink-0" />
-              )}
-              <button
-                ref={setActiveRow}
-                type="button"
-                role="menuitem"
-                aria-haspopup="menu"
-                aria-expanded={showSubmenu}
-                onMouseDown={(event) => event.preventDefault()}
-                onMouseEnter={() => {
-                  setActive(0);
-                  showEntrySubmenu({ kind: "model" });
-                }}
-                onClick={() => showEntrySubmenu({ kind: "model" })}
-                className="mx-auto flex min-w-0 items-center gap-1.5 rounded-md px-2 py-1 text-content hover:bg-content/5"
-              >
-                <ModelBrandIcon model={current} className="size-3.5 shrink-0" />
-                <span className="min-w-0 truncate text-[13px] font-medium">
-                  {current.name}
-                </span>
-                <ChevronRight
-                  className="size-3.5 shrink-0 text-content/45"
-                  strokeWidth={1.75}
-                />
-              </button>
-              <span className="size-7 shrink-0" />
-            </div>
-
-            {entries.map((entry, index) => {
-              const highlighted = index === active;
-              if (entry.kind === "model") return null;
-
-              const setting = entry.setting;
-              if (setting.id === "fast") return null;
-              const value = settingValue(setting, values);
-              const isToggle = setting.kind === "toggle";
-              // Effort is the reasoning dial, so it reads as a slider the way
-              // Codex presents it rather than another submenu.
-              if (!isToggle && isEffortSetting(setting)) {
-                const options = orderedSettingOptions(setting);
-                const selected = Math.max(
-                  0,
-                  options.findIndex((option) => option.value === value),
-                );
-                return (
-                  <div
-                    key={setting.id}
-                    onMouseEnter={() => {
-                      setActive(index);
-                      setSubmenu(null);
-                    }}
-                    className="px-2 pb-2 pt-2"
-                  >
-                    <div className="flex items-center justify-between text-[12px]">
-                      <span className="text-content">
-                        {settingLabel(setting)}
-                      </span>
-                      <span className="text-content/55">
-                        {settingValueLabel(setting, values)}
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min={0}
-                      max={options.length - 1}
-                      step={1}
-                      value={selected}
-                      aria-label={settingLabel(setting)}
+            {panel === "models" ? (
+              <ModelsList
+                groups={providerGroups}
+                currentId={current.id}
+                activeIndex={activeModel}
+                onActive={setActiveModel}
+                onPick={pickModel}
+              />
+            ) : (
+              <>
+                <div className="flex items-start gap-1 px-1 pt-1">
+                  {fastSetting ? (
+                    <button
+                      type="button"
+                      role="menuitemcheckbox"
+                      aria-checked={fastValue === "true"}
+                      aria-label={t("Fast")}
                       onMouseDown={(event) => event.preventDefault()}
-                      onChange={(event) =>
-                        pickSetting(
-                          setting,
-                          options[Number(event.target.value)].value,
+                      onClick={() =>
+                        setSetting(
+                          fastSetting,
+                          fastValue === "true" ? "false" : "true",
                         )
                       }
-                      className="sidebar-opacity-slider mt-2.5 w-full"
-                    />
-                  </div>
-                );
-              }
-              return (
-                <button
-                  key={setting.id}
-                  ref={highlighted ? setActiveRow : undefined}
-                  data-model-control-index={index}
-                  type="button"
-                  role={isToggle ? "menuitemcheckbox" : "menuitem"}
-                  aria-checked={isToggle ? value === "true" : undefined}
-                  aria-haspopup={isToggle ? undefined : "menu"}
-                  aria-expanded={
-                    !isToggle && highlighted ? showSubmenu : undefined
-                  }
-                  onMouseDown={(event) => event.preventDefault()}
-                  onMouseEnter={() => {
-                    setActive(index);
-                    showEntrySubmenu(entry);
-                  }}
-                  onClick={() => {
-                    if (isToggle) {
-                      setSetting(setting, value === "true" ? "false" : "true");
-                    } else {
-                      showEntrySubmenu(entry);
-                    }
-                  }}
-                  className={`flex h-9 w-full items-center gap-2 rounded-lg px-2 text-left text-[13px] ${
-                    highlighted
-                      ? "bg-content/10 text-content"
-                      : "text-content hover:bg-content/5"
-                  }`}
-                >
-                  <span className="min-w-0 flex-1">
-                    {settingLabel(setting)}
-                  </span>
-                  {isToggle ? (
-                    <span
-                      aria-hidden="true"
-                      className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
-                        value === "true" ? "bg-content/35" : "bg-content/15"
+                      className={`mt-0.5 grid size-7 shrink-0 place-items-center rounded-md ${
+                        fastValue === "true"
+                          ? "text-accent"
+                          : "text-content/40 hover:bg-content/10 hover:text-content"
                       }`}
                     >
-                      <span
-                        className={`absolute top-0.5 size-4 rounded-full bg-content shadow-sm transition-transform ${
-                          value === "true"
-                            ? "translate-x-4.5"
-                            : "translate-x-0.5"
-                        }`}
-                      />
-                    </span>
+                      <Zap className="size-3.5" strokeWidth={1.75} />
+                    </button>
                   ) : (
-                    <>
-                      <span className="min-w-0 max-w-28 truncate text-content/55">
-                        {settingValueLabel(setting, values)}
+                    <span className="size-7 shrink-0" />
+                  )}
+                  <button
+                    type="button"
+                    role="menuitem"
+                    aria-haspopup="menu"
+                    aria-expanded={false}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => {
+                      setSubmenu(null);
+                      setPanel("models");
+                    }}
+                    className="min-w-0 flex-1 rounded-md px-1 py-0.5 text-center hover:bg-content/5"
+                  >
+                    <span className="flex items-center justify-center gap-1 text-[13px] font-medium text-accent">
+                      <span className="min-w-0 truncate">
+                        {effortSetting
+                          ? settingValueLabel(effortSetting, values)
+                          : current.name}
                       </span>
                       <ChevronRight
-                        className="size-3.5 shrink-0 text-content/45"
+                        className="size-3.5 shrink-0"
                         strokeWidth={1.75}
                       />
-                    </>
+                    </span>
+                    {effortSetting ? (
+                      <span className="mt-0.5 block truncate text-[12px] text-content/45">
+                        {current.name}
+                      </span>
+                    ) : null}
+                  </button>
+                  {effortSetting ? (
+                    <button
+                      type="button"
+                      aria-label={t("Reset effort")}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() =>
+                        setSetting(effortSetting, effortSetting.value)
+                      }
+                      className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-md text-content/40 hover:bg-content/10 hover:text-content"
+                    >
+                      <RotateCcw className="size-3.5" strokeWidth={1.75} />
+                    </button>
+                  ) : (
+                    <span className="size-7 shrink-0" />
                   )}
-                </button>
-              );
-            })}
+                </div>
+
+                {effortSetting ? (
+                  <div className="px-3 pb-3 pt-1">
+                    <EffortSlider
+                      options={effortOptions}
+                      value={effortValue}
+                      label={settingLabel(effortSetting)}
+                      valueText={settingValueLabel(effortSetting, values)}
+                      onChange={(value) => setSetting(effortSetting, value)}
+                    />
+                  </div>
+                ) : null}
+
+                {entries.map((entry, index) => {
+                  const highlighted = index === active;
+                  const setting = entry.setting;
+                  const value = settingValue(setting, values);
+                  const isToggle = setting.kind === "toggle";
+                  return (
+                    <button
+                      key={setting.id}
+                      ref={highlighted ? setActiveRow : undefined}
+                      data-model-control-index={index}
+                      type="button"
+                      role={isToggle ? "menuitemcheckbox" : "menuitem"}
+                      aria-checked={isToggle ? value === "true" : undefined}
+                      aria-haspopup={isToggle ? undefined : "menu"}
+                      aria-expanded={
+                        !isToggle && highlighted ? showSubmenu : undefined
+                      }
+                      onMouseDown={(event) => event.preventDefault()}
+                      onMouseEnter={() => {
+                        setActive(index);
+                        showEntrySubmenu(entry);
+                      }}
+                      onClick={() => {
+                        if (isToggle) {
+                          setSetting(
+                            setting,
+                            value === "true" ? "false" : "true",
+                          );
+                        } else {
+                          showEntrySubmenu(entry);
+                        }
+                      }}
+                      className={`flex h-9 w-full items-center gap-2 rounded-lg px-2 text-left text-[13px] ${
+                        highlighted
+                          ? "bg-content/10 text-content"
+                          : "text-content hover:bg-content/5"
+                      }`}
+                    >
+                      <span className="min-w-0 flex-1">
+                        {settingLabel(setting)}
+                      </span>
+                      {isToggle ? (
+                        <span
+                          aria-hidden="true"
+                          className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
+                            value === "true" ? "bg-content/35" : "bg-content/15"
+                          }`}
+                        >
+                          <span
+                            className={`absolute top-0.5 size-4 rounded-full bg-content shadow-sm transition-transform ${
+                              value === "true"
+                                ? "translate-x-4.5"
+                                : "translate-x-0.5"
+                            }`}
+                          />
+                        </span>
+                      ) : (
+                        <>
+                          <span className="min-w-0 max-w-28 truncate text-content/55">
+                            {settingValueLabel(setting, values)}
+                          </span>
+                          <ChevronRight
+                            className="size-3.5 shrink-0 text-content/45"
+                            strokeWidth={1.75}
+                          />
+                        </>
+                      )}
+                    </button>
+                  );
+                })}
+              </>
+            )}
           </Popover>
 
           {showSubmenu && submenu.kind === "setting" ? (
@@ -797,20 +914,6 @@ export function ModelPicker({
               })}
             </Popover>
           ) : null}
-
-          {showSubmenu && submenu.kind === "models" ? (
-            <ModelsModal
-              groups={providerGroups}
-              currentId={current.id}
-              query={query}
-              onQuery={setQuery}
-              onPick={(_harness, id) => {
-                const model = findModel(id);
-                if (model) pickModel(model);
-              }}
-              onClose={() => setSubmenu(null)}
-            />
-          ) : null}
         </>
       ) : null}
 
@@ -818,6 +921,7 @@ export function ModelPicker({
         <Popover
           anchor={button}
           side="top"
+          align="center"
           width={MENU_WIDTH}
           autoFocus
           onDismiss={() => setRecentMenu(null)}
@@ -882,105 +986,74 @@ export function ModelPicker({
   );
 }
 
-function ModelsModal({
+function ModelsList({
   groups,
   currentId,
-  query,
-  onQuery,
+  activeIndex,
+  onActive,
   onPick,
-  onClose,
 }: {
   groups: { harness: HarnessId; models: AgentModel[] }[];
   currentId: string;
-  query: string;
-  onQuery: (value: string) => void;
-  onPick: (harness: HarnessId, model: string) => void;
-  onClose: () => void;
+  activeIndex: number;
+  onActive: (index: number) => void;
+  onPick: (item: AgentModel) => void;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[220] grid place-items-center bg-black/40 p-6 backdrop-blur-sm"
-      onMouseDown={onClose}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={t("Select model")}
-        onMouseDown={(event) => event.stopPropagation()}
-        onKeyDown={(event) => {
-          if (event.key === "Escape") {
-            event.preventDefault();
-            onClose();
-          }
-        }}
-        className="flex max-h-[70vh] w-[min(420px,90vw)] flex-col overflow-hidden rounded-2xl border border-content/12 bg-background-base/95 font-sans shadow-2xl backdrop-blur-2xl"
-      >
-        <div className="shrink-0 px-4 pt-4 pb-2">
-          <div className="text-[13px] font-medium text-content/60">
-            {t("Select model")}
-          </div>
-          <label className="mt-2 flex h-8 items-center gap-2 rounded-lg border border-content/10 px-2 text-content/45 focus-within:border-content/20">
-            <Search className="size-3.5 shrink-0" strokeWidth={1.75} />
-            <input
-              ref={inputRef}
-              value={query}
-              onChange={(event) => onQuery(event.target.value)}
-              placeholder={t("Search models")}
-              aria-label={t("Search models")}
-              spellCheck={false}
-              autoComplete="off"
-              className="min-w-0 flex-1 bg-transparent text-[13px] text-content outline-none placeholder:text-content/35"
-            />
-          </label>
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-none p-1.5">
-          {groups.length === 0 ? (
-            <p className="px-3 py-3 text-[12px] text-content/45">
-              {t("No models found")}
-            </p>
-          ) : (
-            groups.map((group) => (
-              <div key={group.harness} className="mb-1">
-                <p className="px-2.5 pb-1 pt-2 text-[10px] uppercase tracking-widest text-content/40">
-                  {HARNESS_TITLE[group.harness]}
-                </p>
-                {group.models.map((model) => (
+  let offset = 0;
+  return (
+    <div className="pb-1">
+      <div className="px-2.5 pt-1.5 pb-1 text-[12px] text-content/45">
+        {t("Select model")}
+      </div>
+      {groups.length === 0 ? (
+        <p className="px-2.5 py-2 text-[12px] text-content/45">
+          {t("No models found")}
+        </p>
+      ) : (
+        groups.map((group) => {
+          const start = offset;
+          offset += group.models.length;
+          return (
+            <div key={group.harness}>
+              {group.models.map((item, local) => {
+                const index = start + local;
+                const selected = item.id === currentId;
+                const highlighted = index === activeIndex;
+                const disabled = !isHarnessAvailable(item.harness);
+                return (
                   <button
-                    key={model.id}
+                    key={item.id}
                     type="button"
                     role="menuitemradio"
-                    aria-checked={model.id === currentId}
+                    data-picker-harness={group.harness}
+                    aria-checked={selected}
+                    disabled={disabled}
                     onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => onPick(group.harness, model.id)}
-                    className={`flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-[13px] ${
-                      model.id === currentId
-                        ? "bg-content/10 text-content"
-                        : "text-content hover:bg-content/5"
+                    onMouseEnter={() => onActive(index)}
+                    onClick={() => onPick(item)}
+                    className={`flex h-8 w-full items-center gap-2 rounded-lg px-2.5 text-left text-[13px] disabled:cursor-not-allowed ${
+                      disabled
+                        ? "text-content/30"
+                        : highlighted
+                          ? "bg-content/10 text-content"
+                          : "text-content hover:bg-content/5"
                     }`}
                   >
-                    <ModelBrandIcon model={model} className="size-4 shrink-0" />
-                    <span className="min-w-0 flex-1 truncate">
-                      {model.name}
-                    </span>
-                    {model.id === currentId ? (
+                    <ModelBrandIcon model={item} className="size-4 shrink-0" />
+                    <span className="min-w-0 flex-1 truncate">{item.name}</span>
+                    {selected ? (
                       <Check
                         className="size-3.5 shrink-0 text-content/50"
                         strokeWidth={2}
                       />
                     ) : null}
                   </button>
-                ))}
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-    </div>,
-    document.body,
+                );
+              })}
+            </div>
+          );
+        })
+      )}
+    </div>
   );
 }

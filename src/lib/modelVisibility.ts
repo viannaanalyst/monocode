@@ -1,7 +1,8 @@
 import { modelsFor, type AgentModel } from "./models";
-import type { HarnessId } from "./session";
+import { HARNESSES, type HarnessId } from "./session";
 
-const KEY = "monocode.hiddenModels";
+const HIDDEN_KEY = "monocode.hiddenModels";
+const ENABLED_KEY = "monocode.enabledPickerModels";
 
 let version = 0;
 const listeners = new Set<() => void>();
@@ -20,45 +21,89 @@ export function modelVisibilityVersion(): number {
   return version;
 }
 
-export function loadHiddenModels(): Set<string> {
+function parseIdSet(raw: string | null): Set<string> | null {
+  if (!raw) return null;
   try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return new Set();
     const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return new Set();
+    if (!Array.isArray(parsed)) return null;
     return new Set(parsed.filter((id): id is string => typeof id === "string"));
   } catch {
-    return new Set();
+    return null;
   }
 }
 
-function saveHiddenModels(hidden: Set<string>) {
+function allCatalogIds(): string[] {
+  return HARNESSES.flatMap((harness) =>
+    modelsFor(harness).map((model) => model.id),
+  );
+}
+
+/**
+ * Opt-in list. Missing key with a legacy hide-list migrates that choice;
+ * a fresh install starts with nothing in the picker.
+ */
+export function loadEnabledModels(): Set<string> {
   try {
-    localStorage.setItem(KEY, JSON.stringify([...hidden]));
+    const enabled = parseIdSet(localStorage.getItem(ENABLED_KEY));
+    if (enabled) return enabled;
+    const hidden = parseIdSet(localStorage.getItem(HIDDEN_KEY));
+    if (hidden) {
+      const next = new Set(
+        allCatalogIds().filter((id) => !hidden.has(id)),
+      );
+      saveEnabledModels(next);
+      return next;
+    }
+  } catch {
+    // private mode
+  }
+  return new Set();
+}
+
+function saveEnabledModels(enabled: Set<string>) {
+  try {
+    localStorage.setItem(ENABLED_KEY, JSON.stringify([...enabled]));
   } catch {
     // private mode / quota
   }
   notify();
 }
 
+export function isModelEnabled(id: string): boolean {
+  return loadEnabledModels().has(id);
+}
+
 export function isModelHidden(id: string): boolean {
-  return loadHiddenModels().has(id);
+  return !isModelEnabled(id);
+}
+
+export function setModelEnabled(id: string, enabled: boolean) {
+  const next = loadEnabledModels();
+  if (enabled) next.add(id);
+  else next.delete(id);
+  saveEnabledModels(next);
 }
 
 export function setModelHidden(id: string, hidden: boolean) {
-  const next = loadHiddenModels();
-  if (hidden) next.add(id);
-  else next.delete(id);
-  saveHiddenModels(next);
+  setModelEnabled(id, !hidden);
 }
 
-/** Models a provider offers, minus the ones the user hid from the picker. */
+export function setHarnessModelsEnabled(harness: HarnessId, enabled: boolean) {
+  const next = loadEnabledModels();
+  for (const model of modelsFor(harness)) {
+    if (enabled) next.add(model.id);
+    else next.delete(model.id);
+  }
+  saveEnabledModels(next);
+}
+
+/** Models a provider offers that the user turned on for the picker. */
 export function pickerModelsFor(harness: HarnessId): AgentModel[] {
-  const hidden = loadHiddenModels();
-  return modelsFor(harness).filter((model) => !hidden.has(model.id));
+  const enabled = loadEnabledModels();
+  return modelsFor(harness).filter((model) => enabled.has(model.id));
 }
 
 export function hiddenModelCount(harness: HarnessId): number {
-  const hidden = loadHiddenModels();
-  return modelsFor(harness).filter((model) => hidden.has(model.id)).length;
+  const enabled = loadEnabledModels();
+  return modelsFor(harness).filter((model) => !enabled.has(model.id)).length;
 }

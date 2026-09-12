@@ -7,16 +7,20 @@ import {
   Keyboard,
   Mic,
   Palette,
-  SlidersHorizontal,
+  Settings,
   Sparkles,
   type IconComponent,
 } from "./icons";
 import { useLockOverscroll } from "../hooks/useLockOverscroll";
 import { t } from "../i18n";
-import { SETTINGS_SECTIONS, type SettingsSectionId } from "../lib/settings";
+import {
+  SETTINGS_NAV_GROUPS,
+  settingsSectionLabel,
+  type SettingsSectionId,
+} from "../lib/settings";
 
 const SECTION_ICONS: Record<SettingsSectionId, IconComponent> = {
-  general: SlidersHorizontal,
+  general: Settings,
   appearance: Palette,
   keybindings: Keyboard,
   providers: Bot,
@@ -42,16 +46,25 @@ export function SettingsNav({ section, onSelect, onClose }: Props) {
       <div
         ref={lockOverscroll}
         aria-label={t("Settings")}
-        className="flex min-h-0 flex-1 flex-col gap-px overflow-y-auto overscroll-none px-2 pb-2"
+        className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-none px-2 pb-2"
       >
-        {SETTINGS_SECTIONS.map((item) => (
-          <NavRow
-            key={item.id}
-            label={t(item.label)}
-            icon={SECTION_ICONS[item.id]}
-            active={item.id === section}
-            onClick={() => onSelect(item.id)}
-          />
+        {SETTINGS_NAV_GROUPS.map((group) => (
+          <div key={group.label} className="pt-3 first:pt-2">
+            <p className="px-2 pb-1 text-[11px] font-medium text-content/35">
+              {t(group.label)}
+            </p>
+            <div className="flex flex-col gap-px">
+              {group.ids.map((id) => (
+                <NavRow
+                  key={id}
+                  label={settingsSectionLabel(id)}
+                  icon={SECTION_ICONS[id]}
+                  active={id === section}
+                  onClick={() => onSelect(id)}
+                />
+              ))}
+            </div>
+          </div>
         ))}
       </div>
       <div className="flex shrink-0 flex-col gap-px p-2">
@@ -80,14 +93,14 @@ function NavRow({
       data-no-tooltip
       onClick={onClick}
       aria-current={active ? "true" : undefined}
-      className={`flex w-full items-center gap-2 rounded-md px-2 py-2 text-left ${
+      className={`flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left ${
         active
           ? "bg-content/10 text-content"
-          : "text-content/50 hover:bg-content/5 hover:text-content"
+          : "text-content/55 hover:bg-content/5 hover:text-content"
       }`}
     >
-      <Icon className="size-4 shrink-0 opacity-70" strokeWidth={1.75} />
-      <span className="min-w-0 flex-1 truncate text-sm font-medium leading-tight">
+      <Icon className="size-4 shrink-0 opacity-80" strokeWidth={1.75} />
+      <span className="min-w-0 flex-1 truncate text-[13px] leading-tight">
         {label}
       </span>
     </button>

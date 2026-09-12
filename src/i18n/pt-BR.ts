@@ -973,16 +973,20 @@ export const PT_BR: Record<string, string> = {
   "Dictate prompts with OpenAI transcription.":
     "Dite prompts com a transcrição da OpenAI.",
   "Enable dictation": "Ativar ditado",
+  "Mic button in the composer.": "Botão de microfone no compositor.",
   "Show a microphone button in the composer.":
     "Mostra um botão de microfone no compositor.",
   "Full is more accurate; mini is cheaper.":
-    "O full é mais preciso; o mini é mais barato.",
+    "Full é mais preciso; mini, mais barato.",
+  "Auto detects the language.": "Auto detecta o idioma.",
   "Auto lets OpenAI detect the language.":
     "Automático deixa a OpenAI detectar o idioma.",
+  "Names and terms to expect.": "Nomes e termos a reconhecer.",
   "Names and terms the transcription should expect.":
     "Nomes e termos que a transcrição deve esperar.",
   "Context prompt": "Prompt de contexto",
   "OpenAI API key": "Chave de API da OpenAI",
+  "Kept in the macOS Keychain.": "Guardada no Keychain do macOS.",
   "Saved in the macOS Keychain. The value is never shown again.":
     "Salva no Keychain do macOS. O valor nunca é exibido de novo.",
   "Stored in the macOS Keychain, never in this app's storage.":
@@ -1191,6 +1195,14 @@ export const PT_BR: Record<string, string> = {
   "Cache {percent}": "Cache {percent}",
   "Choose which models appear": "Escolher quais modelos aparecem",
   "{shown} of {total}": "{shown} de {total}",
+  "Select all": "Marcar todas",
+  "Clear all": "Desmarcar todas",
+  "Agent providers": "Provedores de agentes",
+  "Agent skills": "Skills de agentes",
+  Integrations: "Integrações",
+  Coding: "Código",
   "Select model": "Selecionar modelo",
+  "Recommended set of models": "Conjunto recomendado de modelos",
+  "Reset effort": "Redefinir esforço",
   "No models found": "Nenhum modelo encontrado",
 };

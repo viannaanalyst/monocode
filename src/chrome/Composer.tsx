@@ -1628,7 +1628,7 @@ export function Composer({
 
             <div
               data-no-tooltip
-              className="flex min-w-0 shrink items-center gap-1"
+              className="flex shrink-0 items-center gap-1"
             >
               <ModelPicker
                 harness={harness}

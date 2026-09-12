@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  isModelEnabled,
   isModelHidden,
-  loadHiddenModels,
+  loadEnabledModels,
   pickerModelsFor,
+  setHarnessModelsEnabled,
+  setModelEnabled,
   setModelHidden,
 } from "./modelVisibility";
 import { modelsFor } from "./models";
@@ -23,28 +26,48 @@ function mockStorage() {
 describe("model visibility", () => {
   beforeEach(mockStorage);
 
-  it("starts with every model visible", () => {
-    expect(loadHiddenModels().size).toBe(0);
-    expect(pickerModelsFor("opencode")).toHaveLength(
-      modelsFor("opencode").length,
-    );
+  it("starts with no models in the picker", () => {
+    expect(loadEnabledModels().size).toBe(0);
+    expect(pickerModelsFor("opencode")).toHaveLength(0);
   });
 
-  it("hides a model from the picker without removing it from the catalog", () => {
+  it("opts a model into the picker without removing it from the catalog", () => {
     const [first] = modelsFor("opencode");
-    setModelHidden(first.id, true);
+    setModelEnabled(first.id, true);
 
-    expect(isModelHidden(first.id)).toBe(true);
-    expect(pickerModelsFor("opencode").some((model) => model.id === first.id)).toBe(
-      false,
-    );
+    expect(isModelEnabled(first.id)).toBe(true);
+    expect(isModelHidden(first.id)).toBe(false);
+    expect(
+      pickerModelsFor("opencode").some((model) => model.id === first.id),
+    ).toBe(true);
     expect(modelsFor("opencode").some((model) => model.id === first.id)).toBe(
       true,
     );
 
-    setModelHidden(first.id, false);
+    setModelHidden(first.id, true);
+    expect(pickerModelsFor("opencode")).toHaveLength(0);
+  });
+
+  it("enables or clears every model for a provider", () => {
+    setHarnessModelsEnabled("opencode", true);
     expect(pickerModelsFor("opencode")).toHaveLength(
       modelsFor("opencode").length,
     );
+    setHarnessModelsEnabled("opencode", false);
+    expect(pickerModelsFor("opencode")).toHaveLength(0);
+  });
+
+  it("migrates a legacy hide-list into the opt-in list", () => {
+    const [first, second] = modelsFor("opencode");
+    localStorage.setItem(
+      "monocode.hiddenModels",
+      JSON.stringify([first.id]),
+    );
+
+    expect(isModelEnabled(second.id)).toBe(true);
+    expect(isModelEnabled(first.id)).toBe(false);
+    expect(
+      pickerModelsFor("opencode").some((model) => model.id === first.id),
+    ).toBe(false);
   });
 });
