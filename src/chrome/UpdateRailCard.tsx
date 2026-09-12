@@ -34,9 +34,7 @@ export function UpdateRailCard({ update, onOpen, onDismiss }: Props) {
           <span className="block truncate text-[12px] font-medium leading-tight text-content">
             Updated to {update.version}
           </span>
-          <span className="mt-0.5 block truncate text-[11px] leading-tight text-content/50">
-            What's new
-          </span>
+          <span className="mt-0.5 block truncate text-[11px] leading-tight text-content/50">{t("What's new")}</span>
         </span>
       </button>
       <button

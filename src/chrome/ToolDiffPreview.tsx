@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import type { ToolPreview } from "../lib/session";
+import { t } from "../i18n";
 import { FilePreview } from "./FilePreview";
 import { Popover } from "./Popover";
 import { X } from "./icons";
@@ -159,7 +160,7 @@ export function ToolDiffPreview({
             <span className="min-w-0 flex-1">{description}</span>
             <button
               type="button"
-              aria-label="Close preview"
+              aria-label={t("Close preview")}
               className="shrink-0 rounded p-0.5 hover:bg-content/8 hover:text-content"
               onClick={() => dismiss(true)}
             >

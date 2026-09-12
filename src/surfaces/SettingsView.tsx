@@ -867,17 +867,23 @@ function GithubSettings() {
   }, [checkStatus]);
 
   const description = status?.connected
-    ? "GitHub CLI is installed and authenticated. MonoCode uses it for GitHub inbox items."
+    ? t(
+        "GitHub CLI is installed and authenticated. MonoCode uses it for GitHub inbox items.",
+      )
     : status?.installed
-      ? "Run gh auth login in a terminal, complete the sign-in flow, then check again."
-      : "Install GitHub CLI from cli.github.com, run gh auth login in a terminal, then check again.";
+      ? t(
+          "Run gh auth login in a terminal, complete the sign-in flow, then check again.",
+        )
+      : t(
+          "Install GitHub CLI from cli.github.com, run gh auth login in a terminal, then check again.",
+        );
   const label = checking
-    ? "Checking"
+    ? t("Checking")
     : status?.connected
-      ? "Connected"
+      ? t("Connected")
       : status?.installed
-        ? "Sign in required"
-        : "Not installed";
+        ? t("Sign in required")
+        : t("Not installed");
 
   return (
     <>
@@ -885,7 +891,7 @@ function GithubSettings() {
         label={
           <span className="flex items-center gap-2">
             <InboxProviderMark provider="github" className="size-4 shrink-0" />
-            Connection
+            {t("Connection")}
           </span>
         }
         description={description}
@@ -897,11 +903,11 @@ function GithubSettings() {
               void openUrl("https://cli.github.com/").catch(() => {});
             }}
           >
-            Installation guide
+            {t("Installation guide")}
           </SecondaryButton>
         ) : null}
         <SecondaryButton onClick={() => void checkStatus()} disabled={checking}>
-          {checking ? "Checking" : "Check again"}
+          {checking ? t("Checking") : t("Check again")}
         </SecondaryButton>
       </Row>
       {error ? (
@@ -975,7 +981,7 @@ function GitlabSettings() {
         label={
           <span className="flex items-center gap-2">
             <InboxProviderMark provider="gitlab" className="size-4 shrink-0" />
-            Connection
+            {t("Connection")}
           </span>
         }
         description={t("Connect GitLab.com or a self-managed GitLab instance. Use a personal access token with API access; the token is stored locally and Disconnect deletes it.")}
@@ -1098,7 +1104,7 @@ function ClickUpSettings() {
         label={
           <span className="flex items-center gap-2">
             <InboxProviderMark provider="clickup" className="size-4 shrink-0" />
-            Connection
+            {t("Connection")}
           </span>
         }
         description={t(
@@ -1207,7 +1213,7 @@ function NotionSettings() {
         label={
           <span className="flex items-center gap-2">
             <InboxProviderMark provider="notion" className="size-4 shrink-0" />
-            Connection
+            {t("Connection")}
           </span>
         }
         description={t(
@@ -1248,7 +1254,7 @@ function NotionSettings() {
                 onKeyDown={(event) => {
                   if (event.key === "Enter") void onSave();
                 }}
-                placeholder="Database id or URL"
+                placeholder={t("Database id or URL")}
                 aria-label={t("Notion database")}
                 autoComplete="off"
                 spellCheck={false}
@@ -1337,7 +1343,7 @@ function JiraSettings() {
         label={
           <span className="flex items-center gap-2">
             <InboxProviderMark provider="jira" className="size-4 shrink-0" />
-            Connection
+            {t("Connection")}
           </span>
         }
         description={t(
@@ -1390,7 +1396,7 @@ function JiraSettings() {
                 onKeyDown={(event) => {
                   if (event.key === "Enter") void onSave();
                 }}
-                placeholder="API token"
+                placeholder={t("API token")}
                 aria-label={t("Jira API token")}
                 autoComplete="off"
                 spellCheck={false}
@@ -1502,9 +1508,7 @@ function LinearSettings() {
       <Row
         label={
           <span className="flex items-center gap-2">
-            <InboxProviderMark provider="linear" className="size-4 shrink-0" />
-            API key
-          </span>
+            <InboxProviderMark provider="linear" className="size-4 shrink-0" />{t("API key")}</span>
         }
         description={t("Create a personal API key in Linear → Settings → Security & Access. Disconnect deletes it.")}
       >
@@ -1543,12 +1547,8 @@ function LinearSettings() {
       ) : null}
       {connected && teams.length > 0 ? (
         <div className="border-b border-content/5 py-4">
-          <div className="text-[13px] font-medium text-content">
-            Linear Teams
-          </div>
-          <p className="mt-1 text-[12px] leading-relaxed text-content/45">
-            Unchecked teams stay out of the inbox.
-          </p>
+          <div className="text-[13px] font-medium text-content">{t("Linear Teams")}</div>
+          <p className="mt-1 text-[12px] leading-relaxed text-content/45">{t("Unchecked teams stay out of the inbox.")}</p>
           <div className="mt-3 flex flex-col gap-0.5 -mx-2">
             {teams.map((team) => {
               const checked = !hiddenTeamIds.includes(team.id);
@@ -1645,9 +1645,7 @@ function UpdateRow({
         <SecondaryButton
           onClick={() => onOpenWhatsNew(snapshot.currentVersion)}
           disabled={snapshot.currentVersion === "…"}
-        >
-          What's new
-        </SecondaryButton>
+        >{t("What's new")}</SecondaryButton>
         <SecondaryButton onClick={() => void onClick()} disabled={busy}>
           {busy ? (
             <Loader className="size-3.5 animate-spin" aria-hidden />
@@ -1979,34 +1977,40 @@ function AppearancePage({ appearance }: { appearance: AppearanceSettings }) {
           onChange={appearance.onUiScale}
         />
       </Row>
-      <Heading title="Fonts" />
+      <Heading title={t("Fonts")} />
       <Row
-        label="Interface font"
-        description="Typeface for the app chrome. macOS keeps its native rendering until you pick one."
+        label={t("Interface font")}
+        description={t(
+          "Typeface for the app chrome. macOS keeps its native rendering until you pick one.",
+        )}
       >
         <FontPicker
-          label="Interface font"
+          label={t("Interface font")}
           value={appearance.uiFontFamily}
           onChange={appearance.onUiFontFamily}
           previewText="Ag"
         />
       </Row>
       <Row
-        label="Interface weight"
-        description="Base weight for interface text. Bolder headings keep their emphasis."
+        label={t("Interface weight")}
+        description={t(
+          "Base weight for interface text. Bolder headings keep their emphasis.",
+        )}
       >
         <FontWeightSegmented
-          label="Interface weight"
+          label={t("Interface weight")}
           value={appearance.uiFontWeight}
           onChange={appearance.onUiFontWeight}
         />
       </Row>
       <Row
-        label="Code font"
-        description="Monospace for the editor and the terminal. Proportional fonts stay listed with the filter off but will misalign the terminal grid."
+        label={t("Code font")}
+        description={t(
+          "Monospace for the editor and the terminal. Proportional fonts stay listed with the filter off but will misalign the terminal grid.",
+        )}
       >
         <FontPicker
-          label="Code font"
+          label={t("Code font")}
           value={appearance.codeFontFamily}
           onChange={appearance.onCodeFontFamily}
           previewText="Aa"
@@ -2014,11 +2018,11 @@ function AppearancePage({ appearance }: { appearance: AppearanceSettings }) {
         />
       </Row>
       <Row
-        label="Code size"
-        description="Editor and terminal text size."
+        label={t("Code size")}
+        description={t("Editor and terminal text size.")}
       >
         <Slider
-          label="Code size"
+          label={t("Code size")}
           value={appearance.codeFontSize}
           display={`${appearance.codeFontSize}px`}
           min={CODE_FONT_SIZE_MIN}
@@ -2027,11 +2031,11 @@ function AppearancePage({ appearance }: { appearance: AppearanceSettings }) {
         />
       </Row>
       <Row
-        label="Code weight"
-        description="Editor and terminal text weight."
+        label={t("Code weight")}
+        description={t("Editor and terminal text weight.")}
       >
         <FontWeightSegmented
-          label="Code weight"
+          label={t("Code weight")}
           value={appearance.codeFontWeight}
           onChange={appearance.onCodeFontWeight}
         />
@@ -2108,15 +2112,18 @@ function CodeFontPreview() {
 
   return (
     <div className="border-b border-content/5 py-4 last:border-b-0">
-      <div className="text-[13px] font-medium text-content">Code preview</div>
+      <div className="text-[13px] font-medium text-content">
+        {t("Code preview")}
+      </div>
       <p className="mt-1 text-[12px] leading-relaxed text-content/45">
-        A real terminal running your code font: same typeface, size, and
-        weight as the workspace terminals.
+        {t(
+          "A real terminal running your code font: same typeface, size, and weight as the workspace terminals.",
+        )}
       </p>
       <div className="monocode-terminal mt-3 h-36 rounded-lg border border-content/10 bg-content/5">
         <div
           ref={hostRef}
-          aria-label="Code font terminal preview"
+          aria-label={t("Code font terminal preview")}
           className="h-full w-full min-h-0 min-w-0 overflow-hidden"
         />
       </div>
@@ -2301,8 +2308,8 @@ function FontPicker({
                 id={searchId}
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search fonts"
-                aria-label="Search fonts"
+                placeholder={t("Search fonts")}
+                aria-label={t("Search fonts")}
                 spellCheck={false}
                 autoComplete="off"
                 className="min-w-0 flex-1 bg-transparent text-[12px] text-content outline-none placeholder:text-content/35"
@@ -2316,9 +2323,7 @@ function FontPicker({
                 checked={monoOnly}
                 onChange={(event) => setMonoOnly(event.target.checked)}
                 className="size-3.5 accent-current"
-              />
-              Monospace only
-            </label>
+              />{t("Monospace only")}</label>
           ) : null}
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
             {fonts == null && !failed ? (
@@ -2360,9 +2365,7 @@ function FontPicker({
                   );
                 })}
                 {visible.length === 0 ? (
-                  <p className="px-2 py-3 text-[12px] text-content/45">
-                    No matching fonts
-                  </p>
+                  <p className="px-2 py-3 text-[12px] text-content/45">{t("No matching fonts")}</p>
                 ) : null}
               </>
             )}

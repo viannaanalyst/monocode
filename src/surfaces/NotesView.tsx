@@ -780,9 +780,7 @@ function NoteEditor({
               disabled={!canAddToChat}
               onClick={() => onAddToChat(draft)}
               className="inline-flex items-center gap-1 rounded-md bg-content px-3 h-6.5 text-[12px] text-background-base hover:bg-content/80 disabled:cursor-default disabled:opacity-40"
-            >
-              Add to chat
-            </button>
+            >{t("Add to chat")}</button>
             <button
               type="button"
               onClick={() => {

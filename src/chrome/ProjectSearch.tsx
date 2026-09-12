@@ -159,9 +159,7 @@ export function ProjectSearch({
         >
           <ChevronLeft className="size-4" strokeWidth={1.75} />
         </button>
-        <span className="min-w-0 flex-1 truncate text-[12px] text-content/55">
-          Search in files
-        </span>
+        <span className="min-w-0 flex-1 truncate text-[12px] text-content/55">{t("Search in files")}</span>
       </div>
       <div className="shrink-0 space-y-2 border-b border-content/10 p-2">
         <div className="flex items-center gap-1 rounded-md border border-content/10 bg-content/5 px-2 pr-1">

@@ -26,9 +26,7 @@ export function WhatsNewBody({ version }: { version: string }) {
           streaming={false}
         />
       ) : (
-        <p className="text-[13px] text-content/60">
-          Release notes for this version are not available in this build.
-        </p>
+        <p className="text-[13px] text-content/60">{t("Release notes for this version are not available in this build.")}</p>
       )}
     </article>
   );

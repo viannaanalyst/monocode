@@ -99,14 +99,14 @@ function ApprovalToastCard({
             className="flex-1 rounded-md bg-content px-2.5 py-1 text-[11px] font-medium text-background-base hover:bg-content/80"
             onClick={() => onApproval(session.id, requestId, "allow")}
           >
-            Allow
+            {t("Allow")}
           </button>
           <button
             type="button"
             className="flex-1 rounded-md bg-content/10 px-2.5 py-1 text-[11px] font-medium text-content/70 hover:bg-content/20"
             onClick={() => onApproval(session.id, requestId, "deny")}
           >
-            Deny
+            {t("Deny")}
           </button>
         </div>
       )}

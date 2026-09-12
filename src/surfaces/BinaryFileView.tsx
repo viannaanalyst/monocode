@@ -263,9 +263,7 @@ function FileCard({
             <Folder className="size-3" strokeWidth={1.75} />
             Reveal
           </CardButton>
-          <CardButton onClick={() => void copyText(path).catch(() => {})}>
-            Copy path
-          </CardButton>
+          <CardButton onClick={() => void copyText(path).catch(() => {})}>{t("Copy path")}</CardButton>
         </div>
       </div>
     </div>

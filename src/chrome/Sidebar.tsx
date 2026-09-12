@@ -1342,9 +1342,7 @@ function SidebarComponent({
             */}
               {pendingFirstLoad ? null : status === "error" &&
                 sessions.length === 0 ? (
-                <p className="px-3 py-2 text-[12px] text-content/50">
-                  Couldn’t load sessions
-                </p>
+                <p className="px-3 py-2 text-[12px] text-content/50">{t("Couldn’t load sessions")}</p>
               ) : visibleSessions.length === 0 ? (
                 // A narrowed-down result is a transient answer to what the user
                 // just typed, so it stays a quiet line of text. Only the genuine
@@ -1994,9 +1992,7 @@ function SidebarProjectPicker({
                   );
                 })
               ) : (
-                <p className="px-2.5 py-5 text-center text-[12px] text-content/45">
-                  No projects found
-                </p>
+                <p className="px-2.5 py-5 text-center text-[12px] text-content/45">{t("No projects found")}</p>
               )}
             </div>
             {onOpenProject ? (

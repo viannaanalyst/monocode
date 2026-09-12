@@ -550,7 +550,7 @@ export function ModelPicker({
             ignore={SELF}
             onDismiss={() => dismiss(false)}
             role="menu"
-            aria-label="Model and effort"
+            aria-label={t("Model and effort")}
             tabIndex={-1}
             onKeyDown={onMenuKey}
             data-model-picker
@@ -580,7 +580,7 @@ export function ModelPicker({
                         : "text-content hover:bg-content/5"
                     }`}
                   >
-                    <span className="min-w-0 flex-1">Model</span>
+                    <span className="min-w-0 flex-1">{t("Model")}</span>
                     <span className="flex min-w-0 max-w-36 items-center gap-1 text-content/55">
                       <ModelBrandIcon
                         model={current}
@@ -873,7 +873,7 @@ function ModelFlyout({
       maxHeight={MODEL_MENU_FRAME_HEIGHT}
       layer={LAYER.submenu}
       role="dialog"
-      aria-label="Models"
+      aria-label={t("Models")}
       data-model-picker
       style={{
         height: MODEL_MENU_HEIGHT,
@@ -884,12 +884,12 @@ function ModelFlyout({
     >
       <nav
         role="tablist"
-        aria-label="Providers"
+        aria-label={t("Providers")}
         aria-orientation="vertical"
         className="flex w-11 shrink-0 flex-col items-center gap-1 border-r border-content/10 p-1.5"
       >
         <ProviderTabButton
-          title="Favorites"
+          title={t("Favorites")}
           selected={tab === "favorites"}
           onSelect={() => onSelectTab("favorites")}
         >
@@ -918,8 +918,8 @@ function ModelFlyout({
             ref={searchRef}
             type="text"
             value={query}
-            placeholder="Search models"
-            aria-label="Search models"
+            placeholder={t("Search models")}
+            aria-label={t("Search models")}
             className="min-w-0 flex-1 bg-transparent text-[13px] text-content outline-none placeholder:text-content/40"
             onChange={(event) => onQuery(event.target.value)}
             onKeyDown={onSearchKey}

@@ -139,9 +139,7 @@ export function CommitDiff({ cwd, sha }: Props) {
 
   if (!cwd || cwd === "~") {
     return (
-      <p className="grid h-full place-items-center text-[13px] text-content/45">
-        No project folder
-      </p>
+      <p className="grid h-full place-items-center text-[13px] text-content/45">{t("No project folder")}</p>
     );
   }
   if (error) {

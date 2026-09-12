@@ -2,6 +2,7 @@ import { CircleDashed, X } from "./icons";
 import { MAX_PREVIEW_LINES } from "../lib/harness/preview";
 import { displayPath, resolveWorkspacePath } from "../lib/paths";
 import type { ToolPreview, ToolPreviewLine } from "../lib/session";
+import { t } from "../i18n";
 import { FileTypeIcon } from "./FileTypeIcon";
 
 type Status = "pending" | "accepted" | "rejected";
@@ -141,9 +142,7 @@ export function FilePreview({
             aria-label={variant === "popover" ? "Preview lines" : undefined}
           >
             {preview.contentOnly && !lines.length ? (
-              <p className="px-3 py-2 font-mono text-xs text-content/50">
-                Empty file
-              </p>
+              <p className="px-3 py-2 font-mono text-xs text-content/50">{t("Empty file")}</p>
             ) : null}
             {lines.map((line, index) => (
               <PreviewLine

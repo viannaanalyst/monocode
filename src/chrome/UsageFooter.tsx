@@ -476,7 +476,7 @@ function ProviderChip({
       {loading ? (
         <span className="animate-pulse text-content/35">···</span>
       ) : disconnected ? (
-        <span className="text-content/35">not connected</span>
+        <span className="text-content/35">{t("not connected")}</span>
       ) : windows.length === 0 ? (
         <span className="text-content/35">{emptyUsageLabel(limits)}</span>
       ) : (

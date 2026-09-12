@@ -165,7 +165,7 @@ export function QuestionForm({ prompt, onReply, onInteraction }: Props) {
           {prompt.autoResolveAt != null ? (
             <span
               className="mr-auto text-[11px] text-content/40"
-              title="Interact to keep this question open."
+              title={t("Interact to keep this question open.")}
             >
               {prompt.autoResolveAt - now > 60_000
                 ? "Optional question"

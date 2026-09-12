@@ -124,9 +124,7 @@ export function ProjectBackgroundDialog({ project, name, onClose }: Props) {
                 className="h-56 w-full object-cover"
               />
             ) : (
-              <div className="grid h-56 place-items-center text-[12px] text-content/40">
-                No background selected
-              </div>
+              <div className="grid h-56 place-items-center text-[12px] text-content/40">{t("No background selected")}</div>
             )}
           </div>
           <button
@@ -203,9 +201,7 @@ export function ProjectBackgroundDialog({ project, name, onClose }: Props) {
             onClick={() => void removeImage()}
             disabled={busy}
             className="w-full rounded-md border border-content/10 px-2.5 py-1.5 text-[12px] text-red-400 hover:border-red-400/40 hover:bg-red-400/10 disabled:opacity-40"
-          >
-            Remove background image
-          </button>
+          >{t("Remove background image")}</button>
         ) : null}
       </div>
     </Modal>

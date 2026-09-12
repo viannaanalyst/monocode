@@ -72,9 +72,9 @@ export function HandoffButton({
       onPick={onPick}
       icon={Replace}
       title={t("Handoff")}
-      disabledTitle="Install another provider to hand off"
+      disabledTitle={t("Install another provider to hand off")}
       description={t("Hand this session to another agent to continue the work.")}
-      menuLabel="Hand this session to another agent"
+      menuLabel={t("Hand this session to another agent")}
     />
   );
 }
@@ -97,9 +97,9 @@ export function BuildTargetButton({
       onPick={onPick}
       icon={ChevronDown}
       title={t("Build with another model")}
-      disabledTitle="No build providers are available"
+      disabledTitle={t("No build providers are available")}
       description={t("Choose the model and provider that should build this plan.")}
-      menuLabel="Build this plan with another model or provider"
+      menuLabel={t("Build this plan with another model or provider")}
       includeCurrent
       disabled={disabled}
       triggerClassName="flex h-6 w-6 shrink-0 items-center justify-center rounded-r-md border-l border-background-base/20 bg-content text-background-base hover:bg-content/90 disabled:pointer-events-none disabled:opacity-40"
@@ -112,10 +112,10 @@ export function SecondOpinionButton({
   fromModel,
   onPick,
   icon: Icon = MessageMultiple,
-  title = "Second opinion",
-  disabledTitle = "Install another provider for a second opinion",
-  description = "Send this turn to another agent to review the work.",
-  menuLabel = "Send this turn to another agent",
+  title = t("Second opinion"),
+  disabledTitle = t("Install another provider for a second opinion"),
+  description = t("Send this turn to another agent to review the work."),
+  menuLabel = t("Send this turn to another agent"),
   includeCurrent = false,
   disabled: disabledByCaller = false,
   triggerClassName,

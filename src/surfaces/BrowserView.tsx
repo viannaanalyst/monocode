@@ -417,21 +417,21 @@ export function BrowserView({ id, url, cwd, active, onUrlChange }: Props) {
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-visible">
       <div className="relative z-20 flex shrink-0 items-center gap-0.5 border-b border-content/10 px-1.5 py-1">
         <ChromeButton
-          title="Back"
+          title={t("Back")}
           disabled={!canBack}
           onClick={() => void goDelta(-1)}
         >
           <ChevronLeft className="size-3.5" strokeWidth={1.75} />
         </ChromeButton>
         <ChromeButton
-          title="Forward"
+          title={t("Forward")}
           disabled={!canForward}
           onClick={() => void goDelta(1)}
         >
           <ChevronRight className="size-3.5" strokeWidth={1.75} />
         </ChromeButton>
         <ChromeButton
-          title="Reload"
+          title={t("Reload")}
           disabled={!showPage}
           onClick={() => {
             void browserReloadNative(label).catch(recreate);
@@ -462,7 +462,7 @@ export function BrowserView({ id, url, cwd, active, onUrlChange }: Props) {
           <ImagePlus className="size-3.5" strokeWidth={1.75} />
         </ChromeButton>
         <ChromeButton
-          title="Open in system browser"
+          title={t("Open in system browser")}
           disabled={!showPage}
           onClick={() => {
             if (showPage) void openUrl(current);
@@ -472,7 +472,7 @@ export function BrowserView({ id, url, cwd, active, onUrlChange }: Props) {
         </ChromeButton>
         <div ref={menuBtn} className="relative">
           <ChromeButton
-            title="Browser actions"
+            title={t("Browser actions")}
             onClick={() => setMenuOpen((open) => !open)}
           >
             <MoreHorizontal className="size-3.5" strokeWidth={1.75} />

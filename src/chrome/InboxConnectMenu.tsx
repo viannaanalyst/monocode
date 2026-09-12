@@ -2,6 +2,7 @@ import {
   INBOX_SOURCE_LABELS,
   type ConnectableInboxSource,
 } from "../lib/inboxFilters";
+import { t } from "../i18n";
 import { InboxProviderMark } from "./InboxProviderMark";
 import { Popover, type PopoverAnchor } from "./Popover";
 
@@ -25,13 +26,11 @@ export function InboxConnectMenu({
       width={WIDTH}
       onDismiss={onClose}
       role="menu"
-      aria-label="Connect an inbox source"
+      aria-label={t("Connect an inbox source")}
       onContextMenu={(event) => event.preventDefault()}
       className="p-1"
     >
-      <div className="px-2 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-content/40">
-        Not connected
-      </div>
+      <div className="px-2 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-content/40">{t("Not connected")}</div>
       {sources.map((source) => (
         <button
           key={source}

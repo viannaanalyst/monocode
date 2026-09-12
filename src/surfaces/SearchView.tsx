@@ -450,9 +450,7 @@ function EmptyState() {
         </div>
       </div>
 
-      <p className="max-w-xs text-center text-[13px] text-content/45">
-        Find files, conversations, messages, and projects.
-      </p>
+      <p className="max-w-xs text-center text-[13px] text-content/45">{t("Find files, conversations, messages, and projects.")}</p>
     </div>
   );
 }

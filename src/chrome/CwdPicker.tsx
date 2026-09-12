@@ -252,9 +252,7 @@ export function CwdPicker({
           >
             {inProject ? (
               <>
-                <p className="px-2.5 pb-1 pt-2 text-[10px] uppercase tracking-widest text-content/50">
-                  Current project
-                </p>
+                <p className="px-2.5 pb-1 pt-2 text-[10px] uppercase tracking-widest text-content/50">{t("Current project")}</p>
                 <div className="px-2.5 py-1.5 text-content/50">
                   <p className="truncate text-[13px] text-content">
                     {basename(cwd)}
@@ -267,9 +265,7 @@ export function CwdPicker({
             ) : null}
             {previewRecents.length > 0 ? (
               <>
-                <p className="px-2.5 pb-1 pt-2 text-[10px] uppercase tracking-widest text-content/50">
-                  Recent projects
-                </p>
+                <p className="px-2.5 pb-1 pt-2 text-[10px] uppercase tracking-widest text-content/50">{t("Recent projects")}</p>
                 {previewRecents.map((item, index) => (
                   <button
                     key={item.path}

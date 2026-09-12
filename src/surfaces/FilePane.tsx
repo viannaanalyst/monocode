@@ -286,9 +286,7 @@ function PlanSurface({
   if (!block || !plan) {
     return (
       <div className="grid h-full place-items-center p-6 text-center">
-        <p className="text-[13px] text-content/70">
-          This plan is no longer in the session.
-        </p>
+        <p className="text-[13px] text-content/70">{t("This plan is no longer in the session.")}</p>
       </div>
     );
   }

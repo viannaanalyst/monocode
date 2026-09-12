@@ -546,17 +546,13 @@ function ChangedFiles({
                 disabled={!canCommitPush}
                 onClick={() => void commit(true)}
                 className="flex h-7 w-full items-center px-3 text-left text-[12px] text-content hover:bg-content/10 disabled:opacity-40"
-              >
-                Commit & Push
-              </button>
+              >{t("Commit & Push")}</button>
               <button
                 type="button"
                 disabled={!canCommitPushPr}
                 onClick={() => void commit(true, true)}
                 className="flex h-7 w-full items-center px-3 text-left text-[12px] text-content hover:bg-content/10 disabled:opacity-40"
-              >
-                Commit, Push & Create PR
-              </button>
+              >{t("Commit, Push & Create PR")}</button>
             </div>
           ) : null}
         </div>

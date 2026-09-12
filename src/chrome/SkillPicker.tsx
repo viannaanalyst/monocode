@@ -75,9 +75,7 @@ export function SkillPicker({
             onClick={onStartCreate}
             className="flex w-full items-center gap-2 border-t border-content/10 px-2.5 py-2 text-left text-[12px] text-content/70 hover:bg-content/10 hover:text-content"
           >
-            <Plus className="size-3.5 shrink-0" strokeWidth={1.75} />
-            New skill
-          </button>
+            <Plus className="size-3.5 shrink-0" strokeWidth={1.75} />{t("New skill")}</button>
         </>
       )}
     </div>
@@ -230,9 +228,7 @@ export function CreateSkillForm({
 
   return (
     <form onSubmit={submit} className="px-2.5 py-2">
-      <p className="mb-2 text-[11px] text-content/50">
-        Writes a starter SKILL.md you can edit.
-      </p>
+      <p className="mb-2 text-[11px] text-content/50">{t("Writes a starter SKILL.md you can edit.")}</p>
       <input
         ref={input}
         value={name}
@@ -269,9 +265,7 @@ export function CreateSkillForm({
       {error ? (
         <p className="mb-2 text-[12px] text-content/70">{error}</p>
       ) : !name.trim() || valid ? null : (
-        <p className="mb-2 text-[12px] text-content/50">
-          Use lowercase letters, numbers, and hyphens.
-        </p>
+        <p className="mb-2 text-[12px] text-content/50">{t("Use lowercase letters, numbers, and hyphens.")}</p>
       )}
       <div className="flex items-center justify-end gap-1">
         <button

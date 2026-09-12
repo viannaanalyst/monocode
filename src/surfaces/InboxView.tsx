@@ -776,7 +776,7 @@ export function InboxView({
         {visibleSources.length > 0 ? (
           <div
             role="tablist"
-            aria-label="Inbox source"
+            aria-label={t("Inbox source")}
             className="flex min-w-0 basis-0 items-center gap-px"
             style={{ flexGrow: visibleSources.length }}
           >
@@ -880,9 +880,7 @@ export function InboxView({
         className="min-h-0 flex-1 overflow-y-auto overscroll-none"
       >
         {noSourcesConnected ? (
-          <p className="px-3 py-3 text-[12px] text-content/50">
-            Add a connection to start using the Inbox.
-          </p>
+          <p className="px-3 py-3 text-[12px] text-content/50">{t("Add a connection to start using the Inbox.")}</p>
         ) : sourceError && visibleItems.length === 0 ? (
           <p className="px-3 py-2 text-[12px] text-content/50">{sourceError}</p>
         ) : loading && items.length === 0 ? (
@@ -953,7 +951,7 @@ export function InboxView({
       <div
         role="separator"
         aria-orientation="vertical"
-        aria-label="Resize inbox list"
+        aria-label={t("Resize inbox list")}
         className={`absolute inset-y-0 -right-px z-10 w-1.5 cursor-col-resize touch-none ${
           resize.dragging ? "bg-content/15" : "hover:bg-content/10"
         }`}
@@ -992,7 +990,7 @@ export function InboxView({
   return (
     <div
       role="region"
-      aria-label="Inbox"
+      aria-label={t("Inbox")}
       data-app-inbox
       className="flex min-h-0 min-w-0 flex-1 flex-col text-content"
     >
@@ -1009,7 +1007,7 @@ export function InboxView({
             className="size-3.5 shrink-0 text-content/45"
             strokeWidth={1.75}
           />
-          <span className="min-w-0 truncate text-content">Inbox</span>
+          <span className="min-w-0 truncate text-content">{t("Inbox")}</span>
         </div>
         {IS_MAC ? null : <WindowControls />}
       </div>
@@ -1094,7 +1092,7 @@ function InboxDetailBody({
     return (
       <div className="flex h-full flex-col items-center justify-center px-6 text-center">
         <Inbox className="mb-3 size-6 text-content/30" strokeWidth={1.75} />
-        <p className="text-[13px] text-content/45">Select an inbox item</p>
+        <p className="text-[13px] text-content/45">{t("Select an inbox item")}</p>
       </div>
     );
   }
@@ -1838,7 +1836,7 @@ export function InboxDetail({
                       ))}
                     </span>
                   ) : (
-                    <span>Unassigned</span>
+                    <span>{t("Unassigned")}</span>
                   )}
                 </>
               ) : null}
@@ -2037,7 +2035,7 @@ export function InboxDetail({
                 diff={prDiff}
               />
             ) : (
-              <p className="text-[13px] text-content/45">No file changes</p>
+              <p className="text-[13px] text-content/45">{t("No file changes")}</p>
             )
           ) : loading ? (
             <div className="flex justify-center py-10 text-content/40">
@@ -2057,7 +2055,7 @@ export function InboxDetail({
                   allowRemoteMedia
                 />
               ) : (
-                <p className="text-[13px] text-content/45">No description</p>
+                <p className="text-[13px] text-content/45">{t("No description")}</p>
               )}
               <InboxComments
                 thread={thread}

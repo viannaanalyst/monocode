@@ -11,6 +11,7 @@ import {
   saveDisabledSkillPaths,
   SKILLS_CHANGE_EVENT,
 } from "../lib/skills";
+import { t } from "../i18n";
 
 /** Inspect and manage file skills without modifying provider-owned catalogs. */
 export function SkillsPage({ cwd }: { cwd: string }): ReactNode {
@@ -116,15 +117,17 @@ export function SkillsPage({ cwd }: { cwd: string }): ReactNode {
           <span className="shrink-0 text-[12px] text-content/40 tabular-nums">
             {skills == null
               ? "…"
-              : `${filtered.length} ${filtered.length === 1 ? "skill" : "skills"}`}
+              : filtered.length === 1
+                ? t("{count} skill", { count: filtered.length })
+                : t("{count} skills", { count: filtered.length })}
           </span>
           <label className="flex h-7 w-52 min-w-0 flex-1 items-center gap-2 rounded-md border border-content/10 px-2 text-content/45 focus-within:border-content/20">
             <Search className="size-3.5 shrink-0" strokeWidth={1.75} />
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Filter"
-              aria-label="Filter skills"
+              placeholder={t("Filter")}
+              aria-label={t("Filter skills")}
               spellCheck={false}
               autoComplete="off"
               className="min-w-0 flex-1 bg-transparent text-[12px] text-content outline-none placeholder:text-content/35"
@@ -132,8 +135,8 @@ export function SkillsPage({ cwd }: { cwd: string }): ReactNode {
           </label>
           <button
             type="button"
-            aria-label="Refresh skills"
-            title="Rescan skill folders"
+            aria-label={t("Refresh skills")}
+            title={t("Rescan skill folders")}
             disabled={skills === null && !error}
             onClick={() => {
               invalidateSkills();
@@ -148,16 +151,16 @@ export function SkillsPage({ cwd }: { cwd: string }): ReactNode {
         <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
-            aria-label={adding ? "Close skill form" : "Add skill"}
+            aria-label={adding ? t("Close skill form") : t("Add skill")}
             disabled={busy}
             className="rounded-md border border-content/10 px-2.5 py-1 text-[12px] text-content/70 hover:bg-content/10 disabled:opacity-40"
             onClick={() => {
               setAdding((value) => !value);
               setCreateError(null);
             }}
-            title="Create a starter SKILL.md you can edit"
+            title={t("Create a starter SKILL.md you can edit")}
           >
-            {adding ? "Close" : "Add skill"}
+            {adding ? t("Close") : t("Add skill")}
           </button>
         </div>
       </div>
@@ -191,14 +194,14 @@ export function SkillsPage({ cwd }: { cwd: string }): ReactNode {
           {error}
         </p>
       ) : skills == null ? (
-        <p className="text-[12px] text-content/45">Loading skills…</p>
+        <p className="text-[12px] text-content/45">{t("Loading skills…")}</p>
       ) : (
         <div className="overflow-hidden rounded-lg border border-content/10">
           {filtered.length === 0 ? (
             <p className="px-3 py-3 text-[12px] text-content/45">
               {skills.length === 0
-                ? "No skills yet. Add skill creates a starter SKILL.md."
-                : "No matching skills"}
+                ? t("No skills yet. Add skill creates a starter SKILL.md.")
+                : t("No matching skills")}
             </p>
           ) : (
             filtered.map((skill) => {
@@ -219,10 +222,10 @@ export function SkillsPage({ cwd }: { cwd: string }): ReactNode {
                     </span>
                     <span className="shrink-0 rounded-full bg-content/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-content/60">
                       {skill.scope === "user"
-                        ? "Personal"
+                        ? t("Personal")
                         : skill.scope === "builtin"
                           ? "MonoCode"
-                          : "Project"}
+                          : t("Project")}
                     </span>
                     <span className="w-20 shrink-0 truncate text-right font-sans text-[11px] text-content/40">
                       {skill.source}
@@ -230,7 +233,9 @@ export function SkillsPage({ cwd }: { cwd: string }): ReactNode {
                     <button
                       type="button"
                       role="switch"
-                      aria-label={`Include ${skill.name} in MonoCode catalog`}
+                      aria-label={t("Include {name} in MonoCode catalog", {
+                        name: skill.name,
+                      })}
                       aria-checked={!disabled}
                       onClick={() => onToggle(skill.path, disabled)}
                       className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${disabled ? "bg-content/20" : "bg-accent"}`}
@@ -257,8 +262,10 @@ export function SkillsPage({ cwd }: { cwd: string }): ReactNode {
                     </p>
                     <button
                       type="button"
-                      aria-label={`Copy path of ${skill.name}`}
-                      title="Copy path"
+                      aria-label={t("Copy path of {name}", {
+                        name: skill.name,
+                      })}
+                      title={t("Copy path")}
                       onClick={() => onCopyPath(skill.path)}
                       className="grid size-5 shrink-0 place-items-center rounded text-content/40 hover:bg-content/10 hover:text-content"
                     >
@@ -266,8 +273,10 @@ export function SkillsPage({ cwd }: { cwd: string }): ReactNode {
                     </button>
                     <button
                       type="button"
-                      aria-label={`Reveal ${skill.name} in file explorer`}
-                      title="Reveal in file manager"
+                      aria-label={t("Reveal {name} in file explorer", {
+                        name: skill.name,
+                      })}
+                      title={t("Reveal in file manager")}
                       onClick={() => onReveal(skill.path)}
                       className="grid size-5 shrink-0 place-items-center rounded text-content/40 hover:bg-content/10 hover:text-content"
                     >
@@ -282,11 +291,9 @@ export function SkillsPage({ cwd }: { cwd: string }): ReactNode {
       )}
 
       <p className="pt-3 text-[12px] text-content/40">
-        Hidden skills stay on disk and are excluded from MonoCode's file-skill
-        catalog. Provider-managed skills and native commands are unaffected.
-        Skills live in <span className="font-sans">.agents/skills</span> for
-        this project and <span className="font-sans">~/.agents/skills</span> for
-        you personally; harness folders are also picked up.
+        {t(
+          "Hidden skills stay on disk and are excluded from MonoCode's file-skill catalog. Provider-managed skills and native commands are unaffected. Skills live in .agents/skills for this project and ~/.agents/skills for you personally; harness folders are also picked up.",
+        )}
       </p>
     </>
   );

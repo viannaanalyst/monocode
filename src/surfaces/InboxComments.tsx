@@ -229,9 +229,7 @@ export function InboxCommentForm({
 function CommentsPending() {
   return (
     <div className="flex items-center gap-2 border-t border-content/10 pt-5 text-[12px] text-content/45">
-      <LoaderCircle className="size-3.5 animate-spin" strokeWidth={1.75} />
-      Loading comments
-    </div>
+      <LoaderCircle className="size-3.5 animate-spin" strokeWidth={1.75} />{t("Loading comments")}</div>
   );
 }
 

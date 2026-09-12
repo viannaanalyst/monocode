@@ -93,9 +93,7 @@ export function ContextMeter({
                 onCompact?.();
               }}
               className="mt-1.5 w-full rounded-md bg-content/10 px-2 py-1 text-[11px] text-content hover:bg-content/15 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Compact now
-            </button>
+            >{t("Compact now")}</button>
           ) : null}
         </Popover>
       ) : null}

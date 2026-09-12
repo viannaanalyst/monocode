@@ -568,9 +568,7 @@ function AgentTranscriptComponent({
               type="button"
               className="rounded-md bg-content/8 px-2.5 py-1.5 font-sans text-[12px] text-content/60 hover:bg-content/12 hover:text-content"
               onClick={loadEarlier}
-            >
-              Load earlier messages
-            </button>
+            >{t("Load earlier messages")}</button>
           </div>
         ) : null}
         {visibleTurns.map((turn, turnIndex) => {
@@ -2561,14 +2559,14 @@ function ApprovalControls({
         className="rounded-md bg-content px-2.5 py-0.5 text-[11px] hover:bg-content/80     text-background-base"
         onClick={() => onApproval?.(approval.requestId, "allow")}
       >
-        Allow
+        {t("Allow")}
       </button>
       <button
         type="button"
         className="rounded-md bg-content/10 px-2.5 py-0.5 text-[11px] text-content/70 hover:bg-content/20"
         onClick={() => onApproval?.(approval.requestId, "deny")}
       >
-        Deny
+        {t("Deny")}
       </button>
     </div>
   );

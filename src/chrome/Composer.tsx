@@ -300,9 +300,7 @@ function MessageQueue({
         {paused ? (
           <div className="flex h-7 items-center gap-2 border-b border-content/10 text-[12px]">
             <Pause className="size-3.5" />
-            <span className="min-w-0 flex-1 truncate">
-              Queue paused because you interrupted
-            </span>
+            <span className="min-w-0 flex-1 truncate">{t("Queue paused because you interrupted")}</span>
             <button
               type="button"
               onClick={onResume}
@@ -1423,9 +1421,7 @@ export function Composer({
           }`}
         >
           {fileDrag ? (
-            <div className="pointer-events-none absolute inset-0 z-20 grid place-items-center rounded-2xl bg-accent/8 text-[12px] text-content/70">
-              Drop files to attach
-            </div>
+            <div className="pointer-events-none absolute inset-0 z-20 grid place-items-center rounded-2xl bg-accent/8 text-[12px] text-content/70">{t("Drop files to attach")}</div>
           ) : null}
 
           {attachments.length > 0 ? (

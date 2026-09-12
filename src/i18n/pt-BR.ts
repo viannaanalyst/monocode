@@ -990,4 +990,183 @@ export const PT_BR: Record<string, string> = {
   "File actions": "Ações do arquivo",
   Model: "Modelo",
   Save: "Salvar",
+  "A file or folder": "Um arquivo ou pasta",
+  "A file or folder name cannot start with a slash.":
+    "Um nome de arquivo ou pasta não pode começar com barra.",
+  "A file or folder name must be provided.":
+    "É preciso informar um nome de arquivo ou pasta.",
+  "Add to {name}": "Adicionar a {name}",
+  Ask: "Perguntar",
+  "Changes apply to the next turn.":
+    "As mudanças passam a valer no próximo turno.",
+  "Choose a background image for {name}":
+    "Escolha uma imagem de fundo para {name}",
+  "Commit & switch": "Commit e trocar",
+  "Continued with {label}": "Continuação com {label}",
+  "Could not unarchive this conversation.\n\n{detail}":
+    "Não foi possível desarquivar esta conversa.\n\n{detail}",
+  "Could not {mode} this conversation.\n\n{detail}":
+    "Não foi possível {mode} esta conversa.\n\n{detail}",
+  'Create a pull request from default branch "{branch}"?':
+    'Criar um pull request a partir do branch padrão "{branch}"?',
+  "Creating “{branch}” would overwrite your local changes. Stash them for later, or commit them on this branch first.":
+    "Criar “{branch}” substituiria suas alterações locais. Guarde-as para depois (stash) ou faça commit neste branch primeiro.",
+  "Delete folder “{name}” and everything inside it?":
+    "Excluir a pasta “{name}” e tudo dentro dela?",
+  "Delete untracked file {name}?": "Excluir o arquivo não rastreado {name}?",
+  Discard: "Descartar",
+  "Discard all unstaged changes in {count} files? This cannot be undone.":
+    "Descartar todas as alterações não preparadas em {count} arquivos? Isso não pode ser desfeito.",
+  "Discard changes in {name}? This cannot be undone.":
+    "Descartar alterações em {name}? Isso não pode ser desfeito.",
+  "Diverged from {upstream}": "Divergiu de {upstream}",
+  "Explore this item with your agent.":
+    "Explore este item com o seu agente.",
+  "Hide the steps for {title}": "Ocultar os passos de {title}",
+  "Indexing files…": "Indexando arquivos…",
+  "No files or folders found": "Nenhum arquivo ou pasta encontrado",
+  "No files or notes found": "Nenhum arquivo ou nota encontrado",
+  "No matching files or folders": "Nenhum arquivo ou pasta correspondente",
+  "No matching files or notes": "Nenhum arquivo ou nota correspondente",
+  "No matching notes": "Nenhuma nota correspondente",
+  "No notes yet. Save a turn from the transcript, or create one here.":
+    "Nenhuma nota ainda. Salve um turno da conversa ou crie uma aqui.",
+  "Open in Linear": "Abrir no Linear",
+  "Open on GitHub": "Abrir no GitHub",
+  "Open on GitLab": "Abrir no GitLab",
+  "Preparing a handoff": "Preparando um handoff",
+  "Preparing a handoff to {name}": "Preparando um handoff para {name}",
+  'Push to default branch "{branch}"?':
+    'Enviar (push) para o branch padrão "{branch}"?',
+  "Review on GitHub": "Revisar no GitHub",
+  "Review on GitLab": "Revisar no GitLab",
+  "Show the steps for {title}": "Mostrar os passos de {title}",
+  "Stash & switch": "Stash e trocar",
+  "Switch project, current project {label}":
+    "Trocar projeto, projeto atual {label}",
+  "Switching to “{branch}” would overwrite your local changes. Stash them for later, or commit them on this branch first.":
+    "Trocar para “{branch}” substituiria suas alterações locais. Guarde-as para depois (stash) ou faça commit neste branch primeiro.",
+  "The name": "O nome",
+  "Uncommitted changes": "Alterações não commitadas",
+  "Update to {version}": "Atualizar para {version}",
+  "already exists at this location. Please choose a different name.":
+    "já existe neste local. Escolha outro nome.",
+  "is not valid as a file or folder name. Please choose a different name.":
+    "não é um nome de arquivo ou pasta válido. Escolha outro nome.",
+  "{count} selected session actions":
+    "{count} ações de sessão selecionadas",
+  "{label} uncommitted": "{label} sem commit",
+  Connection: "Conexão",
+  Checking: "Verificando",
+  Connected: "Conectado",
+  "Sign in required": "Login necessário",
+  "Not installed": "Não instalado",
+  "Installation guide": "Guia de instalação",
+  "Check again": "Verificar de novo",
+  "GitHub CLI is installed and authenticated. MonoCode uses it for GitHub inbox items.":
+    "O GitHub CLI está instalado e autenticado. O MonoCode o usa para itens do GitHub no Inbox.",
+  "Run gh auth login in a terminal, complete the sign-in flow, then check again.":
+    "Rode gh auth login num terminal, conclua o login e verifique de novo.",
+  "Install GitHub CLI from cli.github.com, run gh auth login in a terminal, then check again.":
+    "Instale o GitHub CLI em cli.github.com, rode gh auth login num terminal e verifique de novo.",
+  Fonts: "Fontes",
+  "Interface font": "Fonte da interface",
+  "Interface weight": "Peso da interface",
+  "Code font": "Fonte do código",
+  "Code size": "Tamanho do código",
+  "Code weight": "Peso do código",
+  "Typeface for the app chrome. macOS keeps its native rendering until you pick one.":
+    "Tipografia do visual do app. O macOS mantém a renderização nativa até você escolher uma.",
+  "Base weight for interface text. Bolder headings keep their emphasis.":
+    "Peso base do texto da interface. Títulos mais fortes mantêm a ênfase.",
+  "Monospace for the editor and the terminal. Proportional fonts stay listed with the filter off but will misalign the terminal grid.":
+    "Monoespaçada para o editor e o terminal. Fontes proporcionais continuam listadas com o filtro desligado, mas desalinham a grade do terminal.",
+  "Editor and terminal text size.":
+    "Tamanho do texto do editor e do terminal.",
+  "Editor and terminal text weight.": "Peso do texto do editor e do terminal.",
+  "Code preview": "Prévia do código",
+  "A real terminal running your code font: same typeface, size, and weight as the workspace terminals.":
+    "Um terminal real com a sua fonte de código: mesma tipografia, tamanho e peso dos terminais da área de trabalho.",
+  "Code font terminal preview": "Prévia do terminal com a fonte de código",
+  "Search fonts": "Buscar fontes",
+  "Database id or URL": "ID do banco ou URL",
+  "API token": "Token de API",
+  "Add skill": "Adicionar skill",
+  "Build this plan with another model or provider":
+    "Construir este plano com outro modelo ou provedor",
+  "Choose a session folder": "Escolher uma pasta de sessão",
+  "Choose or name a session folder…": "Escolha ou nomeie uma pasta de sessão…",
+  "Close preview": "Fechar prévia",
+  "Close skill form": "Fechar formulário de skill",
+  "Copy path": "Copiar caminho",
+  "Copy path of {name}": "Copiar caminho de {name}",
+  "Create a starter SKILL.md you can edit":
+    "Criar um SKILL.md inicial que você pode editar",
+  "Filter skills": "Filtrar skills",
+  "Hand this session to another agent": "Passar esta sessão para outro agente",
+  "Hidden skills stay on disk and are excluded from MonoCode's file-skill catalog. Provider-managed skills and native commands are unaffected. Skills live in .agents/skills for this project and ~/.agents/skills for you personally; harness folders are also picked up.":
+    "Skills ocultas continuam no disco e ficam fora do catálogo de skills em arquivo do MonoCode. Skills gerenciadas pelo provedor e comandos nativos não são afetados. As skills ficam em .agents/skills neste projeto e em ~/.agents/skills para você; pastas de harness também são consideradas.",
+  "Include {name} in MonoCode catalog":
+    "Incluir {name} no catálogo do MonoCode",
+  "Install another provider for a second opinion":
+    "Instale outro provedor para uma segunda opinião",
+  "Install another provider to hand off":
+    "Instale outro provedor para fazer handoff",
+  "Interact to keep this question open.":
+    "Interaja para manter esta pergunta aberta.",
+  "Loading skills…": "Carregando skills…",
+  "Model and effort": "Modelo e esforço",
+  "No build providers are available": "Nenhum provedor de build disponível",
+  "No matching skills": "Nenhuma skill correspondente",
+  "No skills yet. Add skill creates a starter SKILL.md.":
+    "Nenhuma skill ainda. Adicionar skill cria um SKILL.md inicial.",
+  "Refresh skills": "Atualizar skills",
+  "Rescan skill folders": "Reescanear pastas de skills",
+  "Reveal in file manager": "Revelar no gerenciador de arquivos",
+  "Reveal {name} in file explorer": "Revelar {name} no explorador de arquivos",
+  "Select an inbox item": "Selecione um item do Inbox",
+  "Selected code actions": "Ações do código selecionado",
+  "Send this turn to another agent": "Enviar este turno para outro agente",
+  "Send this turn to another agent to review the work.":
+    "Envie este turno para outro agente revisar o trabalho.",
+  "Session folder": "Pasta de sessão",
+  "Session folders": "Pastas de sessão",
+  "{count} skill": "{count} skill",
+  "{count} skills": "{count} skills",
+  "API key": "Chave de API",
+  "Clear filters": "Limpar filtros",
+  "Commit & Push": "Commit e push",
+  "Commit, Push & Create PR": "Commit, push e criar PR",
+  "Compact now": "Compactar agora",
+  "Couldn’t load sessions": "Não foi possível carregar as sessões",
+  "Current project": "Projeto atual",
+  "Drop files to attach": "Solte arquivos para anexar",
+  "Empty file": "Arquivo vazio",
+  "Find files, conversations, messages, and projects.":
+    "Busque arquivos, conversas, mensagens e projetos.",
+  "Linear Teams": "Times do Linear",
+  "Load earlier messages": "Carregar mensagens anteriores",
+  "Loading comments": "Carregando comentários",
+  "Monospace only": "Somente monoespaçada",
+  "New skill": "Nova skill",
+  "No background selected": "Nenhum fundo selecionado",
+  "No matching fonts": "Nenhuma fonte correspondente",
+  "No projects found": "Nenhum projeto encontrado",
+  "No session changes": "Nenhuma alteração de sessão",
+  "Not connected": "Não conectado",
+  "Queue paused because you interrupted":
+    "Fila pausada porque você interrompeu",
+  "Recent projects": "Projetos recentes",
+  "Remove background image": "Remover imagem de fundo",
+  "This plan is no longer in the session.":
+    "Este plano não está mais na sessão.",
+  "Type a name to create the first folder":
+    "Digite um nome para criar a primeira pasta",
+  "Unchecked teams stay out of the inbox.":
+    "Times desmarcados ficam fora do Inbox.",
+  "Use lowercase letters, numbers, and hyphens.":
+    "Use letras minúsculas, números e hífens.",
+  "Writes a starter SKILL.md you can edit.":
+    "Escreve um SKILL.md inicial que você pode editar.",
+  "not connected": "não conectado",
 };

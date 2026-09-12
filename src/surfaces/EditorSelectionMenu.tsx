@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { t } from "../i18n";
 import { MessageSquarePlus } from "../chrome/icons";
 import { Popover } from "../chrome/Popover";
 import {
@@ -44,7 +45,7 @@ export function EditorSelectionMenu({
       gap={6}
       onDismiss={onDismiss}
       role="toolbar"
-      aria-label="Selected code actions"
+      aria-label={t("Selected code actions")}
       className="p-1"
     >
       <button
@@ -60,9 +61,7 @@ export function EditorSelectionMenu({
           aria-hidden="true"
           className="size-3.5"
           strokeWidth={1.75}
-        />
-        Add to chat
-      </button>
+        />{t("Add to chat")}</button>
     </Popover>
   );
 }
