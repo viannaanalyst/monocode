@@ -139,9 +139,12 @@ describe("model picker", () => {
     expect(trigger.querySelector("svg")).not.toBeNull();
 
     act(() => trigger.click());
+    const menu = container.querySelector<HTMLElement>(
+      '[role="menu"][aria-label="Model and effort"]',
+    )!;
     const modelRow = [
-      ...container.querySelectorAll<HTMLButtonElement>("button"),
-    ].find((button) => button.textContent?.startsWith("Model"))!;
+      ...menu.querySelectorAll<HTMLButtonElement>("button"),
+    ].find((button) => button.textContent?.includes("Grok 4.6"))!;
     expect(modelRow.textContent).toContain("Grok 4.6");
     expect(modelRow.querySelectorAll("svg")).toHaveLength(2);
 
@@ -226,10 +229,15 @@ describe("model picker", () => {
       'button[aria-haspopup="menu"]',
     )!;
     act(() => trigger.click());
-    let modelRow = [
-      ...container.querySelectorAll<HTMLButtonElement>("button"),
-    ].find((button) => button.textContent?.startsWith("Model"))!;
-    hover(modelRow);
+    const findModelRow = () => {
+      const menu = container.querySelector<HTMLElement>(
+        '[role="menu"][aria-label="Model and effort"]',
+      )!;
+      return [...menu.querySelectorAll<HTMLButtonElement>("button")].find(
+        (button) => button.textContent?.includes("Grok 4.6"),
+      )!;
+    };
+    hover(findModelRow());
 
     const openCodeTab = container.querySelector<HTMLButtonElement>(
       '[role="tab"][aria-label="OpenCode"]',
@@ -239,10 +247,7 @@ describe("model picker", () => {
 
     act(() => trigger.click());
     act(() => trigger.click());
-    modelRow = [
-      ...container.querySelectorAll<HTMLButtonElement>("button"),
-    ].find((button) => button.textContent?.startsWith("Model"))!;
-    hover(modelRow);
+    hover(findModelRow());
 
     expect(
       container

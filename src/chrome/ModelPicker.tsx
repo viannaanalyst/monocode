@@ -1,4 +1,4 @@
-import { Check, ChevronDown, ChevronRight, Search, Star } from "./icons";
+import { Check, ChevronDown, ChevronRight, Search, Star, Zap } from "./icons";
 import {
   useEffect,
   useId,
@@ -240,6 +240,8 @@ export function ModelPicker({
   );
 
   const triggerLabel = current.name;
+  const fastSetting = settings.find((setting) => setting.id === "fast");
+  const fastValue = fastSetting ? settingValue(fastSetting, values) : "";
   const effortSetting = settings.find(isEffortSetting);
   const triggerEffort = effortSetting
     ? settingValueLabel(effortSetting, values)
@@ -568,11 +570,7 @@ export function ModelPicker({
     setSetting(entry.setting, value === "true" ? "false" : "true");
   };
 
-  const showSubmenu =
-    open &&
-    submenu != null &&
-    activeRow != null &&
-    activeRow.dataset.modelControlIndex === String(active);
+  const showSubmenu = open && submenu != null && activeRow != null;
 
   return (
     <>
@@ -627,47 +625,65 @@ export function ModelPicker({
             data-model-picker
             className="p-1 font-sans"
           >
+            {/* Codex-style header: the bolt toggles Fast and the model name
+                opens the second modal with the enabled models. */}
+            <div className="flex items-center gap-1 px-1 pt-1 pb-0.5">
+              {fastSetting ? (
+                <button
+                  type="button"
+                  role="menuitemcheckbox"
+                  aria-checked={fastValue === "true"}
+                  aria-label={t("Fast")}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() =>
+                    setSetting(
+                      fastSetting,
+                      fastValue === "true" ? "false" : "true",
+                    )
+                  }
+                  className={`grid size-7 shrink-0 place-items-center rounded-md ${
+                    fastValue === "true"
+                      ? "bg-content/15 text-content"
+                      : "text-content/45 hover:bg-content/10 hover:text-content"
+                  }`}
+                >
+                  <Zap className="size-3.5" strokeWidth={1.75} />
+                </button>
+              ) : (
+                <span className="size-7 shrink-0" />
+              )}
+              <button
+                ref={setActiveRow}
+                type="button"
+                role="menuitem"
+                aria-haspopup="menu"
+                aria-expanded={showSubmenu}
+                onMouseDown={(event) => event.preventDefault()}
+                onMouseEnter={() => {
+                  setActive(0);
+                  showEntrySubmenu({ kind: "model" });
+                }}
+                onClick={() => showEntrySubmenu({ kind: "model" })}
+                className="mx-auto flex min-w-0 items-center gap-1.5 rounded-md px-2 py-1 text-content hover:bg-content/5"
+              >
+                <ModelBrandIcon model={current} className="size-3.5 shrink-0" />
+                <span className="min-w-0 truncate text-[13px] font-medium">
+                  {current.name}
+                </span>
+                <ChevronRight
+                  className="size-3.5 shrink-0 text-content/45"
+                  strokeWidth={1.75}
+                />
+              </button>
+              <span className="size-7 shrink-0" />
+            </div>
+
             {entries.map((entry, index) => {
               const highlighted = index === active;
-              if (entry.kind === "model") {
-                return (
-                  <button
-                    key="model"
-                    ref={highlighted ? setActiveRow : undefined}
-                    data-model-control-index={index}
-                    type="button"
-                    role="menuitem"
-                    aria-haspopup="menu"
-                    aria-expanded={highlighted && showSubmenu}
-                    onMouseDown={(event) => event.preventDefault()}
-                    onMouseEnter={() => {
-                      setActive(index);
-                      showEntrySubmenu(entry);
-                    }}
-                    onClick={() => showEntrySubmenu(entry)}
-                    className={`flex h-9 w-full items-center gap-2 rounded-lg px-2 text-left text-[13px] ${
-                      highlighted
-                        ? "bg-content/10 text-content"
-                        : "text-content hover:bg-content/5"
-                    }`}
-                  >
-                    <span className="min-w-0 flex-1">{t("Model")}</span>
-                    <span className="flex min-w-0 max-w-36 items-center gap-1 text-content/55">
-                      <ModelBrandIcon
-                        model={current}
-                        className="size-3.5 shrink-0"
-                      />
-                      <span className="min-w-0 truncate">{current.name}</span>
-                    </span>
-                    <ChevronRight
-                      className="size-3.5 shrink-0 text-content/45"
-                      strokeWidth={1.75}
-                    />
-                  </button>
-                );
-              }
+              if (entry.kind === "model") return null;
 
               const setting = entry.setting;
+              if (setting.id === "fast") return null;
               const value = settingValue(setting, values);
               const isToggle = setting.kind === "toggle";
               // Effort is the reasoning dial, so it reads as a slider the way
