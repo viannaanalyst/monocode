@@ -2,6 +2,7 @@ import {
   CHAT_BACKGROUND_OPACITY_MAX,
   CHAT_BACKGROUND_OPACITY_MIN,
   CHAT_BACKGROUND_SCOPE_DEFAULT,
+  loadChatBackgroundFilledOpacity,
   loadChatBackgroundOpacity,
   loadChatBackgroundScope,
   type ChatBackgroundScope,
@@ -14,7 +15,10 @@ export const PROJECT_CHAT_BACKGROUND_CHANGED =
 
 export type ProjectChatBackground = {
   path: string;
+  /** Visibility in empty conversations. */
   opacity: number;
+  /** Visibility once the conversation has messages. */
+  opacityFilled: number;
   scope: ChatBackgroundScope;
 };
 
@@ -64,16 +68,24 @@ export function loadProjectChatBackground(
     typeof stored.opacity === "number" && Number.isFinite(stored.opacity)
       ? clampOpacity(stored.opacity)
       : loadChatBackgroundOpacity();
+  const opacityFilled =
+    typeof stored.opacityFilled === "number" &&
+    Number.isFinite(stored.opacityFilled)
+      ? clampOpacity(stored.opacityFilled)
+      : loadChatBackgroundFilledOpacity();
   return {
     path,
     opacity,
+    opacityFilled,
     scope: validScope(stored.scope) ? stored.scope : loadChatBackgroundScope(),
   };
 }
 
 export function saveProjectChatBackground(
   project: string,
-  value: ProjectChatBackground,
+  value: Omit<ProjectChatBackground, "opacityFilled"> & {
+    opacityFilled?: number;
+  },
 ) {
   const path = value.path.trim();
   if (!project || !path) return;
@@ -81,6 +93,8 @@ export function saveProjectChatBackground(
   next[project] = {
     path,
     opacity: clampOpacity(value.opacity),
+    // Older callers only knew the empty-session opacity; reuse it when unset.
+    opacityFilled: clampOpacity(value.opacityFilled ?? value.opacity),
     scope: validScope(value.scope)
       ? value.scope
       : CHAT_BACKGROUND_SCOPE_DEFAULT,

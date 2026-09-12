@@ -5,6 +5,7 @@ import {
   CHAT_BACKGROUND_OPACITY_MAX,
   CHAT_BACKGROUND_OPACITY_MIN,
   chatBackgroundSrc,
+  loadChatBackgroundFilledOpacity,
   loadChatBackgroundOpacity,
   loadChatBackgroundPath,
   loadChatBackgroundScope,
@@ -36,6 +37,9 @@ export function ProjectBackgroundDialog({ project, name, onClose }: Props) {
   const [opacity, setOpacity] = useState(
     initial?.opacity ?? loadChatBackgroundOpacity(),
   );
+  const [opacityFilled, setOpacityFilled] = useState(
+    initial?.opacityFilled ?? loadChatBackgroundFilledOpacity(),
+  );
   const [scope, setScope] = useState<ChatBackgroundScope>(
     initial?.scope ?? loadChatBackgroundScope(),
   );
@@ -50,11 +54,13 @@ export function ProjectBackgroundDialog({ project, name, onClose }: Props) {
   const save = (
     nextPath: string,
     nextOpacity: number,
+    nextFilled: number,
     nextScope: ChatBackgroundScope,
   ) => {
     saveProjectChatBackground(project, {
       path: nextPath,
       opacity: nextOpacity,
+      opacityFilled: nextFilled,
       scope: nextScope,
     });
     setRevision(projectChatBackgroundRevision());
@@ -66,7 +72,7 @@ export function ProjectBackgroundDialog({ project, name, onClose }: Props) {
     try {
       const nextPath = await pickAndSaveProjectChatBackground(project);
       if (!nextPath) return;
-      save(nextPath, opacity, scope);
+      save(nextPath, opacity, opacityFilled, scope);
       setPath(nextPath);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
@@ -83,6 +89,7 @@ export function ProjectBackgroundDialog({ project, name, onClose }: Props) {
       clearProjectChatBackgroundSetting(project);
       setPath(null);
       setOpacity(loadChatBackgroundOpacity());
+      setOpacityFilled(loadChatBackgroundFilledOpacity());
       setScope(loadChatBackgroundScope());
       setRevision(projectChatBackgroundRevision());
     } catch (cause) {
@@ -98,12 +105,21 @@ export function ProjectBackgroundDialog({ project, name, onClose }: Props) {
       Math.max(CHAT_BACKGROUND_OPACITY_MIN, percent / 100),
     );
     setOpacity(next);
-    if (path) save(path, next, scope);
+    if (path) save(path, next, opacityFilled, scope);
+  };
+
+  const updateFilledOpacity = (percent: number) => {
+    const next = Math.min(
+      CHAT_BACKGROUND_OPACITY_MAX,
+      Math.max(CHAT_BACKGROUND_OPACITY_MIN, percent / 100),
+    );
+    setOpacityFilled(next);
+    if (path) save(path, opacity, next, scope);
   };
 
   const updateScope = (next: ChatBackgroundScope) => {
     setScope(next);
-    if (path) save(path, opacity, next);
+    if (path) save(path, opacity, opacityFilled, next);
   };
 
   return (
@@ -178,7 +194,7 @@ export function ProjectBackgroundDialog({ project, name, onClose }: Props) {
           </div>
         </ProjectBackgroundRow>
 
-        <ProjectBackgroundRow label={t("Visibility")}>
+        <ProjectBackgroundRow label={t("Empty sessions")}>
           <div className="flex w-56 items-center gap-3">
             <input
               type="range"
@@ -191,6 +207,25 @@ export function ProjectBackgroundDialog({ project, name, onClose }: Props) {
             />
             <span className="w-10 shrink-0 text-right text-[12px] tabular-nums text-content">
               {Math.round(opacity * 100)}%
+            </span>
+          </div>
+        </ProjectBackgroundRow>
+
+        <ProjectBackgroundRow label={t("Working sessions")}>
+          <div className="flex w-56 items-center gap-3">
+            <input
+              type="range"
+              min={Math.round(CHAT_BACKGROUND_OPACITY_MIN * 100)}
+              max={Math.round(CHAT_BACKGROUND_OPACITY_MAX * 100)}
+              value={Math.round(opacityFilled * 100)}
+              aria-label={t("Project background visibility in working sessions")}
+              className="sidebar-opacity-slider min-w-0 flex-1"
+              onChange={(event) =>
+                updateFilledOpacity(Number(event.target.value))
+              }
+            />
+            <span className="w-10 shrink-0 text-right text-[12px] tabular-nums text-content">
+              {Math.round(opacityFilled * 100)}%
             </span>
           </div>
         </ProjectBackgroundRow>

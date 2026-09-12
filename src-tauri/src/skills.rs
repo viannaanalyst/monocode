@@ -6,7 +6,9 @@ use serde::Serialize;
 use crate::dirs_home;
 use crate::fs::expand_home;
 
-const MAX_SKILLS: usize = 300;
+// A shared personal catalog can hold thousands of skills; the old 300 cap hid
+// everything past it from search and the slash picker.
+const MAX_SKILLS: usize = 5000;
 const MAX_FRONTMATTER_BYTES: usize = 16 * 1024;
 
 #[derive(Serialize, Clone, Debug, PartialEq, Eq)]

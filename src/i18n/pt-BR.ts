@@ -263,6 +263,14 @@ export const PT_BR: Record<string, string> = {
   "Project: Previous": "Projeto: Anterior",
   Project: "Projeto",
   "Project background visibility": "Visibilidade do fundo do projeto",
+  "Project background visibility in working sessions":
+    "Visibilidade do fundo do projeto em sessões em andamento",
+  "Empty sessions": "Sessões vazias",
+  "Working sessions": "Sessões em andamento",
+  "Empty session visibility": "Visibilidade em sessão vazia",
+  "Working session visibility": "Visibilidade em sessão em andamento",
+  "Visibility while the conversation is still empty.":
+    "Visibilidade enquanto a conversa ainda está vazia.",
   "Project logo": "Logo do projeto",
   "Project options": "Opções do projeto",
   "Project picker": "Seletor de projeto",

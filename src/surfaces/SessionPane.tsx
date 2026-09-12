@@ -202,6 +202,9 @@ export const SessionPane = memo(function SessionPane({
           projectChatBackgroundSrc(projectBackground.path, backgroundRevision),
         )})`,
         "--chat-background-opacity": String(projectBackground.opacity),
+        "--chat-background-opacity-filled": String(
+          projectBackground.opacityFilled,
+        ),
       } as CSSProperties)
     : undefined;
   const approve = useCallback(

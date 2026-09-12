@@ -34,6 +34,7 @@ import { useLockOverscroll } from "../hooks/useLockOverscroll";
 import { useColorScheme } from "../hooks/useColorScheme";
 import {
   applyChatBackground,
+  applyChatBackgroundFilledOpacity,
   applyChatBackgroundOpacity,
   applyChatBackgroundScope,
   applyBodyGlass,
@@ -50,6 +51,7 @@ import {
   chatBackgroundSrc,
   isLightScheme,
   loadBodyGlass,
+  loadChatBackgroundFilledOpacity,
   loadChatBackgroundOpacity,
   loadChatBackgroundPath,
   loadChatBackgroundScope,
@@ -61,6 +63,7 @@ import {
   loadTranscriptLayout,
   loadTranscriptAnchor,
   saveBodyGlass,
+  saveChatBackgroundFilledOpacity,
   saveChatBackgroundOpacity,
   saveChatBackgroundPath,
   saveChatBackgroundScope,
@@ -1677,6 +1680,8 @@ function useAppearanceSettings() {
   const [chatBackgroundOpacity, setChatBackgroundOpacity] = useState(
     loadChatBackgroundOpacity,
   );
+  const [chatBackgroundFilledOpacity, setChatBackgroundFilledOpacity] =
+    useState(loadChatBackgroundFilledOpacity);
   const [chatBackgroundScope, setChatBackgroundScope] =
     useState<ChatBackgroundScope>(loadChatBackgroundScope);
   const [chatBackgroundBusy, setChatBackgroundBusy] = useState(false);
@@ -1765,6 +1770,12 @@ function useAppearanceSettings() {
     setChatBackgroundOpacity(next);
   }, []);
 
+  const onChatBackgroundFilledOpacity = useCallback((percent: number) => {
+    const next = applyChatBackgroundFilledOpacity(percent / 100);
+    saveChatBackgroundFilledOpacity(next);
+    setChatBackgroundFilledOpacity(next);
+  }, []);
+
   const onChatBackgroundScope = useCallback((next: ChatBackgroundScope) => {
     applyChatBackgroundScope(next);
     saveChatBackgroundScope(next);
@@ -1804,6 +1815,9 @@ function useAppearanceSettings() {
     onTint(THEME_HUE_DEFAULT, THEME_SATURATION_DEFAULT);
     onBodyGlass(BODY_GLASS_DEFAULT);
     onChatBackgroundOpacity(Math.round(CHAT_BACKGROUND_OPACITY_DEFAULT * 100));
+    onChatBackgroundFilledOpacity(
+      Math.round(CHAT_BACKGROUND_OPACITY_DEFAULT * 100),
+    );
     onChatBackgroundScope(CHAT_BACKGROUND_SCOPE_DEFAULT);
     if (chatBackgroundPath) void onClearChatBackground();
     onUiScale(Math.round(UI_SCALE_DEFAULT * 100));
@@ -1818,6 +1832,7 @@ function useAppearanceSettings() {
     onBlur,
     onBodyGlass,
     onChatBackgroundOpacity,
+    onChatBackgroundFilledOpacity,
     onChatBackgroundScope,
     onClearChatBackground,
     onThemePreference,
@@ -1840,6 +1855,7 @@ function useAppearanceSettings() {
     bodyGlass,
     chatBackgroundPath,
     chatBackgroundOpacity,
+    chatBackgroundFilledOpacity,
     chatBackgroundScope,
     chatBackgroundBusy,
     chatBackgroundError,
@@ -1857,6 +1873,7 @@ function useAppearanceSettings() {
     onChooseChatBackground,
     onClearChatBackground,
     onChatBackgroundOpacity,
+    onChatBackgroundFilledOpacity,
     onChatBackgroundScope,
     onUiScale,
     onUiFontFamily,
@@ -2441,6 +2458,9 @@ function ChatBackgroundCard({
   const src = chatBackgroundSrc(appearance.chatBackgroundPath);
   const hasImage = Boolean(appearance.chatBackgroundPath && src);
   const visibility = Math.round(appearance.chatBackgroundOpacity * 100);
+  const visibilityFilled = Math.round(
+    appearance.chatBackgroundFilledOpacity * 100,
+  );
   const busy = appearance.chatBackgroundBusy;
 
   return (
@@ -2526,18 +2546,38 @@ function ChatBackgroundCard({
             </div>
             <div className="flex items-center justify-between gap-4 border-t border-content/5 px-3 py-2.5">
               <div className="min-w-0">
-                <div className="text-[12px] text-content">{t("Visibility")}</div>
+                <div className="text-[12px] text-content">
+                  {t("Empty sessions")}
+                </div>
                 <p className="text-[11px] text-content/40">
-                  {t("Keep it subtle so long conversations stay readable.")}
+                  {t("Visibility while the conversation is still empty.")}
                 </p>
               </div>
               <Slider
-                label={t("Background visibility")}
+                label={t("Empty session visibility")}
                 value={visibility}
                 display={`${visibility}%`}
                 min={Math.round(CHAT_BACKGROUND_OPACITY_MIN * 100)}
                 max={Math.round(CHAT_BACKGROUND_OPACITY_MAX * 100)}
                 onChange={appearance.onChatBackgroundOpacity}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-4 border-t border-content/5 px-3 py-2.5">
+              <div className="min-w-0">
+                <div className="text-[12px] text-content">
+                  {t("Working sessions")}
+                </div>
+                <p className="text-[11px] text-content/40">
+                  {t("Keep it subtle so long conversations stay readable.")}
+                </p>
+              </div>
+              <Slider
+                label={t("Working session visibility")}
+                value={visibilityFilled}
+                display={`${visibilityFilled}%`}
+                min={Math.round(CHAT_BACKGROUND_OPACITY_MIN * 100)}
+                max={Math.round(CHAT_BACKGROUND_OPACITY_MAX * 100)}
+                onChange={appearance.onChatBackgroundFilledOpacity}
               />
             </div>
           </div>

@@ -16,6 +16,8 @@ const TRANSCRIPT_LAYOUT_KEY = "monocode.transcriptLayout";
 const TRANSCRIPT_ANCHOR_KEY = "monocode.transcriptAnchor";
 const CHAT_BACKGROUND_PATH_KEY = "monocode.chatBackgroundPath";
 const CHAT_BACKGROUND_OPACITY_KEY = "monocode.chatBackgroundOpacity";
+const CHAT_BACKGROUND_FILLED_OPACITY_KEY =
+  "monocode.chatBackgroundFilledOpacity";
 const CHAT_BACKGROUND_SCOPE_KEY = "monocode.chatBackgroundScope";
 const CHANGES_VIEW_KEY = "monocode.changesView";
 let chatBackgroundRevision = Date.now();
@@ -184,6 +186,7 @@ export function initAppearance() {
   applyBodyGlass(loadBodyGlass());
   applyChatBackground(loadChatBackgroundPath());
   applyChatBackgroundOpacity(loadChatBackgroundOpacity());
+  applyChatBackgroundFilledOpacity(loadChatBackgroundFilledOpacity());
   applyChatBackgroundScope(loadChatBackgroundScope());
   void applyUiScale(loadUiScale());
 }
@@ -387,6 +390,36 @@ export function applyChatBackgroundOpacity(value: number) {
   );
   document.documentElement.style.setProperty(
     "--chat-background-opacity",
+    String(next),
+  );
+  return next;
+}
+
+/** Visibility in conversations that already have messages. */
+export function loadChatBackgroundFilledOpacity(): number {
+  return clamp(
+    readNumber(CHAT_BACKGROUND_FILLED_OPACITY_KEY) ??
+      loadChatBackgroundOpacity(),
+    CHAT_BACKGROUND_OPACITY_MIN,
+    CHAT_BACKGROUND_OPACITY_MAX,
+  );
+}
+
+export function saveChatBackgroundFilledOpacity(value: number) {
+  writeNumber(
+    CHAT_BACKGROUND_FILLED_OPACITY_KEY,
+    clamp(value, CHAT_BACKGROUND_OPACITY_MIN, CHAT_BACKGROUND_OPACITY_MAX),
+  );
+}
+
+export function applyChatBackgroundFilledOpacity(value: number) {
+  const next = clamp(
+    value,
+    CHAT_BACKGROUND_OPACITY_MIN,
+    CHAT_BACKGROUND_OPACITY_MAX,
+  );
+  document.documentElement.style.setProperty(
+    "--chat-background-opacity-filled",
     String(next),
   );
   return next;
