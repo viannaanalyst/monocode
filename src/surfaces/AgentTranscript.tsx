@@ -9,6 +9,7 @@ import {
   PenLine,
   Search,
   Terminal,
+  Undo2,
   Wrench,
   X,
   Globe,
@@ -87,6 +88,8 @@ import { useTranscriptSelection } from "../hooks/useTranscriptSelection";
 import type { TranscriptLayout } from "../lib/appearance";
 import { AgentMarkdown } from "./AgentMarkdown";
 import { TranscriptSelectionMenu } from "./TranscriptSelectionMenu";
+import { ModalPanel } from "../chrome/Modal";
+import { rewindSessionCode } from "../lib/sessionRewind";
 import { t } from "../i18n";
 import {
 
@@ -193,6 +196,25 @@ function AgentTranscriptComponent({
   const toggleWork = useCallback((turnId: string, currentlyOpen: boolean) => {
     setOpenWork((open) => ({ ...open, [turnId]: !currentlyOpen }));
   }, []);
+  // Rewind: restore the code to before a prompt. Confirm first, it is a
+  // destructive rollback of every response after that message.
+  const [rewindTurnId, setRewindTurnId] = useState<string | null>(null);
+  const [rewinding, setRewinding] = useState(false);
+  const requestRewind = useCallback((turnId: string) => {
+    setRewindTurnId(turnId);
+  }, []);
+  const confirmRewind = useCallback(async () => {
+    if (!rewindTurnId || !cwd || !sessionId) return;
+    setRewinding(true);
+    try {
+      await rewindSessionCode(sessionId, cwd, rewindTurnId);
+      setRewindTurnId(null);
+    } catch {
+      // Leave the dialog open so the user can retry.
+    } finally {
+      setRewinding(false);
+    }
+  }, [rewindTurnId, sessionId, cwd]);
   // Stretch the last turn after a send while this tab stays open. Closing
   // the tab is a new visit: the remount uses the true transcript height so
   // the latest reply sits on the composer instead of a hole of empty space.
@@ -665,6 +687,7 @@ function AgentTranscriptComponent({
                 planHarness={harness}
                 planModel={model}
                 cwd={cwd}
+                onRewind={requestRewind}
               />
             );
           const foldLineRow = (
@@ -769,6 +792,34 @@ function AgentTranscriptComponent({
           onDismiss={dismissSelection}
         />
       ) : null}
+      {rewindTurnId ? (
+        <ModalPanel
+          onClose={() => setRewindTurnId(null)}
+          title={t("Rewind code to this message?")}
+          description={t(
+            "Files go back to how they were before you sent this message. Every later code change from this session is undone.",
+          )}
+          size="sm"
+        >
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setRewindTurnId(null)}
+              className="h-8 rounded-md px-3 text-[13px] text-content/70 hover:bg-content/8 hover:text-content"
+            >
+              {t("Cancel")}
+            </button>
+            <button
+              type="button"
+              disabled={rewinding}
+              onClick={() => void confirmRewind()}
+              className="h-8 rounded-md bg-content px-3 text-[13px] text-background-base hover:bg-content/90 disabled:opacity-40"
+            >
+              {rewinding ? t("Reverting…") : t("Rewind")}
+            </button>
+          </div>
+        </ModalPanel>
+      ) : null}
     </div>
     </div>
   );
@@ -864,7 +915,10 @@ function TurnDuration({
       aria-label={label}
       className="flex min-w-0 items-center gap-2.5 px-4 pt-1 pb-3 font-sans text-sm text-content/40"
     >
-      <span className="flex shrink-0 items-center gap-1">
+      <span
+        data-tooltip-enable
+        className="flex shrink-0 items-center gap-1"
+      >
         {output ? (
           <>
             <CopyTurnButton text={output} />
@@ -1016,6 +1070,7 @@ const TranscriptBlock = memo(function TranscriptBlock({
   planBusy,
   planHarness,
   planModel,
+  onRewind,
 }: {
   block: Block;
   layout: TranscriptLayout;
@@ -1031,6 +1086,7 @@ const TranscriptBlock = memo(function TranscriptBlock({
   planBusy?: boolean;
   planHarness?: HarnessId;
   planModel?: string;
+  onRewind?: (turnId: string) => void;
 }) {
   if (block.role === "user") {
     return (
@@ -1038,6 +1094,7 @@ const TranscriptBlock = memo(function TranscriptBlock({
         block={block}
         layout={layout}
         stickyIndex={stickyIndex}
+        onRewind={onRewind}
       />
     );
   }
@@ -1151,10 +1208,12 @@ function UserMessageBlock({
   block,
   layout,
   stickyIndex,
+  onRewind,
 }: {
   block: Block;
   layout: TranscriptLayout;
   stickyIndex: number;
+  onRewind?: (turnId: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [overflows, setOverflows] = useState(false);
@@ -1211,18 +1270,40 @@ function UserMessageBlock({
     if (overflows) setExpanded((value) => !value);
   };
 
+  const rewindButton =
+    block.checkpointTurnId && onRewind ? (
+      <button
+        type="button"
+        data-tooltip-enable
+        title={t("Rewind code to this message")}
+        aria-label={t("Rewind code to this message")}
+        onClick={(event) => {
+          event.stopPropagation();
+          onRewind(block.checkpointTurnId!);
+        }}
+        className={`shrink-0 rounded-md p-1 text-content/40 opacity-0 transition-opacity hover:bg-content/8 hover:text-content/70 group-hover:opacity-100 focus-visible:opacity-100 ${
+          chat ? "" : "absolute right-1.5 top-1.5"
+        }`}
+      >
+        <Undo2 className="size-3.5" strokeWidth={1.75} />
+      </button>
+    ) : null;
+
   return (
     <div
       data-prompt-anchor={block.id}
       className={
-        chat ? "flex justify-end pt-1.5 pr-4 pb-4 pl-14" : "p-1.5 pb-3"
+        chat
+          ? "group relative flex items-center justify-end gap-1.5 pt-1.5 pr-4 pb-4 pl-14"
+          : "group relative p-1.5 pb-3"
       }
     >
+      {chat ? rewindButton : null}
       <div
         className={`min-w-0 bg-content/10 px-3 py-2 font-sans text-content ${
           chat
             ? `w-fit max-w-xl ${singleLine ? "rounded-full" : "rounded-xl"}`
-            : "rounded-lg border border-content/10"
+            : "block rounded-lg border border-content/10"
         }`}
         style={{ zIndex: stickyIndex }}
         onClick={overflows ? toggle : undefined}
@@ -1255,6 +1336,7 @@ function UserMessageBlock({
           </pre>
         ) : null}
       </div>
+      {chat ? null : rewindButton}
     </div>
   );
 }

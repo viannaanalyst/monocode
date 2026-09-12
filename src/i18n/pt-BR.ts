@@ -364,6 +364,12 @@ export const PT_BR: Record<string, string> = {
   "Undo only the last response": "Desfazer apenas a última resposta",
   "Undo response": "Desfazer resposta",
   "Undoing…": "Desfazendo…",
+  "Rewind code to this message": "Voltar o código até esta mensagem",
+  "Rewind code to this message?": "Voltar o código até esta mensagem?",
+  "Files go back to how they were before you sent this message. Every later code change from this session is undone.":
+    "Os arquivos voltam ao estado anterior a esta mensagem. Toda alteração de código posterior desta sessão é desfeita.",
+  Rewind: "Voltar",
+  "Reverting…": "Voltando…",
   "Add to chat": "Adicionar ao chat",
   "Add to notes": "Adicionar às notas",
   "Add note tag": "Adicionar tag à nota",

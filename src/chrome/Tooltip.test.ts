@@ -112,6 +112,19 @@ describe("tooltipText", () => {
     expect(tooltipText(button)).toBeNull();
   });
 
+  it("re-enables tooltips inside an opted-out region", () => {
+    const wrapper = document.createElement("div");
+    wrapper.setAttribute("data-no-tooltip", "");
+    const row = document.createElement("span");
+    row.setAttribute("data-tooltip-enable", "");
+    const button = document.createElement("button");
+    button.setAttribute("aria-label", "Copy response");
+    row.append(button);
+    wrapper.append(row);
+    expect(tooltipText(button)).toBe("Copy response");
+    expect(isTooltipTarget(button)).toBe(true);
+  });
+
   it("falls back to aria-label and ignores disabled controls", () => {
     const button = document.createElement("button");
     button.setAttribute("aria-label", "Settings");

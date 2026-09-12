@@ -207,37 +207,76 @@ impl CheckpointStore {
         let root = project_root(cwd)?;
         let dir = self.session_dir(session_id);
         let foreign_touched = self.foreign_touched_paths(cwd, session_id);
-        while let Some(turn_id) = manifest.turn_order.pop() {
-            let Some(files) = manifest.turns.remove(&turn_id) else {
-                continue;
-            };
-            if manifest.current_turn.as_deref() == Some(turn_id.as_str()) {
-                manifest.current_turn = None;
-            }
-            for (relative, kind) in files {
-                if foreign_touched.contains(&relative) {
-                    continue;
-                }
-                let _ = restore_turn_snapshot(&dir, &turn_id, &root, &relative, kind);
-                manifest.diverged.remove(&relative);
-                manifest.after.insert(
-                    relative.clone(),
-                    snapshot_after_file(&dir, &root, &relative)?,
-                );
-                match calculate_session_stats(&dir, &manifest, &relative) {
-                    Some(stats) => {
-                        manifest.stats.insert(relative, stats);
-                    }
-                    None => {
-                        manifest.stats.remove(&relative);
-                    }
-                }
-            }
-            let _ = std::fs::remove_dir_all(dir.join("turns").join(&turn_id));
+        if let Some(turn_id) = manifest.turn_order.pop() {
+            self.restore_turn(&mut manifest, &dir, &root, &foreign_touched, &turn_id)?;
             write_manifest(&dir, &manifest)?;
             return self.status(session_id, cwd);
         }
         Ok(CheckpointStatus { files: Vec::new() })
+    }
+
+    /// Undo the target turn and every turn after it, restoring the worktree to
+    /// the state it had just before that user message was sent.
+    fn undo_to_turn(
+        &self,
+        session_id: &str,
+        cwd: &str,
+        turn_id: &str,
+    ) -> Result<CheckpointStatus, String> {
+        let Some(mut manifest) = self.load_matching(session_id, cwd)? else {
+            return Ok(CheckpointStatus { files: Vec::new() });
+        };
+        let Some(position) = manifest.turn_order.iter().position(|id| id == turn_id) else {
+            return Ok(CheckpointStatus { files: Vec::new() });
+        };
+        let root = project_root(cwd)?;
+        let dir = self.session_dir(session_id);
+        let foreign_touched = self.foreign_touched_paths(cwd, session_id);
+        while manifest.turn_order.len() > position {
+            let Some(id) = manifest.turn_order.pop() else {
+                break;
+            };
+            self.restore_turn(&mut manifest, &dir, &root, &foreign_touched, &id)?;
+        }
+        write_manifest(&dir, &manifest)?;
+        self.status(session_id, cwd)
+    }
+
+    /// Restore the files a single turn touched, in place, and drop its snapshot.
+    fn restore_turn(
+        &self,
+        manifest: &mut Manifest,
+        dir: &Path,
+        root: &Path,
+        foreign_touched: &HashSet<String>,
+        turn_id: &str,
+    ) -> Result<(), String> {
+        let Some(files) = manifest.turns.remove(turn_id) else {
+            return Ok(());
+        };
+        if manifest.current_turn.as_deref() == Some(turn_id) {
+            manifest.current_turn = None;
+        }
+        for (relative, kind) in files {
+            if foreign_touched.contains(&relative) {
+                continue;
+            }
+            let _ = restore_turn_snapshot(dir, turn_id, root, &relative, kind);
+            manifest.diverged.remove(&relative);
+            manifest
+                .after
+                .insert(relative.clone(), snapshot_after_file(dir, root, &relative)?);
+            match calculate_session_stats(dir, manifest, &relative) {
+                Some(stats) => {
+                    manifest.stats.insert(relative, stats);
+                }
+                None => {
+                    manifest.stats.remove(&relative);
+                }
+            }
+        }
+        let _ = std::fs::remove_dir_all(dir.join("turns").join(turn_id));
+        Ok(())
     }
 
     /// After a risky shell command, register every path it touched so the
@@ -706,6 +745,22 @@ pub async fn session_checkpoint_undo_turn(
     let store = store.inner().clone();
     tauri::async_runtime::spawn_blocking(move || {
         store.exclusive(|store| store.undo_turn(&session_id, &cwd))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn session_checkpoint_undo_to(
+    store: State<'_, CheckpointStore>,
+    session_id: String,
+    cwd: String,
+    turn_id: String,
+) -> Result<CheckpointStatus, String> {
+    validate_id(&session_id, "session")?;
+    let store = store.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        store.exclusive(|store| store.undo_to_turn(&session_id, &cwd, &turn_id))
     })
     .await
     .map_err(|e| e.to_string())?
@@ -1976,6 +2031,43 @@ mod tests {
         store.capture("s1", &cwd, &["a.txt".into()]).unwrap();
 
         store.undo_turn("s1", &cwd).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(repo.0.join("a.txt")).unwrap(),
+            "one\n"
+        );
+
+        store.undo_turn("s1", &cwd).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(repo.0.join("a.txt")).unwrap(),
+            "base\n"
+        );
+    }
+
+    #[test]
+    fn undo_to_turn_rewinds_up_to_that_message() {
+        let repo = tmp("undo-to-turn");
+        if !init_git_commit(&repo.0, &[("a.txt", "base\n")]) {
+            return;
+        }
+        let cwd = repo.0.to_string_lossy().into_owned();
+        let (_root, store) = store();
+        store.ensure("s1", &cwd).unwrap();
+
+        store.begin_turn("s1", &cwd, "t1").unwrap();
+        store.prepare("s1", &cwd, &["a.txt".into()]).unwrap();
+        std::fs::write(repo.0.join("a.txt"), "one\n").unwrap();
+        store.capture("s1", &cwd, &["a.txt".into()]).unwrap();
+
+        store.begin_turn("s1", &cwd, "t2").unwrap();
+        std::fs::write(repo.0.join("a.txt"), "two\n").unwrap();
+        store.capture("s1", &cwd, &["a.txt".into()]).unwrap();
+
+        store.begin_turn("s1", &cwd, "t3").unwrap();
+        std::fs::write(repo.0.join("a.txt"), "three\n").unwrap();
+        store.capture("s1", &cwd, &["a.txt".into()]).unwrap();
+
+        // Rewinding to t2 drops t3 and t2, leaving the state after t1.
+        store.undo_to_turn("s1", &cwd, "t2").unwrap();
         assert_eq!(
             std::fs::read_to_string(repo.0.join("a.txt")).unwrap(),
             "one\n"

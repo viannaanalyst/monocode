@@ -130,6 +130,21 @@ export function undoSessionTurn(
   );
 }
 
+/** Rewind: undo the target response and every response after it. */
+export function undoSessionTurnTo(
+  sessionId: string,
+  cwd: string,
+  turnId: string,
+): Promise<CheckpointStatus> {
+  return enqueueCheckpoint(sessionId, () =>
+    invoke<CheckpointStatus>("session_checkpoint_undo_to", {
+      sessionId,
+      cwd,
+      turnId,
+    }),
+  );
+}
+
 /** Capture a file immediately before a structured edit starts. */
 export function prepareSessionCheckpoint(
   sessionId: string,

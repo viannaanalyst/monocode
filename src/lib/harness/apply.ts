@@ -313,12 +313,16 @@ function lastMatchingBlock(
 type UserTurnExtra = {
   secondOpinion?: Block["secondOpinion"];
   noteCard?: Block["noteCard"];
+  checkpointTurnId?: string;
 };
 
 function userTurnFields(extra?: UserTurnExtra) {
   return {
     ...(extra?.secondOpinion ? { secondOpinion: extra.secondOpinion } : {}),
     ...(extra?.noteCard ? { noteCard: extra.noteCard } : {}),
+    ...(extra?.checkpointTurnId
+      ? { checkpointTurnId: extra.checkpointTurnId }
+      : {}),
   };
 }
 

@@ -183,6 +183,8 @@ export type Block = {
   durationMs?: number;
   /** Stable model label for this turn. Present on newly created user blocks. */
   turnModel?: TurnModel;
+  /** Checkpoint turn id, so this prompt can rewind the code to before it. */
+  checkpointTurnId?: string;
   tool?: {
     callId?: string;
     title?: string;

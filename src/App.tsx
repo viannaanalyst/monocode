@@ -4140,6 +4140,9 @@ export default function App({
         handoffPrepInFlight.current.has(sessionId);
       saveRecentModelChoice(current.harness, current.model);
       const workCwd = sessionWorkCwd(current);
+      // One checkpoint turn per user message, so the transcript can rewind the
+      // code back to just before any prompt.
+      const checkpointTurnId = `turn-${crypto.randomUUID()}`;
       const submittedText = intent === "build" ? "Build approved plan" : text;
       const rawCommand = isNativeCommandPrompt(submittedText, current.harness);
       const harnessText = rawCommand
@@ -4353,14 +4356,14 @@ export default function App({
               appendPreparingHandoff(sealed, pendingSwitch.from, next.harness),
               visibleText,
               visible,
-              cards,
+              { ...(cards ?? {}), checkpointTurnId },
             );
           }
           return appendUser(
             { ...next, title: titled },
             visibleText,
             visible,
-            cards,
+            { ...(cards ?? {}), checkpointTurnId },
           );
         }),
       );
@@ -4478,7 +4481,7 @@ export default function App({
           await beginSessionTurn(
             sessionId,
             workCwd,
-            `turn-${Date.now().toString(36)}-${gen}`,
+            checkpointTurnId,
           ).catch(() => undefined);
         }
         if (turnGen.current.get(sessionId) !== gen) return;

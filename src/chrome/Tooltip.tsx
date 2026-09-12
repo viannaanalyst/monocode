@@ -21,7 +21,13 @@ type OpenTooltip = {
 
 export function tooltipText(element: Element): string | null {
   // Buttons whose label already reads on screen opt out of the hover bubble.
-  if (element.closest("[data-no-tooltip]")) return null;
+  // A closer [data-tooltip-enable] wins, so icon-only rows (transcript turn
+  // actions) can still explain themselves inside a quiet region.
+  const optOut = element.closest("[data-no-tooltip]");
+  if (optOut) {
+    const optIn = element.closest("[data-tooltip-enable]");
+    if (!optIn || !optOut.contains(optIn)) return null;
+  }
   const title = element.getAttribute("title")?.trim();
   const ariaLabel = element.getAttribute("aria-label")?.trim();
   const raw = title || ariaLabel || null;
