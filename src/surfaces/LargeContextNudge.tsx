@@ -1,10 +1,13 @@
 import { useMemo, useState } from "react";
 import { Sparkles, X } from "../chrome/icons";
 import { t } from "../i18n";
+import { contextRatio } from "../lib/contextUsage";
 import type { Block, HarnessId, Session } from "../lib/session";
 import { groupTurns } from "./transcriptActivity";
 
-/** Rough character budget before nudging. ~30k tokens of transcript. */
+/** Nudge once the reported context window is at least this full. */
+const LARGE_CONTEXT_RATIO = 0.75;
+/** Fallback character budget for harnesses that report no window. ~30k tokens. */
 const LARGE_CONTEXT_CHARS = 120_000;
 const DISMISS_KEY = "monocode.largeContextDismissed";
 /** Re-nudge only once the session grows this much beyond the last dismissal. */
@@ -26,6 +29,21 @@ function estimateChars(blocks: readonly Block[]): number {
       (preview.title?.length ?? 0);
   }
   return total;
+}
+
+/**
+ * How large the conversation is, or null while it is still comfortably inside
+ * the window. Prefers the harness's own reading — the same number the context
+ * ring shows — and only counts characters when no harness reports usage, such
+ * as Cursor's ACP stream.
+ */
+export function largeContextSize(session: Session): number | null {
+  const ratio = contextRatio(session.context);
+  if (ratio !== null) {
+    return ratio >= LARGE_CONTEXT_RATIO ? (session.context?.used ?? 0) : null;
+  }
+  const chars = estimateChars(session.blocks);
+  return chars >= LARGE_CONTEXT_CHARS ? chars : null;
 }
 
 function loadDismissed(): Record<string, number> {
@@ -59,9 +77,12 @@ type Props = {
  * deterministic summary of everything up to here instead of the full log.
  */
 export function LargeContextNudge({ session, onHandoff }: Props) {
-  const size = useMemo(() => estimateChars(session.blocks), [session.blocks]);
+  const size = useMemo(
+    () => largeContextSize(session),
+    [session.context, session.blocks],
+  );
   const [dismissed, setDismissed] = useState(loadDismissed);
-  if (!onHandoff || size < LARGE_CONTEXT_CHARS) return null;
+  if (!onHandoff || size === null) return null;
   const previous = dismissed[session.id];
   if (previous != null && size <= previous * REGROWTH) return null;
   const turns = groupTurns(session.blocks);

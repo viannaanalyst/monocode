@@ -54,6 +54,7 @@ import GitMergeIcon from "@hugeicons/core-free-icons/GitMergeIcon";
 import GitPullRequestClosedIcon from "@hugeicons/core-free-icons/GitPullRequestClosedIcon";
 import GitPullRequestDraftIcon from "@hugeicons/core-free-icons/GitPullRequestDraftIcon";
 import GitPullRequestIcon from "@hugeicons/core-free-icons/GitPullRequestIcon";
+import HistoryIcon from "@hugeicons/core-free-icons/HistoryIcon";
 import ImageAdd01Icon from "@hugeicons/core-free-icons/ImageAdd01Icon";
 import InboxIcon from "@hugeicons/core-free-icons/InboxIcon";
 import KeyboardIcon from "@hugeicons/core-free-icons/KeyboardIcon";
@@ -201,6 +202,7 @@ export const GitPullRequestDraft = wrap(
 );
 export const Globe = wrap(Globe02Icon, "Globe");
 export const GripVertical = wrap(DragDropVerticalIcon, "GripVertical");
+export const History = wrap(HistoryIcon, "History");
 export const ImagePlus = wrap(ImageAdd01Icon, "ImagePlus");
 export const Inbox = wrap(InboxIcon, "Inbox");
 export const Keyboard = wrap(KeyboardIcon, "Keyboard");

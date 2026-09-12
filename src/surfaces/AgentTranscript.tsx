@@ -4,12 +4,12 @@ import {
   CircleDashed,
   Copy,
   FilePlusCorner,
+  History,
   Minus,
   Bot,
   PenLine,
   Search,
   Terminal,
-  Undo2,
   Wrench,
   X,
   Globe,
@@ -1344,7 +1344,7 @@ function UserMessageBlock({
           chat ? "" : "absolute right-1.5 top-1.5"
         }`}
       >
-        <Undo2 className="size-3.5" strokeWidth={1.75} />
+        <History className="size-3.5" strokeWidth={1.75} />
       </button>
     ) : null;
 
