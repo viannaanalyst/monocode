@@ -42,6 +42,7 @@ import {
 import { IS_MAC, MOD } from "../lib/platform";
 import { resolveModel } from "../lib/models";
 import { prettyCwd, prettyParent, projectKey, projectName } from "../lib/paths";
+import type { OpenFileFn } from "../lib/search";
 import { sessionDisplayTitle } from "../lib/session";
 import { nextUnseenFinishedSessions } from "../lib/sessionDone";
 import {
@@ -143,7 +144,11 @@ import { ProjectMascot } from "./ProjectMascot";
 import { Popover } from "./Popover";
 import { SessionFiltersMenu } from "./SessionFiltersMenu";
 import { sessionReminderPresets } from "./sessionReminderPresets";
-import { reminderTime, type SessionReminder } from "../lib/sessionReminders";
+import {
+  formatReminderTime,
+  reminderTime,
+  type SessionReminder,
+} from "../lib/sessionReminders";
 import { SessionsEmpty } from "./SessionsEmpty";
 import { SidebarUpdateFooter } from "./SidebarUpdate";
 import { SourceControl } from "./SourceControl";
@@ -219,7 +224,7 @@ type Props = {
   onExportSession?: (sessionId: string, format: SessionExportFormat) => void;
   onImportSession?: (cwd: string) => void;
   onNewInProject?: (cwd: string) => void;
-  onOpenFile: (path: string) => void;
+  onOpenFile: OpenFileFn;
   onOpenTerminal?: (cwd: string) => void;
   onFileMoved?: (from: string, to: string) => void;
   onFileDeleted?: (path: string) => void;
@@ -707,6 +712,13 @@ function SidebarComponent({
     return session ? [session] : [];
   });
   const multipleMenuSessions = menuSessionIds.length > 1;
+  const menuReminderTimes = [
+    ...new Set(
+      reminders
+        .filter((reminder) => menuSessionIds.includes(reminder.sessionId))
+        .map((reminder) => reminder.dueAt),
+    ),
+  ];
   const allMenuSessionsPinned =
     menuSessions.length > 0 && menuSessions.every((session) => session.pinned);
   const allMenuSessionsArchived =
@@ -731,12 +743,16 @@ function SidebarComponent({
     { kind: "item", id: "ungroup", label: t("Ungroup") },
   ];
   const sessionMenuItems: ExplorerMenuItem[] = [
-    ...(onCancelReminders && menuSessionIds.some((id) => reminderIds.has(id))
+    ...(onCancelReminders && menuReminderTimes.length > 0
       ? [
           {
             kind: "item" as const,
             id: "reminder:cancel",
             label: t("Cancel reminder"),
+            description:
+              menuReminderTimes.length === 1
+                ? formatReminderTime(menuReminderTimes[0])
+                : t("Multiple reminder times"),
           },
           { kind: "sep" as const },
         ]
@@ -1597,7 +1613,10 @@ function SidebarComponent({
               selectedPath={selectedDiffPath}
               selectedKind={selectedDiffKind}
               selectedSha={selectedCommitSha}
-              onOpenFile={onOpenDiff ?? onOpenFile}
+              onOpenFile={
+                onOpenDiff ??
+                ((path) => onOpenFile(path, undefined, { exact: true }))
+              }
               onOpenAllChanges={onOpenAllChanges ?? (() => {})}
               onOpenCommit={onOpenCommit ?? (() => {})}
             />

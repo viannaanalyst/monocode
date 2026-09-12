@@ -42,6 +42,7 @@ import {
   revokeAttachment,
   type AddAttachmentRequest,
 } from "../lib/attachments";
+import { resizeComposer } from "../lib/composerResize";
 import type { ContextUsage } from "../lib/contextUsage";
 import {
   loadProjectFiles,
@@ -766,17 +767,26 @@ export function Composer({
     );
   }, [rankedFiles.length]);
 
-  const resizeTextarea = (el: HTMLTextAreaElement) => {
-    el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
-  };
-
   useEffect(() => {
     const el = ref.current;
     if (!el || !initialDraft) return;
     if (el.value !== initialDraft) el.value = initialDraft;
-    resizeTextarea(el);
+    resizeComposer(el);
   }, [initialDraft]);
+
+  // Drafts changed while hidden could not be measured. Inbox panes are portaled
+  // into place by a parent effect that runs after this one, so the first pass
+  // can still find no layout box; retry once the move has landed.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || !enabled) return;
+    resizeComposer(el);
+    if (el.scrollHeight !== 0) return;
+    const frame = requestAnimationFrame(() => {
+      if (ref.current === el) resizeComposer(el);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [enabled]);
 
   useEffect(() => {
     onDraftChange?.(draft);
@@ -831,7 +841,7 @@ export function Composer({
       const el = ref.current;
       if (!el) return;
       const next = insertAtCursor(el, text);
-      resizeTextarea(el);
+      resizeComposer(el);
       setDraft(next);
       onDraftChange?.(next);
       syncHasValue(next, attachmentsRef.current);
@@ -863,7 +873,7 @@ export function Composer({
     consumedQuoteId.current = result.consumedId;
     if (result.changed) {
       el.value = result.draft;
-      resizeTextarea(el);
+      resizeComposer(el);
       setDraft(result.draft);
       syncHasValue(result.draft, attachmentsRef.current);
       setSlash(null);
@@ -898,7 +908,7 @@ export function Composer({
           SESSION_FOLDER_COMMAND.invocation,
         );
         el.value = next;
-        resizeTextarea(el);
+        resizeComposer(el);
         let cursor = token.start + SESSION_FOLDER_COMMAND.invocation.length + 1;
         if (next[cursor] === " ") cursor += 1;
         el.setSelectionRange(cursor, cursor);
@@ -915,7 +925,7 @@ export function Composer({
             .replace(/^\s/, "")}`
         : replaceSlashToken(el.value, token, skill.invocation);
       el.value = next;
-      resizeTextarea(el);
+      resizeComposer(el);
       let cursor = planCommand
         ? token.start
         : token.start + skill.invocation.length + 1;
@@ -944,7 +954,7 @@ export function Composer({
         : mentionLabel(file, mentionIndexRef.current);
       const next = replaceMentionToken(el.value, token, label);
       el.value = next;
-      resizeTextarea(el);
+      resizeComposer(el);
       let cursor = token.start + label.length + 1;
       if (next[cursor] === " ") cursor += 1;
       el.setSelectionRange(cursor, cursor);
@@ -1293,7 +1303,7 @@ export function Composer({
                 const cursor = el.selectionStart ?? el.value.length;
                 if (/^\s*\/add-to-folder$/i.test(el.value)) {
                   el.value = `${el.value} `;
-                  resizeTextarea(el);
+                  resizeComposer(el);
                   setDraft(el.value);
                   syncHasValue(el.value, attachmentsRef.current);
                   el.setSelectionRange(el.value.length, el.value.length);
@@ -1342,7 +1352,7 @@ export function Composer({
                       const rest = el.value.slice(token.end).replace(/^\s/, "");
                       const next = `${el.value.slice(0, token.start)}${rest}`;
                       el.value = next;
-                      resizeTextarea(el);
+                      resizeComposer(el);
                       el.setSelectionRange(token.start, token.start);
                       setDraft(next);
                       syncHasValue(next, attachments);
@@ -1462,7 +1472,7 @@ export function Composer({
               onSelect={(e) => syncTokensFromTextarea(e.currentTarget)}
               onInput={(e) => {
                 const el = e.currentTarget;
-                resizeTextarea(el);
+                resizeComposer(el);
                 setDraft(el.value);
                 if (
                   sessionFolderSelected &&

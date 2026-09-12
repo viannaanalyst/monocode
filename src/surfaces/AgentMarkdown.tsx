@@ -243,17 +243,15 @@ function MarkdownLink({
           onOpenFile(file.path, file.navigation);
           return;
         }
+        event.preventDefault();
         if (href && /^https?:\/\//i.test(href)) {
-          event.preventDefault();
           if (loadLocalhostInBrowser() && isLocalhostUrl(href)) {
             openInAppBrowser(href);
             return;
           }
-          void openUrl(href).catch(() => undefined);
-          return;
-        }
-        if (!href || !/^https?:\/\//i.test(href)) {
-          event.preventDefault();
+          void openUrl(href).catch((error) => {
+            console.error("Failed to open web link:", error);
+          });
         }
       }}
       onContextMenu={(event) => {

@@ -47,6 +47,7 @@ type Props = {
   onAddTerminal: () => void;
   onSelectTerminal: (fileId: string) => void;
   onCloseTerminal: (fileId: string) => void;
+  onCloseOtherTerminals: (fileId: string) => void;
   onReorderTerminals: (ids: string[]) => void;
   onTerminalMetaChange?: (fileId: string, patch: TerminalMetaPatch) => void;
   onRunScript?: (command: string) => void;
@@ -86,6 +87,7 @@ export function ProjectTerminalDock({
   onAddTerminal,
   onSelectTerminal,
   onCloseTerminal,
+  onCloseOtherTerminals,
   onReorderTerminals,
   onTerminalMetaChange,
   onRunScript,
@@ -240,6 +242,7 @@ export function ProjectTerminalDock({
         label={t("Terminals")}
         onSelectFile={onSelectTerminal}
         onCloseFile={onCloseTerminal}
+        onCloseOtherFiles={onCloseOtherTerminals}
         onReorder={onReorderTerminals}
         trailing={
           <div className="flex shrink-0 items-center gap-0.5 border-l border-content/10 px-1">
