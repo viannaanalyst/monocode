@@ -39,8 +39,11 @@ import {
   filesFromClipboard,
   mergeAttachments,
   pickAttachments,
+  replaceAttachment,
+  REPLACE_ATTACHMENT_IN_CHAT_EVENT,
   revokeAttachment,
   type AddAttachmentRequest,
+  type ReplaceAttachmentRequest,
 } from "../lib/attachments";
 import { resizeComposer } from "../lib/composerResize";
 import type { ContextUsage } from "../lib/contextUsage";
@@ -661,10 +664,31 @@ export function Composer({
       const detail = (event as CustomEvent<AddAttachmentRequest>).detail;
       if (detail?.attachment) addAttachments([detail.attachment]);
     };
+    // An annotated image replaces the print it was drawn on when that print is
+    // still in the draft, so editing twice does not stack duplicates.
+    const onReplace = (event: Event) => {
+      const detail = (event as CustomEvent<ReplaceAttachmentRequest>).detail;
+      if (!detail?.attachment) return;
+      if (!harnessSupportsAttachments(harness)) return;
+      setAttachments((prev) => {
+        const { next, replaced } = replaceAttachment(
+          prev,
+          detail.replaceId,
+          detail.attachment,
+        );
+        if (replaced) revokeAttachment(replaced);
+        syncHasValue(ref.current?.value ?? "", next);
+        return next;
+      });
+      ref.current?.focus();
+    };
     window.addEventListener(ADD_ATTACHMENT_TO_CHAT_EVENT, onAdd);
-    return () =>
+    window.addEventListener(REPLACE_ATTACHMENT_IN_CHAT_EVENT, onReplace);
+    return () => {
       window.removeEventListener(ADD_ATTACHMENT_TO_CHAT_EVENT, onAdd);
-  }, [addAttachments, focused]);
+      window.removeEventListener(REPLACE_ATTACHMENT_IN_CHAT_EVENT, onReplace);
+    };
+  }, [addAttachments, focused, harness, syncHasValue]);
 
   const removeAttachment = useCallback(
     (id: string) => {

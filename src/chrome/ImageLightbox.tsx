@@ -21,6 +21,10 @@ type Stroke = {
 
 const COLORS = ["#ef4444", "#f59e0b", "#22c55e", "#3b82f6"];
 
+/** Pen widths as a fraction of the image's long edge, order = UI order. */
+const PEN_WIDTHS = [0.8, 1.8, 3.5];
+const PEN_WIDTH_LABELS = ["Thin stroke", "Medium stroke", "Thick stroke"];
+
 type Props = {
   src: string;
   alt: string;
@@ -40,6 +44,7 @@ export function ImageLightbox({ src, alt, onClose, onAnnotate }: Props) {
   const frameRef = useRef<number | null>(null);
   const [color, setColor] = useState(COLORS[0]);
   const [tool, setTool] = useState<Tool>("pen");
+  const [widthIndex, setWidthIndex] = useState(0);
   const [count, setCount] = useState(0);
 
   const draw = () => {
@@ -128,9 +133,10 @@ export function ImageLightbox({ src, alt, onClose, onAnnotate }: Props) {
     event.currentTarget.setPointerCapture(event.pointerId);
     const canvas = canvasRef.current!;
     const base = Math.max(canvas.width, canvas.height) / 100;
+    const strokeWidth = base * PEN_WIDTHS[widthIndex];
     activeRef.current = {
       color,
-      width: tool === "highlight" ? base * 10 : base * 3,
+      width: tool === "highlight" ? strokeWidth * 3 : strokeWidth,
       alpha: tool === "highlight" ? 0.32 : 1,
       points: [point],
     };
@@ -229,6 +235,26 @@ export function ImageLightbox({ src, alt, onClose, onAnnotate }: Props) {
               }`}
               style={{ backgroundColor: value }}
             />
+          ))}
+          <span className="mx-1 h-4 w-px bg-white/15" />
+          {PEN_WIDTHS.map((_, index) => (
+            <button
+              key={PEN_WIDTH_LABELS[index]}
+              type="button"
+              data-no-tooltip
+              aria-label={t(PEN_WIDTH_LABELS[index])}
+              onClick={() => setWidthIndex(index)}
+              className={`grid size-6 place-items-center rounded-full ${
+                widthIndex === index
+                  ? "bg-white/20"
+                  : "hover:bg-white/10"
+              }`}
+            >
+              <span
+                className="rounded-full bg-white"
+                style={{ width: 4 + index * 3, height: 4 + index * 3 }}
+              />
+            </button>
           ))}
           <span className="mx-1 h-4 w-px bg-white/15" />
           <button

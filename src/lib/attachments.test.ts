@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { filesFromClipboard, mergeAttachments } from "./attachments";
+import {
+  filesFromClipboard,
+  mergeAttachments,
+  replaceAttachment,
+} from "./attachments";
 import type { Attachment } from "./session";
 
 function file(name: string, type: string, body = "x") {
@@ -51,6 +55,25 @@ describe("mergeAttachments", () => {
       path: "/tmp/shot.png",
     });
     expect(mergeAttachments([first], [again])).toEqual([first]);
+  });
+});
+
+describe("replaceAttachment", () => {
+  it("swaps the edited image in place", () => {
+    const first = attachment({ id: "a", name: "one.png" });
+    const second = attachment({ id: "b", name: "two.png" });
+    const edited = attachment({ id: "edited", name: "one-edit.png" });
+    const result = replaceAttachment([first, second], "a", edited);
+    expect(result.next).toEqual([edited, second]);
+    expect(result.replaced).toBe(first);
+  });
+
+  it("appends when the original left the draft", () => {
+    const first = attachment({ id: "a", name: "one.png" });
+    const edited = attachment({ id: "edited", name: "one-edit.png" });
+    const result = replaceAttachment([first], "gone", edited);
+    expect(result.next).toEqual([first, edited]);
+    expect(result.replaced).toBeNull();
   });
 });
 

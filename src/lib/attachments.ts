@@ -160,6 +160,26 @@ export function mergeAttachments(
   return next;
 }
 
+/**
+ * Swap an edited attachment for the one it came from, in place. Falls back to
+ * appending when the original is gone from the draft. `replaced` is the old
+ * attachment so the caller can revoke its preview URL.
+ */
+export function replaceAttachment(
+  existing: Attachment[],
+  replaceId: string,
+  attachment: Attachment,
+): { next: Attachment[]; replaced: Attachment | null } {
+  const index = existing.findIndex((file) => file.id === replaceId);
+  if (index < 0) {
+    return { next: mergeAttachments(existing, [attachment]), replaced: null };
+  }
+  const next = existing.slice();
+  const replaced = next[index];
+  next[index] = attachment;
+  return { next, replaced };
+}
+
 type ClipboardFileItem = {
   kind: string;
   type: string;
@@ -514,6 +534,30 @@ export function requestAttachmentInChat(attachment: Attachment) {
   window.dispatchEvent(
     new CustomEvent<AddAttachmentRequest>(ADD_ATTACHMENT_TO_CHAT_EVENT, {
       detail: { attachment },
+    }),
+  );
+}
+
+export const REPLACE_ATTACHMENT_IN_CHAT_EVENT =
+  "monocode:replace-attachment-in-chat";
+
+export type ReplaceAttachmentRequest = {
+  replaceId: string;
+  attachment: Attachment;
+};
+
+/**
+ * Sends an edited attachment to the composer, swapping out the one it came
+ * from when that still sits in the draft. Falls back to adding it.
+ */
+export function requestAttachmentReplacement(
+  replaceId: string,
+  attachment: Attachment,
+) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent<ReplaceAttachmentRequest>(REPLACE_ATTACHMENT_IN_CHAT_EVENT, {
+      detail: { replaceId, attachment },
     }),
   );
 }

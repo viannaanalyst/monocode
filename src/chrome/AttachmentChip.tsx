@@ -2,7 +2,7 @@ import { useState } from "react";
 import { X } from "./icons";
 import {
   attachmentPreviewSrc,
-  requestAttachmentInChat,
+  requestAttachmentReplacement,
   screenshotAttachment,
 } from "../lib/attachments";
 import type { Attachment } from "../lib/session";
@@ -81,7 +81,10 @@ export function AttachmentChip({ attachment, onRemove }: Props) {
           onClose={() => setPreviewOpen(false)}
           onAnnotate={(dataUrl) => {
             const base64 = dataUrl.replace(/^data:image\/png;base64,/, "");
-            requestAttachmentInChat(screenshotAttachment(base64));
+            requestAttachmentReplacement(
+              attachment.id,
+              screenshotAttachment(base64),
+            );
           }}
         />
       ) : null}
