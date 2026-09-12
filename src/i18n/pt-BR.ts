@@ -1177,4 +1177,12 @@ export const PT_BR: Record<string, string> = {
   "Writes a starter SKILL.md you can edit.":
     "Escreve um SKILL.md inicial que você pode editar.",
   "not connected": "não conectado",
+  "Close preview (Escape)": "Fechar prévia (Esc)",
+  "Close skill preview": "Fechar prévia da skill",
+  "Loading skill…": "Carregando skill…",
+  "Preview skill": "Pré-visualizar skill",
+  "Preview skill {name}": "Pré-visualizar skill {name}",
+  "Preview {name}": "Pré-visualizar {name}",
+  "Skill preview": "Prévia da skill",
+  "Skill metadata": "Metadados da skill",
 };
