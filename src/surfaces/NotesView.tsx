@@ -11,6 +11,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { useMarkdownMode } from "../chrome/MarkdownModeToggle";
+import { CwdPicker } from "../chrome/CwdPicker";
 import { ProjectLogoIcon } from "../chrome/ProjectLogoIcon";
 import { ProjectMascot } from "../chrome/ProjectMascot";
 import { OverlayNav } from "../chrome/TitleBar";
@@ -40,7 +41,7 @@ import {
 } from "../lib/noteImages";
 import { projectKey, projectName } from "../lib/paths";
 import { IS_MAC } from "../lib/platform";
-import { looksLikeProject } from "../lib/recents";
+import { looksLikeProject, type RecentProject } from "../lib/recents";
 import {
   loadTabGroupColors,
   loadTabGroupCustomColors,
@@ -63,6 +64,7 @@ let rememberedNoteId: string | null = null;
 type Props = {
   besideRail?: boolean;
   cwd?: string;
+  recents: RecentProject[];
   onClose: () => void;
   onToggleSidebar?: () => void;
 };
@@ -70,6 +72,7 @@ type Props = {
 export function NotesView({
   besideRail = false,
   cwd,
+  recents,
   onClose,
   onToggleSidebar,
 }: Props) {
@@ -130,8 +133,8 @@ export function NotesView({
       event.stopPropagation();
       onCloseRef.current();
     };
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
   const visible = useMemo(() => {
@@ -313,6 +316,8 @@ export function NotesView({
         {list}
         <NoteDetail
           note={selected}
+          recents={recents}
+          activeCwd={cwd}
           logos={logos}
           mascots={groupMascots}
           colors={groupColors}
@@ -473,6 +478,8 @@ function NoteCard({
 
 function NoteDetail({
   note,
+  recents,
+  activeCwd,
   logos,
   mascots,
   colors,
@@ -482,6 +489,8 @@ function NoteDetail({
   onAddToChat,
 }: {
   note: Note | null;
+  recents: RecentProject[];
+  activeCwd?: string;
   onSaved: (note: Note) => void;
   onDelete: (id: string) => void | Promise<void>;
   onAddToChat: (note: Note) => void;
@@ -498,6 +507,8 @@ function NoteDetail({
     <NoteEditor
       key={note.id}
       note={note}
+      recents={recents}
+      activeCwd={activeCwd}
       logos={logos}
       mascots={mascots}
       colors={colors}
@@ -511,6 +522,8 @@ function NoteDetail({
 
 function NoteEditor({
   note,
+  recents,
+  activeCwd,
   logos,
   mascots,
   colors,
@@ -520,6 +533,8 @@ function NoteEditor({
   onAddToChat,
 }: {
   note: Note;
+  recents: RecentProject[];
+  activeCwd?: string;
   onSaved: (note: Note) => void;
   onDelete: (id: string) => void | Promise<void>;
   onAddToChat: (note: Note) => void;
@@ -530,12 +545,18 @@ function NoteEditor({
   const [title, setTitle] = useState(note.title);
   const [body, setBody] = useState(note.body);
   const [tags, setTags] = useState(note.tags);
+  // Keep only an unsaved choice locally so completed moves survive reopening.
+  const [projectChange, setProjectChange] = useState<{ path: string } | null>(
+    null,
+  );
+  const sourceCwd = projectChange?.path ?? note.sourceCwd;
   const [saveError, setSaveError] = useState<string | null>(null);
   const [imageDrag, setImageDrag] = useState(false);
   const [imageBusy, setImageBusy] = useState(false);
   const titleRef = useRef(title);
   const bodyRef = useRef(body);
   const tagsRef = useRef(tags);
+  const projectChangeRef = useRef(projectChange);
   const noteRef = useRef(note);
   const dropZoneRef = useRef<HTMLDivElement>(null);
   const sourceFieldRef = useRef<HTMLTextAreaElement>(null);
@@ -549,7 +570,7 @@ function NoteEditor({
   tagsRef.current = tags;
   noteRef.current = note;
   onSavedRef.current = onSaved;
-  const project = noteSourceProject(note.sourceCwd);
+  const project = noteSourceProject(sourceCwd);
   const time = formatRelativeTime(new Date(note.updatedAt).toISOString());
 
   useEffect(() => {
@@ -564,19 +585,31 @@ function NoteEditor({
     const nextTitle = titleRef.current.trim() || noteTitle(bodyRef.current);
     const nextBody = bodyRef.current;
     const nextTags = tagsRef.current;
+    const nextProject = projectChangeRef.current;
     if (
       nextTitle === current.title &&
       nextBody === current.body &&
-      sameTags(nextTags, current.tags)
-    )
+      sameTags(nextTags, current.tags) &&
+      (!nextProject || nextProject.path === current.sourceCwd)
+    ) {
+      projectChangeRef.current = null;
+      setProjectChange(null);
+      setSaveError(null);
       return;
+    }
     try {
       const saved = await upsertNote({
         id: current.id,
         title: nextTitle,
         body: nextBody,
         tags: nextTags,
+        ...(nextProject ? { sourceCwd: nextProject.path } : {}),
       });
+      noteRef.current = saved;
+      if (projectChangeRef.current === nextProject) {
+        projectChangeRef.current = null;
+        setProjectChange(null);
+      }
       setSaveError(null);
       if (
         titleRef.current.trim() === "" ||
@@ -590,13 +623,20 @@ function NoteEditor({
     }
   }, []);
 
+  const saveNow = useCallback(() => {
+    if (saveTimer.current != null) window.clearTimeout(saveTimer.current);
+    saveTimer.current = null;
+    saveQueue.current = saveQueue.current.then(persist, persist);
+    return saveQueue.current;
+  }, [persist]);
+
   const scheduleSave = useCallback(() => {
     if (saveTimer.current != null) window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(() => {
       saveTimer.current = null;
-      saveQueue.current = saveQueue.current.then(persist, persist);
+      void saveNow();
     }, 400);
-  }, [persist]);
+  }, [saveNow]);
 
   const insertionRange = useCallback(() => {
     const field = sourceFieldRef.current;
@@ -705,10 +745,9 @@ function NoteEditor({
 
   useEffect(() => {
     return () => {
-      if (saveTimer.current != null) window.clearTimeout(saveTimer.current);
-      void persist();
+      void saveNow();
     };
-  }, [persist]);
+  }, [saveNow]);
 
   const onTitleKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
     if (event.key !== "Enter") return;
@@ -722,6 +761,7 @@ function NoteEditor({
     title: title.trim() || noteTitle(body),
     body,
     tags,
+    sourceCwd,
   };
 
   return (
@@ -737,26 +777,55 @@ function NoteEditor({
             {note.slug ? (
               <span className="min-w-0 truncate">{note.slug}</span>
             ) : null}
-            {project && note.sourceCwd ? (
-              <NoteProjectMark
-                cwd={note.sourceCwd}
-                logos={logos}
-                mascots={mascots}
-                colors={colors}
-                customColors={customColors}
-              />
-            ) : null}
+            <CwdPicker
+              cwd={sourceCwd ?? "~"}
+              recents={recents}
+              mode="move"
+              activeCwd={activeCwd}
+              renderProjectLabel={(path) => (
+                <NoteProjectMark
+                  cwd={path}
+                  logos={logos}
+                  mascots={mascots}
+                  colors={colors}
+                  customColors={customColors}
+                />
+              )}
+              placement="below"
+              chevron
+              buttonClassName="flex min-w-0 items-center gap-1.5 rounded-md px-1.5 py-1 text-[12px] text-content/60 hover:text-content"
+              onCwdChange={(path) => {
+                const change = { path };
+                projectChangeRef.current = change;
+                setProjectChange(change);
+                void saveNow();
+              }}
+            >
+              {project && sourceCwd ? (
+                <NoteProjectMark
+                  cwd={sourceCwd}
+                  logos={logos}
+                  mascots={mascots}
+                  colors={colors}
+                  customColors={customColors}
+                />
+              ) : (
+                <span>{t("Choose project")}</span>
+              )}
+            </CwdPicker>
           </div>
           <input
             value={title}
             onChange={(event) => {
+              titleRef.current = event.target.value;
               setTitle(event.target.value);
               scheduleSave();
             }}
             onBlur={() => {
               const next = title.trim() || noteTitle(body);
+              titleRef.current = next;
               if (next !== title) setTitle(next);
-              void persist();
+              void saveNow();
             }}
             onKeyDown={onTitleKeyDown}
             aria-label={t("Note title")}
@@ -787,7 +856,7 @@ function NoteEditor({
                 skipSave.current = true;
                 if (saveTimer.current != null)
                   window.clearTimeout(saveTimer.current);
-                void onDelete(note.id);
+                void saveQueue.current.then(() => onDelete(note.id));
               }}
               className="inline-flex items-center gap-1.5 rounded-md px-3 h-7 text-[12px] text-content/70 hover:bg-content/10 hover:text-red-400"
             >
@@ -796,7 +865,22 @@ function NoteEditor({
             </button>
           </div>
           {saveError ? (
-            <p className="text-[12px] text-red-400/90">{saveError}</p>
+            <div
+              role="alert"
+              className="flex items-center gap-2 text-[12px] text-red-400/90"
+            >
+              <span>Could not save note: {saveError}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setSaveError(null);
+                  void saveNow();
+                }}
+                className="shrink-0 underline hover:no-underline"
+              >
+                Retry
+              </button>
+            </div>
           ) : null}
         </header>
         <div
@@ -858,12 +942,13 @@ function NoteEditor({
               autoFocus={blank}
               value={body}
               onChange={(next) => {
+                bodyRef.current = next;
                 setBody(next);
                 scheduleSave();
               }}
             />
           ) : body.trim() ? (
-            <AgentMarkdown text={body} cwd={note.sourceCwd} />
+            <AgentMarkdown text={body} cwd={sourceCwd} />
           ) : (
             <p className="text-[13px] text-content/45">{t("No description")}</p>
           )}

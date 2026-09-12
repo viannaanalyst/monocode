@@ -1185,4 +1185,7 @@ export const PT_BR: Record<string, string> = {
   "Preview {name}": "Pré-visualizar {name}",
   "Skill preview": "Prévia da skill",
   "Skill metadata": "Metadados da skill",
+  "Move to project": "Mover para projeto",
+  "No other projects": "Nenhum outro projeto",
+  "Choose project": "Escolher projeto",
 };
