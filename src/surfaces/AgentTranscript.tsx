@@ -37,6 +37,7 @@ import {
   clearFindHighlights,
   collectMatchRanges,
   scrollRangeIntoView,
+  TRANSCRIPT_FIND_EVENT,
 } from "../lib/transcriptFind";
 import {
   EXPAND_TOOL_ACTIVITY_DEFAULT,
@@ -409,6 +410,14 @@ function AgentTranscriptComponent({
   const [findQuery, setFindQuery] = useState("");
   const [findActive, setFindActive] = useState(0);
   const [findCount, setFindCount] = useState(0);
+  // A box drawn over the active hit, so the match reads even where the CSS
+  // Custom Highlight API paints faintly.
+  const [findRect, setFindRect] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  } | null>(null);
   const findInputRef = useRef<HTMLInputElement>(null);
   const findRanges = useRef<Range[]>([]);
   const findActiveRef = useRef(0);
@@ -419,6 +428,7 @@ function AgentTranscriptComponent({
     const list = ranges ?? findRanges.current;
     if (list.length === 0) {
       setFindCount(0);
+      setFindRect(null);
       applyFindHighlights([], null);
       return;
     }
@@ -431,7 +441,28 @@ function AgentTranscriptComponent({
       // transcript pinned to the bottom.
       stickToBottom.current = false;
       scrollRangeIntoView(list[next], el);
+      const rootRect = el.getBoundingClientRect();
+      const rect = list[next].getBoundingClientRect();
+      setFindRect({
+        left: rect.left - rootRect.left,
+        top: rect.top - rootRect.top + el.scrollTop,
+        width: rect.width,
+        height: rect.height,
+      });
     }
+  }, []);
+
+  const toggleFind = useCallback(() => {
+    setFindOpen((open) => {
+      if (open) {
+        setFindQuery("");
+        setFindRect(null);
+        clearFindHighlights();
+        return false;
+      }
+      setVisibleTurnCount(turnsRef.current.length);
+      return true;
+    });
   }, []);
 
   // Recompute on query change and while the transcript streams new blocks.
@@ -491,24 +522,23 @@ function AgentTranscriptComponent({
       if (target?.closest(".monocode-terminal")) return;
       event.preventDefault();
       event.stopPropagation();
-      // Cmd/Ctrl+F toggles: open when closed, close (and clear) when open.
-      setFindOpen((open) => {
-        if (open) {
-          setFindQuery("");
-          clearFindHighlights();
-          return false;
-        }
-        setVisibleTurnCount(turnsRef.current.length);
-        return true;
-      });
+      toggleFind();
     };
+    // The macOS menu owns Cmd+F, so the app forwards it here when no editor
+    // is focused. Ctrl+F still reaches the webview directly.
+    const onMenuFind = () => toggleFind();
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [focused, visible]);
+    window.addEventListener(TRANSCRIPT_FIND_EVENT, onMenuFind);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener(TRANSCRIPT_FIND_EVENT, onMenuFind);
+    };
+  }, [focused, visible, toggleFind]);
 
   const closeFind = useCallback(() => {
     setFindOpen(false);
     setFindQuery("");
+    setFindRect(null);
     clearFindHighlights();
   }, []);
 
@@ -559,8 +589,20 @@ function AgentTranscriptComponent({
     <div
       ref={setScroller}
       data-no-tooltip
-      className="agent-transcript h-full overflow-y-auto overscroll-none [overflow-anchor:none] font-mono text-[13px] leading-5"
+      className="agent-transcript relative h-full overflow-y-auto overscroll-none [overflow-anchor:none] font-mono text-[13px] leading-5"
     >
+      {findRect ? (
+        <div
+          aria-hidden
+          className="monocode-find-box pointer-events-none absolute rounded-[3px]"
+          style={{
+            left: findRect.left - 2,
+            top: findRect.top - 1,
+            width: findRect.width + 4,
+            height: findRect.height + 2,
+          }}
+        />
+      ) : null}
       <div className="mx-auto flex w-full min-w-0 max-w-4xl flex-col gap-1 pb-1">
         {firstVisibleTurn > 0 ? (
           <div className="flex justify-center px-4 py-3">

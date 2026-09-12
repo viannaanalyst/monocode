@@ -7,6 +7,9 @@
 export const FIND_ALL_HIGHLIGHT = "monocode-find";
 export const FIND_ACTIVE_HIGHLIGHT = "monocode-find-active";
 
+/** The macOS menu owns Cmd+F, so it asks the focused transcript to toggle. */
+export const TRANSCRIPT_FIND_EVENT = "monocode:transcript-find";
+
 export function collectMatchRanges(root: HTMLElement, query: string): Range[] {
   const needle = query.trim();
   if (!needle) return [];

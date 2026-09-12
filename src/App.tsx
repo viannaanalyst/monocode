@@ -384,6 +384,7 @@ import {
   handleEditorFindKey,
   openFindInActiveEditor,
 } from "./surfaces/editorSearch";
+import { TRANSCRIPT_FIND_EVENT } from "./lib/transcriptFind";
 
 import {
   mergeHistorySummary,
@@ -5783,7 +5784,11 @@ export default function App({
       }),
       listen("find_in_project", () => actions.current.onFindInProject()),
       listen("find", () => {
-        openFindInActiveEditor();
+        // The native menu owns Cmd+F, so when no editor is focused the focused
+        // transcript takes it.
+        if (!openFindInActiveEditor()) {
+          window.dispatchEvent(new Event(TRANSCRIPT_FIND_EVENT));
+        }
       }),
       listen("open_model_picker", () => {
         window.dispatchEvent(new Event("open_model_picker"));

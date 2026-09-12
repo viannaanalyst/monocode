@@ -1445,10 +1445,17 @@ html.theme-light .popover-backdrop {
 /* In-conversation find (Ctrl/Cmd+F) uses the CSS Custom Highlight API so the
    native selection and its add-to-chat menu stay untouched. */
 ::highlight(monocode-find) {
-  background-color: color-mix(in srgb, var(--color-accent) 38%, transparent);
+  background-color: color-mix(in srgb, #f59e0b 40%, transparent);
   color: inherit;
 }
 ::highlight(monocode-find-active) {
-  background-color: color-mix(in srgb, var(--color-accent) 85%, transparent);
-  color: #fff;
+  background-color: #f59e0b;
+  color: #1a1a1a;
+}
+
+/* Painted over the active match so the word reads clearly while finding. */
+.monocode-find-box {
+  z-index: 5;
+  background: color-mix(in srgb, #f59e0b 32%, transparent);
+  box-shadow: 0 0 0 1.5px #f59e0b;
 }
