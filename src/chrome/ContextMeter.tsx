@@ -48,6 +48,7 @@ export function ContextMeter({
   return (
     <div
       ref={root}
+      data-no-tooltip
       className="relative shrink-0"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -55,7 +56,6 @@ export function ContextMeter({
       {onCompact ? (
         <button
           type="button"
-          title={t("Context usage")}
           aria-label={t("{headline}, {detail}. Open context actions", {
             headline,
             detail,
