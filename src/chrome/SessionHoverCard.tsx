@@ -50,7 +50,7 @@ export function SessionHoverCard({ anchor, open, title, branch, path }: Props) {
       ref={cardRef}
       role="tooltip"
       aria-hidden="true"
-      className="monocode-session-card pointer-events-none fixed z-[200] w-72 max-w-[80vw] rounded-xl border border-content/12 bg-background-base/95 p-3 font-sans shadow-2xl backdrop-blur-xl"
+      className="monocode-session-card pointer-events-none fixed z-[200] w-72 max-w-[80vw] rounded-xl border border-content/12 bg-background-base/65 p-3 font-sans shadow-2xl backdrop-blur-2xl backdrop-saturate-150"
       style={{
         left: position?.left ?? -9999,
         top: position?.top ?? -9999,

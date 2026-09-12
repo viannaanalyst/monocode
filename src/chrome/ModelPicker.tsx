@@ -122,7 +122,12 @@ const EFFORT_LABEL: Record<string, string> = {
 };
 
 function isEffortSetting(setting: ModelSetting): boolean {
-  return setting.id === "effort" || setting.id === "reasoning";
+  // `variant` is OpenCode's name for the same reasoning dial.
+  return (
+    setting.id === "effort" ||
+    setting.id === "reasoning" ||
+    setting.id === "variant"
+  );
 }
 
 /** Effort options ordered low → high for the inline slider. */
@@ -133,9 +138,7 @@ function orderedSettingOptions(setting: ModelSetting): ModelSettingChoice[] {
 }
 
 function settingLabel(setting: ModelSetting): string {
-  return setting.id === "effort" || setting.id === "reasoning"
-    ? "Effort"
-    : setting.label;
+  return isEffortSetting(setting) ? t("Effort") : setting.label;
 }
 
 function settingValue(
@@ -237,9 +240,7 @@ export function ModelPicker({
   );
 
   const triggerLabel = current.name;
-  const effortSetting = settings.find(
-    (setting) => setting.id === "effort" || setting.id === "reasoning",
-  );
+  const effortSetting = settings.find(isEffortSetting);
   const triggerEffort = effortSetting
     ? settingValueLabel(effortSetting, values)
     : undefined;
@@ -671,7 +672,7 @@ export function ModelPicker({
               const isToggle = setting.kind === "toggle";
               // Effort is the reasoning dial, so it reads as a slider the way
               // Codex presents it rather than another submenu.
-              if (!isToggle && (setting.id === "effort" || setting.id === "reasoning")) {
+              if (!isToggle && isEffortSetting(setting)) {
                 const options = orderedSettingOptions(setting);
                 const selected = Math.max(
                   0,
