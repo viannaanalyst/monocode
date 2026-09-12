@@ -1189,4 +1189,6 @@ export const PT_BR: Record<string, string> = {
   "No other projects": "Nenhum outro projeto",
   "Choose project": "Escolher projeto",
   "Cache {percent}": "Cache {percent}",
+  "Choose which models appear": "Escolher quais modelos aparecem",
+  "{shown} of {total}": "{shown} de {total}",
 };

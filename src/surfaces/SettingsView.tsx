@@ -148,7 +148,14 @@ import {
   saveLastModelChoice,
   savePickerProviderVisible,
   subscribeModels,
+  type AgentModel,
 } from "../lib/models";
+import {
+  isModelHidden,
+  modelVisibilityVersion,
+  setModelHidden,
+  subscribeModelVisibility,
+} from "../lib/modelVisibility";
 import { supportsCustomModels } from "../lib/customModels";
 import {
   AGENTS_FILENAME,
@@ -2853,8 +2860,64 @@ function ProviderRow({
           </div>
         ) : null}
       </Row>
+      {models.length > 1 ? (
+        <ModelVisibilityList models={models} />
+      ) : null}
       {supportsCustomModels(harness) ? (
         <CustomModelsSection harness={harness} />
+      ) : null}
+    </div>
+  );
+}
+
+function ModelVisibilityList({ models }: { models: AgentModel[] }) {
+  useSyncExternalStore(
+    subscribeModelVisibility,
+    modelVisibilityVersion,
+    modelVisibilityVersion,
+  );
+  const [expanded, setExpanded] = useState(false);
+  const shown = models.filter((model) => !isModelHidden(model.id)).length;
+
+  return (
+    <div className="px-4 pb-3">
+      <button
+        type="button"
+        onClick={() => setExpanded((value) => !value)}
+        aria-expanded={expanded}
+        className="flex h-8 w-full items-center gap-2 rounded-lg border border-content/10 px-2.5 text-left text-[12px] text-content/70 hover:bg-content/5 hover:text-content"
+      >
+        <span className="min-w-0 flex-1">
+          {t("Choose which models appear")}
+        </span>
+        <span className="shrink-0 tabular-nums text-content/40">
+          {t("{shown} of {total}", { shown, total: models.length })}
+        </span>
+        <ChevronDown
+          className={`size-3.5 shrink-0 text-content/45 ${expanded ? "rotate-180" : ""}`}
+          strokeWidth={1.75}
+        />
+      </button>
+      {expanded ? (
+        <div className="mt-2 overflow-hidden rounded-lg border border-content/10">
+          {models.map((model) => (
+            <div
+              key={model.id}
+              className="flex items-center justify-between gap-3 border-b border-content/5 px-3 py-1.5 last:border-b-0"
+            >
+              <span className="min-w-0 truncate text-[12px] text-content/80">
+                {model.name}
+              </span>
+              <Toggle
+                label={t("Show {name} in the model picker", {
+                  name: model.name,
+                })}
+                on={!isModelHidden(model.id)}
+                onChange={(on) => setModelHidden(model.id, !on)}
+              />
+            </div>
+          ))}
+        </div>
       ) : null}
     </div>
   );

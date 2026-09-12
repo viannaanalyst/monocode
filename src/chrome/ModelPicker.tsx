@@ -16,7 +16,6 @@ import {
   getPickerVisibilitySnapshot,
   loadFavoriteModels,
   loadRecentModelChoices,
-  modelsFor,
   resolveModel,
   saveFavoriteModels,
   showProviderInModelPicker,
@@ -36,6 +35,11 @@ import {
   getHarnessAvailabilitySnapshot,
 } from "../lib/harness/availability";
 import { refreshHarnessCatalogs } from "../lib/harness/registry";
+import {
+  modelVisibilityVersion,
+  pickerModelsFor,
+  subscribeModelVisibility,
+} from "../lib/modelVisibility";
 import { HARNESSES, HARNESS_TITLE, type HarnessId } from "../lib/session";
 import { useLockOverscroll } from "../hooks/useLockOverscroll";
 import { LAYER } from "../lib/layers";
@@ -107,6 +111,20 @@ const EFFORT_RANK: Record<string, number> = {
   max: 5,
 };
 
+/** One label per effort level, so providers do not each spell it differently. */
+const EFFORT_LABEL: Record<string, string> = {
+  minimal: "Minimal",
+  low: "Low",
+  medium: "Medium",
+  high: "High",
+  xhigh: "Extra High",
+  max: "Max",
+};
+
+function isEffortSetting(setting: ModelSetting): boolean {
+  return setting.id === "effort" || setting.id === "reasoning";
+}
+
 /** Effort options ordered low → high for the inline slider. */
 function orderedSettingOptions(setting: ModelSetting): ModelSettingChoice[] {
   return [...setting.options].sort(
@@ -132,6 +150,9 @@ function settingValueLabel(
   values: Record<string, string>,
 ): string {
   const value = settingValue(setting, values);
+  if (isEffortSetting(setting) && EFFORT_LABEL[value]) {
+    return t(EFFORT_LABEL[value]);
+  }
   return (
     setting.options.find((option) => option.value === value)?.label ?? value
   );
@@ -169,6 +190,11 @@ export function ModelPicker({
     subscribePickerVisibility,
     getPickerVisibilitySnapshot,
     getPickerVisibilitySnapshot,
+  );
+  const modelVisibility = useSyncExternalStore(
+    subscribeModelVisibility,
+    modelVisibilityVersion,
+    modelVisibilityVersion,
   );
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<ModelPickerTab>(harness);
@@ -236,23 +262,39 @@ export function ModelPicker({
 
   const visibleModels = useMemo(() => {
     void catalogVersion;
+    void modelVisibility;
     const needle = query.trim().toLowerCase();
+    const visible = new Map(
+      pickerHarnesses.map((id) => [
+        id,
+        new Set(pickerModelsFor(id).map((item) => item.id)),
+      ]),
+    );
     const pool =
       visibleTab === "favorites"
         ? favorites
             .map((id) => findModel(id))
             .filter(
               (item): item is AgentModel =>
-                item != null && pickerHarnesses.includes(item.harness),
+                item != null &&
+                pickerHarnesses.includes(item.harness) &&
+                visible.get(item.harness)?.has(item.id) === true,
             )
-        : modelsFor(visibleTab);
+        : pickerModelsFor(visibleTab);
     if (!needle) return pool;
     return pool.filter((item) =>
       `${item.name} ${HARNESS_TITLE[item.harness]}`
         .toLowerCase()
         .includes(needle),
     );
-  }, [catalogVersion, favorites, providerKey, query, visibleTab]);
+  }, [
+    catalogVersion,
+    favorites,
+    modelVisibility,
+    providerKey,
+    query,
+    visibleTab,
+  ]);
 
   const dismiss = (restore: boolean) => {
     setOpen(false);

@@ -27,12 +27,12 @@ import {
   getModelSnapshot,
   getPickerVisibilitySnapshot,
   isPickerProviderVisible,
-  modelsFor,
   preferredModelId,
   subscribeModels,
   subscribePickerVisibility,
 } from "../lib/models";
 import { LAYER } from "../lib/layers";
+import { pickerModelsFor } from "../lib/modelVisibility";
 import { secondOpinionTargets } from "../lib/secondOpinion";
 import { HARNESS_TITLE, type HarnessId } from "../lib/session";
 import { HarnessIcon } from "./HarnessIcon";
@@ -158,7 +158,7 @@ export function SecondOpinionButton({
   const activeHarness = targets[active];
   const models = useMemo(() => {
     void catalogVersion;
-    return activeHarness ? modelsFor(activeHarness) : [];
+    return activeHarness ? pickerModelsFor(activeHarness) : [];
   }, [activeHarness, catalogVersion]);
   const preferred =
     activeHarness != null
@@ -337,7 +337,7 @@ export function SecondOpinionButton({
                     type="button"
                     role="menuitem"
                     aria-haspopup={
-                      modelsFor(harness).length > 0 ? "menu" : undefined
+                      pickerModelsFor(harness).length > 0 ? "menu" : undefined
                     }
                     aria-expanded={highlighted && showSubmenu}
                     disabled={!available && probed}
@@ -362,7 +362,7 @@ export function SecondOpinionButton({
                     <span className="min-w-0 flex-1 truncate">
                       {HARNESS_TITLE[harness]}
                     </span>
-                    {modelsFor(harness).length > 0 ? (
+                    {pickerModelsFor(harness).length > 0 ? (
                       <ChevronRight
                         className="size-3.5 shrink-0 text-content/40"
                         strokeWidth={1.75}
