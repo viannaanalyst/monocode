@@ -779,3 +779,58 @@ describe("OpenCode child permission routing", () => {
     },
   );
 });
+
+describe("OpenCode todo progress", () => {
+  it("applies each intermediate todo snapshot to the single task card", async () => {
+    const events: HarnessEvent[] = [];
+    const { done } = await startTurn(events);
+    const todoPart = (callID: string, todos: unknown[]) => {
+      onSseEvent?.({
+        type: "message.part.updated",
+        properties: {
+          part: {
+            id: `part_${callID}`,
+            sessionID: "session_1",
+            type: "tool",
+            tool: "todowrite",
+            callID,
+            state: { status: "completed", input: { todos } },
+          },
+        },
+      });
+    };
+    todoPart("call_todo_1", [
+      { content: "Inspect", status: "in_progress" },
+      { content: "Implement", status: "pending" },
+    ]);
+    const afterFirst = events.reduce(
+      applyHarnessEvent,
+      newSession("opencode", "/repo"),
+    );
+    expect(
+      afterFirst.blocks.find((block) => block.role === "tasks")?.taskList?.items,
+    ).toEqual([
+      { text: "Inspect", status: "in_progress" },
+      { text: "Implement", status: "pending" },
+    ]);
+
+    todoPart("call_todo_2", [
+      { content: "Inspect", status: "completed" },
+      { content: "Implement", status: "in_progress" },
+    ]);
+    idle();
+    await done;
+    const updates = events.filter((event) => event.type === "tasks.updated");
+    expect(updates).toHaveLength(2);
+    const session = events.reduce(
+      applyHarnessEvent,
+      newSession("opencode", "/repo"),
+    );
+    expect(
+      session.blocks.find((block) => block.role === "tasks")?.taskList?.items,
+    ).toEqual([
+      { text: "Inspect", status: "completed" },
+      { text: "Implement", status: "in_progress" },
+    ]);
+  });
+});
