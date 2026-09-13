@@ -9,6 +9,7 @@ type Props = {
   anchor: RefObject<HTMLElement | null>;
   open: boolean;
   title: string;
+  time?: string | null;
   branch?: string | null;
   path?: string | null;
 };
@@ -17,7 +18,14 @@ type Props = {
  * The floating preview beside a session row: title, branch and folder, the way
  * Cursor shows a conversation on hover rather than a plain text tooltip.
  */
-export function SessionHoverCard({ anchor, open, title, branch, path }: Props) {
+export function SessionHoverCard({
+  anchor,
+  open,
+  title,
+  time,
+  branch,
+  path,
+}: Props) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<{
     left: number;
@@ -57,9 +65,16 @@ export function SessionHoverCard({ anchor, open, title, branch, path }: Props) {
         visibility: position ? "visible" : "hidden",
       }}
     >
-      <p className="text-[13px] font-semibold leading-snug text-content">
-        {title}
-      </p>
+      <div className="flex items-baseline gap-2">
+        <p className="min-w-0 flex-1 text-[13px] font-semibold leading-snug text-content">
+          {title}
+        </p>
+        {time ? (
+          <span className="shrink-0 text-[11px] tabular-nums text-content/45">
+            {time}
+          </span>
+        ) : null}
+      </div>
       {branch ? (
         <p className="mt-1.5 flex min-w-0 items-center gap-1.5 text-[12px] text-content/55">
           <GitBranch className="size-3.5 shrink-0" strokeWidth={1.75} />

@@ -49,12 +49,16 @@ vi.mock("./Popover", () => ({
 }));
 
 import { ModelPicker } from "./ModelPicker";
-import { saveRecentModelChoice } from "../lib/models";
+import {
+  resetHarnessModelOverlays,
+  saveRecentModelChoice,
+  setHarnessModels,
+} from "../lib/models";
 import {
   setHarnessModelsEnabled,
   setModelEnabled,
 } from "../lib/modelVisibility";
-import { HARNESSES } from "../lib/session";
+import { HARNESSES, HARNESS_TITLE } from "../lib/session";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -68,6 +72,7 @@ beforeEach(() => {
     removeItem: (key: string) => stored.delete(key),
     clear: () => stored.clear(),
   });
+  resetHarnessModelOverlays();
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
@@ -76,6 +81,7 @@ beforeEach(() => {
 afterEach(() => {
   act(() => root.unmount());
   container.remove();
+  resetHarnessModelOverlays();
   vi.unstubAllGlobals();
 });
 
@@ -100,6 +106,22 @@ function openModelsList(): HTMLElement {
   act(() => modelButton.click());
   return container.querySelector<HTMLElement>(
     '[role="menu"][aria-label="Select model"]',
+  )!;
+}
+
+function providerRow(harness: HarnessId): HTMLButtonElement {
+  const list = container.querySelector<HTMLElement>(
+    '[role="menu"][aria-label="Select model"]',
+  )!;
+  return list.querySelector<HTMLButtonElement>(
+    `button[data-provider-harness="${harness}"]`,
+  )!;
+}
+
+function openProvider(harness: HarnessId): HTMLElement {
+  act(() => providerRow(harness).click());
+  return container.querySelector<HTMLElement>(
+    `[role="menu"][aria-label="${HARNESS_TITLE[harness]}"]`,
   )!;
 }
 
@@ -183,7 +205,7 @@ describe("model picker", () => {
     expect(trigger().querySelector("span")?.className).not.toMatch(/truncate/);
   });
 
-  it("opens a compact model list with only enabled models", () => {
+  it("groups models by provider and opens a provider submenu", () => {
     for (const harness of HARNESSES) setHarnessModelsEnabled(harness, true);
     setModelEnabled("grok:grok-4.5", false);
     setModelEnabled("opencode:grok-4.5", false);
@@ -203,33 +225,46 @@ describe("model picker", () => {
     const list = openModelsList();
     expect(list).not.toBeNull();
     expect(list.querySelector('input[aria-label="Search models"]')).toBeNull();
-    expect(list.textContent).not.toContain("Conjunto recomendado de modelos");
     expect(list.textContent).not.toContain("Recommended set of models");
-    expect(
-      list.querySelector('[data-picker-harness="grok"] img, [data-picker-harness="grok"] svg, [data-picker-harness="grok"] span'),
-    ).not.toBeNull();
+    const providers = [
+      ...list.querySelectorAll<HTMLButtonElement>("[data-provider-harness]"),
+    ];
+    expect(providers.map((el) => el.getAttribute("data-provider-harness"))).toEqual(
+      expect.arrayContaining(["grok", "cursor"]),
+    );
+    expect(list.querySelector('[role="menuitemradio"]')).toBeNull();
     expect(
       document.querySelector('[role="dialog"][aria-label="Select model"]'),
     ).toBeNull();
 
-    const options = [
-      ...list.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]'),
+    const grokOptions = [
+      ...openProvider("grok").querySelectorAll<HTMLButtonElement>(
+        '[role="menuitemradio"]',
+      ),
     ];
-    expect(options.some((option) => option.textContent?.includes("Grok 4.6"))).toBe(
-      true,
-    );
     expect(
-      options.some((option) => option.textContent?.includes("Composer 2.5")),
+      grokOptions.some((option) => option.textContent?.includes("Grok 4.6")),
     ).toBe(true);
     expect(
-      options.some((option) => option.textContent?.includes("Cursor Grok 4.6")),
+      grokOptions.some((option) => option.textContent?.includes("Grok 4.5")),
+    ).toBe(false);
+
+    const cursorOptions = [
+      ...openProvider("cursor").querySelectorAll<HTMLButtonElement>(
+        '[role="menuitemradio"]',
+      ),
+    ];
+    expect(
+      cursorOptions.some((option) => option.textContent?.includes("Composer 2.5")),
     ).toBe(true);
-    expect(options.some((option) => option.textContent?.includes("Grok 4.5"))).toBe(
-      false,
-    );
+    expect(
+      cursorOptions.some((option) =>
+        option.textContent?.includes("Cursor Grok 4.6"),
+      ),
+    ).toBe(true);
   });
 
-  it("picks a model from the compact list", () => {
+  it("picks a model from a provider submenu", () => {
     setHarnessModelsEnabled("grok", true);
     const onChange = vi.fn();
     act(() =>
@@ -244,15 +279,77 @@ describe("model picker", () => {
       ),
     );
 
-    const list = openModelsList();
+    openModelsList();
+    const grokMenu = openProvider("grok");
     const target = [
-      ...list.querySelectorAll<HTMLButtonElement>(
+      ...grokMenu.querySelectorAll<HTMLButtonElement>(
         '[data-picker-harness="grok"][role="menuitemradio"]',
       ),
     ].find((option) => option.textContent?.includes("Grok 4.5"))!;
     act(() => target.click());
 
     expect(onChange).toHaveBeenCalledWith("grok", "grok:grok-4.5");
+  });
+
+  it("keeps Codex reasoning on the slider and its speed tier on the lightning", () => {
+    setHarnessModels("codex", [
+      {
+        id: "codex:test",
+        harness: "codex",
+        name: "GPT Test",
+        settings: [
+          {
+            id: "reasoningEffort",
+            label: "Reasoning",
+            kind: "select",
+            value: "medium",
+            options: [
+              { value: "low", label: "Low" },
+              { value: "medium", label: "Medium" },
+              { value: "high", label: "High" },
+            ],
+          },
+          {
+            id: "serviceTier",
+            label: "Service Tier",
+            kind: "select",
+            value: "default",
+            options: [
+              { value: "default", label: "Standard" },
+              { value: "fast", label: "Fast" },
+            ],
+          },
+        ],
+      },
+    ]);
+    setHarnessModelsEnabled("codex", true);
+    const onSettingsChange = vi.fn();
+    act(() =>
+      root.render(
+        createElement(ModelPicker, {
+          harness: "codex",
+          model: "codex:test",
+          values: { reasoningEffort: "medium", serviceTier: "default" },
+          onChange: vi.fn(),
+          onSettingsChange,
+        }),
+      ),
+    );
+
+    const menu = openMenu();
+    expect(menu.querySelector('[role="slider"]')).not.toBeNull();
+    expect(menu.textContent).not.toContain("Reasoning");
+    expect(menu.textContent).not.toContain("Service Tier");
+
+    const zap = menu.querySelector<HTMLButtonElement>(
+      'button[aria-label="Fast"]',
+    )!;
+    expect(zap.getAttribute("aria-checked")).toBe("false");
+    act(() => zap.click());
+    expect(onSettingsChange).toHaveBeenCalledWith({
+      reasoningEffort: "medium",
+      serviceTier: "fast",
+    });
   });
 
   it("quick-switches between recently used models on right-click", () => {

@@ -55,13 +55,16 @@ type Props = {
 
 type MenuEntry = { kind: "setting"; setting: ModelSetting };
 
-type Submenu = { kind: "setting"; setting: ModelSetting };
+type Submenu =
+  | { kind: "setting"; setting: ModelSetting }
+  | { kind: "models"; harness: HarnessId; models: AgentModel[] };
 
 type RecentMenu = { models: AgentModel[] };
 
 const MENU_WIDTH = 268;
 const SETTING_MENU_WIDTH = 210;
 const SUBMENU_OVERLAP = -4;
+const MODELS_SUBMENU_GAP = 8;
 const SELF = "[data-model-picker]";
 
 const SETTING_ORDER = [
@@ -128,6 +131,7 @@ function isEffortSetting(setting: ModelSetting): boolean {
   return (
     setting.id === "effort" ||
     setting.id === "reasoning" ||
+    setting.id === "reasoningEffort" ||
     setting.id === "variant"
   );
 }
@@ -160,6 +164,43 @@ function settingValueLabel(
   return (
     setting.options.find((option) => option.value === value)?.label ?? value
   );
+}
+
+const FAST_SETTING_IDS = new Set(["fast", "serviceTier"]);
+const FAST_ON_VALUES = new Set(["true", "fast"]);
+const FAST_OFF_VALUES = new Set(["false", "default"]);
+
+/** Fast mode is a toggle on Claude/Cursor and a service tier on Codex. */
+function fastSettingOf(settings: ModelSetting[]): ModelSetting | undefined {
+  return settings.find((setting) => FAST_SETTING_IDS.has(setting.id));
+}
+
+/** Only an off + fast pair can collapse into the lightning toggle. */
+function isToggleableFast(setting: ModelSetting): boolean {
+  if (setting.id === "fast") return true;
+  const hasOn = setting.options.some((option) =>
+    FAST_ON_VALUES.has(option.value),
+  );
+  const hasExtra = setting.options.some(
+    (option) =>
+      !FAST_ON_VALUES.has(option.value) && !FAST_OFF_VALUES.has(option.value),
+  );
+  return hasOn && !hasExtra;
+}
+
+function isFastOn(
+  setting: ModelSetting,
+  values: Record<string, string>,
+): boolean {
+  return FAST_ON_VALUES.has(settingValue(setting, values));
+}
+
+function fastOnValue(setting: ModelSetting): string {
+  return setting.id === "fast" ? "true" : "fast";
+}
+
+function fastOffValue(setting: ModelSetting): string {
+  return setting.id === "fast" ? "false" : "default";
 }
 
 function recentMenuModels(current: AgentModel): AgentModel[] {
@@ -315,6 +356,7 @@ export function ModelPicker({
   const [panel, setPanel] = useState<"effort" | "models">("effort");
   const [active, setActive] = useState(0);
   const [activeModel, setActiveModel] = useState(0);
+  const [activeModelOption, setActiveModelOption] = useState(0);
   const [activeSetting, setActiveSetting] = useState(0);
   const [recentMenu, setRecentMenu] = useState<RecentMenu | null>(null);
   const [recentActive, setRecentActive] = useState(0);
@@ -337,18 +379,23 @@ export function ModelPicker({
     void catalogVersion;
     return pickerSettings(current);
   }, [catalogVersion, current]);
+  const fast = fastSettingOf(settings);
+  const fastToggleable = fast ? isToggleableFast(fast) : false;
+  const fastOn = fast ? isFastOn(fast, values) : false;
   const extraEntries = useMemo<MenuEntry[]>(
     () =>
       settings
-        .filter((setting) => setting.id !== "fast" && !isEffortSetting(setting))
+        .filter((setting) => {
+          if (isEffortSetting(setting)) return false;
+          if (fast && fastToggleable && setting.id === fast.id) return false;
+          return true;
+        })
         .map((setting) => ({ kind: "setting" as const, setting })),
-    [settings],
+    [settings, fast, fastToggleable],
   );
   const entries = extraEntries;
 
   const triggerLabel = current.name;
-  const fastSetting = settings.find((setting) => setting.id === "fast");
-  const fastValue = fastSetting ? settingValue(fastSetting, values) : "";
   const effortSetting = settings.find(isEffortSetting);
   const triggerEffort = effortSetting
     ? settingValueLabel(effortSetting, values)
@@ -369,14 +416,6 @@ export function ModelPicker({
       }))
       .filter((group) => group.models.length > 0);
   }, [availabilityVersion, catalogVersion, modelVisibility, pickerHarnesses]);
-
-  const visibleModels = useMemo(
-    () => {
-      void availabilityVersion;
-      return providerGroups.flatMap((group) => group.models);
-    },
-    [availabilityVersion, providerGroups],
-  );
 
   const dismiss = (restore: boolean) => {
     setOpen(false);
@@ -443,9 +482,17 @@ export function ModelPicker({
 
   useEffect(() => {
     if (!open || panel !== "models") return;
-    const index = visibleModels.findIndex((item) => item.id === current.id);
+    const index = providerGroups.findIndex((group) =>
+      group.models.some((item) => item.id === current.id),
+    );
     setActiveModel(index >= 0 ? index : 0);
-  }, [open, panel, visibleModels, current.id]);
+  }, [open, panel, providerGroups, current.id]);
+
+  useEffect(() => {
+    if (submenu?.kind !== "models") return;
+    const index = submenu.models.findIndex((item) => item.id === current.id);
+    setActiveModelOption(index >= 0 ? index : 0);
+  }, [submenu, current.id]);
 
   useEffect(() => {
     if (submenu?.kind !== "setting") return;
@@ -486,6 +533,10 @@ export function ModelPicker({
       if (!openRef.current || event.key !== "Escape") return;
       event.preventDefault();
       event.stopPropagation();
+      if (submenu?.kind === "models") {
+        setSubmenu(null);
+        return;
+      }
       if (panel === "models") {
         setPanel("effort");
         return;
@@ -505,7 +556,7 @@ export function ModelPicker({
       window.removeEventListener("keydown", onKey, true);
       window.removeEventListener("open_model_picker", onMenu);
     };
-  }, [hotkeys, panel]);
+  }, [hotkeys, panel, submenu]);
 
   const setSetting = (setting: ModelSetting, value: string) => {
     onSettingsChange({ ...values, [setting.id]: value });
@@ -562,14 +613,72 @@ export function ModelPicker({
     setActive((index) => (index + direction + entries.length) % entries.length);
   };
 
+  const openProviderModels = (index: number) => {
+    const group = providerGroups[index];
+    if (!group) return;
+    setActiveModel(index);
+    setSubmenu({
+      kind: "models",
+      harness: group.harness,
+      models: group.models,
+    });
+  };
+
   const onMenuKey = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const modelsSubmenu = submenu?.kind === "models" ? submenu : null;
+
+    if (panel === "models") {
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        if (modelsSubmenu) {
+          setActiveModelOption((index) =>
+            Math.min(modelsSubmenu.models.length - 1, index + 1),
+          );
+        } else {
+          setActiveModel((index) =>
+            Math.min(providerGroups.length - 1, index + 1),
+          );
+        }
+        return;
+      }
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        if (modelsSubmenu) {
+          setActiveModelOption((index) => Math.max(0, index - 1));
+        } else {
+          setActiveModel((index) => Math.max(0, index - 1));
+        }
+        return;
+      }
+      if (event.key === "ArrowRight" || event.key === "Enter") {
+        event.preventDefault();
+        if (modelsSubmenu) {
+          const item = modelsSubmenu.models[activeModelOption];
+          if (item) pickModel(item);
+        } else {
+          const group = providerGroups[activeModel];
+          if (group) {
+            setSubmenu({
+              kind: "models",
+              harness: group.harness,
+              models: group.models,
+            });
+          }
+        }
+        return;
+      }
+      if (event.key === "ArrowLeft" || event.key === "Escape") {
+        event.preventDefault();
+        if (modelsSubmenu) setSubmenu(null);
+        else setPanel("effort");
+        return;
+      }
+      return;
+    }
+
     if (event.key === "ArrowDown") {
       event.preventDefault();
-      if (panel === "models") {
-        setActiveModel((index) =>
-          Math.min(visibleModels.length - 1, index + 1),
-        );
-      } else if (submenu?.kind === "setting") {
+      if (submenu?.kind === "setting") {
         setActiveSetting((index) =>
           Math.min(submenu.setting.options.length - 1, index + 1),
         );
@@ -580,9 +689,7 @@ export function ModelPicker({
     }
     if (event.key === "ArrowUp") {
       event.preventDefault();
-      if (panel === "models") {
-        setActiveModel((index) => Math.max(0, index - 1));
-      } else if (submenu?.kind === "setting") {
+      if (submenu?.kind === "setting") {
         setActiveSetting((index) => Math.max(0, index - 1));
       } else {
         moveEntry(-1);
@@ -601,20 +708,11 @@ export function ModelPicker({
     }
     if (event.key === "ArrowLeft") {
       event.preventDefault();
-      if (panel === "models") {
-        setPanel("effort");
-        return;
-      }
       setSubmenu(null);
       return;
     }
     if (event.key !== "Enter") return;
     event.preventDefault();
-    if (panel === "models") {
-      const item = visibleModels[activeModel];
-      if (item) pickModel(item);
-      return;
-    }
     if (submenu?.kind === "setting") {
       const option = submenu.setting.options[activeSetting];
       if (option) pickSetting(submenu.setting, option.value);
@@ -630,8 +728,10 @@ export function ModelPicker({
     setSetting(entry.setting, value === "true" ? "false" : "true");
   };
 
-  const showSubmenu =
-    open && panel === "effort" && submenu != null && activeRow != null;
+  const showSettingSubmenu =
+    open && panel === "effort" && submenu?.kind === "setting" && activeRow != null;
+  const showModelsSubmenu =
+    open && panel === "models" && submenu?.kind === "models" && activeRow != null;
   const effortOptions = effortSetting
     ? orderedSettingOptions(effortSetting)
     : [];
@@ -701,31 +801,84 @@ export function ModelPicker({
             }`}
           >
             {panel === "models" ? (
-              <ModelsList
-                groups={providerGroups}
-                currentId={current.id}
-                activeIndex={activeModel}
-                onActive={setActiveModel}
-                onPick={pickModel}
-              />
+              <div className="pb-1">
+                <div className="px-2.5 pt-1.5 pb-1 text-[12px] text-content/45">
+                  {t("Select model")}
+                </div>
+                {providerGroups.length === 0 ? (
+                  <p className="px-2.5 py-2 text-[12px] text-content/45">
+                    {t("No models found")}
+                  </p>
+                ) : (
+                  providerGroups.map((group, index) => {
+                    const highlighted = index === activeModel;
+                    const selected = group.models.some(
+                      (item) => item.id === current.id,
+                    );
+                    return (
+                      <button
+                        key={group.harness}
+                        ref={highlighted ? setActiveRow : undefined}
+                        data-model-control-index={index}
+                        data-provider-harness={group.harness}
+                        type="button"
+                        role="menuitem"
+                        aria-haspopup="menu"
+                        aria-expanded={
+                          highlighted &&
+                          showModelsSubmenu &&
+                          submenu?.kind === "models" &&
+                          submenu.harness === group.harness
+                        }
+                        onMouseDown={(event) => event.preventDefault()}
+                        onMouseEnter={() => openProviderModels(index)}
+                        onClick={() => openProviderModels(index)}
+                        className={`flex h-9 w-full items-center gap-2 rounded-lg px-2 text-left text-[13px] ${
+                          highlighted
+                            ? "bg-content/10 text-content"
+                            : "text-content hover:bg-content/5"
+                        }`}
+                      >
+                        <HarnessIcon
+                          harness={group.harness}
+                          className="size-4 shrink-0"
+                        />
+                        <span className="min-w-0 flex-1 truncate">
+                          {HARNESS_TITLE[group.harness]}
+                        </span>
+                        {selected ? (
+                          <Check
+                            className="size-3.5 shrink-0 text-content/55"
+                            strokeWidth={2}
+                          />
+                        ) : null}
+                        <ChevronRight
+                          className="size-3.5 shrink-0 text-content/45"
+                          strokeWidth={1.75}
+                        />
+                      </button>
+                    );
+                  })
+                )}
+              </div>
             ) : (
               <>
                 <div className="flex items-start gap-1 px-1 pt-1">
-                  {fastSetting ? (
+                  {fast && fastToggleable ? (
                     <button
                       type="button"
                       role="menuitemcheckbox"
-                      aria-checked={fastValue === "true"}
+                      aria-checked={fastOn}
                       aria-label={t("Fast")}
                       onMouseDown={(event) => event.preventDefault()}
                       onClick={() =>
                         setSetting(
-                          fastSetting,
-                          fastValue === "true" ? "false" : "true",
+                          fast,
+                          fastOn ? fastOffValue(fast) : fastOnValue(fast),
                         )
                       }
                       className={`mt-0.5 grid size-7 shrink-0 place-items-center rounded-md ${
-                        fastValue === "true"
+                        fastOn
                           ? "text-accent"
                           : "text-content/40 hover:bg-content/10 hover:text-content"
                       }`}
@@ -808,7 +961,7 @@ export function ModelPicker({
                       aria-checked={isToggle ? value === "true" : undefined}
                       aria-haspopup={isToggle ? undefined : "menu"}
                       aria-expanded={
-                        !isToggle && highlighted ? showSubmenu : undefined
+                        !isToggle && highlighted ? showSettingSubmenu : undefined
                       }
                       onMouseDown={(event) => event.preventDefault()}
                       onMouseEnter={() => {
@@ -867,7 +1020,7 @@ export function ModelPicker({
             )}
           </Popover>
 
-          {showSubmenu && submenu.kind === "setting" ? (
+          {showSettingSubmenu && submenu.kind === "setting" ? (
             <Popover
               key={submenu.setting.id}
               anchor={activeRow}
@@ -914,6 +1067,64 @@ export function ModelPicker({
               })}
             </Popover>
           ) : null}
+
+          {showModelsSubmenu && submenu.kind === "models" ? (
+            <Popover
+              key={submenu.harness}
+              anchor={activeRow}
+              side="right"
+              gap={MODELS_SUBMENU_GAP}
+              width={SETTING_MENU_WIDTH}
+              maxHeight={320}
+              layer={LAYER.submenu}
+              role="menu"
+              aria-label={HARNESS_TITLE[submenu.harness]}
+              onMouseEnter={() => setSubmenu(submenu)}
+              data-model-picker
+              className="overflow-y-auto overscroll-none p-1 font-sans"
+            >
+              {submenu.models.map((item, index) => {
+                const selected = item.id === current.id;
+                const highlighted = index === activeModelOption;
+                const disabled = !isHarnessAvailable(item.harness);
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    role="menuitemradio"
+                    data-picker-harness={item.harness}
+                    aria-checked={selected}
+                    disabled={disabled}
+                    title={
+                      disabled
+                        ? harnessUnavailableHint(item.harness)
+                        : undefined
+                    }
+                    onMouseDown={(event) => event.preventDefault()}
+                    onMouseEnter={() => setActiveModelOption(index)}
+                    onClick={() => pickModel(item)}
+                    className={`flex h-9 w-full items-center gap-2 rounded-lg px-2 text-left text-[13px] disabled:cursor-not-allowed ${
+                      disabled
+                        ? "text-content/30"
+                        : highlighted
+                          ? "bg-content/10 text-content"
+                          : "text-content hover:bg-content/5"
+                    }`}
+                  >
+                    <ModelBrandIcon model={item} className="size-4 shrink-0" />
+                    <span className="min-w-0 flex-1 truncate">{item.name}</span>
+                    {selected ? (
+                      <Check
+                        className="size-3.5 shrink-0 text-content/50"
+                        strokeWidth={2}
+                      />
+                    ) : null}
+                  </button>
+                );
+              })}
+            </Popover>
+          ) : null}
+
         </>
       ) : null}
 
@@ -986,74 +1197,3 @@ export function ModelPicker({
   );
 }
 
-function ModelsList({
-  groups,
-  currentId,
-  activeIndex,
-  onActive,
-  onPick,
-}: {
-  groups: { harness: HarnessId; models: AgentModel[] }[];
-  currentId: string;
-  activeIndex: number;
-  onActive: (index: number) => void;
-  onPick: (item: AgentModel) => void;
-}) {
-  let offset = 0;
-  return (
-    <div className="pb-1">
-      <div className="px-2.5 pt-1.5 pb-1 text-[12px] text-content/45">
-        {t("Select model")}
-      </div>
-      {groups.length === 0 ? (
-        <p className="px-2.5 py-2 text-[12px] text-content/45">
-          {t("No models found")}
-        </p>
-      ) : (
-        groups.map((group) => {
-          const start = offset;
-          offset += group.models.length;
-          return (
-            <div key={group.harness}>
-              {group.models.map((item, local) => {
-                const index = start + local;
-                const selected = item.id === currentId;
-                const highlighted = index === activeIndex;
-                const disabled = !isHarnessAvailable(item.harness);
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    role="menuitemradio"
-                    data-picker-harness={group.harness}
-                    aria-checked={selected}
-                    disabled={disabled}
-                    onMouseDown={(event) => event.preventDefault()}
-                    onMouseEnter={() => onActive(index)}
-                    onClick={() => onPick(item)}
-                    className={`flex h-8 w-full items-center gap-2 rounded-lg px-2.5 text-left text-[13px] disabled:cursor-not-allowed ${
-                      disabled
-                        ? "text-content/30"
-                        : highlighted
-                          ? "bg-content/10 text-content"
-                          : "text-content hover:bg-content/5"
-                    }`}
-                  >
-                    <ModelBrandIcon model={item} className="size-4 shrink-0" />
-                    <span className="min-w-0 flex-1 truncate">{item.name}</span>
-                    {selected ? (
-                      <Check
-                        className="size-3.5 shrink-0 text-content/50"
-                        strokeWidth={2}
-                      />
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-          );
-        })
-      )}
-    </div>
-  );
-}

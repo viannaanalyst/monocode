@@ -25,7 +25,7 @@ import { releaseNotesTitle } from "../lib/releaseNotes";
 import { browserFaviconUrl, browserTabLabel } from "../lib/browserUrl";
 import { terminalTabLabel } from "../lib/terminalTab";
 import { useLockOverscroll } from "../hooks/useLockOverscroll";
-import { useSortable } from "../hooks/useSortable";
+import { useAnimatedReorder } from "../hooks/useAnimatedReorder";
 import { ExplorerMenu, type ExplorerMenuItem } from "./ExplorerMenu";
 import { FileTypeIcon } from "./FileTypeIcon";
 import { t } from "../i18n";
@@ -210,7 +210,7 @@ export function SurfaceTabs({
   const activeTabRef = useRef<HTMLDivElement | null>(null);
   const [menu, setMenu] = useState<SurfaceTabMenu | null>(null);
   const fileIds = files.map((file) => file.id);
-  const sortable = useSortable(fileIds, onReorder);
+  const sortable = useAnimatedReorder(fileIds, onReorder);
   const browserOnly = files.length > 0 && files.every(isBrowserTab);
   const canDrag = files.length > 1 && !browserOnly;
   const menuFile = menu
@@ -295,7 +295,7 @@ export function SurfaceTabs({
           <GripVertical className="size-3.5" strokeWidth={1.75} />
         </div>
       ) : null}
-      {files.map((file, index) => {
+      {files.map((file) => {
         const active = file.id === activeFileId;
         const dirty = dirtyFileIds.has(file.id);
         const errors = fileErrorCounts.get(file.id) ?? 0;
@@ -306,19 +306,6 @@ export function SurfaceTabs({
         const browser = isBrowserTab(file);
         const { label, iconName, tooltip, favicon } = surfaceTabPresentation(file);
         const tabDraggable = canDrag && !browser;
-        const dragging = sortable.draggingId === file.id;
-        const showStart =
-          tabDraggable &&
-          sortable.draggingId &&
-          sortable.toIndex === index &&
-          sortable.fromIndex !== null &&
-          sortable.toIndex < sortable.fromIndex;
-        const showEnd =
-          tabDraggable &&
-          sortable.draggingId &&
-          sortable.toIndex === index &&
-          sortable.fromIndex !== null &&
-          sortable.toIndex > sortable.fromIndex;
         return (
           <div
             key={file.id}
@@ -326,13 +313,13 @@ export function SurfaceTabs({
               sortable.setItemRef(file.id, el);
               if (el && file.id === activeFileId) activeTabRef.current = el;
             }}
-            className={`group relative flex shrink items-stretch border-r border-content/10 ${
+            className={`reorder-item tab-motion group relative flex shrink items-stretch border-r border-content/10 ${
               browser
                 ? "w-max min-w-[4.5rem] max-w-[8.5rem]"
                 : "w-52 min-w-28 touch-none"
             } ${
               active ? "bg-content/8" : "hover:bg-content/5"
-            } ${dragging ? "opacity-40" : ""} ${
+            } ${
               tabDraggable ? "cursor-grab touch-none active:cursor-grabbing" : "cursor-pointer"
             }`}
             onMouseDownCapture={(event) => {
@@ -365,12 +352,6 @@ export function SurfaceTabs({
               });
             }}
           >
-            {showStart ? (
-              <div className="pointer-events-none absolute inset-y-0 left-0 z-20 w-0.5 bg-accent" />
-            ) : null}
-            {showEnd ? (
-              <div className="pointer-events-none absolute inset-y-0 right-0 z-20 w-0.5 bg-accent" />
-            ) : null}
             <button
               type="button"
               role="tab"

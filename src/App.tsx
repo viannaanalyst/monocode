@@ -22,6 +22,7 @@ import { FilePicker } from "./chrome/FilePicker";
 import { UsageFooter } from "./chrome/UsageFooter";
 import { ImportSessionDialog } from "./chrome/ImportSessionDialog";
 import { useProjectBranches } from "./hooks/useProjectBranches";
+import { useInboxActivity } from "./hooks/useInboxUnseen";
 import {
   loadProjectRailOpen,
   loadSidebarOpen,
@@ -297,6 +298,7 @@ import { liveAgentsFromSessions } from "./lib/liveAgents";
 import { hiddenApprovalNotices } from "./lib/approvalToast";
 import { useSessionReminders } from "./hooks/useSessionReminders";
 import { ReminderNotices } from "./chrome/ReminderNotices";
+import { LinkedWorkItemUpdateNotice } from "./chrome/LinkedWorkItemUpdateNotice";
 import { nextUnseenFinishedSessions } from "./lib/sessionDone";
 import {
   loadNotificationsEnabled,
@@ -360,12 +362,25 @@ import type { ConnectableInboxSource } from "./lib/inboxFilters";
 import { InboxView } from "./surfaces/InboxView";
 import type { InboxSessionPortal } from "./surfaces/InboxDiscussionPanel";
 import { inboxAskKey, inboxAskPrompt } from "./lib/inboxAsk";
+import { requestAddToChat } from "./lib/quoteDraft";
 import { NotesView } from "./surfaces/NotesView";
-import { inboxComposerCard, type InboxItem } from "./lib/githubTasks";
+import {
+  githubWorkItemThread,
+  inboxComposerCard,
+  type InboxItem,
+} from "./lib/githubTasks";
 import {
   linkedWorkItemFromInboxItem,
   resolveLinkedWorkItem,
 } from "./lib/sessionWorkItem";
+import {
+  completeLinkedWorkItemUpdateCard,
+  failLinkedWorkItemUpdateCard,
+  pendingLinkedWorkItemUpdateCard,
+  type LinkedWorkItemUpdateCard,
+} from "./lib/linkedWorkItemActivity";
+import type { LinkedSessionUpdate } from "./lib/linkedSessionUpdates";
+import { markLinkedSessionUpdateSeen } from "./lib/linkedSessionSeen";
 import { linearIssueDetails, peekLinearIssueDetails } from "./lib/linear";
 import { gitlabWorkItemDetails, peekGitlabWorkItemDetails } from "./lib/gitlab";
 import {
@@ -727,6 +742,10 @@ export default function App({
 
   const sessionsRef = useRef(sessions);
   sessionsRef.current = sessions;
+  const linkedSessionUpdatesRef = useRef<
+    ReadonlyMap<string, LinkedSessionUpdate>
+  >(new Map());
+  const linkedWorkItemActivityFetches = useRef(new Map<string, number>());
   const queueDispatchingRef = useRef(new Set<string>());
   const tabsRef = useRef(tabs);
   tabsRef.current = tabs;
@@ -1105,6 +1124,8 @@ export default function App({
     [sessions, activeTabId, tabs, composerFocused],
   );
   const [reminderNoticesHeight, setReminderNoticesHeight] = useState(0);
+  const [linkedActivityNoticeHeight, setLinkedActivityNoticeHeight] =
+    useState(0);
 
   useEffect(() => {
     syncDockBadge(sessions);
@@ -1682,6 +1703,35 @@ export default function App({
       ),
     );
   }, []);
+
+  const setLinkedWorkItemUpdateCard = useCallback(
+    (
+      sessionId: string,
+      update: (
+        card: LinkedWorkItemUpdateCard | undefined,
+      ) => LinkedWorkItemUpdateCard | undefined,
+    ) => {
+      const previous = sessionsRef.current;
+      const next = previous.map((session) => {
+        if (session.id !== sessionId) return session;
+        const card = update(session.linkedWorkItemUpdateCard);
+        return card === session.linkedWorkItemUpdateCard
+          ? session
+          : { ...session, linkedWorkItemUpdateCard: card };
+      });
+      if (!next.some((session, index) => session !== previous[index])) return;
+      sessionsRef.current = next;
+      setSessions(next);
+    },
+    [],
+  );
+
+  const onLinkedWorkItemUpdateCardDismiss = useCallback(
+    (sessionId: string) => {
+      setLinkedWorkItemUpdateCard(sessionId, () => undefined);
+    },
+    [setLinkedWorkItemUpdateCard],
+  );
 
   const onNoteCardDismiss = useCallback((sessionId: string) => {
     setSessions((prev) =>
@@ -2918,6 +2968,82 @@ export default function App({
     [refreshHistory, sidebarCwd],
   );
 
+  const revealLinkedSessionUpdate = useCallback(
+    (sessionId: string, update: LinkedSessionUpdate) => {
+      const session = sessionsRef.current.find(
+        (entry) => entry.id === sessionId,
+      );
+      if (!session?.linkedWorkItem) return;
+      if (
+        session.linkedWorkItemUpdateCard?.updatedAt === update.updatedAt &&
+        session.linkedWorkItemUpdateCard.status !== "error"
+      ) {
+        return;
+      }
+      if (
+        linkedWorkItemActivityFetches.current.get(sessionId) ===
+        update.updatedAt
+      ) {
+        return;
+      }
+      const pending = pendingLinkedWorkItemUpdateCard(update);
+      linkedWorkItemActivityFetches.current.set(sessionId, update.updatedAt);
+      // A stale/error card should not remain visible while fresh details load.
+      // The session itself is already open; this request stays fully detached
+      // from the navigation path.
+      setLinkedWorkItemUpdateCard(sessionId, (current) =>
+        current?.updatedAt === update.updatedAt && current.status === "ready"
+          ? current
+          : undefined,
+      );
+
+      void githubWorkItemThread(
+        session.cwd,
+        session.linkedWorkItem.kind,
+        session.linkedWorkItem.number,
+        { force: true },
+      ).then(
+        (thread) => {
+          if (
+            linkedWorkItemActivityFetches.current.get(sessionId) !==
+            pending.updatedAt
+          ) {
+            return;
+          }
+          linkedWorkItemActivityFetches.current.delete(sessionId);
+          if (
+            linkedSessionUpdatesRef.current.get(sessionId)?.updatedAt !==
+            pending.updatedAt
+          ) {
+            return;
+          }
+          setLinkedWorkItemUpdateCard(sessionId, () =>
+            completeLinkedWorkItemUpdateCard(pending, thread),
+          );
+        },
+        () => {
+          if (
+            linkedWorkItemActivityFetches.current.get(sessionId) !==
+            pending.updatedAt
+          ) {
+            return;
+          }
+          linkedWorkItemActivityFetches.current.delete(sessionId);
+          if (
+            linkedSessionUpdatesRef.current.get(sessionId)?.updatedAt !==
+            pending.updatedAt
+          ) {
+            return;
+          }
+          setLinkedWorkItemUpdateCard(sessionId, () =>
+            failLinkedWorkItemUpdateCard(pending),
+          );
+        },
+      );
+    },
+    [setLinkedWorkItemUpdateCard],
+  );
+
   const onAskInboxItem = useCallback(
     (item: InboxItem): Promise<string> => {
       const key = inboxAskKey(item);
@@ -2943,12 +3069,12 @@ export default function App({
                   (item.kind === "issue" || item.kind === "pr")
                 ? (
                     peekGitlabWorkItemDetails(
-                      item.projectPath,
+                      item.repo,
                       item.kind,
                       item.number,
                     ) ??
                     (await gitlabWorkItemDetails(
-                      item.projectPath,
+                      item.repo,
                       item.kind,
                       item.number,
                     ))
@@ -3028,20 +3154,29 @@ export default function App({
 
   const onSelectHistorySession = useCallback(
     async (sessionId: string) => {
-      if (focusOpenSession(sessionId)) return;
+      const linkedUpdate = linkedSessionUpdatesRef.current.get(sessionId);
+      if (focusOpenSession(sessionId)) {
+        if (linkedUpdate) revealLinkedSessionUpdate(sessionId, linkedUpdate);
+        return;
+      }
       const session = await ensureOpenSession(sessionId);
       if (!session || session.inboxAsk) return;
-      if (replaceBlankPaneWithSession(session)) return;
+      if (replaceBlankPaneWithSession(session)) {
+        if (linkedUpdate) revealLinkedSessionUpdate(sessionId, linkedUpdate);
+        return;
+      }
       const tab = newTab(session.id);
       appendTab(tab, session.cwd);
       setActiveTabId(tab.id);
       setComposerFocused(true);
+      if (linkedUpdate) revealLinkedSessionUpdate(sessionId, linkedUpdate);
     },
     [
       appendTab,
       ensureOpenSession,
       focusOpenSession,
       replaceBlankPaneWithSession,
+      revealLinkedSessionUpdate,
     ],
   );
 
@@ -3139,6 +3274,21 @@ export default function App({
     openReminderSession,
     ensureReminderSessionsSaved,
     sessions.filter((session) => !session.inboxAsk).map((session) => session.id),
+  );
+
+  const dismissNoticesForContinuedSession = useCallback(
+    (sessionId: string) => {
+      void sessionReminders.dismissDue(sessionId);
+      const updatedAt = sessionsRef.current.find(
+        (session) => session.id === sessionId,
+      )?.linkedWorkItemUpdateCard?.updatedAt;
+      if (updatedAt == null) return;
+      markLinkedSessionUpdateSeen(sessionId, updatedAt);
+      setLinkedWorkItemUpdateCard(sessionId, (card) =>
+        card?.updatedAt === updatedAt ? undefined : card,
+      );
+    },
+    [sessionReminders.dismissDue, setLinkedWorkItemUpdateCard],
   );
 
   const onPlaceSessionOnPane = useCallback(
@@ -4190,6 +4340,7 @@ export default function App({
                 : s,
             ),
           );
+          dismissNoticesForContinuedSession(sessionId);
           return;
         }
         if (
@@ -4205,6 +4356,7 @@ export default function App({
           flushHarnessEvents();
           return;
         }
+        dismissNoticesForContinuedSession(sessionId);
         const visible = displayAttachments(attachments);
         const cards = userTurnCards(noteCard);
         setSessions((prev) =>
@@ -4291,6 +4443,7 @@ export default function App({
         void cancelHarnessTurn(pendingSwitch.from, sessionId);
       }
 
+      dismissNoticesForContinuedSession(sessionId);
       setSessions((prev) =>
         prev.map((s) => {
           if (s.id !== sessionId) return s;
@@ -4632,7 +4785,11 @@ export default function App({
         );
       });
     },
-    [enqueueHarnessEvent, flushHarnessEvents],
+    [
+      dismissNoticesForContinuedSession,
+      enqueueHarnessEvent,
+      flushHarnessEvents,
+    ],
   );
 
   const onUpdatePlan = useCallback(
@@ -5220,6 +5377,12 @@ export default function App({
           }),
     [allSessions, history, projectBranches, sessions, sidebarCwd],
   );
+  const {
+    unseen: inboxUnseen,
+    linkedSessionUpdateIds,
+    linkedSessionUpdates,
+  } = useInboxActivity(recents, sidebarCwd, sidebarHistory);
+  linkedSessionUpdatesRef.current = linkedSessionUpdates;
   const inboxRelatedSessions = useMemo(() => {
     const byId = new Map<string, SessionSummary>();
     for (const session of storedLinkedSessions) byId.set(session.id, session);
@@ -5974,6 +6137,8 @@ export default function App({
         projectRailOpen={projectRailOpen}
         onToggleProjectRail={onToggleProjectRail}
         unseenFinishedIds={unseenFinishedIds}
+        inboxUnseen={inboxUnseen}
+        linkedSessionUpdateIds={linkedSessionUpdateIds}
         settingsOpen={settingsOpen}
         settingsSection={settingsSection}
         onOpenSettings={onOpenSettings}
@@ -6271,9 +6436,61 @@ export default function App({
 
       <ApprovalToasts
         notices={hiddenApprovalToasts}
-        topOffset={12 + (reminderNoticesHeight ? reminderNoticesHeight + 8 : 0)}
+        topOffset={
+          12 +
+          (reminderNoticesHeight ? reminderNoticesHeight + 8 : 0) +
+          (linkedActivityNoticeHeight ? linkedActivityNoticeHeight + 8 : 0)
+        }
         onFocusSession={onOpenApprovalSession}
         onApproval={onApproval}
+      />
+      <LinkedWorkItemUpdateNotice
+        card={
+          searchViewOpen || inboxViewOpen || notesViewOpen || settingsOpen
+            ? undefined
+            : sessions.find((session) => session.id === activeTab?.focusedId)
+                ?.linkedWorkItemUpdateCard
+        }
+        topOffset={12 + (reminderNoticesHeight ? reminderNoticesHeight + 8 : 0)}
+        onAcknowledge={() => {
+          const session = sessions.find(
+            (entry) => entry.id === activeTab?.focusedId,
+          );
+          const updatedAt = session?.linkedWorkItemUpdateCard?.updatedAt;
+          if (session && updatedAt != null) {
+            markLinkedSessionUpdateSeen(session.id, updatedAt);
+          }
+        }}
+        onDismiss={() => {
+          if (activeTab?.focusedId) {
+            onLinkedWorkItemUpdateCardDismiss(activeTab.focusedId);
+          }
+        }}
+        onOpenDiscussion={() => {
+          const session = sessions.find(
+            (entry) => entry.id === activeTab?.focusedId,
+          );
+          if (session?.linkedWorkItem) {
+            onOpenLinkedWorkItem(session.linkedWorkItem);
+          }
+        }}
+        onAddToChat={(text) => {
+          requestAddToChat(text, "plain");
+          setComposerFocused(true);
+        }}
+        onArchiveSession={() => {
+          const sessionId = activeTab?.focusedId;
+          return sessionId
+            ? onArchiveHistorySession(sessionId, true)
+            : Promise.resolve(false);
+        }}
+        onDeleteSession={() => {
+          const sessionId = activeTab?.focusedId;
+          return sessionId
+            ? onDeleteHistorySession(sessionId)
+            : Promise.resolve(false);
+        }}
+        onHeightChange={setLinkedActivityNoticeHeight}
       />
       <ReminderNotices
         reminders={sessionReminders.due}

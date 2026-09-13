@@ -137,7 +137,9 @@ export function InboxFiltersMenu({
       className="overflow-y-auto overscroll-none p-1"
     >
       <FilterItem
-        label={t("Assigned to me")}
+        label={
+          source === "gitlab" ? t("Needs attention") : t("Assigned to me")
+        }
         checked={filters.assignedToMe}
         onClick={toggleAssigned}
       />
@@ -225,7 +227,9 @@ export function InboxFiltersMenu({
         </>
       ) : null}
 
-      {source !== "linear" && projects.length > 0 ? (
+      {source !== "linear" &&
+      !(source === "gitlab" && filters.assignedToMe) &&
+      projects.length > 0 ? (
         <>
           <SectionLabel>{t("Projects")}</SectionLabel>
           {projects.map((project) => (

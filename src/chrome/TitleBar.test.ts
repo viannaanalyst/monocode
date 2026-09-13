@@ -200,11 +200,9 @@ describe("TitleBar session brand", () => {
       );
     });
 
-    // The Codex mark ships as an SVG asset rendered through an <img>; the old
-    // harness-icon path drew an inline <svg>, so this distinguishes the two.
-    const brand = container.querySelector("img");
+    // The vendor mark is drawn by ModelBrandIcon, not the harness-icon path.
+    const brand = container.querySelector("[data-model-brand]");
     expect(brand).not.toBeNull();
-    expect(brand?.getAttribute("src")).toContain("svg");
   });
 });
 

@@ -1,6 +1,7 @@
 use std::sync::mpsc;
 use std::time::Duration;
 
+#[cfg(target_os = "macos")]
 use base64::Engine;
 use tauri::Manager;
 

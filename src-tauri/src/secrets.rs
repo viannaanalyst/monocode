@@ -1,4 +1,6 @@
+#[cfg(target_os = "macos")]
 const SERVICE: &str = "MonoCode";
+#[cfg(target_os = "macos")]
 const ACCOUNT: &str = "openai_api_key";
 
 /// Collapse an underlying error into a fixed, secret-free message. The raw
@@ -39,13 +41,13 @@ pub fn voice_set_api_key(value: String) -> Result<(), String> {
         entry
             .set_password(&value)
             .map_err(|error| sanitize_error(error, "Could not save the API key."))?;
+        Ok(())
     }
     #[cfg(not(target_os = "macos"))]
     {
         let _ = value;
-        return Err("Voice input is available on macOS only for now.".to_string());
+        Err("Voice input is available on macOS only for now.".to_string())
     }
-    Ok(())
 }
 
 #[tauri::command]

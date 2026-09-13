@@ -35,37 +35,24 @@ describe("project chat background settings", () => {
     saveProjectChatBackground("/work/alpha", {
       path: "/backgrounds/alpha.webp",
       opacity: 0.22,
-      opacityFilled: 0.11,
       scope: "empty",
     });
     saveProjectChatBackground("/work/beta", {
       path: "/backgrounds/beta.png",
       opacity: 0.48,
-      opacityFilled: 0.4,
       scope: "all",
     });
 
     expect(loadProjectChatBackground("/work/alpha")).toEqual({
       path: "/backgrounds/alpha.webp",
       opacity: 0.22,
-      opacityFilled: 0.11,
       scope: "empty",
     });
     expect(loadProjectChatBackground("/work/beta")).toEqual({
       path: "/backgrounds/beta.png",
       opacity: 0.48,
-      opacityFilled: 0.4,
       scope: "all",
     });
-  });
-
-  it("reuses the empty-session opacity when no filled value is set", () => {
-    saveProjectChatBackground("/work/alpha", {
-      path: "/backgrounds/alpha.webp",
-      opacity: 0.3,
-      scope: "all",
-    });
-    expect(loadProjectChatBackground("/work/alpha")?.opacityFilled).toBe(0.3);
   });
 
   it("clamps visibility to the supported range", () => {
@@ -99,7 +86,6 @@ describe("project chat background settings", () => {
     expect(loadProjectChatBackground("/work/alpha")).toEqual({
       path: "/backgrounds/alpha.webp",
       opacity: 0.24,
-      opacityFilled: 0.24,
       scope: "all",
     });
   });

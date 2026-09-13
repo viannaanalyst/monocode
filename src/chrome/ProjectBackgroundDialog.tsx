@@ -5,9 +5,9 @@ import {
   CHAT_BACKGROUND_OPACITY_MAX,
   CHAT_BACKGROUND_OPACITY_MIN,
   chatBackgroundSrc,
-  loadChatBackgroundFilledOpacity,
-  loadChatBackgroundOpacity,
+  loadChatBackgroundEmptyOpacity,
   loadChatBackgroundPath,
+  loadChatBackgroundSessionOpacity,
   loadChatBackgroundScope,
   type ChatBackgroundScope,
 } from "../lib/appearance";
@@ -18,11 +18,10 @@ import {
 } from "../lib/chatBackground";
 import { t } from "../i18n";
 import {
-
   clearProjectChatBackgroundSetting,
-  loadProjectChatBackground,
+  loadProjectChatBackgroundSettings,
   projectChatBackgroundRevision,
-  saveProjectChatBackground,
+  saveProjectChatBackgroundSettings,
 } from "../lib/projectChatBackground";
 
 type Props = {
@@ -32,13 +31,13 @@ type Props = {
 };
 
 export function ProjectBackgroundDialog({ project, name, onClose }: Props) {
-  const initial = loadProjectChatBackground(project);
+  const initial = loadProjectChatBackgroundSettings(project);
   const [path, setPath] = useState(initial?.path ?? null);
-  const [opacity, setOpacity] = useState(
-    initial?.opacity ?? loadChatBackgroundOpacity(),
+  const [emptyOpacity, setEmptyOpacity] = useState(
+    initial?.emptyOpacity ?? loadChatBackgroundEmptyOpacity(),
   );
-  const [opacityFilled, setOpacityFilled] = useState(
-    initial?.opacityFilled ?? loadChatBackgroundFilledOpacity(),
+  const [sessionOpacity, setSessionOpacity] = useState(
+    initial?.sessionOpacity ?? loadChatBackgroundSessionOpacity(),
   );
   const [scope, setScope] = useState<ChatBackgroundScope>(
     initial?.scope ?? loadChatBackgroundScope(),
@@ -53,14 +52,14 @@ export function ProjectBackgroundDialog({ project, name, onClose }: Props) {
 
   const save = (
     nextPath: string,
-    nextOpacity: number,
-    nextFilled: number,
+    nextEmptyOpacity: number,
+    nextSessionOpacity: number,
     nextScope: ChatBackgroundScope,
   ) => {
-    saveProjectChatBackground(project, {
+    saveProjectChatBackgroundSettings(project, {
       path: nextPath,
-      opacity: nextOpacity,
-      opacityFilled: nextFilled,
+      emptyOpacity: nextEmptyOpacity,
+      sessionOpacity: nextSessionOpacity,
       scope: nextScope,
     });
     setRevision(projectChatBackgroundRevision());
@@ -72,7 +71,7 @@ export function ProjectBackgroundDialog({ project, name, onClose }: Props) {
     try {
       const nextPath = await pickAndSaveProjectChatBackground(project);
       if (!nextPath) return;
-      save(nextPath, opacity, opacityFilled, scope);
+      save(nextPath, emptyOpacity, sessionOpacity, scope);
       setPath(nextPath);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
@@ -88,8 +87,8 @@ export function ProjectBackgroundDialog({ project, name, onClose }: Props) {
       await clearProjectChatBackground(project);
       clearProjectChatBackgroundSetting(project);
       setPath(null);
-      setOpacity(loadChatBackgroundOpacity());
-      setOpacityFilled(loadChatBackgroundFilledOpacity());
+      setEmptyOpacity(loadChatBackgroundEmptyOpacity());
+      setSessionOpacity(loadChatBackgroundSessionOpacity());
       setScope(loadChatBackgroundScope());
       setRevision(projectChatBackgroundRevision());
     } catch (cause) {
@@ -99,27 +98,21 @@ export function ProjectBackgroundDialog({ project, name, onClose }: Props) {
     }
   };
 
-  const updateOpacity = (percent: number) => {
+  const updateOpacity = (kind: "empty" | "session", percent: number) => {
     const next = Math.min(
       CHAT_BACKGROUND_OPACITY_MAX,
       Math.max(CHAT_BACKGROUND_OPACITY_MIN, percent / 100),
     );
-    setOpacity(next);
-    if (path) save(path, next, opacityFilled, scope);
-  };
-
-  const updateFilledOpacity = (percent: number) => {
-    const next = Math.min(
-      CHAT_BACKGROUND_OPACITY_MAX,
-      Math.max(CHAT_BACKGROUND_OPACITY_MIN, percent / 100),
-    );
-    setOpacityFilled(next);
-    if (path) save(path, opacity, next, scope);
+    const nextEmptyOpacity = kind === "empty" ? next : emptyOpacity;
+    const nextSessionOpacity = kind === "session" ? next : sessionOpacity;
+    if (kind === "empty") setEmptyOpacity(next);
+    else setSessionOpacity(next);
+    if (path) save(path, nextEmptyOpacity, nextSessionOpacity, scope);
   };
 
   const updateScope = (next: ChatBackgroundScope) => {
     setScope(next);
-    if (path) save(path, opacity, opacityFilled, next);
+    if (path) save(path, emptyOpacity, sessionOpacity, next);
   };
 
   return (
@@ -138,6 +131,7 @@ export function ProjectBackgroundDialog({ project, name, onClose }: Props) {
                 alt=""
                 draggable={false}
                 className="h-56 w-full object-cover"
+                style={{ opacity: emptyOpacity }}
               />
             ) : (
               <div className="grid h-56 place-items-center text-[12px] text-content/40">{t("No background selected")}</div>
@@ -200,13 +194,15 @@ export function ProjectBackgroundDialog({ project, name, onClose }: Props) {
               type="range"
               min={Math.round(CHAT_BACKGROUND_OPACITY_MIN * 100)}
               max={Math.round(CHAT_BACKGROUND_OPACITY_MAX * 100)}
-              value={Math.round(opacity * 100)}
+              value={Math.round(emptyOpacity * 100)}
               aria-label={t("Project background visibility")}
               className="sidebar-opacity-slider min-w-0 flex-1"
-              onChange={(event) => updateOpacity(Number(event.target.value))}
+              onChange={(event) =>
+                updateOpacity("empty", Number(event.target.value))
+              }
             />
             <span className="w-10 shrink-0 text-right text-[12px] tabular-nums text-content">
-              {Math.round(opacity * 100)}%
+              {Math.round(emptyOpacity * 100)}%
             </span>
           </div>
         </ProjectBackgroundRow>
@@ -217,15 +213,15 @@ export function ProjectBackgroundDialog({ project, name, onClose }: Props) {
               type="range"
               min={Math.round(CHAT_BACKGROUND_OPACITY_MIN * 100)}
               max={Math.round(CHAT_BACKGROUND_OPACITY_MAX * 100)}
-              value={Math.round(opacityFilled * 100)}
+              value={Math.round(sessionOpacity * 100)}
               aria-label={t("Project background visibility in working sessions")}
               className="sidebar-opacity-slider min-w-0 flex-1"
               onChange={(event) =>
-                updateFilledOpacity(Number(event.target.value))
+                updateOpacity("session", Number(event.target.value))
               }
             />
             <span className="w-10 shrink-0 text-right text-[12px] tabular-nums text-content">
-              {Math.round(opacityFilled * 100)}%
+              {Math.round(sessionOpacity * 100)}%
             </span>
           </div>
         </ProjectBackgroundRow>

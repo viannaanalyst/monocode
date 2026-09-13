@@ -28,6 +28,7 @@ export type SoundCue =
   | "turnFinished"
   | "approvalNeeded"
   | "inboxUnseen"
+  | "linkedActivity"
   | "updateAvailable"
   | "switch"
   | "copy";
@@ -36,6 +37,7 @@ const CUES: Record<SoundCue, SoundName> = {
   turnFinished: NOTIFICATION_SOUND_DEFAULT,
   approvalNeeded: NOTIFICATION_SOUND_DEFAULT,
   inboxUnseen: "bloom",
+  linkedActivity: "chime",
   updateAvailable: "arrival",
   switch: "toggle",
   copy: "scan",

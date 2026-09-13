@@ -383,7 +383,10 @@ export function applyInboxFilters(
 ): InboxItem[] {
   const scoped = source ? filterInboxByProvider(items, source) : [...items];
   const tracker = isTrackerSource(source);
-  const hiddenProjects = tracker ? [] : filters.hiddenProjects;
+  const hiddenProjects =
+    tracker || (source === "gitlab" && filters.assignedToMe)
+      ? []
+      : filters.hiddenProjects;
   const hiddenKinds = tracker ? [] : filters.hiddenKinds;
   return filterInboxItems(
     filterInboxByStatus(

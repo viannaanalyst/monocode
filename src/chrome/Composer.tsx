@@ -1861,7 +1861,7 @@ function DictationWaveform({ level }: { level: number }) {
   );
 }
 
-function ComposerAction({
+export function ComposerAction({
   busy,
   hasValue,
   onSend,

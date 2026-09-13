@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import OpenAIMono from "@lobehub/icons/es/OpenAI/components/Mono";
 import claude from "../assets/providers/claude.svg";
 import codex from "../assets/providers/codex.svg";
 import cursor from "../assets/providers/cursor.svg";
@@ -22,6 +23,7 @@ export const HARNESS_ICONS: Record<HarnessId, string> = {
 
 /** White marks that must follow `currentColor` so they stay visible in light mode. */
 export const MONOCHROME_HARNESSES = new Set<HarnessId>([
+  "codex",
   "cursor",
   "grok",
   "opencode",
@@ -57,6 +59,17 @@ export function HarnessIcon({
   harness: HarnessId;
   className?: string;
 }) {
+  if (harness === "codex") {
+    return (
+      <span
+        aria-hidden
+        data-harness-icon={harness}
+        className={`inline-flex items-center justify-center ${className}`}
+      >
+        <OpenAIMono size="100%" />
+      </span>
+    );
+  }
   if (harness === "cursor") {
     return (
       <MonoIcon className={className}>
@@ -107,6 +120,7 @@ export function HarnessIcon({
     <img
       src={HARNESS_ICONS[harness]}
       alt=""
+      data-harness-icon={harness}
       draggable={false}
       className={`block object-contain ${className}`}
     />

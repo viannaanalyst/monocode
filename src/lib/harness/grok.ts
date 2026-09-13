@@ -1,4 +1,5 @@
 import { nativeModelId } from "../models";
+import { AcpSubagents } from "./acpSubagents";
 import type { RuntimeMode } from "../session";
 import { browserMcpServers } from "../browserMcp";
 import { AcpClient, type AcpHandlers } from "./acp";
@@ -40,6 +41,7 @@ import type {
 import { questionPromptTitle, type UserQuestionReply } from "../userQuestion";
 
 type Live = {
+  subagents: AcpSubagents;
   acp: AcpClient;
   acpSessionId: string;
   cwd: string;
@@ -381,6 +383,7 @@ async function ensureLive(input: HarnessSessionInput): Promise<Live> {
       throw new Error("Grok Build did not return a session id");
 
     const live: Live = {
+      subagents: new AcpSubagents(),
       acp,
       acpSessionId,
       cwd: input.cwd,
@@ -492,7 +495,7 @@ function handleNotification(live: Live, method: string, params: unknown) {
         ? unwrapSessionNotification(params)
         : null;
   if (!updateParams) return;
-  for (const event of eventsFromAcpUpdate(updateParams)) {
+  for (const event of live.subagents.route(updateParams, eventsFromAcpUpdate(updateParams))) {
     if (
       event.type === "context" &&
       event.window == null &&
