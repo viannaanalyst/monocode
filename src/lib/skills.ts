@@ -125,7 +125,7 @@ export const BUILTIN_IN_APP_BROWSER_SKILL: BuiltinSkill = {
 const SKILL_NAME_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const SKILL_TOKEN_RE =
   /(^|\s)\/([a-z0-9]+(?:-[a-z0-9]+)*(?::[a-z0-9]+(?:-[a-z0-9]+)*)?)(?=\s|$)/g;
-const MAX_PICKER = 50;
+const MAX_PICKER = 300;
 const NATIVE_SKILL_TTL_MS = 30_000;
 const NATIVE_SKILL_RETRY_MS = 5_000;
 

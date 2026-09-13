@@ -76,6 +76,9 @@ import {
   saveThemeSaturation,
   saveTranscriptLayout,
   saveTranscriptAnchor,
+  loadShowExcludedFiles,
+  saveShowExcludedFiles,
+  SHOW_EXCLUDED_FILES_DEFAULT,
   SCHEME_CHANGE_EVENT,
   TRANSCRIPT_ANCHOR_CHANGE_EVENT,
   SIDEBAR_BLUR_DEFAULT,
@@ -130,6 +133,7 @@ import {
 } from "../lib/fonts";
 import {
   getHarnessAvailabilitySnapshot,
+  hasProbedHarnessAvailability,
   harnessUnavailableHint,
   isHarnessAvailable,
   probeHarnessAvailability,
@@ -138,6 +142,7 @@ import {
 import { refreshHarnessCatalogs } from "../lib/harness/registry";
 import { installCodexBinary } from "../lib/harness/child";
 import {
+  defaultSessionChoice,
   defaultModelId,
   getModelSnapshot,
   hasLiveCatalog,
@@ -1722,6 +1727,9 @@ function useAppearanceSettings() {
   const [themeHue, setThemeHue] = useState(loadThemeHue);
   const [themeSaturation, setThemeSaturation] = useState(loadThemeSaturation);
   const [bodyGlass, setBodyGlass] = useState(loadBodyGlass);
+  const [showExcludedFiles, setShowExcludedFiles] = useState(
+    loadShowExcludedFiles,
+  );
   const [chatBackgroundPath, setChatBackgroundPath] = useState(
     loadChatBackgroundPath,
   );
@@ -1775,6 +1783,11 @@ function useAppearanceSettings() {
     applyBodyGlass(next);
     saveBodyGlass(next);
     setBodyGlass(next);
+  }, []);
+
+  const onShowExcludedFiles = useCallback((next: boolean) => {
+    saveShowExcludedFiles(next);
+    setShowExcludedFiles(next);
   }, []);
 
   const onChooseChatBackground = useCallback(async () => {
@@ -1862,6 +1875,7 @@ function useAppearanceSettings() {
     onBlur(SIDEBAR_BLUR_DEFAULT);
     onTint(THEME_HUE_DEFAULT, THEME_SATURATION_DEFAULT);
     onBodyGlass(BODY_GLASS_DEFAULT);
+    onShowExcludedFiles(SHOW_EXCLUDED_FILES_DEFAULT);
     onChatBackgroundEmptyOpacity(
       Math.round(CHAT_BACKGROUND_EMPTY_OPACITY_DEFAULT * 100),
     );
@@ -1881,6 +1895,7 @@ function useAppearanceSettings() {
     chatBackgroundPath,
     onBlur,
     onBodyGlass,
+    onShowExcludedFiles,
     onChatBackgroundEmptyOpacity,
     onChatBackgroundSessionOpacity,
     onChatBackgroundScope,
@@ -1903,6 +1918,7 @@ function useAppearanceSettings() {
     themeHue,
     themeSaturation,
     bodyGlass,
+    showExcludedFiles,
     chatBackgroundPath,
     chatBackgroundEmptyOpacity,
     chatBackgroundSessionOpacity,
@@ -1920,6 +1936,7 @@ function useAppearanceSettings() {
     onBlur,
     onTint,
     onBodyGlass,
+    onShowExcludedFiles,
     onChooseChatBackground,
     onClearChatBackground,
     onChatBackgroundEmptyOpacity,
@@ -2027,6 +2044,18 @@ function AppearancePage({ appearance }: { appearance: AppearanceSettings }) {
           on={appearance.bodyGlass}
           onChange={appearance.onBodyGlass}
           disabled={glassDisabled}
+        />
+      </Row>
+      <Row
+        label={t("Show excluded files")}
+        description={t(
+          "List files and folders matched by the project .gitignore, plus .git, in the explorer.",
+        )}
+      >
+        <Toggle
+          label={t("Show excluded files")}
+          on={appearance.showExcludedFiles}
+          onChange={appearance.onShowExcludedFiles}
         />
       </Row>
       <ChatBackgroundCard appearance={appearance} />
@@ -2717,6 +2746,9 @@ function ProvidersPage() {
   );
   const [choice, setChoice] = useState(loadLastModelChoice);
   const [defaultModels, setDefaultModels] = useState(loadDefaultModels);
+  const effectiveChoice = hasProbedHarnessAvailability()
+    ? defaultSessionChoice(isHarnessAvailable)
+    : choice;
 
   useEffect(() => {
     setChoice(loadLastModelChoice());
@@ -2754,7 +2786,7 @@ function ProvidersPage() {
               ? choice.model
               : defaultModelId(harness))
           }
-          isDefault={choice?.harness === harness}
+          isDefault={effectiveChoice?.harness === harness}
           onDefault={onDefault}
           onModelChange={onModelChange}
         />
@@ -2882,7 +2914,7 @@ function ProviderRow({
         ) : null}
         <SecondaryButton
           onClick={() => current && onDefault(harness, current.id)}
-          disabled={isDefault || !current}
+          disabled={isDefault || !available || !current}
         >
           {isDefault ? t("Default") : t("Use by default")}
         </SecondaryButton>

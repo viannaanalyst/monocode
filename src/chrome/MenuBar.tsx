@@ -17,6 +17,7 @@ type Props = {
   onShowSourceControl?: () => void;
   onCloseCurrentTab?: () => void;
   onCloseOtherTabs?: () => void;
+  onCloseAllTabs?: () => void;
   onPickProject?: () => void;
   onFindInProject?: () => void;
   onSearch?: () => void;
@@ -36,6 +37,7 @@ export function MenuBar({
   onShowSourceControl,
   onCloseCurrentTab,
   onCloseOtherTabs,
+  onCloseAllTabs,
   onPickProject,
   onFindInProject,
   onSearch,
@@ -143,6 +145,9 @@ export function MenuBar({
         case "close_other_tabs":
           onCloseOtherTabs?.();
           break;
+        case "close_all_tabs":
+          onCloseAllTabs?.();
+          break;
         case "toggle_sidebar":
           onToggleSidebar();
           break;
@@ -170,6 +175,7 @@ export function MenuBar({
       closeMenu,
       onCloseCurrentTab,
       onCloseOtherTabs,
+      onCloseAllTabs,
       onFindInProject,
       onGoToFile,
       onNew,
@@ -206,6 +212,12 @@ export function MenuBar({
             id: "close_other_tabs",
             label: t("Close Other Tabs"),
             shortcut: `${MOD}${ALT}T`,
+          },
+          {
+            kind: "item",
+            id: "close_all_tabs",
+            label: t("Close All Tabs"),
+            shortcut: `${MOD}${SHIFT}W`,
           },
           { kind: "sep" },
           { kind: "item", id: "check_for_updates", label: t("Check for Updates…") },

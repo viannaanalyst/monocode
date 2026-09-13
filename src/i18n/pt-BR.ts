@@ -54,6 +54,7 @@ export const PT_BR: Record<string, string> = {
   "Claude Code hooks": "Hooks do Claude Code",
   Close: "Fechar",
   "Close Other Tabs": "Fechar outras abas",
+  "Close All Tabs": "Fechar todas as abas",
   "Close Pane": "Fechar painel",
   "Close Tab": "Fechar aba",
   "Close Tabs to the Left": "Fechar abas à esquerda",
@@ -463,6 +464,9 @@ export const PT_BR: Record<string, string> = {
   "Failed tool call: {label}": "Chamada de ferramenta com falha: {label}",
   "Show error details for {label}":
     "Mostrar detalhes do erro de {label}",
+  "Show excluded files": "Mostrar arquivos excluídos",
+  "List files and folders matched by the project .gitignore, plus .git, in the explorer.":
+    "Listar no explorer os arquivos e pastas do .gitignore do projeto, e também o .git.",
   "Hide error details for {label}":
     "Ocultar detalhes do erro de {label}",
   "Open in Jira": "Abrir no Jira",

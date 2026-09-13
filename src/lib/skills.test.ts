@@ -329,7 +329,7 @@ describe("rankSkills", () => {
       source: "pi",
     }));
 
-    expect(rankSkills(rows, "")).toHaveLength(50);
+    expect(rankSkills(rows, "")).toHaveLength(75);
     expect(rankSkills(rows, "", Number.POSITIVE_INFINITY)).toHaveLength(75);
     expect(
       rankSkills(rows, "skill-74", Number.POSITIVE_INFINITY)[0]?.name,

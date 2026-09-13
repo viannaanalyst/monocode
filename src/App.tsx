@@ -62,6 +62,7 @@ import {
 } from "./lib/fileIndex";
 import {
   closeLeaf,
+  closeSurfacePanes,
   findSurfacePane,
   firstLeafId,
   focusedFileTab,
@@ -87,6 +88,7 @@ import {
   openSessionChangesTab,
   openTerminalTab,
   removePane,
+  resetTabToSession,
   replaceLeafId,
   setSplitRatio,
   siblingLeafId,
@@ -148,6 +150,7 @@ import {
   compactHarnessContext,
   forgetHarnessSession,
   generateHarnessTitle,
+  isHarnessAvailable,
   isLiveHarness,
   probeHarnessAvailability,
   refreshHarnessCatalogs,
@@ -202,6 +205,7 @@ import { notifyDirsChanged } from "./lib/fileTree";
 import { nudgeWatchedFiles } from "./lib/fileWatch";
 import { type EditorNavigationTarget, type OpenFileFn } from "./lib/search";
 import {
+  defaultSessionChoice,
   mergeModelSettings,
   preferredModelSettings,
   resolveModel,
@@ -248,7 +252,6 @@ import {
   canReplaceSessionTitle,
   formatSessionTitle,
   sessionNeedsInput,
-  newDefaultSession,
   newSession,
   sessionDisplayTitle,
   sessionWorkCwd,
@@ -610,6 +613,11 @@ function titleTabsEqual(a: TitleTab[], b: TitleTab[]): boolean {
 // Register capabilities before composer hooks choose their discovery strategy.
 registerBuiltinHarnesses();
 
+function newAvailableDefaultSession(cwd?: string, runtimeMode?: RuntimeMode) {
+  const { harness, model } = defaultSessionChoice(isHarnessAvailable);
+  return newSession(harness, cwd, model, runtimeMode);
+}
+
 export default function App({
   windowTransfer = null,
   resumed = null,
@@ -637,7 +645,7 @@ export default function App({
   );
   const [seed] = useState(() => {
     const cwd = lastProjectPath() ?? "~";
-    const session = newDefaultSession(cwd);
+    const session = newAvailableDefaultSession(cwd);
     const tab = newTab(session.id);
     return { session, tab };
   });
@@ -947,7 +955,33 @@ export default function App({
   }, [resumed, readProjectReturnMemory]);
 
   useEffect(() => {
-    void probeHarnessAvailability();
+    void probeHarnessAvailability().then(() => {
+      if (windowTransfer || resumed) return;
+      setSessions((prev) =>
+        prev.map((session) => {
+          if (
+            session.blocks.length > 0 ||
+            isHarnessAvailable(session.harness)
+          ) {
+            return session;
+          }
+          const fallback = newAvailableDefaultSession(
+            session.cwd,
+            session.runtimeMode,
+          );
+          return {
+            ...session,
+            harness: fallback.harness,
+            model: fallback.model,
+            modelSettings: fallback.modelSettings,
+            title:
+              session.title === HARNESS_LABEL[session.harness]
+                ? fallback.title
+                : session.title,
+          };
+        }),
+      );
+    });
     // Only the harnesses already in this window. Probing every installed CLI
     // at boot left unused agents (especially Pi) running in the background.
     const harnesses = [
@@ -1580,7 +1614,7 @@ export default function App({
     setInboxViewOpen(false);
     setNotesViewOpen(false);
     const cwd = active?.cwd ?? sessionDefaults?.cwd ?? projectCwd;
-    const session = newDefaultSession(cwd, sessionDefaults?.runtimeMode);
+    const session = newAvailableDefaultSession(cwd, sessionDefaults?.runtimeMode);
     const tab = newTab(session.id);
     setSessions((prev) => [...prev, session]);
     appendTab(tab, cwd);
@@ -1609,7 +1643,7 @@ export default function App({
             : `#${item.number}`;
         const linkedWorkItem = linkedWorkItemFromInboxItem(item);
         const session = {
-          ...newDefaultSession(cwd, sessionDefaults?.runtimeMode),
+          ...newAvailableDefaultSession(cwd, sessionDefaults?.runtimeMode),
           title: `${ref} ${item.title}`,
           inboxCard: inboxComposerCard(item, description),
           ...(linkedWorkItem ? { linkedWorkItem } : {}),
@@ -1665,7 +1699,7 @@ export default function App({
         projectCwd;
       const title = card.title.trim();
       const session = {
-        ...newDefaultSession(cwd, sessionDefaults?.runtimeMode),
+        ...newAvailableDefaultSession(cwd, sessionDefaults?.runtimeMode),
         ...(title ? { title } : {}),
         noteCard: card,
       };
@@ -1756,7 +1790,7 @@ export default function App({
   const onSplit = useCallback(
     (dir: SplitDir) => {
       if (!activeTab) return;
-      const session = newDefaultSession(
+      const session = newAvailableDefaultSession(
         sessionDefaults?.cwd ?? projectCwd,
         sessionDefaults?.runtimeMode,
       );
@@ -2247,7 +2281,7 @@ export default function App({
   );
 
   const onCloseTabs = useCallback(
-    (ids: string[], fallbackId: string) => {
+    (ids: string[], fallbackId: string, opts?: { confirmed?: boolean }) => {
       const current = tabsRef.current;
       const closingIds = new Set(ids);
       const closing = current.filter((tab) => closingIds.has(tab.id));
@@ -2287,6 +2321,11 @@ export default function App({
         if (closingIds.has(activeTabIdRef.current)) activateTab(fallback.id);
         void refreshHistory(sidebarCwd);
       };
+
+      if (opts?.confirmed) {
+        finishClose();
+        return;
+      }
 
       void (async () => {
         if (unsaved.length > 0) {
@@ -2574,6 +2613,123 @@ export default function App({
     },
     [tabs, persistSession, refreshHistory, sidebarCwd],
   );
+
+  const onCloseAllTabs = useCallback(() => {
+    const tab = tabsRef.current.find(
+      (entry) => entry.id === activeTabIdRef.current,
+    );
+    if (!tab) return;
+
+    const seedSession = (cwd: string) =>
+      newAvailableDefaultSession(cwd, sessionsRef.current[0]?.runtimeMode);
+
+    const editorFiles = tab.editorPanes.flatMap((pane) => pane.files);
+    if (editorFiles.length > 0) {
+      const remaining = closeSurfacePanes(tab, "editor");
+      if (!remaining) {
+        const closePlan = planWorkspaceTabClose({
+          tabs: tabsRef.current,
+          sessions: sessionsRef.current,
+          closingTabId: tab.id,
+          scope: tabCloseScope,
+        });
+        if (closePlan.action === "close") {
+          onCloseTab(tab.id);
+          return;
+        }
+      }
+      const unsaved = editorFiles.filter(
+        (file) => isFilesystemTab(file) && dirtyFilesRef.current.has(file.id),
+      );
+
+      const finishClose = () => {
+        let nextTab: WorkspaceTab;
+        let focusesSession: boolean;
+        if (remaining) {
+          nextTab = remaining;
+          focusesSession = sessionsRef.current.some(
+            (session) => session.id === remaining.focusedId,
+          );
+        } else {
+          const session = seedSession(editorFiles[0].cwd || projectCwd);
+          setSessions((prev) => [...prev, session]);
+          nextTab = resetTabToSession(tab, session.id);
+          focusesSession = true;
+        }
+        setTabs((prev) =>
+          prev.map((entry) => (entry.id === tab.id ? nextTab : entry)),
+        );
+        setDirtyFiles((prev) => {
+          const updated = new Set(prev);
+          for (const file of editorFiles) updated.delete(file.id);
+          return updated;
+        });
+        setComposerFocused(focusesSession);
+      };
+
+      void (async () => {
+        if (unsaved.length > 0) {
+          const ok = await confirmDiscardUnsaved(
+            t("Close all open files with unsaved changes?"),
+          );
+          if (!ok) return;
+        }
+        finishClose();
+      })();
+      return;
+    }
+
+    const otherIds = tabsRef.current
+      .filter((entry) => entry.id !== tab.id)
+      .map((entry) => entry.id);
+    const terminalFiles = (tab.terminalPanes ?? []).flatMap(
+      (pane) => pane.files,
+    );
+    const closingFiles = [
+      ...tabsRef.current
+        .filter((entry) => otherIds.includes(entry.id))
+        .flatMap((entry) => [
+          ...entry.editorPanes.flatMap((pane) => pane.files),
+          ...(entry.terminalPanes ?? []).flatMap((pane) => pane.files),
+        ]),
+      ...terminalFiles,
+    ];
+    const unsaved = closingFiles.filter(
+      (file) => isFilesystemTab(file) && dirtyFilesRef.current.has(file.id),
+    );
+    const terminals = closingFiles.filter((file) => file.terminal);
+
+    void (async () => {
+      if (unsaved.length > 0) {
+        const ok = await confirmDiscardUnsaved(
+          t("Close all tabs with unsaved files?"),
+        );
+        if (!ok) return;
+      }
+      if (terminals.length > 0) {
+        const ok = await confirmCloseTerminals(terminals);
+        if (!ok) return;
+      }
+      if (otherIds.length > 0) {
+        onCloseTabs(otherIds, tab.id, { confirmed: true });
+      }
+      const hasSession = leafIds(tab.layout).some((paneId) =>
+        sessionsRef.current.some((session) => session.id === paneId),
+      );
+      if (hasSession) {
+        onClearTabSession(tab.id);
+        return;
+      }
+      const session = seedSession(terminalFiles[0]?.cwd || projectCwd);
+      setSessions((prev) => [...prev, session]);
+      setTabs((prev) =>
+        prev.map((entry) =>
+          entry.id === tab.id ? resetTabToSession(entry, session.id) : entry,
+        ),
+      );
+      setComposerFocused(true);
+    })();
+  }, [onCloseTab, onCloseTabs, onClearTabSession, projectCwd, tabCloseScope]);
 
   const onClosePane = useCallback(
     (sessionId?: string) => {
@@ -3081,7 +3237,7 @@ export default function App({
                   ).body
                 : undefined;
           session = {
-            ...newDefaultSession(cwd),
+            ...newAvailableDefaultSession(cwd),
             title: `Ask · ${item.title}`,
             inboxAsk: {
               key,
@@ -3331,7 +3487,7 @@ export default function App({
         replaceTarget,
         scope: tabCloseScope,
         createReplacement: (seed) =>
-          newDefaultSession(
+          newAvailableDefaultSession(
             seed?.cwd ?? projectCwdRef.current,
             seed?.runtimeMode,
           ),
@@ -3957,7 +4113,7 @@ export default function App({
 
       if (nextTabs.length === 0) {
         const fallback = nextSessions[0];
-        const session = newDefaultSession("~", fallback?.runtimeMode);
+        const session = newAvailableDefaultSession("~", fallback?.runtimeMode);
         const tab = newTab(session.id);
         nextSessions = [...nextSessions, session];
         nextTabs = [tab];
@@ -5663,6 +5819,7 @@ export default function App({
     onNew,
     onArchiveFocusedSession,
     onCloseOtherTabs,
+    onCloseAllTabs,
     onClosePane,
     onNext,
     onPrev,
@@ -5690,6 +5847,7 @@ export default function App({
     onNew,
     onArchiveFocusedSession,
     onCloseOtherTabs,
+    onCloseAllTabs,
     onClosePane,
     onNext,
     onPrev,
@@ -5813,6 +5971,7 @@ export default function App({
         if (cmd === "new") run("new", a.onNew);
         else if (cmd === "close-others")
           run("close-others", a.onCloseOtherTabs);
+        else if (cmd === "close-all") run("close-all", a.onCloseAllTabs);
         else if (cmd === "close") run("close", a.onClosePane);
         else if (cmd === "next") run("next", a.onNext);
         else if (cmd === "prev") run("prev", a.onPrev);
@@ -5893,6 +6052,9 @@ export default function App({
       listen("new_tab", () => run("new", actions.current.onNew)),
       listen("close_other_tabs", () =>
         run("close-others", actions.current.onCloseOtherTabs),
+      ),
+      listen("close_all_tabs", () =>
+        run("close-all", actions.current.onCloseAllTabs),
       ),
       listen("close_tab", () => run("close", actions.current.onClosePane)),
       listen("next_tab", () => run("next", actions.current.onNext)),
@@ -6179,6 +6341,7 @@ export default function App({
                 activeTabId ? () => onCloseTab(activeTabId) : undefined
               }
               onCloseOtherTabs={onCloseOtherTabs}
+              onCloseAllTabs={onCloseAllTabs}
               onPickProject={pickProject}
               onFindInProject={onFindInProject}
               onSearch={onOpenSearch}
