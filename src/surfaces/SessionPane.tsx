@@ -626,7 +626,7 @@ export const SessionPane = memo(function SessionPane({
           )}
         </div>
         {dockComposer ? (
-          <div className="mx-auto w-full max-w-4xl shrink-0">{composer}</div>
+          <div className="mx-auto w-full max-w-3xl shrink-0">{composer}</div>
         ) : null}
       </div>
     </div>

@@ -219,19 +219,21 @@ function ToolButton({
   active,
   disabled,
   label,
+  tooltip = true,
   onClick,
   children,
 }: {
   active?: boolean;
   disabled?: boolean;
   label: string;
+  tooltip?: boolean;
   onClick?: () => void;
   children: ReactNode;
 }) {
   return (
     <button
       type="button"
-      title={label}
+      title={tooltip ? label : undefined}
       aria-label={label}
       disabled={disabled}
       onClick={onClick}
@@ -1543,6 +1545,7 @@ export function Composer({
             <div ref={plusRef} className="relative shrink-0">
               <ToolButton
                 label={t("Add files or choose a mode")}
+                tooltip={false}
                 active={plusOpen}
                 onClick={() => setPlusOpen((open) => !open)}
               >
@@ -1559,7 +1562,7 @@ export function Composer({
                   className="p-1.5"
                 >
                   <p className="px-2 pb-1 pt-0.5 text-[10px] font-medium uppercase tracking-wide text-content/40">
-                    {t("Add to message")}
+                    {t("Add")}
                   </p>
                   <button
                     type="button"
@@ -1573,7 +1576,9 @@ export function Composer({
                   >
                     <FilePlus className="mt-0.5 size-4 shrink-0" />
                     <span className="min-w-0">
-                      <span className="block text-[13px]">{t("Upload file")}</span>
+                      <span className="block text-[13px]">
+                        {t("Files and folders")}
+                      </span>
                       <span className="block truncate whitespace-nowrap text-[11px] leading-4 text-content/45">
                         {attachmentsSupported
                           ? t("Attach files or images to this message")
