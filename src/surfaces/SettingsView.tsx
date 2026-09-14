@@ -177,7 +177,7 @@ import {
   type ProjectInstructions,
 } from "../lib/projectInstructions";
 import { prettyCwd, projectKey, projectName } from "../lib/paths";
-import { IS_MAC } from "../lib/platform";
+import { IS_MAC, IS_WIN } from "../lib/platform";
 import {
   loadArchivedProjects,
   looksLikeProject,
@@ -3681,12 +3681,12 @@ function Slider({
   );
 }
 
-/** macOS keeps the decision after the first prompt; only System Settings can flip it. */
+/** macOS keeps the decision after the first prompt; only System Settings can flip it. Windows toasts are governed by Settings > Notifications. */
 function NotificationsBlocked() {
   return (
     <span className="flex items-center gap-2 text-[12px] text-content/45">
       {t("Permission needed")}
-      {IS_MAC ? (
+      {IS_MAC || IS_WIN ? (
         <button
           type="button"
           onClick={() => {
