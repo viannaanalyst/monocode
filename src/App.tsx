@@ -7089,7 +7089,7 @@ export default function App({
       <OrchestrationActions.Provider value={orchestrationActions}>
         <OrchestrationWorkers.Provider value={orchestrationWorkers}>
           <div
-            className={`flex h-full text-content ${
+            className={`relative flex h-full text-content ${
               HAS_NATIVE_GLASS ? "bg-background-base/40" : "bg-background-base"
             }`}
           >
@@ -7186,7 +7186,11 @@ export default function App({
             onDismissUpdate={() => setUpdateNotice(null)}
           />
 
-          <div className="body-glass flex min-h-0 min-w-0 flex-1 flex-col">
+          <div
+            className={`body-glass flex min-h-0 min-w-0 flex-1 flex-col transition-[margin] duration-200 ease-out ${
+              rightDock ? "mr-[340px]" : ""
+            }`}
+          >
             <div
               className={
                 searchViewOpen || settingsOpen || inboxViewOpen || notesViewOpen
