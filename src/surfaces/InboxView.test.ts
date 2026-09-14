@@ -139,6 +139,11 @@ describe("InboxDetail layout", () => {
     expect(header).toContain("Open on GitLab");
   });
 
+  it("keeps the GitHub PR detail markup free of review bar chrome without a draft", () => {
+    const markup = renderDetail(item({ kind: "pr" }));
+    expect(markup).not.toContain("Submit review");
+  });
+
   it("keeps related threads in the pinned header", () => {
     const markup = renderDetail(item(), [
       {

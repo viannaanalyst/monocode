@@ -17,17 +17,27 @@ export function DiffCommentComposer({
   path,
   target,
   onDismiss,
+  submitLabel,
+  onSubmit,
 }: {
   path: string;
   target: DiffCommentComposerTarget;
   onDismiss: () => void;
+  submitLabel?: string;
+  onSubmit?: (body: string) => void;
 }) {
   const [comment, setComment] = useState("");
   const location = diffCommentLocation({ path, line: target.line });
-  const addToChat = () => {
-    const text = formatDiffComment({ path, line: target.line }, comment);
-    if (!text) return;
-    requestAddToChat(text, "plain");
+  const submit = () => {
+    const body = comment.trim();
+    if (!body) return;
+    if (onSubmit) {
+      onSubmit(body);
+    } else {
+      const text = formatDiffComment({ path, line: target.line }, comment);
+      if (!text) return;
+      requestAddToChat(text, "plain");
+    }
     onDismiss();
   };
 
@@ -46,7 +56,7 @@ export function DiffCommentComposer({
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          addToChat();
+          submit();
         }}
       >
         <div className="mb-1.5 flex items-center gap-2 px-0.5">
@@ -78,7 +88,7 @@ export function DiffCommentComposer({
               comment.trim()
             ) {
               event.preventDefault();
-              addToChat();
+              submit();
             }
           }}
           placeholder={t("Leave a comment…")}
@@ -91,7 +101,7 @@ export function DiffCommentComposer({
             disabled={!comment.trim()}
             className="inline-flex h-7 items-center gap-1.5 rounded-md bg-content px-2.5 text-[12px] font-medium text-background-base hover:opacity-80 disabled:cursor-default disabled:opacity-40"
           >
-            <MessageSquarePlus className="size-3.5" strokeWidth={1.75} />{t("Add to chat")}</button>
+            <MessageSquarePlus className="size-3.5" strokeWidth={1.75} />{submitLabel ?? t("Add to chat")}</button>
         </div>
       </form>
     </Popover>

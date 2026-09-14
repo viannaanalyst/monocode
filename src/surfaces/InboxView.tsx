@@ -40,6 +40,7 @@ import { InboxProviderMark } from "../chrome/InboxProviderMark";
 import { ProjectLogoIcon } from "../chrome/ProjectLogoIcon";
 import { ProjectMascot } from "../chrome/ProjectMascot";
 import { PrActions, type PrMergeMethod } from "../chrome/PrActions";
+import { PrReviewBar } from "../chrome/PrReviewBar";
 import { PrMetadataEditor } from "../chrome/PrMetadataEditor";
 import { OverlayNav } from "../chrome/TitleBar";
 import { WindowControls } from "../chrome/WindowControls";
@@ -108,7 +109,18 @@ import {
 } from "../lib/inboxFilters";
 import { projectKey, projectName } from "../lib/paths";
 import { IS_MAC } from "../lib/platform";
-import type { PrReviewEvent } from "../lib/prReview";
+import {
+  addReviewComment,
+  clearReviewDraft,
+  emptyReviewDraft,
+  peekReviewDraft,
+  removeReviewComment,
+  reviewDraftKey,
+  saveReviewDraft,
+  updateReviewComment,
+  type PrReviewDraft,
+  type PrReviewEvent,
+} from "../lib/prReview";
 import { sameProjectPath, type RecentProject } from "../lib/recents";
 import { sessionDisplayTitle, type LinkedWorkItem } from "../lib/session";
 import type { SessionSummary } from "../lib/sessionStore";
@@ -1512,6 +1524,20 @@ export function InboxDetail({
     details?.headRefName?.trim() || thread?.headRefName?.trim() || "";
   const prDetails = asGithubPrDetails(details);
 
+  const draftKey = reviewDraftKey(item.projectPath, item.number);
+  const [reviewDraft, setReviewDraft] = useState<PrReviewDraft>(
+    () => peekReviewDraft(draftKey) ?? emptyReviewDraft(),
+  );
+
+  useEffect(() => {
+    setReviewDraft(peekReviewDraft(draftKey) ?? emptyReviewDraft());
+  }, [draftKey]);
+
+  const updateDraft = (next: PrReviewDraft) => {
+    setReviewDraft(next);
+    saveReviewDraft(draftKey, next);
+  };
+
   useEffect(() => {
     let cancelled = false;
     const id = item.id ?? "";
@@ -1894,7 +1920,7 @@ export function InboxDetail({
       await githubPrState(item.projectPath, item.number, close);
     });
 
-  const onSubmitReview = (event: PrReviewEvent) =>
+  const publishReview = (event: PrReviewEvent, body: string) =>
     runAction("review", async () => {
       if (!prDetails?.id) throw new Error("Missing pull request id");
       await githubPrReview(
@@ -1902,10 +1928,25 @@ export function InboxDetail({
         item.number,
         prDetails.id,
         event,
-        "",
-        [],
+        body,
+        reviewDraft.comments.map((comment) => ({
+          path: comment.path,
+          line: comment.line,
+          side: comment.side,
+          body: comment.body,
+        })),
       );
+      clearReviewDraft(draftKey);
+      updateDraft(emptyReviewDraft());
     });
+
+  const onSubmitReview = (event: PrReviewEvent) => {
+    if (event !== "approve" && reviewDraft.comments.length === 0) {
+      setActionError(t("Add a review comment before requesting changes"));
+      return;
+    }
+    void publishReview(event, "");
+  };
 
   const statusPill = (
     <span
@@ -2301,6 +2342,19 @@ export function InboxDetail({
               }
             />
           ) : null}
+          {isPr && item.provider === "github" && tab === "code" ? (
+            <PrReviewBar
+              draft={reviewDraft}
+              busy={busyAction}
+              onSubmit={publishReview}
+              onDiscard={() => {
+                clearReviewDraft(draftKey);
+                updateDraft(emptyReviewDraft());
+              }}
+              onEdit={(id, body) => updateDraft(updateReviewComment(reviewDraft, id, body))}
+              onRemove={(id) => updateDraft(removeReviewComment(reviewDraft, id))}
+            />
+          ) : null}
           {isPr && tab === "code" ? (
             diffLoading ? (
               <div className="flex justify-center py-10 text-content/40">
@@ -2316,6 +2370,18 @@ export function InboxDetail({
                 key={`${item.projectPath}:${item.number}:${revision}:${diffMode}`}
                 diff={prDiff}
                 fullFile={fullFile}
+                onLineComment={({ filePath, line, body }) => {
+                  const lineNumber = line.newNumber ?? line.oldNumber;
+                  if (lineNumber == null) return;
+                  updateDraft(
+                    addReviewComment(reviewDraft, {
+                      path: filePath,
+                      line: lineNumber,
+                      side: line.kind === "del" ? "left" : "right",
+                      body,
+                    }),
+                  );
+                }}
               />
             ) : (
               <p className="text-[13px] text-content/45">{t("No file changes")}</p>
