@@ -26,6 +26,8 @@ export function PrReviewBar({
   const [open, setOpen] = useState(false);
   const [body, setBody] = useState("");
   const [event, setEvent] = useState<PrReviewEvent>("comment");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingBody, setEditingBody] = useState("");
   const count = draft.comments.length;
 
   return (
@@ -59,33 +61,64 @@ export function PrReviewBar({
           {draft.comments.map((comment: PrReviewComment) => (
             <li
               key={comment.id}
-              className="flex items-start gap-2 rounded bg-content/5 px-2 py-1.5"
+              className="flex flex-col gap-1 rounded bg-content/5 px-2 py-1.5"
             >
-              <span className="shrink-0 font-mono text-[11px] text-content/50">
-                {comment.path}:{comment.line}
-              </span>
-              <span className="min-w-0 flex-1 truncate text-[12px] text-content/80">
-                {comment.body}
-              </span>
-              <button
-                type="button"
-                title={t("Edit comment")}
-                onClick={() => {
-                  const next = window.prompt(t("Edit comment"), comment.body);
-                  if (next != null) onEdit(comment.id, next);
-                }}
-                className="shrink-0 text-[11px] text-content/50 hover:text-content"
-              >
-                {t("Edit")}
-              </button>
-              <button
-                type="button"
-                aria-label={t("Remove comment")}
-                onClick={() => onRemove(comment.id)}
-                className="shrink-0 text-content/50 hover:text-content"
-              >
-                <Trash2 className="size-3" strokeWidth={1.75} />
-              </button>
+              <div className="flex items-start gap-2">
+                <span className="shrink-0 font-mono text-[11px] text-content/50">
+                  {comment.path}:{comment.line}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-[12px] text-content/80">
+                  {comment.body}
+                </span>
+                <button
+                  type="button"
+                  title={t("Edit comment")}
+                  onClick={() => {
+                    setEditingId(comment.id);
+                    setEditingBody(comment.body);
+                  }}
+                  className="shrink-0 text-[11px] text-content/50 hover:text-content"
+                >
+                  {t("Edit")}
+                </button>
+                <button
+                  type="button"
+                  aria-label={t("Remove comment")}
+                  onClick={() => onRemove(comment.id)}
+                  className="shrink-0 text-content/50 hover:text-content"
+                >
+                  <Trash2 className="size-3" strokeWidth={1.75} />
+                </button>
+              </div>
+              {editingId === comment.id ? (
+                <div className="flex items-end gap-1.5">
+                  <textarea
+                    autoFocus
+                    rows={2}
+                    value={editingBody}
+                    onChange={(input) => setEditingBody(input.target.value)}
+                    className="min-h-12 w-full resize-y rounded-md border border-content/10 bg-background-base/70 px-2 py-1.5 text-[12px] leading-4 text-content outline-none focus:border-content/20"
+                  />
+                  <button
+                    type="button"
+                    disabled={!editingBody.trim()}
+                    onClick={() => {
+                      onEdit(comment.id, editingBody.trim());
+                      setEditingId(null);
+                    }}
+                    className="inline-flex h-7 shrink-0 items-center rounded-md bg-content px-2 text-[11px] font-medium text-background-base disabled:opacity-40"
+                  >
+                    {t("Save")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditingId(null)}
+                    className="inline-flex h-7 shrink-0 items-center rounded-md border border-content/15 px-2 text-[11px] text-content/70"
+                  >
+                    {t("Cancel")}
+                  </button>
+                </div>
+              ) : null}
             </li>
           ))}
         </ul>

@@ -1528,6 +1528,7 @@ export function InboxDetail({
   const [reviewDraft, setReviewDraft] = useState<PrReviewDraft>(
     () => peekReviewDraft(draftKey) ?? emptyReviewDraft(),
   );
+  const [reviewPublishCount, setReviewPublishCount] = useState(0);
 
   useEffect(() => {
     setReviewDraft(peekReviewDraft(draftKey) ?? emptyReviewDraft());
@@ -1938,6 +1939,7 @@ export function InboxDetail({
       );
       clearReviewDraft(draftKey);
       updateDraft(emptyReviewDraft());
+      setReviewPublishCount((value) => value + 1);
     });
 
   const onSubmitReview = (event: PrReviewEvent) => {
@@ -2344,6 +2346,7 @@ export function InboxDetail({
           ) : null}
           {isPr && item.provider === "github" && tab === "code" ? (
             <PrReviewBar
+              key={reviewPublishCount}
               draft={reviewDraft}
               busy={busyAction}
               onSubmit={publishReview}
