@@ -69,7 +69,7 @@ export function composerSwitchInterruptsBusyTurn(
   session: Session,
   next: HarnessId,
 ): boolean {
-  return session.busy && session.harness !== next;
+  return !!session.busy && session.harness !== next;
 }
 
 export function planComposerSwitch(
