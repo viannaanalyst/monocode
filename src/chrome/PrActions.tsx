@@ -47,7 +47,7 @@ export function PrActions({
         <button
           type="button"
           disabled={busy != null || !merge.enabled}
-          title={merge.reason}
+          title={t(merge.reason)}
           onClick={() => onMerge("squash")}
           className={`${ACTION_FILLED} rounded-r-none`}
         >
@@ -88,7 +88,7 @@ export function PrActions({
       <button
         type="button"
         disabled={busy != null || !approve.enabled}
-        title={approve.reason}
+        title={t(approve.reason)}
         onClick={() => onSubmitReview("approve")}
         className={ACTION_OUTLINE}
       >
