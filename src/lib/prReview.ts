@@ -42,7 +42,7 @@ export function updateReviewComment(
 ): PrReviewDraft {
   return {
     comments: draft.comments.map((entry) =>
-      entry.id === id ? { ...entry, body } : entry,
+      entry.id === id ? { ...entry, body: body.trim() } : entry,
     ),
   };
 }
@@ -63,7 +63,7 @@ export function canSubmitReview(
   event: PrReviewEvent,
 ): boolean {
   if (event === "approve") return true;
-  return reviewCommentCount(draft) > 0;
+  return draft.comments.some((comment) => comment.body.trim().length > 0);
 }
 
 export function prMergeAvailability(

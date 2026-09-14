@@ -2,14 +2,17 @@ import { describe, expect, it } from "vitest";
 import {
   addReviewComment,
   canSubmitReview,
+  clearReviewDraft,
   emptyReviewDraft,
+  peekReviewDraft,
   prApproveAvailability,
   prEventDelta,
   prMergeAvailability,
   removeReviewComment,
   reviewCommentCount,
+  reviewDraftKey,
+  saveReviewDraft,
   updateReviewComment,
-  type PrReviewComment,
 } from "./prReview";
 import type { GithubPrDetails } from "./githubTasks";
 
@@ -61,6 +64,37 @@ describe("review draft", () => {
     });
     expect(canSubmitReview(withComment, "comment")).toBe(true);
     expect(canSubmitReview(withComment, "request-changes")).toBe(true);
+  });
+
+  it("ignores comments with empty bodies", () => {
+    let draft = addReviewComment(emptyReviewDraft(), {
+      path: "a.ts",
+      line: 1,
+      side: "right",
+      body: "   ",
+    });
+    expect(canSubmitReview(draft, "comment")).toBe(false);
+    const id = draft.comments[0]!.id;
+    draft = updateReviewComment(draft, id, "  ");
+    expect(canSubmitReview(draft, "comment")).toBe(false);
+    draft = updateReviewComment(draft, id, "ok");
+    expect(canSubmitReview(draft, "comment")).toBe(true);
+  });
+
+  it("persists and clears drafts by key", () => {
+    const key = reviewDraftKey("/tmp/repo", 7);
+    clearReviewDraft(key);
+    expect(peekReviewDraft(key)).toBeNull();
+    const draft = addReviewComment(emptyReviewDraft(), {
+      path: "a.ts",
+      line: 1,
+      side: "right",
+      body: "x",
+    });
+    saveReviewDraft(key, draft);
+    expect(peekReviewDraft(key)?.comments[0]?.body).toBe("x");
+    clearReviewDraft(key);
+    expect(peekReviewDraft(key)).toBeNull();
   });
 });
 
