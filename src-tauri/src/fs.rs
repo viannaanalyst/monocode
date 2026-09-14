@@ -822,17 +822,21 @@ pub async fn git_pr_create(
     .map_err(|e| e.to_string())?
 }
 
-#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct GitHubLabel {
+    #[serde(default)]
     pub name: String,
+    #[serde(default)]
     pub color: String,
 }
 
-#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct GitHubAssignee {
+    #[serde(default)]
     pub login: String,
+    #[serde(default)]
     pub avatar_url: String,
 }
 
@@ -952,6 +956,14 @@ pub struct GitHubWorkItemDetails {
     pub base_ref_name: String,
     pub head_ref_name: String,
     pub review_decision: String,
+    pub id: String,
+    pub state: String,
+    pub draft: bool,
+    pub mergeable: String,
+    pub merge_state_status: String,
+    pub labels: Vec<GitHubLabel>,
+    pub assignees: Vec<GitHubAssignee>,
+    pub review_requests: Vec<String>,
 }
 
 /// Issue or pull request body for the inbox detail pane.
@@ -2172,7 +2184,8 @@ fn git_github_work_item_details_for(
     }
     let number = number.to_string();
     let fields = if kind == "pr" {
-        "body,author,baseRefName,headRefName,reviewDecision"
+        "body,author,baseRefName,headRefName,reviewDecision,id,state,isDraft,\
+mergeable,mergeStateStatus,labels,assignees,reviewRequests"
     } else {
         "body,author"
     };
@@ -2188,6 +2201,16 @@ fn parse_github_work_item_details(json: &str) -> Result<GitHubWorkItemDetails, S
     }
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
+    struct ReviewRequest {
+        #[serde(default, rename = "__typename")]
+        kind: String,
+        #[serde(default)]
+        login: String,
+        #[serde(default)]
+        name: String,
+    }
+    #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase")]
     struct Row {
         #[serde(default)]
         body: String,
@@ -2199,6 +2222,22 @@ fn parse_github_work_item_details(json: &str) -> Result<GitHubWorkItemDetails, S
         head_ref_name: String,
         #[serde(default)]
         review_decision: Option<String>,
+        #[serde(default)]
+        id: String,
+        #[serde(default)]
+        state: String,
+        #[serde(default)]
+        is_draft: bool,
+        #[serde(default)]
+        mergeable: String,
+        #[serde(default)]
+        merge_state_status: String,
+        #[serde(default)]
+        labels: Vec<GitHubLabel>,
+        #[serde(default)]
+        assignees: Vec<GitHubAssignee>,
+        #[serde(default)]
+        review_requests: Vec<ReviewRequest>,
     }
     let row: Row = serde_json::from_str(json).map_err(|error| error.to_string())?;
     let author = row.author.map(|author| author.login).unwrap_or_default();
@@ -2210,6 +2249,25 @@ fn parse_github_work_item_details(json: &str) -> Result<GitHubWorkItemDetails, S
         base_ref_name: row.base_ref_name,
         head_ref_name: row.head_ref_name,
         review_decision: row.review_decision.unwrap_or_default(),
+        id: row.id,
+        state: row.state,
+        draft: row.is_draft,
+        mergeable: row.mergeable,
+        merge_state_status: row.merge_state_status,
+        labels: row.labels,
+        assignees: row.assignees,
+        review_requests: row
+            .review_requests
+            .into_iter()
+            .map(|request| {
+                if request.kind == "Team" && request.login.is_empty() {
+                    request.name
+                } else {
+                    request.login
+                }
+            })
+            .filter(|login| !login.is_empty())
+            .collect(),
     })
 }
 
@@ -6320,6 +6378,46 @@ mod tests {
         assert_eq!(details.base_ref_name, "main");
         assert_eq!(details.head_ref_name, "agent-terminal");
         assert_eq!(details.review_decision, "REVIEW_REQUIRED");
+    }
+
+    #[test]
+    fn parse_pr_details_reads_merge_gating_fields() {
+        let json = r#"{
+            "body": "hello",
+            "author": { "login": "octocat" },
+            "baseRefName": "main",
+            "headRefName": "feat/x",
+            "reviewDecision": "APPROVED",
+            "id": "PR_kwDOA",
+            "state": "OPEN",
+            "isDraft": false,
+            "mergeable": "MERGEABLE",
+            "mergeStateStatus": "CLEAN",
+            "labels": [{ "name": "bug", "color": "ff0000" }],
+            "assignees": [{ "login": "alice" }],
+            "reviewRequests": [
+                { "__typename": "User", "login": "bob" },
+                { "__typename": "Team", "name": "reviews" }
+            ]
+        }"#;
+        let parsed = parse_github_work_item_details(json).unwrap();
+        assert_eq!(parsed.id, "PR_kwDOA");
+        assert_eq!(parsed.state, "OPEN");
+        assert!(!parsed.draft);
+        assert_eq!(parsed.mergeable, "MERGEABLE");
+        assert_eq!(parsed.merge_state_status, "CLEAN");
+        assert_eq!(parsed.labels.len(), 1);
+        assert_eq!(parsed.assignees[0].login, "alice");
+        assert_eq!(parsed.review_requests, vec!["bob", "reviews"]);
+    }
+
+    #[test]
+    fn parse_issue_details_defaults_new_fields() {
+        let parsed = parse_github_work_item_details(r#"{"body": "hi"}"#).unwrap();
+        assert!(parsed.id.is_empty());
+        assert!(parsed.labels.is_empty());
+        assert!(parsed.review_requests.is_empty());
+        assert!(parsed.mergeable.is_empty());
     }
 
     #[test]
