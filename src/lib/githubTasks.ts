@@ -92,6 +92,39 @@ export type GithubWorkItemDetails = {
   baseRefName?: string;
   headRefName?: string;
   reviewDecision?: string;
+  id: string;
+  state: string;
+  draft: boolean;
+  mergeable: string;
+  mergeStateStatus: string;
+  labels: GithubLabel[];
+  assignees: GithubAssignee[];
+  reviewRequests: string[];
+};
+
+export type GithubRepoMeta = {
+  viewerLogin: string;
+  labels: GithubLabel[];
+  assignees: string[];
+  reviewers: string[];
+};
+
+export type GithubPrEditInput = {
+  addLabels: string[];
+  removeLabels: string[];
+  addAssignees: string[];
+  removeAssignees: string[];
+  addReviewers: string[];
+  removeReviewers: string[];
+};
+
+export type GithubPrReviewEvent = "comment" | "approve" | "request-changes";
+
+export type GithubPrReviewComment = {
+  path: string;
+  line: number;
+  side: "left" | "right";
+  body: string;
 };
 
 export type GithubWorkItemComment = {
@@ -485,6 +518,75 @@ export async function githubWorkItemComment(
   const key = detailsCacheKey(cwd, kind, number);
   threadByKey.delete(key);
   threadInflight.delete(key);
+  return url;
+}
+
+export function invalidateGithubItem(
+  cwd: string,
+  kind: GithubTaskKind,
+  number: number,
+): void {
+  const key = detailsCacheKey(cwd, kind, number);
+  detailsByKey.delete(key);
+  threadByKey.delete(key);
+  threadInflight.delete(key);
+  inboxListCache = null;
+}
+
+export function githubRepoMeta(cwd: string): Promise<GithubRepoMeta> {
+  return invoke<GithubRepoMeta>("git_github_repo_meta", { cwd });
+}
+
+export async function githubPrMerge(
+  cwd: string,
+  number: number,
+  method: "squash" | "merge" | "rebase",
+  deleteBranch: boolean,
+): Promise<void> {
+  await invoke<void>("git_github_pr_merge", {
+    cwd,
+    number,
+    method,
+    deleteBranch,
+  });
+  invalidateGithubItem(cwd, "pr", number);
+}
+
+export async function githubPrState(
+  cwd: string,
+  number: number,
+  close: boolean,
+): Promise<void> {
+  await invoke<void>("git_github_pr_state", { cwd, number, close });
+  invalidateGithubItem(cwd, "pr", number);
+}
+
+export async function githubPrEdit(
+  cwd: string,
+  number: number,
+  input: GithubPrEditInput,
+): Promise<void> {
+  await invoke<void>("git_github_pr_edit", { cwd, number, input });
+  invalidateGithubItem(cwd, "pr", number);
+}
+
+export async function githubPrReview(
+  cwd: string,
+  number: number,
+  prId: string,
+  event: GithubPrReviewEvent,
+  body: string,
+  comments: readonly GithubPrReviewComment[],
+): Promise<string> {
+  const url = await invoke<string>("git_github_pr_review", {
+    cwd,
+    number,
+    prId,
+    event,
+    body,
+    comments,
+  });
+  invalidateGithubItem(cwd, "pr", number);
   return url;
 }
 
