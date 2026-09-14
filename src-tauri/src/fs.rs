@@ -1129,6 +1129,26 @@ pub async fn git_github_pr_edit(
     .map_err(|e| e.to_string())?
 }
 
+/// Submit one pending review: COMMENT, APPROVE, or REQUEST_CHANGES.
+#[tauri::command]
+pub async fn git_github_pr_review(
+    cwd: String,
+    number: i64,
+    pr_id: String,
+    event: String,
+    body: String,
+    comments: Vec<GitHubPrReviewCommentInput>,
+) -> Result<String, String> {
+    if number <= 0 {
+        return Err("Invalid pull request number".into());
+    }
+    tauri::async_runtime::spawn_blocking(move || {
+        git_github_pr_review_for(&expand_home(&cwd), &pr_id, &event, &body, &comments)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 #[derive(Serialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct GitHubRepoMeta {
@@ -2311,6 +2331,124 @@ mutation InboxReviewReply($threadId: ID!, $body: String!) {
   }
 }
 "#;
+
+const GITHUB_REVIEW_SUBMIT_MUTATION: &str = r#"
+mutation InboxSubmitReview(
+  $pullRequestId: ID!
+  $event: PullRequestReviewEvent!
+  $body: String
+  $comments: [DraftPullRequestReviewComment!]
+) {
+  addPullRequestReview(input: {
+    pullRequestId: $pullRequestId
+    event: $event
+    body: $body
+    comments: $comments
+  }) {
+    pullRequestReview { url state }
+  }
+}
+"#;
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct GitHubPrReviewCommentInput {
+    pub path: String,
+    pub line: i64,
+    pub side: String,
+    pub body: String,
+}
+
+fn pr_review_payload(
+    pr_id: &str,
+    event: &str,
+    body: &str,
+    comments: &[GitHubPrReviewCommentInput],
+) -> Result<String, String> {
+    if !valid_github_node_id(pr_id) {
+        return Err("Invalid pull request id".into());
+    }
+    let event = match event.trim().to_lowercase().as_str() {
+        "comment" => "COMMENT",
+        "approve" => "APPROVE",
+        "request-changes" => "REQUEST_CHANGES",
+        _ => return Err("Unknown review event".into()),
+    };
+    let body = body.trim();
+    let mut rows = Vec::with_capacity(comments.len());
+    for comment in comments {
+        let path = comment.path.trim();
+        let text = comment.body.trim();
+        if path.is_empty() || text.is_empty() || comment.line <= 0 {
+            return Err("Review comments need a path, a line, and a body".into());
+        }
+        let side = if comment.side.trim().eq_ignore_ascii_case("left") {
+            "LEFT"
+        } else {
+            "RIGHT"
+        };
+        rows.push(serde_json::json!({
+            "path": path,
+            "line": comment.line,
+            "side": side,
+            "body": text,
+        }));
+    }
+    if event != "APPROVE" && body.is_empty() && rows.is_empty() {
+        return Err("Add a review body or at least one line comment".into());
+    }
+    let payload = serde_json::json!({
+        "query": GITHUB_REVIEW_SUBMIT_MUTATION,
+        "variables": {
+            "pullRequestId": pr_id.trim(),
+            "event": event,
+            "body": body,
+            "comments": rows,
+        },
+    });
+    serde_json::to_string(&payload).map_err(|error| error.to_string())
+}
+
+fn parse_github_review_url(json: &str) -> Result<String, String> {
+    let value: serde_json::Value = serde_json::from_str(json).map_err(|error| error.to_string())?;
+    if let Some(errors) = value.get("errors").and_then(|errors| errors.as_array()) {
+        let message = errors
+            .iter()
+            .find_map(|error| error.get("message").and_then(|message| message.as_str()))
+            .unwrap_or("GitHub rejected the review");
+        return Err(message.to_string());
+    }
+    value
+        .get("data")
+        .and_then(|data| data.get("addPullRequestReview"))
+        .and_then(|review| review.get("pullRequestReview"))
+        .and_then(|review| review.get("url"))
+        .and_then(|url| url.as_str())
+        .map(str::to_string)
+        .ok_or_else(|| "GitHub did not return a review URL".to_string())
+}
+
+fn git_github_pr_review_for(
+    root: &Path,
+    pr_id: &str,
+    event: &str,
+    body: &str,
+    comments: &[GitHubPrReviewCommentInput],
+) -> Result<String, String> {
+    let payload = pr_review_payload(pr_id, event, body, comments)?;
+    let stamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_nanos())
+        .unwrap_or(0);
+    let path = std::env::temp_dir().join(format!("monocode-review-{stamp}.json"));
+    std::fs::write(&path, payload).map_err(|error| error.to_string())?;
+    let result = gh_checked(
+        root,
+        &["api", "graphql", "--input", &path.to_string_lossy()],
+    );
+    let _ = std::fs::remove_file(&path);
+    parse_github_review_url(&result?)
+}
 
 fn git_github_work_item_thread_for(
     root: &Path,
@@ -6409,6 +6547,44 @@ mod tests {
         )
         .unwrap_err();
         assert!(error.contains("Could not resolve to a node"));
+    }
+
+    #[test]
+    fn pr_review_payload_builds_graphql_variables() {
+        let comments = vec![GitHubPrReviewCommentInput {
+            path: "src/app.ts".into(),
+            line: 12,
+            side: "left".into(),
+            body: "  needs a guard  ".into(),
+        }];
+        let payload =
+            pr_review_payload("PR_kwDOA", "request-changes", "  please fix  ", &comments).unwrap();
+        let json: serde_json::Value = serde_json::from_str(&payload).unwrap();
+        assert_eq!(json["variables"]["event"], "REQUEST_CHANGES");
+        assert_eq!(json["variables"]["body"], "please fix");
+        assert_eq!(json["variables"]["comments"][0]["path"], "src/app.ts");
+        assert_eq!(json["variables"]["comments"][0]["line"], 12);
+        assert_eq!(json["variables"]["comments"][0]["side"], "LEFT");
+        assert_eq!(json["variables"]["comments"][0]["body"], "needs a guard");
+        assert!(json["query"]
+            .as_str()
+            .unwrap()
+            .contains("addPullRequestReview"));
+    }
+
+    #[test]
+    fn pr_review_payload_rejects_bad_input() {
+        assert!(pr_review_payload("PR_x", "approve", "", &[]).is_ok());
+        assert!(pr_review_payload("", "approve", "", &[]).is_err());
+        assert!(pr_review_payload("PR_x", "bless", "", &[]).is_err());
+        assert!(pr_review_payload("PR_x", "request-changes", "", &[]).is_err());
+        let bad = vec![GitHubPrReviewCommentInput {
+            path: "".into(),
+            line: 0,
+            side: "right".into(),
+            body: "x".into(),
+        }];
+        assert!(pr_review_payload("PR_x", "comment", "", &bad).is_err());
     }
 
     #[test]

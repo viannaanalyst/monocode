@@ -294,6 +294,7 @@ pub fn run() {
             fs::git_github_pr_state,
             fs::git_github_pr_edit,
             fs::git_github_repo_meta,
+            fs::git_github_pr_review,
             inbox_media::fetch_inbox_media,
             gitlab::gitlab_status,
             gitlab::gitlab_set_config,
