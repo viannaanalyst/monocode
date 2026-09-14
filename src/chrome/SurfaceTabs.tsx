@@ -8,6 +8,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { copyText } from "../lib/clipboard";
 import { basename, revealPath } from "../lib/fs";
 import {
+  isAgentTab,
   isBrowserTab,
   isChangesTab,
   isCommitTab,
@@ -28,8 +29,8 @@ import { useLockOverscroll } from "../hooks/useLockOverscroll";
 import { useAnimatedReorder } from "../hooks/useAnimatedReorder";
 import { ExplorerMenu, type ExplorerMenuItem } from "./ExplorerMenu";
 import { FileTypeIcon } from "./FileTypeIcon";
+import { HarnessIcon } from "./HarnessIcon";
 import { t } from "../i18n";
-
 
 type Props = {
   files: FilePaneTab[];
@@ -139,6 +140,16 @@ export function surfaceTabPresentation(
       label: t("Session Changes"),
       iconName: "CHANGES",
       tooltip: t("Changes captured for this session only"),
+    };
+  }
+
+  if (isAgentTab(file)) {
+    const name = file.path.trim() || "Agent";
+    return {
+      name,
+      label: name,
+      iconName: "AGENT",
+      tooltip: `${name} — orchestration agent`,
     };
   }
 
@@ -303,6 +314,7 @@ export function SurfaceTabs({
         const commit = isCommitTab(file);
         const review = isReviewTab(file) && !changes;
         const terminal = isTerminalTab(file);
+        const agent = isAgentTab(file) ? file.agent : null;
         const browser = isBrowserTab(file);
         const { label, iconName, tooltip, favicon } = surfaceTabPresentation(file);
         const tabDraggable = canDrag && !browser;
@@ -371,6 +383,11 @@ export function SurfaceTabs({
             >
               {terminal ? (
                 <Terminal className="size-3.5 shrink-0" strokeWidth={1.75} />
+              ) : agent ? (
+                <HarnessIcon
+                  harness={agent.harness}
+                  className="size-3.5 shrink-0"
+                />
               ) : browser ? (
                 <BrowserFavicon key={favicon ?? "globe"} url={favicon} />
               ) : changes || commit ? (

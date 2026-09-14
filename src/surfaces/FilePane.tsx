@@ -7,6 +7,7 @@ import {
 import { SurfaceTabs } from "../chrome/SurfaceTabs";
 import {
   isBrowserTab,
+  isAgentTab,
   isChangesTab,
   isCommitTab,
   isPlanTab,
@@ -25,6 +26,7 @@ import type { PlanBuildTarget, Session } from "../lib/session";
 import { Play } from "../chrome/icons";
 import { BuildTargetButton } from "../chrome/SecondOpinionButton";
 import { loadDiffViewer, subscribeDiffViewer } from "../lib/settings";
+import { AgentTabView } from "./AgentTabView";
 import { MarkdownPreview } from "./AgentMarkdown";
 import { BinaryFileView } from "./BinaryFileView";
 import { BrowserView } from "./BrowserView";
@@ -160,7 +162,16 @@ function FilePaneComponent({
                   : "hidden"
               }
             >
-              {isPlanTab(file) ? (
+              {isAgentTab(file) ? (
+                <AgentTabView
+                  title={file.path}
+                  session={sessions.find(
+                    (entry) => entry.id === file.agent.sessionId,
+                  )}
+                  visible={file.id === pane.activeFileId}
+                  onOpenFile={onOpenFile}
+                />
+              ) : isPlanTab(file) ? (
                 <PlanSurface
                   file={file}
                   sessions={sessions}
@@ -246,7 +257,8 @@ export const FilePane = memo(FilePaneComponent, (previous, next) => {
   }
 
   for (const file of next.pane.files) {
-    const sessionId = file.plan?.sessionId;
+    // Plans and agent tabs both read a live session object from this pane.
+    const sessionId = file.plan?.sessionId ?? file.agent?.sessionId;
     if (!sessionId) continue;
     const before = previous.sessions.find(
       (session) => session.id === sessionId,

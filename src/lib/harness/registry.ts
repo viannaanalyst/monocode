@@ -1,4 +1,5 @@
 import type { HarnessId } from "../session";
+import { invoke, isTauri } from "@tauri-apps/api/core";
 import type { GeneratedSessionTitle } from "../sessionTitle";
 import type { PrContent } from "../gitText";
 import { findModel, hasLiveCatalog, mergeModelSettings } from "../models";
@@ -131,6 +132,12 @@ export async function sendHarnessTurn(
     throw new Error(`${input.harness} is not connected yet`);
   }
   cancelIdlePark(input.sessionId);
+  const controlled = typeof isTauri === "function" && isTauri();
+  if (controlled)
+    await invoke("control_authorize_turn", {
+      sessionId: input.sessionId,
+      cwd: input.cwd,
+    });
   try {
     // Settings can be edited after a session selects a custom model.
     const model = findModel(input.model);
@@ -143,6 +150,8 @@ export async function sendHarnessTurn(
         : input,
     );
   } finally {
+    if (controlled)
+      await invoke("control_turn_finished", { sessionId: input.sessionId });
     scheduleIdlePark(input.harness, input.sessionId);
   }
 }

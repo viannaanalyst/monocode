@@ -34,10 +34,11 @@
   --motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --theme-hue: 240;
   --theme-saturation: 0%;
+  --theme-dark-lightness: 9%;
   --sidebar-opacity: 0.85;
   --chat-background-empty-opacity: 0.24;
   --chat-background-session-opacity: 0.24;
-  --background-lightness: 9%;
+  --background-lightness: var(--theme-dark-lightness);
   --content-lightness: 92%;
   --link-color: #7dd3fc;
   --color-skill: #e8c547;
@@ -242,6 +243,21 @@ html.chat-background-empty-only
  */
 .transcript-turn-live {
   content-visibility: visible;
+}
+
+.user-message-with-link {
+  display: block;
+}
+
+.user-link-preview {
+  display: inline;
+  white-space: normal;
+}
+
+.user-link-preview-title {
+  display: inline;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 /*

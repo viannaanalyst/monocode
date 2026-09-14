@@ -50,6 +50,7 @@ import { FilePreview } from "../chrome/FilePreview";
 import { FileTypeIcon } from "../chrome/FileTypeIcon";
 import { ToolDiffPreview } from "../chrome/ToolDiffPreview";
 import { PlanPreview } from "../chrome/PlanPreview";
+import { OrchestrationPreview } from "../chrome/OrchestrationPreview";
 import { TaskListPreview } from "../chrome/TaskListPreview";
 import {
   HandoffButton,
@@ -68,6 +69,7 @@ import {
   stubFilePreview,
 } from "../lib/harness/preview";
 import { copyText } from "../lib/clipboard";
+import { visibleUserPrompt } from "../lib/orchestration";
 import { playCue } from "../lib/sounds";
 import { legacyTaskListFromText } from "../lib/taskList";
 import { displayPath, pathKey, resolveWorkspacePath } from "../lib/paths";
@@ -98,6 +100,8 @@ import { TranscriptSelectionMenu } from "./TranscriptSelectionMenu";
 import { ModalPanel } from "../chrome/Modal";
 import { rewindSessionCode } from "../lib/sessionRewind";
 import { t } from "../i18n";
+import { parseUserMessageLink } from "../lib/linkPreview";
+import { UserLinkPreview } from "./UserLinkPreview";
 import {
 
   activityPhaseTitle,
@@ -166,6 +170,8 @@ type Props = {
   visible?: boolean;
   /** False while another pane holds focus; gates Ctrl/Cmd+F to one transcript. */
   focused?: boolean;
+  /** A worker's transcript: show the orchestrator's turns instead of hiding them. */
+  managed?: boolean;
 };
 
 function AgentTranscriptComponent({
@@ -192,6 +198,7 @@ function AgentTranscriptComponent({
   latestTurnAccessory,
   visible = true,
   focused = true,
+  managed = false,
 }: Props) {
   const lockOverscroll = useLockOverscroll<HTMLDivElement>();
   const scroller = useRef<HTMLDivElement>(null);
@@ -236,7 +243,7 @@ function AgentTranscriptComponent({
   );
   const transcriptLayout = useTranscriptLayout();
   const promptAnchor = useTranscriptAnchor();
-  const lastUserId = lastUserBlockId(blocks);
+  const lastUserId = lastUserBlockId(blocks, managed);
   const seenUserId = useRef(lastUserId);
   if (lastUserId !== seenUserId.current) {
     seenUserId.current = lastUserId;
@@ -381,7 +388,7 @@ function AgentTranscriptComponent({
     return () => observer.disconnect();
   }, [scrollerEl, setShowJump, visible]);
 
-  const turns = groupTurns(blocks);
+  const turns = groupTurns(blocks, managed);
   const firstVisibleTurn = Math.max(0, turns.length - visibleTurnCount);
   const visibleTurns = turns.slice(firstVisibleTurn);
   const turnsRef = useRef(turns);
@@ -614,10 +621,15 @@ function AgentTranscriptComponent({
         ) : null}
         {visibleTurns.map((turn, turnIndex) => {
           const isLastTurn = firstVisibleTurn + turnIndex === turns.length - 1;
-          const userBlock = turnUserBlock(turn);
+          const userBlock = turnUserBlock(turn, managed);
           const durationMs = userBlock?.durationMs;
           const settled = !(busy && isLastTurn);
-          const items = groupTurnItems(turn);
+          const proposals = turn.filter((block) => block.orchestration);
+          // Proposals are turn results, like the changes card. Keep them out
+          // of the live work and append them after all of the lead's output.
+          const items = groupTurnItems(
+            turn.filter((block) => !block.orchestration),
+          );
           // Earlier activity groups have already been followed by prose or
           // more work. Only the last one can still be the live group.
           const foldedAt = lastActivityIndex(items);
@@ -740,12 +752,10 @@ function AgentTranscriptComponent({
           // do not collapse with it: they are lifted out and parked under the
           // work, where they stay put however often it re-folds.
           const foldEntries = fold
-            ? items
-                .slice(fold.start, fold.end + 1)
-                .map((entry, offset) => ({
-                  entry,
-                  index: fold.start + offset,
-                }))
+            ? items.slice(fold.start, fold.end + 1).map((entry, offset) => ({
+                entry,
+                index: fold.start + offset,
+              }))
             : [];
           const foldSubagents = foldEntries.filter(
             ({ entry }) => entry.type === "subagents",
@@ -822,6 +832,18 @@ function AgentTranscriptComponent({
                 return [foldLineRow, row];
               })}
               {foldLineAt >= items.length ? foldLineRow : null}
+              {settled &&
+                proposals
+                  .filter((block) => block.orchestration?.status !== "planning")
+                  .map((block) => (
+                    <div
+                      key={block.id}
+                      className="px-4 pt-1 pb-2"
+                      data-orchestration-result
+                    >
+                      <OrchestrationPreview block={block} busy={!!busy} />
+                    </div>
+                  ))}
               {isLastTurn && latestTurnAccessory ? latestTurnAccessory : null}
               {durationMs != null && settled ? (
                 <TurnDuration
@@ -1087,7 +1109,7 @@ function TurnMetricsBadge({
   return (
     <div
       ref={root}
-      className="relative shrink-0"
+      className="relative shrink-0 pl-1"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onFocus={() => setHovered(true)}
@@ -1298,6 +1320,7 @@ const TranscriptBlock = memo(function TranscriptBlock({
   }
 
   if (block.role === "plan") {
+    if (block.orchestration) return null;
     const legacyTasks = legacyTaskListFromText(block.text);
     if (legacyTasks) {
       return (
@@ -1384,10 +1407,15 @@ function UserMessageBlock({
   const [expanded, setExpanded] = useState(false);
   const [overflows, setOverflows] = useState(false);
   const [singleLine, setSingleLine] = useState(false);
-  const textRef = useRef<HTMLPreElement>(null);
+  const textRef = useRef<HTMLElement>(null);
   const card = block.secondOpinion;
   const note = block.noteCard;
-  const text = card && card.kind !== "handoff" ? "" : block.text;
+  const text =
+    card && card.kind !== "handoff" ? "" : visibleUserPrompt(block.text);
+  const messageLink = text ? parseUserMessageLink(text) : null;
+  const displayText = messageLink
+    ? `${messageLink.beforeText}${messageLink.afterText}`
+    : text;
   const chat = layout === "chat";
   const textOnly =
     Boolean(text) && !block.attachments?.length && !card && !note;
@@ -1493,12 +1521,25 @@ function UserMessageBlock({
             <SecondOpinionCard card={card} />
           </div>
         ) : null}
-        {text ? (
+        {messageLink ? (
+          <div
+            ref={(element) => {
+              textRef.current = element;
+            }}
+            className="user-message-with-link min-w-0 whitespace-pre-wrap break-words font-sans text-sm"
+          >
+            {messageLink.beforeText}
+            <UserLinkPreview link={messageLink.link} />
+            {messageLink.afterText}
+          </div>
+        ) : displayText ? (
           <pre
-            ref={textRef}
+            ref={(element) => {
+              textRef.current = element;
+            }}
             className={`min-w-0 whitespace-pre-wrap break-words font-sans text-sm ${expanded ? "" : "line-clamp-4"}`}
           >
-            {text}
+            {displayText}
           </pre>
         ) : null}
       </div>
@@ -3124,13 +3165,14 @@ function InterjectionDivider({ block }: { block: Block }) {
   );
 }
 
-function lastUserBlockId(blocks: Block[]): string | undefined {
-  return turnUserBlock(blocks)?.id;
+function lastUserBlockId(blocks: Block[], managed = false): string | undefined {
+  return turnUserBlock(blocks, managed)?.id;
 }
 
-function turnUserBlock(blocks: Block[]): Block | undefined {
+function turnUserBlock(blocks: Block[], managed = false): Block | undefined {
   for (let i = blocks.length - 1; i >= 0; i--) {
-    if (blocks[i].role === "user") return blocks[i];
+    const block = blocks[i];
+    if (block.role === "user" && (managed || !block.internal)) return block;
   }
   return undefined;
 }

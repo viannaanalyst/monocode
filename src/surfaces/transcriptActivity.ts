@@ -183,11 +183,20 @@ export function editVerb(label: string): string {
   return "Edit";
 }
 
-/** User turns, with handoff dividers sitting on their own row. */
-export function groupTurns(blocks: Block[]): Block[][] {
+/**
+ * User turns, with handoff dividers sitting on their own row. `managed` is for
+ * a worker's own transcript, where the app-written turns are the orchestrator
+ * talking to it — the whole prompt side of that conversation, and the only
+ * thing its replies are answering.
+ */
+export function groupTurns(blocks: Block[], managed = false): Block[][] {
   const turns: Block[][] = [];
   let current: Block[] = [];
   for (const block of blocks) {
+    // A turn the app wrote to keep an orchestration moving is not a user
+    // message. Dropping it here folds the reply into the turn above, so a
+    // supervised run reads as one conversation.
+    if (block.internal && !managed) continue;
     if (block.role === "handoff") {
       if (current.length > 0) turns.push(current);
       turns.push([block]);
@@ -455,10 +464,13 @@ export function toolCategory(block: Block): ActivityWorkKind {
   const kind = block.tool?.kind;
   const title = block.text || block.tool?.title;
   const preview = block.tool?.preview;
+  const label = toolCallLabel(block);
   if (isAgentTool(kind, title)) return "agent";
   if (isEditTool(kind, title, preview)) return "edit";
   if (isSearchTool(kind, title, preview)) return "research";
   if (isReadTool(kind, title, preview)) return "research";
+  if (/^(?:Edit|Write)\s+\S/i.test(label)) return "edit";
+  if (/^(?:Read|List|Find)\b/i.test(label)) return "research";
   if (isExecuteTool(kind, title)) return "run";
   return "other";
 }
@@ -569,7 +581,12 @@ function tallySteps(steps: Block[]): PhaseTally {
     const kind = block.tool?.kind;
     const title = block.text || block.tool?.title;
     const preview = block.tool?.preview;
-    const target = preview?.path ?? preview?.fileName ?? block.id;
+    const label = toolCallLabel(block);
+    const labelledTarget = label.match(
+      /^(?:Read|List|Edit|Write)\s+(.+)$/i,
+    )?.[1];
+    const target =
+      preview?.path ?? preview?.fileName ?? labelledTarget ?? block.id;
     const category = toolCategory(block);
     if (!tally.order.includes(category)) tally.order.push(category);
     switch (category) {
@@ -583,8 +600,9 @@ function tallySteps(steps: Block[]): PhaseTally {
         tally.runs += 1;
         break;
       case "research":
-        if (isSearchTool(kind, title, preview)) tally.searches += 1;
-        else tally.reads.add(target);
+        if (/^Find\b/i.test(label) || isSearchTool(kind, title, preview)) {
+          tally.searches += 1;
+        } else tally.reads.add(target);
         break;
       default:
         tally.others += 1;

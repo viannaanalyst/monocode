@@ -2267,7 +2267,7 @@ dependencies = [
 
 [[package]]
 name = "monocode"
-version = "0.1.45"
+version = "0.1.46"
 dependencies = [
  "base64 0.22.1",
  "block2",
@@ -2292,6 +2292,8 @@ dependencies = [
  "tauri-plugin-updater",
  "tauri-plugin-window-state",
  "ureq",
+ "url",
+ "uuid",
  "windows-sys 0.61.2",
 ]
 

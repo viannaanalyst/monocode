@@ -1,5 +1,5 @@
 use std::collections::{HashMap, HashSet};
-use std::io::{BufRead, BufReader, ErrorKind, Write};
+use std::io::{BufRead, BufReader, ErrorKind, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::Mutex;
@@ -28,12 +28,23 @@ pub struct OmpInterjectionAnchor {
     id: String,
     after_assistant_text: String,
     after_occurrence: usize,
+    after_assistant_text_concat: String,
+    after_concat_occurrence: usize,
     /// A directly following text-only answer can have been coalesced into the
     /// parent block by old builds. Require both full texts before splitting it.
     following_assistant_text: Option<String>,
+    following_assistant_text_concat: Option<String>,
     text: String,
     custom_type: String,
     severity: Option<String>,
+}
+
+/// One active-path assistant message in file order. Both join forms of its
+/// text parts are alternatives for the same message, never two messages.
+#[derive(Serialize, Debug, PartialEq, Eq)]
+pub struct OmpAssistantText {
+    text: String,
+    concat: String,
 }
 
 /// Recover displayed OMP custom messages that older MonoCode builds omitted
@@ -44,6 +55,23 @@ pub struct OmpInterjectionAnchor {
 pub fn omp_session_interjections(
     provider_session_id: String,
 ) -> Result<Vec<OmpInterjectionAnchor>, String> {
+    let Some(path) = omp_session_path(&provider_session_id)? else {
+        return Ok(Vec::new());
+    };
+    parse_omp_interjections(&path)
+}
+
+#[tauri::command(async)]
+pub fn omp_active_assistant_texts(
+    provider_session_id: String,
+) -> Result<Vec<OmpAssistantText>, String> {
+    let Some(path) = omp_session_path(&provider_session_id)? else {
+        return Ok(Vec::new());
+    };
+    active_omp_assistant_texts(&path)
+}
+
+fn omp_session_path(provider_session_id: &str) -> Result<Option<PathBuf>, String> {
     if provider_session_id.is_empty()
         || !provider_session_id
             .bytes()
@@ -55,10 +83,7 @@ pub fn omp_session_interjections(
         .map(PathBuf::from)
         .ok_or("Home directory is unavailable")?
         .join(".omp/agent/sessions");
-    let Some(path) = find_omp_session_file(&root, &provider_session_id) else {
-        return Ok(Vec::new());
-    };
-    parse_omp_interjections(&path)
+    Ok(find_omp_session_file(&root, provider_session_id))
 }
 
 fn find_omp_session_file(root: &Path, provider_session_id: &str) -> Option<PathBuf> {
@@ -95,7 +120,7 @@ fn find_omp_session_file(root: &Path, provider_session_id: &str) -> Option<PathB
     None
 }
 
-fn omp_message_text(value: &serde_json::Value) -> String {
+fn omp_message_text(value: &serde_json::Value, separator: &str) -> String {
     if let Some(text) = value.as_str() {
         return text.to_owned();
     }
@@ -109,20 +134,78 @@ fn omp_message_text(value: &serde_json::Value) -> String {
                 .flatten()
         })
         .collect::<Vec<_>>()
-        .join("\n")
+        .join(separator)
 }
 
-fn parse_omp_interjections(path: &Path) -> Result<Vec<OmpInterjectionAnchor>, String> {
+fn read_omp_entries(path: &Path) -> Result<Vec<serde_json::Value>, String> {
     let file = std::fs::File::open(path).map_err(|error| format!("{}: {error}", path.display()))?;
-    let mut assistants: HashMap<String, (String, usize)> = HashMap::new();
-    let mut occurrences: HashMap<String, usize> = HashMap::new();
-    let mut out: Vec<OmpInterjectionAnchor> = Vec::new();
-
+    let mut entries = Vec::new();
     for line in BufReader::new(file).lines() {
         let Ok(line) = line else { continue };
         let Ok(value) = serde_json::from_str::<serde_json::Value>(&line) else {
             continue;
         };
+        entries.push(value);
+    }
+    Ok(entries)
+}
+
+fn omp_active_ids(entries: &[serde_json::Value]) -> HashSet<&str> {
+    let nodes: HashMap<_, _> = entries
+        .iter()
+        .filter_map(|value| value["id"].as_str().map(|id| (id, value)))
+        .collect();
+    let mut active = HashSet::new();
+    let mut cursor = entries.last().and_then(|value| value["id"].as_str());
+    while let Some(id) = cursor {
+        if !active.insert(id) {
+            break;
+        }
+        cursor = nodes.get(id).and_then(|value| value["parentId"].as_str());
+    }
+    active
+}
+
+// Return the ordered sequence, not per-text counts: a status split may only
+// be merged with the message at its own source position.
+fn active_omp_assistant_texts(path: &Path) -> Result<Vec<OmpAssistantText>, String> {
+    let entries = read_omp_entries(path)?;
+    let active = omp_active_ids(&entries);
+    Ok(entries
+        .iter()
+        .filter(|value| {
+            value["type"] == "message"
+                && value["message"]["role"] == "assistant"
+                && value["id"].as_str().is_some_and(|id| active.contains(id))
+        })
+        .map(|value| {
+            let content = &value["message"]["content"];
+            OmpAssistantText {
+                text: omp_message_text(content, "\n"),
+                concat: omp_message_text(content, ""),
+            }
+        })
+        .filter(|message| !message.text.trim().is_empty())
+        .collect())
+}
+
+fn parse_omp_interjections(path: &Path) -> Result<Vec<OmpInterjectionAnchor>, String> {
+    let entries = read_omp_entries(path)?;
+    let nodes: HashMap<_, _> = entries
+        .iter()
+        .filter_map(|value| value["id"].as_str().map(|id| (id, value)))
+        .collect();
+    let active = omp_active_ids(&entries);
+    let mut assistants: HashMap<&str, (String, usize, String, usize)> = HashMap::new();
+    let mut occurrences: HashMap<String, usize> = HashMap::new();
+    let mut concat_occurrences: HashMap<String, usize> = HashMap::new();
+    let mut out: Vec<OmpInterjectionAnchor> = Vec::new();
+    // Metadata and compaction participate in ancestry, not anchor text.
+    // Keep file order for occurrences and notes, but exclude abandoned branches.
+    for value in &entries {
+        if !value["id"].as_str().is_some_and(|id| active.contains(id)) {
+            continue;
+        }
         match value.get("type").and_then(serde_json::Value::as_str) {
             Some("message")
                 if value
@@ -133,7 +216,8 @@ fn parse_omp_interjections(path: &Path) -> Result<Vec<OmpInterjectionAnchor>, St
                 let Some(id) = value.get("id").and_then(serde_json::Value::as_str) else {
                     continue;
                 };
-                let text = omp_message_text(&value["message"]["content"]);
+                let text = omp_message_text(&value["message"]["content"], "\n");
+                let concat_text = omp_message_text(&value["message"]["content"], "");
                 if text.trim().is_empty() {
                     continue;
                 }
@@ -146,11 +230,14 @@ fn parse_omp_interjections(path: &Path) -> Result<Vec<OmpInterjectionAnchor>, St
                             == Some(anchor.id.as_str())
                     {
                         anchor.following_assistant_text = Some(text.clone());
+                        anchor.following_assistant_text_concat = Some(concat_text.clone());
                     }
                 }
                 let occurrence = occurrences.entry(text.clone()).or_default();
                 *occurrence += 1;
-                assistants.insert(id.to_owned(), (text, *occurrence));
+                let concat_occurrence = concat_occurrences.entry(concat_text.clone()).or_default();
+                *concat_occurrence += 1;
+                assistants.insert(id, (text, *occurrence, concat_text, *concat_occurrence));
             }
             Some("custom_message")
                 if value.get("display").and_then(serde_json::Value::as_bool) == Some(true) =>
@@ -162,7 +249,30 @@ fn parse_omp_interjections(path: &Path) -> Result<Vec<OmpInterjectionAnchor>, St
                 else {
                     continue;
                 };
-                let Some((after_assistant_text, after_occurrence)) = assistants.get(parent_id)
+                let mut ancestor = Some(parent_id);
+                let mut seen = HashSet::new();
+                let mut assistant = None;
+                while let Some(id) = ancestor {
+                    if !active.contains(id) || !seen.insert(id) {
+                        break;
+                    }
+                    if let Some(found) = assistants.get(id) {
+                        assistant = Some(found);
+                        break;
+                    }
+                    let Some(parent) = nodes.get(id) else { break };
+                    if matches!(
+                        parent
+                            .pointer("/message/role")
+                            .and_then(serde_json::Value::as_str),
+                        Some("user" | "assistant")
+                    ) {
+                        break;
+                    }
+                    ancestor = parent["parentId"].as_str();
+                }
+                let Some((after_assistant_text, after_occurrence, concat_text, concat_occurrence)) =
+                    assistant
                 else {
                     continue;
                 };
@@ -193,15 +303,20 @@ fn parse_omp_interjections(path: &Path) -> Result<Vec<OmpInterjectionAnchor>, St
                     }
                 }
                 let text = if note_bodies.is_empty() {
-                    omp_message_text(&value["content"])
+                    omp_message_text(&value["content"], "\n")
                 } else {
                     note_bodies.join("\n\n")
                 };
+                // Tool results, metadata and note chains seal the same preceding
+                // assistant prose. Notes resolving there stack in source order.
                 out.push(OmpInterjectionAnchor {
                     id: id.to_owned(),
                     after_assistant_text: after_assistant_text.clone(),
                     after_occurrence: *after_occurrence,
+                    after_assistant_text_concat: concat_text.clone(),
+                    after_concat_occurrence: *concat_occurrence,
                     following_assistant_text: None,
+                    following_assistant_text_concat: None,
                     text,
                     custom_type,
                     severity,
@@ -2689,13 +2804,13 @@ fn git_github_pr_diff_for(
     };
     let json = gh_run(root, &["pr", "view", &number, "--json", fields], false)?;
     let mut diff = parse_github_pr_diff_meta(&json)?;
-    let patch = if full_context {
+    let (patch, truncated) = if full_context {
         let (base, head) = parse_github_pr_oids(&json)?;
         git_diff_full_context(root, &base, &head)?
     } else {
-        gh_run(root, &["pr", "diff", &number], true)?
+        (gh_run(root, &["pr", "diff", &number], true)?, false)
     };
-    if patch.len() > MAX_PR_DIFF_BYTES {
+    if truncated || patch.len() > MAX_PR_DIFF_BYTES {
         diff.truncated = true;
     } else {
         diff.patch = patch;
@@ -2723,12 +2838,13 @@ fn parse_github_pr_oids(json: &str) -> Result<(String, String), String> {
     Ok((base.to_string(), head.to_string()))
 }
 
-fn git_diff_full_context(root: &Path, base: &str, head: &str) -> Result<String, String> {
+fn git_diff_full_context(root: &Path, base: &str, head: &str) -> Result<(String, bool), String> {
     ensure_git_commit(root, base)?;
     ensure_git_commit(root, head)?;
+    ensure_merge_base(root, base, head)?;
     let context = format!("-U{PR_FULL_CONTEXT_LINES}");
     let three_dot = format!("{base}...{head}");
-    if let Some(patch) = git_run(
+    let (bytes, truncated) = git_output_capped(
         root,
         &[
             "diff",
@@ -2738,22 +2854,34 @@ fn git_diff_full_context(root: &Path, base: &str, head: &str) -> Result<String, 
             &context,
             &three_dot,
         ],
-    ) {
-        return Ok(patch);
-    }
-    git_run(
-        root,
-        &[
-            "diff",
-            "--no-color",
-            "--no-ext-diff",
-            "--default-prefix",
-            &context,
-            base,
-            head,
-        ],
+        MAX_PR_DIFF_BYTES,
     )
-    .ok_or_else(|| format!("git diff failed for {base}...{head}"))
+    .ok_or_else(|| format!("git diff failed for {base}...{head}"))?;
+    if truncated {
+        return Ok((String::new(), true));
+    }
+    Ok((String::from_utf8_lossy(&bytes).into_owned(), false))
+}
+
+fn ensure_merge_base(root: &Path, base: &str, head: &str) -> Result<(), String> {
+    if merge_base_exists(root, base, head) {
+        return Ok(());
+    }
+    if let Some(remote) = github_fetch_remote(root) {
+        for deepen in ["50", "200", "800"] {
+            let _ = git_output(root, &["fetch", "--no-tags", "--deepen", deepen, &remote]);
+            if merge_base_exists(root, base, head) {
+                return Ok(());
+            }
+        }
+    }
+    Err(format!(
+        "Cannot find a merge base for {base} and {head}. Fetch more history and try again."
+    ))
+}
+
+fn merge_base_exists(root: &Path, base: &str, head: &str) -> bool {
+    git_output(root, &["merge-base", base, head]).is_some()
 }
 
 fn ensure_git_commit(root: &Path, oid: &str) -> Result<(), String> {
@@ -2761,13 +2889,83 @@ fn ensure_git_commit(root: &Path, oid: &str) -> Result<(), String> {
     if git_output(root, &["cat-file", "-e", &spec]).is_some() {
         return Ok(());
     }
-    let _ = git_output(root, &["fetch", "--no-tags", "--depth", "1", "origin", oid]);
+    if let Some(remote) = github_fetch_remote(root) {
+        let _ = git_output(root, &["fetch", "--no-tags", "--depth", "1", &remote, oid]);
+    }
     if git_output(root, &["cat-file", "-e", &spec]).is_some() {
         return Ok(());
     }
     Err(format!(
         "Missing git commit {oid}. Fetch the pull request refs and try again."
     ))
+}
+
+fn github_fetch_remote(root: &Path) -> Option<String> {
+    if let Some(name) = gh_resolved_remote(root) {
+        return Some(name);
+    }
+    if let Some(url) = gh_repo_view_url(root) {
+        if let Some(name) = remote_matching_github_url(root, &url) {
+            return Some(name);
+        }
+    }
+    git_remote_name(root)
+}
+
+fn gh_resolved_remote(root: &Path) -> Option<String> {
+    let listed = git_stdout(
+        root,
+        &["config", "--get-regexp", r"remote\..*\.gh-resolved"],
+    )?;
+    for line in listed.lines() {
+        let key = line.split_whitespace().next()?;
+        let name = key.strip_prefix("remote.")?.strip_suffix(".gh-resolved")?;
+        if !name.is_empty() {
+            return Some(name.to_string());
+        }
+    }
+    None
+}
+
+fn gh_repo_view_url(root: &Path) -> Option<String> {
+    let text = gh_stdout(root, &["repo", "view", "--json", "url"])?;
+    serde_json::from_str::<serde_json::Value>(&text)
+        .ok()?
+        .get("url")?
+        .as_str()
+        .map(str::to_owned)
+        .filter(|url| !url.trim().is_empty())
+}
+
+fn remote_matching_github_url(root: &Path, url: &str) -> Option<String> {
+    let remotes = git_stdout(root, &["remote", "-v"])?;
+    let wanted = normalize_github_remote_url(url);
+    for line in remotes.lines() {
+        let mut parts = line.split_whitespace();
+        let name = parts.next()?;
+        let remote_url = parts.next()?;
+        if normalize_github_remote_url(remote_url) == wanted {
+            return Some(name.to_string());
+        }
+    }
+    None
+}
+
+fn normalize_github_remote_url(url: &str) -> String {
+    let trimmed = url.trim().trim_end_matches('/').trim_end_matches(".git");
+    if let Some((_, rest)) = trimmed.split_once("github.com:") {
+        return format!(
+            "github.com/{}",
+            rest.trim_start_matches('/').to_ascii_lowercase()
+        );
+    }
+    if let Some((_, rest)) = trimmed.split_once("github.com/") {
+        return format!(
+            "github.com/{}",
+            rest.trim_start_matches('/').to_ascii_lowercase()
+        );
+    }
+    trimmed.to_ascii_lowercase()
 }
 
 fn parse_github_pr_diff_meta(json: &str) -> Result<GitHubPrDiff, String> {
@@ -3062,14 +3260,57 @@ fn git_output(root: &Path, args: &[&str]) -> Option<Vec<u8>> {
         .env("GIT_TERMINAL_PROMPT", "0")
         .output()
         .ok()?;
-    if output.status.success() {
-        return Some(output.stdout);
-    }
-    // `git diff` exits 1 when the files differ.
-    if output.status.code() == Some(1) && args.first().copied() == Some("diff") {
+    if git_status_ok(&output.status, args) {
         return Some(output.stdout);
     }
     None
+}
+
+fn git_output_capped(root: &Path, args: &[&str], max_bytes: usize) -> Option<(Vec<u8>, bool)> {
+    let mut child = git_cmd()
+        .arg("--no-pager")
+        .arg("-C")
+        .arg(root)
+        .args(args)
+        .env("GIT_OPTIONAL_LOCKS", "0")
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .ok()?;
+    let mut stdout = child.stdout.take()?;
+    let mut buf = Vec::new();
+    let mut chunk = [0u8; 8192];
+    loop {
+        let n = match stdout.read(&mut chunk) {
+            Ok(0) => break,
+            Ok(n) => n,
+            Err(_) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return None;
+            }
+        };
+        let remaining = max_bytes.saturating_sub(buf.len());
+        if n > remaining {
+            buf.extend_from_slice(&chunk[..remaining]);
+            let _ = child.kill();
+            let _ = child.wait();
+            return Some((buf, true));
+        }
+        buf.extend_from_slice(&chunk[..n]);
+    }
+    let status = child.wait().ok()?;
+    if git_status_ok(&status, args) {
+        Some((buf, false))
+    } else {
+        None
+    }
+}
+
+fn git_status_ok(status: &std::process::ExitStatus, args: &[&str]) -> bool {
+    status.success() || (status.code() == Some(1) && args.first().copied() == Some("diff"))
 }
 
 fn git_branch(root: &Path) -> Option<String> {
@@ -4347,6 +4588,63 @@ mod tests {
 
     static TMP_SEQ: AtomicU64 = AtomicU64::new(0);
 
+    fn assistant_text(text: &str, concat: &str) -> OmpAssistantText {
+        OmpAssistantText {
+            text: text.into(),
+            concat: concat.into(),
+        }
+    }
+
+    #[test]
+    fn omp_active_assistant_texts_keep_active_message_order_with_both_forms() {
+        let dir = tmp("omp-active-texts");
+        let path = dir.0.join("session.jsonl");
+        let records = [
+            serde_json::json!({"type":"message","id":"u","message":{"role":"user","content":"User only"}}),
+            serde_json::json!({"type":"message","id":"abandoned","parentId":"u","message":{"role":"assistant","content":"Off branch"}}),
+            serde_json::json!({"type":"message","id":"a","parentId":"u","message":{"role":"assistant","content":[{"type":"text","text":"First."},{"type":"thinking","thinking":"Hidden"},{"type":"text","text":"Second."}]}}),
+            serde_json::json!({"type":"message","id":"tool","parentId":"a","message":{"role":"assistant","content":[{"type":"toolCall","name":"read"}]}}),
+            serde_json::json!({"type":"message","id":"b","parentId":"tool","message":{"role":"assistant","content":"Plain"}}),
+            serde_json::json!({"type":"custom_message","id":"note","parentId":"b","content":"Note only"}),
+        ];
+        let jsonl = records.iter().map(|v| format!("{v}\n")).collect::<String>();
+        std::fs::write(&path, jsonl).unwrap();
+        assert_eq!(
+            active_omp_assistant_texts(&path).unwrap(),
+            [
+                assistant_text("First.\nSecond.", "First.Second."),
+                assistant_text("Plain", "Plain"),
+            ]
+        );
+    }
+
+    #[test]
+    fn omp_active_assistant_texts_repeat_equal_messages_in_file_order() {
+        let dir = tmp("omp-active-texts-repeats");
+        let path = dir.0.join("session.jsonl");
+        let records = [
+            serde_json::json!({"type":"message","id":"a","message":{"role":"assistant","content":"First."}}),
+            serde_json::json!({"type":"message","id":"off","parentId":"a","message":{"role":"assistant","content":"First.Second."}}),
+            serde_json::json!({"type":"message","id":"b","parentId":"a","message":{"role":"assistant","content":[{"type":"text","text":"Second."}]}}),
+            serde_json::json!({"type":"message","id":"c","parentId":"b","message":{"role":"assistant","content":"First.Second."}}),
+            serde_json::json!({"type":"message","id":"d","parentId":"c","message":{"role":"assistant","content":"First.Second."}}),
+        ];
+        std::fs::write(
+            &path,
+            records.iter().map(|v| format!("{v}\n")).collect::<String>(),
+        )
+        .unwrap();
+        assert_eq!(
+            active_omp_assistant_texts(&path).unwrap(),
+            [
+                assistant_text("First.", "First."),
+                assistant_text("Second.", "Second."),
+                assistant_text("First.Second.", "First.Second."),
+                assistant_text("First.Second.", "First.Second."),
+            ]
+        );
+    }
+
     #[test]
     fn omp_interjections_require_displayed_assistant_anchors() {
         let dir = tmp("omp-interjections");
@@ -4356,10 +4654,10 @@ mod tests {
             concat!(
                 "{\"type\":\"message\",\"id\":\"u\",\"message\":{\"role\":\"user\",\"content\":\"Go\"}}\n",
                 "{\"type\":\"custom_message\",\"id\":\"orphan\",\"parentId\":\"u\",\"display\":true}\n",
-                "{\"type\":\"message\",\"id\":\"a1\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Answer\"}]}}\n",
+                "{\"type\":\"message\",\"id\":\"a1\",\"parentId\":\"orphan\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Answer\"}]}}\n",
                 "{\"type\":\"custom_message\",\"id\":\"hidden\",\"parentId\":\"a1\",\"display\":false}\n",
                 "invalid partial line\n",
-                "{\"type\":\"message\",\"id\":\"a2\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Answer\"}]}}\n",
+                "{\"type\":\"message\",\"id\":\"a2\",\"parentId\":\"hidden\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Answer\"}]}}\n",
                 "{\"type\":\"custom_message\",\"id\":\"review\",\"parentId\":\"a2\",\"display\":true,\"customType\":\"advisor\",\"details\":{\"notes\":[{\"note\":\"First\",\"severity\":\"nit\"},{\"note\":\"Second\",\"severity\":\"blocker\"}]}}\n",
                 "{\"type\":\"message\",\"id\":\"a3\",\"parentId\":\"review\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Checked\"}]}}\n",
             ),
@@ -4393,6 +4691,63 @@ mod tests {
         let anchors = parse_omp_interjections(&path).unwrap();
         assert_eq!(anchors[0].following_assistant_text, None);
         assert_eq!(anchors[0].text, "Check");
+    }
+    #[test]
+    fn omp_interjections_follow_active_ancestry_and_keep_text_forms() {
+        let dir = tmp("omp-interjections-ancestry");
+        let path = dir.0.join("session.jsonl");
+        std::fs::write(
+            &path,
+            concat!(
+                "{\"type\":\"message\",\"id\":\"a\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"One\"},{\"type\":\"text\",\"text\":\"Two\"}]}}\n",
+                "{\"type\":\"custom_message\",\"id\":\"abandoned\",\"parentId\":\"a\",\"display\":true,\"content\":\"Wrong branch\"}\n",
+                "{\"type\":\"message\",\"id\":\"t\",\"parentId\":\"a\",\"message\":{\"role\":\"toolResult\",\"content\":\"Done\"}}\n",
+                "{\"type\":\"custom_message\",\"id\":\"first\",\"parentId\":\"t\",\"display\":true,\"content\":\"First\"}\n",
+                "{\"type\":\"custom_message\",\"id\":\"second\",\"parentId\":\"first\",\"display\":true,\"content\":\"Second\"}\n",
+                "{\"type\":\"compaction\",\"id\":\"meta\",\"parentId\":\"second\"}\n",
+                "{\"type\":\"custom_message\",\"id\":\"third\",\"parentId\":\"meta\",\"display\":true,\"content\":\"Third\"}\n",
+                "{\"type\":\"message\",\"id\":\"b\",\"parentId\":\"third\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Three\"},{\"type\":\"text\",\"text\":\"Four\"}]}}\n",
+            ),
+        )
+        .unwrap();
+        let anchors = parse_omp_interjections(&path).unwrap();
+        assert_eq!(
+            anchors.iter().map(|a| a.id.as_str()).collect::<Vec<_>>(),
+            ["first", "second", "third"]
+        );
+        for anchor in &anchors {
+            assert_eq!(anchor.after_assistant_text, "One\nTwo");
+            assert_eq!(anchor.after_assistant_text_concat, "OneTwo");
+            assert_eq!(anchor.after_occurrence, 1);
+            assert_eq!(anchor.after_concat_occurrence, 1);
+        }
+        assert_eq!(anchors[0].following_assistant_text, None);
+        assert_eq!(anchors[1].following_assistant_text, None);
+        assert_eq!(
+            anchors[2].following_assistant_text.as_deref(),
+            Some("Three\nFour")
+        );
+        assert_eq!(
+            anchors[2].following_assistant_text_concat.as_deref(),
+            Some("ThreeFour")
+        );
+    }
+
+    #[test]
+    fn omp_interjections_do_not_cross_users_or_empty_assistant_messages() {
+        let dir = tmp("omp-interjections-barriers");
+        let path = dir.0.join("session.jsonl");
+        for role in ["user", "assistant"] {
+            let records = [
+                serde_json::json!({"type":"message","id":"a","message":{"role":"assistant","content":"Earlier"}}),
+                serde_json::json!({"type":"message","id":"barrier","parentId":"a","message":{"role":role,"content":[]}}),
+                serde_json::json!({"type":"message","id":"tool","parentId":"barrier","message":{"role":"toolResult","content":"Done"}}),
+                serde_json::json!({"type":"custom_message","id":"note","parentId":"tool","display":true,"content":"Note"}),
+            ];
+            let jsonl = records.map(|record| record.to_string()).join("\n");
+            std::fs::write(&path, jsonl).unwrap();
+            assert!(parse_omp_interjections(&path).unwrap().is_empty());
+        }
     }
 
     #[test]
@@ -5827,7 +6182,8 @@ mod tests {
             .unwrap()
             .trim()
             .to_string();
-        let patch = git_diff_full_context(&dir.0, &base, &head).unwrap();
+        let (patch, truncated) = git_diff_full_context(&dir.0, &base, &head).unwrap();
+        assert!(!truncated);
         assert!(
             patch.contains("line-1"),
             "expected distant context in patch:\n{patch}"
@@ -5838,6 +6194,148 @@ mod tests {
             !default.contains("line-1"),
             "default context should omit distant lines"
         );
+    }
+
+    #[test]
+    fn git_diff_full_context_uses_canonical_plain_output() {
+        let dir = tmp("git-full-context-canonical");
+        if !init_git_commit(&dir.0, &[("file.txt", "alpha\n")]) {
+            return;
+        }
+        let base = git_run(&dir.0, &["rev-parse", "HEAD"])
+            .unwrap()
+            .trim()
+            .to_string();
+        std::fs::write(dir.0.join("file.txt"), "beta\n").unwrap();
+        if !git(&dir.0, &["add", "."]) || !git(&dir.0, &["commit", "-m", "edit"]) {
+            return;
+        }
+        let head = git_run(&dir.0, &["rev-parse", "HEAD"])
+            .unwrap()
+            .trim()
+            .to_string();
+        let helper = dir.0.join("ext-diff.sh");
+        std::fs::write(&helper, "#!/bin/sh\necho EXTERNAL\n").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut permissions = std::fs::metadata(&helper).unwrap().permissions();
+            permissions.set_mode(0o755);
+            std::fs::set_permissions(&helper, permissions).unwrap();
+        }
+        if !git(&dir.0, &["config", "color.ui", "always"])
+            || !git(&dir.0, &["config", "color.diff", "always"])
+            || !git(&dir.0, &["config", "diff.noprefix", "true"])
+            || !git(
+                &dir.0,
+                &["config", "diff.external", &helper.to_string_lossy()],
+            )
+        {
+            return;
+        }
+        let raw = git_run(&dir.0, &["diff", &format!("{base}...{head}")]).unwrap_or_default();
+        assert!(
+            raw.contains("EXTERNAL") || !raw.contains("diff --git a/file.txt b/file.txt"),
+            "hostile git settings should change a default diff:\n{raw}"
+        );
+        let (patch, truncated) = git_diff_full_context(&dir.0, &base, &head).unwrap();
+        assert!(!truncated);
+        assert!(
+            patch.contains("diff --git a/file.txt b/file.txt"),
+            "expected canonical prefixes:\n{patch}"
+        );
+        assert!(
+            !patch.contains('\u{1b}') && !patch.contains("EXTERNAL"),
+            "expected plain git diff output:\n{patch}"
+        );
+    }
+
+    #[test]
+    fn git_diff_full_context_errors_without_a_merge_base() {
+        let dir = tmp("git-full-context-unrelated");
+        if !init_git_commit(&dir.0, &[("a.txt", "alpha\n")]) {
+            return;
+        }
+        let base = git_run(&dir.0, &["rev-parse", "HEAD"])
+            .unwrap()
+            .trim()
+            .to_string();
+        if !git(&dir.0, &["checkout", "--orphan", "other"]) {
+            return;
+        }
+        let _ = std::fs::remove_file(dir.0.join("a.txt"));
+        std::fs::write(dir.0.join("b.txt"), "beta\n").unwrap();
+        if !git(&dir.0, &["add", "."]) || !git(&dir.0, &["commit", "-m", "other"]) {
+            return;
+        }
+        let head = git_run(&dir.0, &["rev-parse", "HEAD"])
+            .unwrap()
+            .trim()
+            .to_string();
+        assert!(git_run(&dir.0, &["merge-base", &base, &head]).is_none());
+        let two_dot = git_run(&dir.0, &["diff", &base, &head]).unwrap_or_default();
+        assert!(
+            two_dot.contains("alpha") || two_dot.contains("beta"),
+            "two-dot should invent a comparison:\n{two_dot}"
+        );
+        let err = git_diff_full_context(&dir.0, &base, &head).unwrap_err();
+        assert!(
+            err.to_lowercase().contains("merge base"),
+            "expected merge-base error, got {err}"
+        );
+    }
+
+    #[test]
+    fn ensure_git_commit_fetches_from_gh_resolved_remote() {
+        let remote = tmp("git-full-context-upstream");
+        if !init_git_commit(&remote.0, &[("note.txt", "hello\n")]) {
+            return;
+        }
+        let oid = git_run(&remote.0, &["rev-parse", "HEAD"])
+            .unwrap()
+            .trim()
+            .to_string();
+        let decoy = tmp("git-full-context-origin");
+        if !init_git_commit(&decoy.0, &[("other.txt", "decoy\n")]) {
+            return;
+        }
+        let local = tmp("git-full-context-local");
+        if !init_git_commit(&local.0, &[("local.txt", "local\n")]) {
+            return;
+        }
+        let upstream_url = remote.0.to_string_lossy().into_owned();
+        let origin_url = decoy.0.to_string_lossy().into_owned();
+        if !git(&local.0, &["remote", "add", "origin", &origin_url])
+            || !git(&local.0, &["remote", "add", "upstream", &upstream_url])
+            || !git(&local.0, &["config", "remote.upstream.gh-resolved", "base"])
+        {
+            return;
+        }
+        assert_eq!(github_fetch_remote(&local.0).as_deref(), Some("upstream"));
+        let spec = format!("{oid}^{{commit}}");
+        assert!(git_output(&local.0, &["cat-file", "-e", &spec]).is_none());
+        ensure_git_commit(&local.0, &oid).unwrap();
+        assert!(git_output(&local.0, &["cat-file", "-e", &spec]).is_some());
+    }
+
+    #[test]
+    fn git_output_capped_stops_before_buffering_the_rest() {
+        let dir = tmp("git-output-capped");
+        let big = "x".repeat(80_000);
+        if !init_git_commit(&dir.0, &[("big.txt", &format!("{big}\n"))]) {
+            return;
+        }
+        std::fs::write(dir.0.join("big.txt"), format!("y{big}\n")).unwrap();
+        if !git(&dir.0, &["add", "."]) || !git(&dir.0, &["commit", "-m", "edit"]) {
+            return;
+        }
+        let (bytes, truncated) =
+            git_output_capped(&dir.0, &["diff", "HEAD~1", "HEAD"], 1024).unwrap();
+        assert!(truncated);
+        assert!(bytes.len() <= 1024);
+        let (head, truncated) = git_output_capped(&dir.0, &["rev-parse", "HEAD"], 1024).unwrap();
+        assert!(!truncated);
+        assert!(!head.is_empty());
     }
 
     #[test]

@@ -1,3 +1,4 @@
+import { OrchestrationSidebarAgents } from "./OrchestrationSidebarAgents";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import {
   Archive,
@@ -431,7 +432,7 @@ function SidebarComponent({
     sessions,
     openSessions,
     sessionFolders,
-  );
+  ).filter((session) => !session.orchestrationLeadId);
   const visibleSessions = [
     ...filterSessionsByQuery(
       filterSessionsByStatus(
@@ -1112,7 +1113,7 @@ function SidebarComponent({
   const sidebarContent = (
     <aside
       ref={resize.setPaneRef}
-      className="sidebar-glass relative flex h-full min-h-0 shrink-0 flex-col border-r border-content/10"
+      className="body-glass relative flex h-full min-h-0 shrink-0 flex-col border-r border-content/10"
     >
       {railVisible ? (
         <>
@@ -1757,6 +1758,7 @@ function SidebarProjectPicker({
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const pickerRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   const [groupLabels] = useState(loadTabGroupLabels);
   const [groupColors] = useState(loadTabGroupColors);
   const [groupCustomColors] = useState(loadTabGroupCustomColors);
@@ -1798,6 +1800,15 @@ function SidebarProjectPicker({
     setQuery("");
     setActive(0);
   };
+
+  useEffect(() => {
+    if (!open) return;
+    searchRef.current?.focus();
+    const frame = window.requestAnimationFrame(() => {
+      searchRef.current?.focus();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [open]);
 
   const pickProject = (path: string) => {
     closePicker();
@@ -1897,7 +1908,7 @@ function SidebarProjectPicker({
               <Search className="size-4 shrink-0" strokeWidth={1.75} />
               <span className="sr-only">{t("Search projects")}</span>
               <input
-                autoFocus
+                ref={searchRef}
                 value={query}
                 onChange={(event) => {
                   setQuery(event.target.value);
@@ -2426,6 +2437,8 @@ function FolderRenameRow({
   );
 }
 
+const SESSION_PREFETCH_DELAY_MS = 120;
+
 function SessionCard({
   session,
   isActive,
@@ -2473,9 +2486,11 @@ function SessionCard({
 }) {
   const skipClickUntil = useRef(0);
   const cardRef = useRef<HTMLDivElement>(null);
+  const prefetchTimer = useRef<number | null>(null);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [hovering, setHovering] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const orchestration = session.orchestration;
   const rawTitle = sessionDisplayTitle(session.title, session.harness);
   const title = rawTitle === "New session" ? t("New session") : rawTitle;
   const gitLabel = formatGitLabel(session.repo, session.branch);
@@ -2589,6 +2604,10 @@ function SessionCard({
     if (event.button !== 0) return;
     // Warm the transcript during the press. Opening stays on click so a
     // drag-to-pane gesture does not switch conversations.
+    if (prefetchTimer.current != null) {
+      window.clearTimeout(prefetchTimer.current);
+      prefetchTimer.current = null;
+    }
     onPrefetch?.(session.id);
     if (!onPlaceOnPane && !onListDrop) return;
     const handle = event.currentTarget;
@@ -2693,7 +2712,36 @@ function SessionCard({
     window.addEventListener("keydown", onKey);
   };
 
+  useEffect(
+    () => () => {
+      if (prefetchTimer.current != null) {
+        window.clearTimeout(prefetchTimer.current);
+        prefetchTimer.current = null;
+      }
+    },
+    [onPrefetch, session.id],
+  );
+
+  const schedulePrefetch = () => {
+    if (!onPrefetch || prefetchTimer.current != null) return;
+    prefetchTimer.current = window.setTimeout(() => {
+      prefetchTimer.current = null;
+      onPrefetch(session.id);
+    }, SESSION_PREFETCH_DELAY_MS);
+  };
+
+  const cancelScheduledPrefetch = () => {
+    if (prefetchTimer.current == null) return;
+    window.clearTimeout(prefetchTimer.current);
+    prefetchTimer.current = null;
+  };
+
   const archiveLabel = session.archived ? t("Unarchive") : t("Archive");
+  const cardPaddingY = orchestration
+    ? "py-2.5"
+    : compact
+      ? "py-1.5"
+      : "py-2";
 
   return (
     <div className="group relative">
@@ -2703,24 +2751,29 @@ function SessionCard({
         tabIndex={0}
         aria-current={isActive ? "true" : undefined}
         aria-pressed={isSelected}
+        title={title}
         data-session-card={session.id}
+        data-orchestration-card={orchestration ? "true" : undefined}
         data-session-selected={isSelected ? "true" : undefined}
         data-tauri-drag-region="false"
         onPointerDown={onPointerDown}
         onPointerEnter={() => {
-          onPrefetch?.(session.id);
+          schedulePrefetch();
           openHoverCard();
         }}
-        onPointerLeave={closeHoverCard}
+        onPointerLeave={() => {
+          cancelScheduledPrefetch();
+          closeHoverCard();
+        }}
         onClick={(event) => {
           if (performance.now() < skipClickUntil.current) return;
           onSelect(session.id, event);
         }}
         onContextMenu={onContextMenu}
         onKeyDown={onKeyDown}
-        className={`relative flex w-full select-none touch-none cursor-pointer flex-col rounded-md border px-2.5 text-left ${
-          compact ? "py-1.5" : "py-2"
-        } ${dragging ? "opacity-40" : ""} ${
+        className={`relative flex w-full cursor-pointer select-none touch-none flex-col rounded-md border px-2.5 text-left ${cardPaddingY} ${
+          dragging ? "opacity-40" : ""
+        } ${
           dropTarget
             ? "text-content border-transparent"
             : isSelected
@@ -2729,7 +2782,13 @@ function SessionCard({
                 ? "bg-content/20 text-content border-content/30 border-dashed"
                 : isActive
                   ? "bg-content/10 text-content border-transparent"
-                  : "text-content/80 hover:bg-content/5 hover:text-content border-transparent"
+                  : // A lead rests at the tone others only reach on hover, so
+                    // its card reads as a group even when nothing is selected.
+                    `text-content/80 hover:text-content border-transparent ${
+                      orchestration
+                        ? "bg-content/5 hover:bg-content/10"
+                        : "hover:bg-content/5"
+                    }`
         }`}
       >
         {dropTarget ? (
@@ -2775,6 +2834,12 @@ function SessionCard({
             ) : null}
           </span>
         </span>
+        {orchestration ? (
+          <OrchestrationSidebarAgents
+            leadId={session.id}
+            summary={orchestration}
+          />
+        ) : null}
       </div>
       <SessionHoverCard
         anchor={cardRef}

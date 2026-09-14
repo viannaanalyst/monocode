@@ -1702,7 +1702,16 @@ export function InboxDetail({
     return () => {
       cancelled = true;
     };
-  }, [fullFile, gitlab, isPr, item.number, item.projectPath, item.repo, revision, tab]);
+  }, [
+    fullFile,
+    gitlab,
+    isPr,
+    item.number,
+    item.projectPath,
+    item.repo,
+    revision,
+    tab,
+  ]);
 
   const postComment = async (body: string) => {
     setPosting(true);

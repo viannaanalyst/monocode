@@ -4,6 +4,8 @@ mod browser;
 mod chat_background;
 mod checkpoint;
 mod clickup;
+mod control;
+pub mod control_cli;
 mod cursor_store;
 mod fonts;
 mod fs;
@@ -12,6 +14,7 @@ mod harness;
 mod inbox_media;
 mod jira;
 mod linear;
+mod link_preview;
 #[cfg(target_os = "macos")]
 mod macos;
 mod menu;
@@ -204,6 +207,7 @@ pub fn run() {
         .setup(|app| {
             harness::reap_orphaned_harness_processes();
             session_store::init(app.handle())?;
+            control::init(app.handle())?;
             reminders::init(app.handle());
             checkpoint::init(app.handle())?;
             menu::install(app.handle())?;
@@ -227,6 +231,15 @@ pub fn run() {
             menu::dispatch(app, event.id().as_ref());
         })
         .invoke_handler(tauri::generate_handler![
+            control::control_enable,
+            control::control_disable,
+            control::control_reply,
+            control::control_save,
+            control::control_load,
+            control::control_scopes,
+            control::control_attach_worker,
+            control::control_authorize_turn,
+            control::control_turn_finished,
             default_cwd,
             home_dir,
             browser::browser_eval,
@@ -315,6 +328,7 @@ pub fn run() {
             notion::notion_task_details,
             notion::notion_task_thread,
             notion::notion_task_comment,
+            link_preview::fetch_link_preview,
             fs::git_branches,
             fs::git_checkout,
             fs::git_create_branch,
@@ -334,6 +348,7 @@ pub fn run() {
             fs::write_attachment,
             fs::read_text_file,
             fs::omp_session_interjections,
+            fs::omp_active_assistant_texts,
             fs::write_text_file,
             skills::list_skills,
             search::search_project,
@@ -447,6 +462,7 @@ pub fn run() {
             ..
         } => {
             let other_window = handle.webview_windows().keys().any(|name| name != &label);
+            control::window_closed(handle, &label);
             if !other_window {
                 reap_harness_children(handle);
             }
