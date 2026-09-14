@@ -11,6 +11,7 @@ import { basename } from "../lib/fs";
 import { looksLikeProject } from "../lib/recents";
 import type { HarnessId } from "../lib/session";
 import { CwdPicker } from "./CwdPicker";
+import { ModelBrandIcon } from "./ModelBrandIcon";
 import type { AgentModel } from "../lib/models";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { WindowControls } from "./WindowControls";
@@ -430,7 +431,21 @@ function TitleBarComponent({
           showProjectButton ? " border-l border-content/10" : ""
         }`}
       >
-        <div className="flex min-w-0 flex-1 items-center px-2" />
+        <div className="flex min-w-0 flex-1 items-center gap-2 px-2">
+          {!projectless && activeTab ? (
+            <>
+              {activeTab.models[0] ? (
+                <ModelBrandIcon
+                  model={activeTab.models[0]}
+                  className="size-3.5 shrink-0"
+                />
+              ) : null}
+              <span className="min-w-0 truncate text-[12.5px] text-content/75">
+                {tabCopy(activeTab).headline}
+              </span>
+            </>
+          ) : null}
+        </div>
 
         {!IS_MAC && !IS_WIN ? (
           <div className="flex min-w-0 flex-1 items-center justify-center px-4">

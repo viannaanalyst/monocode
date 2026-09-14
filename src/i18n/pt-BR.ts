@@ -61,6 +61,7 @@ export const PT_BR: Record<string, string> = {
   "Close Tabs to the Right": "Fechar abas à direita",
   "Close group": "Fechar grupo",
   "Close pane": "Fechar painel",
+  Panels: "Painel",
   "Close panel": "Fechar painel",
   "Close window": "Fechar janela",
   Closed: "Fechadas",

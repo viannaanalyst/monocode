@@ -7367,31 +7367,24 @@ export default function App({
                     </div>
                     <aside
                       aria-hidden={!rightDock}
-                      className={`relative flex h-full min-h-0 shrink-0 flex-col overflow-hidden border-l border-content/10 transition-[width,opacity] duration-200 ease-out ${
-                        rightDock ? "w-[340px] opacity-100" : "w-0 opacity-0"
+                      className={`fixed inset-y-0 right-0 z-40 flex w-[340px] flex-col overflow-hidden border-l border-content/10 bg-background-base transition-transform duration-150 ease-out ${
+                        rightDock
+                          ? "translate-x-0"
+                          : "pointer-events-none translate-x-full"
                       }`}
                     >
                       {rightDock ? (
                         <>
-                        <div className="flex h-9 shrink-0 items-center justify-between border-b border-content/10 px-3">
-                          <span className="text-[12.5px] font-semibold text-content/75">
-                            {rightDock === "explorer"
-                              ? t("Explorer")
-                              : rightDock === "changes"
-                                ? t("Changes")
-                                : t("Panels")}
-                          </span>
-                          <button
-                            type="button"
-                            aria-label={t("Close")}
-                            title={t("Close")}
-                            data-tauri-drag-region="false"
-                            onClick={() => setRightDock(null)}
-                            className="grid size-6 place-items-center rounded-md text-content/45 hover:bg-content/10 hover:text-content"
-                          >
-                            ✕
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          aria-label={t("Close")}
+                          title={t("Close")}
+                          data-tauri-drag-region="false"
+                          onClick={() => setRightDock(null)}
+                          className="absolute right-2 top-2 z-10 grid size-6 place-items-center rounded-md text-content/45 hover:bg-content/10 hover:text-content"
+                        >
+                          ✕
+                        </button>
                         <div className="min-h-0 flex-1 overflow-hidden">
                           {rightDock === "panels" ? (
                             <div className="flex h-full flex-col items-center justify-center gap-1.5 p-4">
