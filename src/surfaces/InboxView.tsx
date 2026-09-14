@@ -1,3 +1,4 @@
+import { ask } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import {
   CheckCheck,
@@ -38,24 +39,32 @@ import { InboxConnectMenu } from "../chrome/InboxConnectMenu";
 import { InboxProviderMark } from "../chrome/InboxProviderMark";
 import { ProjectLogoIcon } from "../chrome/ProjectLogoIcon";
 import { ProjectMascot } from "../chrome/ProjectMascot";
+import { PrActions, type PrMergeMethod } from "../chrome/PrActions";
 import { OverlayNav } from "../chrome/TitleBar";
 import { WindowControls } from "../chrome/WindowControls";
 import { useDragResize } from "../hooks/useDragResize";
 import { useLockOverscroll } from "../hooks/useLockOverscroll";
 import { useTabGroupLogos } from "../hooks/useTabGroupLogos";
 import {
+  asGithubPrDetails,
   githubStatus,
   githubPrDiff,
+  githubPrMerge,
+  githubPrReview,
+  githubPrState,
+  githubRepoMeta,
   githubReviewDecisionLabel,
   githubWorkItem,
   githubWorkItemComment,
   githubWorkItemDetails,
   githubWorkItemThread,
   gitlabAttentionLabel,
+  inboxErrorMessage,
   inboxItemKey,
   inboxItemRef,
   inboxItemStatus,
   inboxListIsFresh,
+  invalidateGithubItem,
   isTrackerProvider,
   inboxProjectsForRail,
   listInboxItems,
@@ -68,6 +77,7 @@ import {
   inboxPersonAvatarUrl,
   type GithubLabel,
   type GithubPrDiff,
+  type GithubRepoMeta,
   type GithubWorkItemDetails,
   type GithubWorkItemThread,
   type InboxItem,
@@ -96,6 +106,7 @@ import {
 } from "../lib/inboxFilters";
 import { projectKey, projectName } from "../lib/paths";
 import { IS_MAC } from "../lib/platform";
+import type { PrReviewEvent } from "../lib/prReview";
 import { sameProjectPath, type RecentProject } from "../lib/recents";
 import { sessionDisplayTitle, type LinkedWorkItem } from "../lib/session";
 import type { SessionSummary } from "../lib/sessionStore";
@@ -199,6 +210,11 @@ const ACTION = "inline-flex items-center gap-1.5 rounded-md px-3 text-[12px]";
 const ACTION_FILLED = `${ACTION} h-6.5 bg-content text-background-base hover:bg-content/80`;
 const ACTION_OUTLINE = `${ACTION} h-7 border border-content/15 text-content/80 hover:bg-content/5`;
 const ACTION_GHOST = `${ACTION} h-7 text-content/70 hover:bg-content/10 hover:text-content`;
+const METHOD_LABELS_FOR_CONFIRM: Record<PrMergeMethod, string> = {
+  squash: "Squash and merge",
+  merge: "Create a merge commit",
+  rebase: "Rebase and merge",
+};
 const DEFAULT_WIDTH = 280;
 
 let rememberedWidth = DEFAULT_WIDTH;
@@ -1096,6 +1112,7 @@ export function InboxView({
               onEditNotion={(item) =>
                 setNotionEditor({ mode: "edit", target: notionEditTarget(item) })
               }
+              onMutated={() => setRefresh((value) => value + 1)}
             />
           </div>
           {discussionOpen && selected ? (
@@ -1143,6 +1160,7 @@ function InboxDetailBody({
   onStart,
   onOpenSession,
   onEditNotion,
+  onMutated,
 }: {
   item: InboxItem | null;
   cwd: string;
@@ -1153,6 +1171,7 @@ function InboxDetailBody({
   onStart?: (item: InboxItem, body?: string) => void | Promise<void>;
   onOpenSession?: (sessionId: string) => void | Promise<void>;
   onEditNotion?: (item: InboxItem) => void;
+  onMutated?: () => void;
 }) {
   if (!item) {
     return (
@@ -1174,6 +1193,7 @@ function InboxDetailBody({
       onStart={onStart}
       onOpenSession={onOpenSession}
       onEditNotion={onEditNotion}
+      onMutated={onMutated}
     />
   );
 }
@@ -1349,6 +1369,7 @@ export function InboxDetail({
   onStart,
   onOpenSession,
   onEditNotion,
+  onMutated,
 }: {
   item: InboxItem;
   cwd: string;
@@ -1359,6 +1380,7 @@ export function InboxDetail({
   onStart?: (item: InboxItem, body?: string) => void | Promise<void>;
   onOpenSession?: (sessionId: string) => void | Promise<void>;
   onEditNotion?: (item: InboxItem) => void;
+  onMutated?: () => void;
 }) {
   const detailLock = useLockOverscroll<HTMLDivElement>();
   const linear = item.provider === "linear";
@@ -1440,6 +1462,9 @@ export function InboxDetail({
   const [replyTo, setReplyTo] = useState<InboxReplyTarget | null>(null);
   const [posting, setPosting] = useState(false);
   const [postError, setPostError] = useState<string | null>(null);
+  const [busyAction, setBusyAction] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [repoMeta, setRepoMeta] = useState<GithubRepoMeta | null>(null);
   const defaultProject =
     projects.find((project) => sameProjectPath(project.path, cwd))?.path ??
     projects[0]?.path ??
@@ -1483,6 +1508,7 @@ export function InboxDetail({
     details?.baseRefName?.trim() || thread?.baseRefName?.trim() || "";
   const headRef =
     details?.headRefName?.trim() || thread?.headRefName?.trim() || "";
+  const prDetails = asGithubPrDetails(details);
 
   useEffect(() => {
     let cancelled = false;
@@ -1713,6 +1739,24 @@ export function InboxDetail({
     tab,
   ]);
 
+  useEffect(() => {
+    if (!isPr || item.provider !== "github") {
+      setRepoMeta(null);
+      return;
+    }
+    let cancelled = false;
+    void githubRepoMeta(item.projectPath)
+      .then((meta) => {
+        if (!cancelled) setRepoMeta(meta);
+      })
+      .catch(() => {
+        if (!cancelled) setRepoMeta(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isPr, item.projectPath, item.provider, revision]);
+
   const postComment = async (body: string) => {
     setPosting(true);
     setPostError(null);
@@ -1793,6 +1837,73 @@ export function InboxDetail({
       setPosting(false);
     }
   };
+
+  const refreshDetails = async () => {
+    if (!githubKind) return;
+    invalidateGithubItem(item.projectPath, githubKind, item.number);
+    const next = await githubWorkItemDetails(
+      item.projectPath,
+      githubKind,
+      item.number,
+    );
+    setDetails(next);
+    onMutated?.();
+  };
+
+  const runAction = async (key: string, work: () => Promise<void>) => {
+    if (busyAction) return;
+    setBusyAction(key);
+    setActionError(null);
+    try {
+      await work();
+      await refreshDetails();
+    } catch (error) {
+      setActionError(inboxErrorMessage(error));
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const confirmPr = (message: string, okLabel: string) =>
+    ask(message, { title: t("MonoCode"), kind: "warning", okLabel });
+
+  const onMerge = (method: PrMergeMethod) =>
+    runAction("merge", async () => {
+      const ok = await confirmPr(
+        t("Merge pull request #{number} with {method}?", {
+          number: item.number,
+          method: t(METHOD_LABELS_FOR_CONFIRM[method]),
+        }),
+        t("Merge"),
+      );
+      if (!ok) return;
+      await githubPrMerge(item.projectPath, item.number, method, false);
+    });
+
+  const onToggleState = (close: boolean) =>
+    runAction("state", async () => {
+      if (close) {
+        const ok = await confirmPr(
+          t("Close pull request #{number}?", { number: item.number }),
+          t("Close pull request"),
+        );
+        if (!ok) return;
+      }
+      await githubPrState(item.projectPath, item.number, close);
+    });
+
+  const onSubmitReview = (event: PrReviewEvent) =>
+    runAction("review", async () => {
+      if (!prDetails?.id) throw new Error("Missing pull request id");
+      await githubPrReview(
+        item.projectPath,
+        item.number,
+        prDetails.id,
+        event,
+        "",
+        [],
+      );
+    });
 
   const statusPill = (
     <span
@@ -2004,6 +2115,16 @@ export function InboxDetail({
               </div>
             ) : null}
             <div className="flex flex-wrap items-center gap-2 pt-0.5">
+              {isPr && item.provider === "github" && prDetails ? (
+                <PrActions
+                  details={prDetails}
+                  viewerLogin={repoMeta?.viewerLogin ?? ""}
+                  busy={busyAction}
+                  onSubmitReview={onSubmitReview}
+                  onToggleState={onToggleState}
+                  onMerge={onMerge}
+                />
+              ) : null}
               {onStart && item.kind !== "pr" ? (
                 <>
                   <button
@@ -2090,6 +2211,9 @@ export function InboxDetail({
             </div>
             {startError ? (
               <p className="text-[12px] text-red-400/90">{startError}</p>
+            ) : null}
+            {actionError ? (
+              <p className="text-[12px] text-red-400/90">{actionError}</p>
             ) : null}
           </header>
           {isPr ? (
