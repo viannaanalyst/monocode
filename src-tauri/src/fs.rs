@@ -1073,6 +1073,21 @@ pub async fn git_github_pr_diff(
     .map_err(|e| e.to_string())?
 }
 
+/// Merge a pull request with an explicit method, optionally deleting its branch.
+#[tauri::command]
+pub async fn git_github_pr_merge(
+    cwd: String,
+    number: i64,
+    method: String,
+    delete_branch: bool,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        git_github_pr_merge_for(&expand_home(&cwd), number, &method, delete_branch)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 #[derive(Serialize, Clone, Debug, Default, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct GitBranches {
@@ -3155,6 +3170,41 @@ fn gh_stdout(root: &Path, args: &[&str]) -> Option<String> {
 
 fn gh_checked(root: &Path, args: &[&str]) -> Result<String, String> {
     gh_run(root, args, false)
+}
+
+/// Build `gh pr merge` arguments. Rejects anything `gh` would not accept.
+fn pr_merge_args(number: i64, method: &str, delete_branch: bool) -> Result<Vec<String>, String> {
+    if number <= 0 {
+        return Err("Invalid pull request number".into());
+    }
+    let flag = match method.trim().to_lowercase().as_str() {
+        "squash" => "--squash",
+        "merge" => "--merge",
+        "rebase" => "--rebase",
+        _ => return Err("Unknown merge method".into()),
+    };
+    let mut args = vec![
+        "pr".to_string(),
+        "merge".to_string(),
+        number.to_string(),
+        flag.to_string(),
+    ];
+    if delete_branch {
+        args.push("--delete-branch".into());
+    }
+    Ok(args)
+}
+
+fn git_github_pr_merge_for(
+    root: &Path,
+    number: i64,
+    method: &str,
+    delete_branch: bool,
+) -> Result<(), String> {
+    let args = pr_merge_args(number, method, delete_branch)?;
+    let refs: Vec<&str> = args.iter().map(String::as_str).collect();
+    gh_checked(root, &refs)?;
+    Ok(())
 }
 
 fn gh_run(root: &Path, args: &[&str], allow_empty: bool) -> Result<String, String> {
@@ -5641,6 +5691,24 @@ mod tests {
         std::fs::write(dir.0.join("a.txt"), "gamma\n").unwrap();
         let context = git_staged_context_for(&dir.0).unwrap();
         assert!(context.patch.contains("gamma"));
+    }
+
+    #[test]
+    fn pr_merge_args_builds_method_and_branch_flags() {
+        assert_eq!(
+            pr_merge_args(42, "squash", true).unwrap(),
+            vec!["pr", "merge", "42", "--squash", "--delete-branch"]
+        );
+        assert_eq!(
+            pr_merge_args(7, "merge", false).unwrap(),
+            vec!["pr", "merge", "7", "--merge"]
+        );
+        assert_eq!(
+            pr_merge_args(7, "rebase", true).unwrap(),
+            vec!["pr", "merge", "7", "--rebase", "--delete-branch"]
+        );
+        assert!(pr_merge_args(42, "fast-forward", false).is_err());
+        assert!(pr_merge_args(0, "squash", false).is_err());
     }
 
     #[test]
