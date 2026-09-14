@@ -31,6 +31,7 @@
 :root {
   --motion-reorder-duration: 160ms;
   --motion-feedback-duration: 120ms;
+  --motion-panel-duration: 320ms;
   --motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --theme-hue: 240;
   --theme-saturation: 0%;
@@ -149,6 +150,31 @@ html.has-native-glass:not(.theme-light) #root {
 @media (prefers-reduced-motion: reduce) {
   .tab-motion,
   .tab-motion > button {
+    transition: none;
+  }
+}
+
+.right-panel-shell {
+  overflow: hidden;
+  transition:
+    width var(--motion-panel-duration) var(--motion-ease-out),
+    min-width var(--motion-panel-duration) var(--motion-ease-out),
+    border-color 200ms var(--motion-ease-out);
+}
+
+.right-panel-shell[data-collapsed="true"] {
+  width: 0 !important;
+  min-width: 0 !important;
+  border-left-color: transparent;
+  pointer-events: none;
+}
+
+.right-panel-shell[data-dragging="true"] {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .right-panel-shell {
     transition: none;
   }
 }

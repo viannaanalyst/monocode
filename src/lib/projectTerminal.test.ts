@@ -1,18 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { leaf, newTab, newTerminalFile } from "./layout";
+import { leaf, layoutLeaves, newTab, newTerminalFile } from "./layout";
 import {
   addTerminalToDock,
-  applyDockGridStyle,
   clampDockSize,
   closeTerminalInDock,
   createProjectTerminal,
-  dockGridStyle,
   findProjectTerminal,
   mapProjectTerminal,
   nextDockTerminalTitle,
   patchProjectTerminals,
   projectTerminalFileIds,
   selectDockTerminal,
+  splitDockTerminal,
   splitProjectTerminalsForMove,
   withDockOpen,
   withDockSide,
@@ -58,6 +57,65 @@ describe("addTerminalToDock", () => {
     ]);
     expect(next.pane.activeFileId).toBe(second.id);
     expect(nextDockTerminalTitle(next, "/tmp/a")).toBe("a 3");
+  });
+});
+
+describe("splitDockTerminal", () => {
+  it("opens a new terminal in a column beside the current one", () => {
+    const first = newTerminalFile("/tmp/a", "a");
+    const second = newTerminalFile("/tmp/a", "a 2");
+    const dock = createProjectTerminal("/tmp/a", first);
+    const next = splitDockTerminal(dock, "right", second);
+    expect(next.pane.files.map((file) => file.id)).toEqual([
+      first.id,
+      second.id,
+    ]);
+    expect(next.pane.activeFileId).toBe(second.id);
+    expect(layoutLeaves(next.layout!).map((leaf) => leaf.id)).toEqual([
+      first.id,
+      second.id,
+    ]);
+  });
+
+  it("keeps adding right splits as extra columns", () => {
+    const first = newTerminalFile("/tmp/a", "1");
+    const dock = createProjectTerminal("/tmp/a", first);
+    const two = splitDockTerminal(
+      dock,
+      "right",
+      newTerminalFile("/tmp/a", "2"),
+    );
+    const three = splitDockTerminal(
+      two,
+      "right",
+      newTerminalFile("/tmp/a", "3"),
+    );
+    expect(layoutLeaves(three.layout!).map((leaf) => leaf.id)).toHaveLength(3);
+    expect(three.layout).toMatchObject({ type: "split", dir: "right" });
+  });
+
+  it("splits down from the last terminal", () => {
+    const first = newTerminalFile("/tmp/a", "1");
+    const second = newTerminalFile("/tmp/a", "2");
+    const third = newTerminalFile("/tmp/a", "3");
+    const fourth = newTerminalFile("/tmp/a", "4");
+    const columns = splitDockTerminal(
+      splitDockTerminal(createProjectTerminal("/tmp/a", first), "right", second),
+      "right",
+      third,
+    );
+    const next = splitDockTerminal(columns, "down", fourth);
+    const leaves = layoutLeaves(next.layout!);
+    expect(leaves.map((leaf) => leaf.id)).toEqual([
+      first.id,
+      second.id,
+      third.id,
+      fourth.id,
+    ]);
+    const last = leaves[leaves.length - 1];
+    const above = leaves[leaves.length - 2];
+    expect(last.rect.x).toBe(above.rect.x);
+    expect(last.rect.y).toBeGreaterThan(above.rect.y);
   });
 });
 
@@ -152,26 +210,6 @@ describe("withDockSide", () => {
     const dock = { ...createProjectTerminal("/tmp/a", newTerminalFile("/tmp/a")), size: 200 };
     expect(withDockSide(dock, "top").size).toBe(200);
     expect(withDockSide(dock, "top").side).toBe("top");
-  });
-});
-
-describe("dockGridStyle", () => {
-  it("collapses to a single main area when hidden", () => {
-    expect(dockGridStyle(null, 220).gridTemplateAreas).toBe('"main"');
-  });
-
-  it("places the dock on the requested edge", () => {
-    expect(dockGridStyle("bottom", 220).gridTemplateAreas).toBe('"main" "dock"');
-    expect(dockGridStyle("top", 220).gridTemplateAreas).toBe('"dock" "main"');
-    expect(dockGridStyle("left", 360).gridTemplateAreas).toBe('"dock main"');
-    expect(dockGridStyle("right", 360).gridTemplateAreas).toBe('"main dock"');
-  });
-
-  it("writes the same template onto an element", () => {
-    const el = { style: {} } as unknown as HTMLElement;
-    applyDockGridStyle(el, "left", 300);
-    expect(el.style.gridTemplateAreas).toBe('"dock main"');
-    expect(el.style.gridTemplateColumns).toBe("300px minmax(0, 1fr)");
   });
 });
 

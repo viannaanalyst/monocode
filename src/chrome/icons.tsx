@@ -11,6 +11,7 @@ import AppWindowIcon from "@hugeicons/core-free-icons/AppWindowIcon";
 import Archive02Icon from "@hugeicons/core-free-icons/Archive02Icon";
 import ArrowDown01Icon from "@hugeicons/core-free-icons/ArrowDown01Icon";
 import ArrowExpand01Icon from "@hugeicons/core-free-icons/ArrowExpand01Icon";
+import FullScreenIcon from "@hugeicons/core-free-icons/FullScreenIcon";
 import ArrowLeft01Icon from "@hugeicons/core-free-icons/ArrowLeft01Icon";
 import ArrowRight01Icon from "@hugeicons/core-free-icons/ArrowRight01Icon";
 import ArrowTurnForwardIcon from "@hugeicons/core-free-icons/ArrowTurnForwardIcon";
@@ -63,6 +64,8 @@ import KeyboardIcon from "@hugeicons/core-free-icons/KeyboardIcon";
 import LayoutAlignRightIcon from "@hugeicons/core-free-icons/LayoutAlignRightIcon";
 import LayoutBottomIcon from "@hugeicons/core-free-icons/LayoutBottomIcon";
 import LayoutTopIcon from "@hugeicons/core-free-icons/LayoutTopIcon";
+import LayoutTwoColumnIcon from "@hugeicons/core-free-icons/LayoutTwoColumnIcon";
+import LayoutTwoRowIcon from "@hugeicons/core-free-icons/LayoutTwoRowIcon";
 import LeftToRightListBulletIcon from "@hugeicons/core-free-icons/LeftToRightListBulletIcon";
 import ListEndIcon from "@hugeicons/core-free-icons/ListEndIcon";
 import LinkSquare02Icon from "@hugeicons/core-free-icons/LinkSquare02Icon";
@@ -88,6 +91,7 @@ import RotateCcwIcon from "@hugeicons/core-free-icons/RotateCcwIcon";
 import Search01Icon from "@hugeicons/core-free-icons/Search01Icon";
 import Settings01Icon from "@hugeicons/core-free-icons/Settings01Icon";
 import Share02Icon from "@hugeicons/core-free-icons/Share02Icon";
+import SmartPhone01Icon from "@hugeicons/core-free-icons/SmartPhone01Icon";
 import SidebarRight01Icon from "@hugeicons/core-free-icons/SidebarRight01Icon";
 import SparklesIcon from "@hugeicons/core-free-icons/SparklesIcon";
 import SquareIcon from "@hugeicons/core-free-icons/SquareIcon";
@@ -152,6 +156,14 @@ const UnfoldVerticalIcon: IconSvgElement = [
   ...foldDashes,
   ["path", { d: "M7 7L12 2L17 7", ...stroke, key: "4" }],
   ["path", { d: "M7 17L12 22L17 17", ...stroke, key: "5" }],
+];
+
+/** Four inner corners — Synara "restore panel" (opposite of FullScreen). */
+const RestorePanelIcon: IconSvgElement = [
+  ["path", { d: "M9 4v5H4", ...stroke, key: "0" }],
+  ["path", { d: "M15 4v5h5", ...stroke, key: "1" }],
+  ["path", { d: "M4 15h5v5", ...stroke, key: "2" }],
+  ["path", { d: "M20 15h-5v5", ...stroke, key: "3" }],
 ];
 
 export const AlertCircle = wrap(AlertCircleIcon, "AlertCircle");
@@ -222,6 +234,8 @@ export const LoaderCircle = wrap(Loading03Icon, "LoaderCircle");
 export const Lock = wrap(SquareLock02Icon, "Lock");
 export const LockOpen = wrap(SquareUnlock01Icon, "LockOpen");
 export const Maximize2 = wrap(ArrowExpand01Icon, "Maximize2");
+export const ExpandPanel = wrap(FullScreenIcon, "ExpandPanel");
+export const RestorePanel = wrap(RestorePanelIcon, "RestorePanel");
 export const MessageMultiple = wrap(MessageMultiple01Icon, "MessageMultiple");
 export const MessageSquare = wrap(Comment01Icon, "MessageSquare");
 export const MessageSquarePlus = wrap(CommentAdd01Icon, "MessageSquarePlus");
@@ -234,6 +248,8 @@ export const PanelBottom = wrap(LayoutBottomIcon, "PanelBottom");
 export const PanelLeft = wrap(LayoutAlignRightIcon, "PanelLeft");
 export const PanelRight = wrap(SidebarRight01Icon, "PanelRight");
 export const PanelTop = wrap(LayoutTopIcon, "PanelTop");
+export const LayoutTwoColumn = wrap(LayoutTwoColumnIcon, "LayoutTwoColumn");
+export const LayoutTwoRow = wrap(LayoutTwoRowIcon, "LayoutTwoRow");
 export const PenLine = wrap(PencilEdit01Icon, "PenLine");
 export const Pencil = wrap(PencilEdit02Icon, "Pencil");
 export const Pin = wrap(PinIcon, "Pin");
@@ -252,6 +268,7 @@ export const SlidersHorizontal = wrap(
   PreferenceHorizontalIcon,
   "SlidersHorizontal",
 );
+export const SmartPhone = wrap(SmartPhone01Icon, "SmartPhone");
 export const Sparkles = wrap(SparklesIcon, "Sparkles");
 export const Square = wrap(SquareIcon, "Square");
 export const SquarePlus = wrap(AddSquareIcon, "SquarePlus");

@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Preview — abrir e fechar o painel</title>
+    <style>
+      :root {
+        --motion-panel-duration: 320ms;
+        --motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+        --bg: #111214;
+        --bg-2: #18191c;
+        --line: rgba(255, 255, 255, 0.08);
+        --text: rgba(255, 255, 255, 0.82);
+        --muted: rgba(255, 255, 255, 0.45);
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; margin: 0; }
+      body {
+        font: 13px/1.4 ui-sans-serif, system-ui, sans-serif;
+        background: #0c0d0f;
+        color: var(--text);
+        display: grid;
+        place-items: center;
+      }
+      .stage {
+        width: min(960px, calc(100vw - 32px));
+        height: min(560px, calc(100vh - 120px));
+        display: flex;
+        flex-direction: column;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        overflow: hidden;
+        background: var(--bg);
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+      }
+      .bar {
+        display: flex;
+        height: 40px;
+        border-bottom: 1px solid var(--line);
+        flex-shrink: 0;
+      }
+      .bar-chat {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        padding: 0 12px;
+        color: var(--muted);
+      }
+      .bar-panel {
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 8px;
+        border-left: 1px solid var(--line);
+        width: 42%;
+        min-width: 0;
+        transition:
+          width var(--motion-panel-duration) var(--motion-ease-out),
+          border-color 200ms var(--motion-ease-out);
+      }
+      .pill {
+        border-radius: 999px;
+        padding: 4px 10px;
+        background: rgba(255, 255, 255, 0.08);
+        white-space: nowrap;
+      }
+      .icons { margin-left: auto; color: var(--muted); letter-spacing: 8px; }
+      .body { display: flex; flex: 1; min-height: 0; }
+      .chat {
+        flex: 1;
+        min-width: 0;
+        background:
+          radial-gradient(1200px 400px at 20% 0%, rgba(80, 120, 255, 0.07), transparent);
+        padding: 28px;
+        color: var(--muted);
+      }
+      .panel {
+        width: 42%;
+        min-width: 0;
+        overflow: hidden;
+        border-left: 1px solid var(--line);
+        background: var(--bg-2);
+        display: grid;
+        place-items: center;
+        gap: 8px;
+        transition:
+          width var(--motion-panel-duration) var(--motion-ease-out),
+          border-color 200ms var(--motion-ease-out);
+      }
+      .choice {
+        width: 11.5rem;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 8px 14px;
+        color: var(--muted);
+      }
+      .stage.is-closed .bar-panel,
+      .stage.is-closed .panel {
+        width: 0;
+        border-left-color: transparent;
+      }
+      .actions {
+        margin-top: 16px;
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+      }
+      button {
+        appearance: none;
+        border: 1px solid var(--line);
+        background: #1c1d21;
+        color: var(--text);
+        border-radius: 8px;
+        padding: 8px 14px;
+        cursor: pointer;
+      }
+      button[aria-pressed="true"] { background: rgba(255, 255, 255, 0.08); }
+      @media (prefers-reduced-motion: reduce) {
+        .bar-panel, .panel { transition: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <div>
+      <div class="stage" id="stage">
+        <header class="bar">
+          <div class="bar-chat">Nova sessão</div>
+          <div class="bar-panel">
+            <span class="pill">Terminal</span>
+            <span class="icons">+  ⌗  ▣</span>
+          </div>
+        </header>
+        <div class="body">
+          <section class="chat">Chat</section>
+          <aside class="panel">
+            <div class="choice">Terminal</div>
+            <div class="choice">Navegador</div>
+            <div class="choice">Explorador</div>
+          </aside>
+        </div>
+      </div>
+      <div class="actions">
+        <button type="button" id="open" aria-pressed="true">Abrir painel</button>
+        <button type="button" id="close" aria-pressed="false">Fechar painel</button>
+      </div>
+    </div>
+    <script>
+      const stage = document.getElementById("stage");
+      const open = document.getElementById("open");
+      const close = document.getElementById("close");
+      const setOpen = (value) => {
+        stage.classList.toggle("is-closed", !value);
+        open.setAttribute("aria-pressed", String(value));
+        close.setAttribute("aria-pressed", String(!value));
+      };
+      open.addEventListener("click", () => setOpen(true));
+      close.addEventListener("click", () => setOpen(false));
+    </script>
+  </body>
+</html>

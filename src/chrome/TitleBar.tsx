@@ -71,6 +71,11 @@ type Props = {
   panelsOpen?: boolean;
   recents?: RecentProject[];
   onSelectProject?: (path: string) => void;
+  /** Right-panel type tabs, aligned with the panel below. */
+  panelChrome?: ReactNode;
+  panelChromeWidth?: number;
+  panelChromeCollapsed?: boolean;
+  panelExpanded?: boolean;
 };
 
 function sessionMeta(tab: Tab): string {
@@ -313,6 +318,10 @@ function TitleBarComponent({
   panelsOpen = false,
   recents = [],
   onSelectProject,
+  panelChrome,
+  panelChromeWidth,
+  panelChromeCollapsed = false,
+  panelExpanded = false,
 }: Props) {
   const activeTab = useMemo(
     () => tabs.find((t) => t.id === activeId),
@@ -363,7 +372,7 @@ function TitleBarComponent({
             <StickyNote className="size-3.5" strokeWidth={1.75} />
           </IconButton>
         ) : null}
-        {!projectless && onOpenPanels ? (
+        {!projectless && onOpenPanels && !panelChrome ? (
           <button
             type="button"
             title={t("Panels")}
@@ -386,7 +395,6 @@ function TitleBarComponent({
           </IconButton>
         ) : null}
       </div>
-      {!IS_MAC ? <WindowControls /> : null}
     </div>
   );
 
@@ -427,9 +435,9 @@ function TitleBarComponent({
       ) : null}
 
       <div
-        className={`flex min-w-0 flex-1 items-stretch${
+        className={`flex min-w-0 items-stretch${
           showProjectButton ? " border-l border-content/10" : ""
-        }`}
+        } ${panelExpanded && panelChrome ? "hidden" : "flex-1"}`}
       >
         <div className="flex min-w-0 flex-1 items-center gap-2 px-2">
           {!projectless && activeTab ? (
@@ -456,6 +464,25 @@ function TitleBarComponent({
         ) : null}
         {trailingControls}
       </div>
+      {panelChrome ? (
+        <div
+          data-tauri-drag-region="false"
+          data-collapsed={panelChromeCollapsed && !panelExpanded ? "true" : "false"}
+          className={`right-panel-shell flex h-full shrink-0 items-stretch border-l border-content/10 ${
+            panelExpanded ? "min-w-0 flex-1" : ""
+          }`}
+          style={
+            panelExpanded || (panelChromeWidth == null && !panelChromeCollapsed)
+              ? undefined
+              : {
+                  width: panelChromeCollapsed ? 0 : panelChromeWidth,
+                }
+          }
+        >
+          {panelChrome}
+        </div>
+      ) : null}
+      {!IS_MAC ? <WindowControls /> : null}
     </header>
   );
 }

@@ -555,6 +555,7 @@ export function Composer({
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [fileDrag, setFileDrag] = useState(false);
   const [plusOpen, setPlusOpen] = useState(false);
+  const [plusWidth, setPlusWidth] = useState<number | undefined>(undefined);
   const [planSelected, setPlanSelected] = useState(false);
   const [orchestrationSelected, setOrchestrationSelected] = useState(false);
   const [slash, setSlash] = useState<SlashToken | null>(null);
@@ -1548,16 +1549,21 @@ export function Composer({
                 label={t("Add files or choose a mode")}
                 tooltip={false}
                 active={plusOpen}
-                onClick={() => setPlusOpen((open) => !open)}
+                onClick={() => {
+                  setPlusWidth(
+                    boxRef.current?.getBoundingClientRect().width ?? undefined,
+                  );
+                  setPlusOpen((open) => !open);
+                }}
               >
                 <Plus className="size-3.5" strokeWidth={1.5} />
               </ToolButton>
               {plusOpen ? (
                 <Popover
-                  anchor={plusRef}
+                  anchor={boxRef}
                   side="top"
                   align="start"
-                  width={250}
+                  width={plusWidth}
                   onDismiss={() => setPlusOpen(false)}
                   data-composer-plus
                   className="p-1.5"

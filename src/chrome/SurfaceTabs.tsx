@@ -45,6 +45,11 @@ type Props = {
   onNewTab?: () => void;
   label?: string;
   trailing?: ReactNode;
+  /** Dense tab strip for narrow panels: fit-content tabs, tighter rows. */
+  compact?: boolean;
+  /** Rounded pill tabs (Synara-style terminal chrome). */
+  pills?: boolean;
+  newTabLabel?: string;
 };
 
 export type SurfaceTabPresentation = {
@@ -216,6 +221,9 @@ export function SurfaceTabs({
   onNewTab,
   label = t("Open files"),
   trailing,
+  compact = false,
+  pills = false,
+  newTabLabel = t("New tab"),
 }: Props) {
   const lockOverscroll = useLockOverscroll<HTMLDivElement>();
   const activeTabRef = useRef<HTMLDivElement | null>(null);
@@ -280,8 +288,10 @@ export function SurfaceTabs({
   }, [activeFileId, sortable.draggingId]);
 
   return (
-    <div className={`flex min-w-0 shrink-0 border-b border-content/10 bg-content/2 ${
-      browserOnly ? "h-8" : "h-9"
+    <div className={`flex min-w-0 shrink-0 border-b border-content/10 ${
+      pills ? "h-9 bg-transparent px-1.5" : "bg-content/2"
+    } ${
+      !pills && (compact || browserOnly) ? "h-8" : pills ? "" : "h-9"
     }`}>
       <div
         ref={lockOverscroll}
@@ -325,12 +335,20 @@ export function SurfaceTabs({
               sortable.setItemRef(file.id, el);
               if (el && file.id === activeFileId) activeTabRef.current = el;
             }}
-            className={`reorder-item tab-motion group relative flex shrink items-stretch border-r border-content/10 ${
-              browser
-                ? "w-max min-w-[4.5rem] max-w-[8.5rem]"
-                : "w-52 min-w-28 touch-none"
-            } ${
-              active ? "bg-content/8" : "hover:bg-content/5"
+            className={`reorder-item tab-motion group relative flex shrink items-stretch ${
+              pills
+                ? `mx-0.5 my-auto h-7 w-max max-w-[11rem] rounded-full ${
+                    active ? "bg-content/[0.08]" : "hover:bg-content/5"
+                  }`
+                : `border-r border-content/10 ${
+                    browser
+                      ? "w-max min-w-[4.5rem] max-w-[8.5rem]"
+                      : compact
+                        ? "w-max min-w-0 max-w-[11rem] touch-none"
+                        : "w-52 min-w-28 touch-none"
+                  } ${
+                    active ? "bg-content/8" : "hover:bg-content/5"
+                  }`
             } ${
               tabDraggable ? "cursor-grab touch-none active:cursor-grabbing" : "cursor-pointer"
             }`}
@@ -373,8 +391,16 @@ export function SurfaceTabs({
                 if (sortable.consumeClick()) return;
                 onSelectFile(file.id);
               }}
-              className={`flex min-w-0 flex-1 items-center gap-1.5 text-left text-[12px] ${
-                browser ? "px-1.5 pr-5" : "px-3 pr-8"
+              className={`flex min-w-0 flex-1 items-center gap-1.5 text-left ${
+                pills || compact ? "text-[12px]" : "text-[12px]"
+              } ${
+                pills
+                  ? "px-2.5"
+                  : browser
+                    ? "px-1.5 pr-5"
+                    : compact
+                      ? "px-2 pr-6"
+                      : "px-3 pr-8"
               } ${
                 tabDraggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
               } ${
@@ -382,7 +408,14 @@ export function SurfaceTabs({
               }`}
             >
               {terminal ? (
-                <Terminal className="size-3.5 shrink-0" strokeWidth={1.75} />
+                <Terminal
+                  className={`size-3.5 shrink-0 ${pills ? "group-hover:invisible" : ""}`}
+                  strokeWidth={1.75}
+                />
+              ) : pills ? (
+                <span className="grid size-3.5 shrink-0 place-items-center group-hover:invisible">
+                  <FileTypeIcon name={iconName} isDir={false} size={14} />
+                </span>
               ) : agent ? (
                 <HarnessIcon
                   harness={agent.harness}
@@ -414,6 +447,7 @@ export function SurfaceTabs({
                 />
               ) : null}
             </button>
+            {pills ? (
             <button
               type="button"
               title={t("Close {name}", { name: label })}
@@ -424,23 +458,47 @@ export function SurfaceTabs({
                 event.stopPropagation();
                 onCloseFile(file.id);
               }}
-              className={`absolute right-1.5 top-1/2 grid size-5 -translate-y-1/2 cursor-pointer place-items-center rounded text-content/50 hover:bg-content/10 hover:text-content [&_*]:pointer-events-none ${
+              className="invisible absolute top-1/2 left-2.5 grid size-3.5 -translate-y-1/2 cursor-pointer place-items-center rounded-full text-content/70 hover:text-content group-hover:visible [&_*]:pointer-events-none"
+            >
+              <X className="size-3" strokeWidth={1.75} />
+            </button>
+            ) : (
+            <button
+              type="button"
+              title={t("Close {name}", { name: label })}
+              aria-label={t("Close {name}", { name: label })}
+              data-no-drag
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation();
+                onCloseFile(file.id);
+              }}
+              className={`absolute top-1/2 grid -translate-y-1/2 cursor-pointer place-items-center rounded text-content/50 hover:bg-content/10 hover:text-content [&_*]:pointer-events-none ${
+                compact ? "right-1 size-4" : "right-1.5 size-5"
+              } ${
                 active ? "opacity-100" : "opacity-0 group-hover:opacity-100"
               }`}
             >
               <X className="size-3" strokeWidth={1.75} />
             </button>
+            )}
           </div>
         );
       })}
       {onNewTab ? (
         <button
           type="button"
-          title={t("New tab")}
-          aria-label={t("New tab")}
+          title={newTabLabel}
+          aria-label={newTabLabel}
           data-no-drag
           onClick={onNewTab}
-          className="grid h-full w-8 shrink-0 cursor-pointer place-items-center text-content/45 hover:bg-content/8 hover:text-content [&_*]:pointer-events-none"
+          className={`grid shrink-0 cursor-pointer place-items-center text-content/45 hover:text-content [&_*]:pointer-events-none ${
+            pills
+              ? "mx-0.5 size-7 rounded-full hover:bg-content/8"
+              : compact
+                ? "h-full w-7 hover:bg-content/8"
+                : "h-full w-8 hover:bg-content/8"
+          }`}
         >
           <Plus className="size-3.5" strokeWidth={1.75} />
         </button>

@@ -13,6 +13,7 @@ const BODY_KEY = "monocode.bodyGlass";
 const SCHEME_KEY = "monocode.colorScheme";
 const SIDEBAR_TAB_ORDER_KEY = "monocode.sidebarTabOrder";
 const PROJECT_RAIL_WIDTH_KEY = "monocode.projectRailWidth";
+const RIGHT_PANEL_WIDTH_KEY = "monocode.rightPanelWidth";
 const TRANSCRIPT_LAYOUT_KEY = "monocode.transcriptLayout";
 const TRANSCRIPT_ANCHOR_KEY = "monocode.transcriptAnchor";
 const CHAT_BACKGROUND_PATH_KEY = "monocode.chatBackgroundPath";
@@ -90,6 +91,20 @@ export const SIDEBAR_BLUR_DEFAULT = 24;
 export const PROJECT_RAIL_WIDTH_MIN = 180;
 export const PROJECT_RAIL_WIDTH_MAX = 360;
 export const PROJECT_RAIL_WIDTH_DEFAULT = 200;
+
+export const RIGHT_PANEL_WIDTH_MIN = 280;
+export const RIGHT_PANEL_WIDTH_MAX = 1600;
+
+export function defaultRightPanelWidth(available?: number): number {
+  const space =
+    available ??
+    (typeof window === "undefined" ? 1280 : window.innerWidth);
+  return Math.max(RIGHT_PANEL_WIDTH_MIN, Math.floor(space / 2));
+}
+
+export function hasStoredRightPanelWidth(): boolean {
+  return readNumber(RIGHT_PANEL_WIDTH_KEY) != null;
+}
 
 export const BODY_GLASS_DEFAULT = true;
 
@@ -587,6 +602,21 @@ export function saveProjectRailWidth(value: number) {
   writeNumber(
     PROJECT_RAIL_WIDTH_KEY,
     Math.round(clamp(value, PROJECT_RAIL_WIDTH_MIN, PROJECT_RAIL_WIDTH_MAX)),
+  );
+}
+
+export function loadRightPanelWidth(available?: number): number {
+  const stored = readNumber(RIGHT_PANEL_WIDTH_KEY);
+  if (stored == null) return defaultRightPanelWidth(available);
+  return Math.round(
+    clamp(stored, RIGHT_PANEL_WIDTH_MIN, RIGHT_PANEL_WIDTH_MAX),
+  );
+}
+
+export function saveRightPanelWidth(value: number) {
+  writeNumber(
+    RIGHT_PANEL_WIDTH_KEY,
+    Math.round(clamp(value, RIGHT_PANEL_WIDTH_MIN, RIGHT_PANEL_WIDTH_MAX)),
   );
 }
 

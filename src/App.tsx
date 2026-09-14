@@ -39,22 +39,35 @@ import { Sidebar } from "./chrome/Sidebar";
 import { ApprovalToasts } from "./chrome/ApprovalToasts";
 import { BrowserAgentBridge } from "./chrome/BrowserAgentBridge";
 import { WhatsNewDialog } from "./chrome/WhatsNewDialog";
-import { TitleBar, type Tab as TitleTab } from "./chrome/TitleBar";
+import {
+  TitleBar,
+  type Tab as TitleTab,
+} from "./chrome/TitleBar";
 import { TooltipLayer } from "./chrome/Tooltip";
 import { MenuBar } from "./chrome/MenuBar";
 import { FilePicker } from "./chrome/FilePicker";
 import { FileTree } from "./chrome/FileTree";
 import { SourceControl } from "./chrome/SourceControl";
-import { Folder, Globe, PanelLeft, Terminal } from "./chrome/icons";
+import { RightDockTypeBar, type RightDockType } from "./chrome/RightDockTypeBar";
+import {
+  RightPanelPicker,
+  RightPanelTypeMenu,
+} from "./chrome/RightPanelPicker";
 import { UsageFooter } from "./chrome/UsageFooter";
 import { ImportSessionDialog } from "./chrome/ImportSessionDialog";
 import { useProjectBranches } from "./hooks/useProjectBranches";
 import { useGitFileStatuses } from "./hooks/useGitFileStatuses";
 import { useInboxActivity } from "./hooks/useInboxUnseen";
+import { useDragResize } from "./hooks/useDragResize";
 import {
+  defaultRightPanelWidth,
+  hasStoredRightPanelWidth,
   loadProjectRailOpen,
+  loadRightPanelWidth,
   loadSidebarOpen,
   loadSidebarTabOrder,
+  RIGHT_PANEL_WIDTH_MIN,
+  saveRightPanelWidth,
   saveSidebarOpen,
   type SidebarTabId,
 } from "./lib/appearance";
@@ -136,19 +149,16 @@ import { releaseNotesForVersion, releaseNotesTitle } from "./lib/releaseNotes";
 import { mergeOrderedSubset, orderByIds } from "./lib/reorder";
 import {
   addTerminalToDock,
-  applyDockGridStyle,
   closeTerminalInDock,
   createProjectTerminal,
   findProjectTerminal,
+  keepOnlyDockTerminal,
   mapProjectTerminal,
   nextDockTerminalTitle,
   patchProjectTerminals,
   reorderDockTerminals,
   selectDockTerminal,
-  withDockOpen,
-  withDockSide,
-  withDockSize,
-  type DockSide,
+  splitDockTerminal,
   type ProjectTerminalDock as ProjectTerminal,
 } from "./lib/projectTerminal";
 import {
@@ -216,7 +226,6 @@ import {
   wrapHandoffPrompt,
 } from "./lib/handoff";
 import { requestOutgoingHandoff } from "./lib/handoffTurn";
-import { writePty } from "./lib/pty";
 import { isEditTool } from "./lib/harness/preview";
 import {
   beginSessionTurn,
@@ -388,6 +397,7 @@ import { PaneTree } from "./surfaces/PaneTree";
 import { SessionPane } from "./surfaces/SessionPane";
 import { SessionSurface } from "./surfaces/SessionSurface";
 import { ProjectTerminalDock } from "./surfaces/ProjectTerminalDock";
+import { BrowserView } from "./surfaces/BrowserView";
 import { SearchView } from "./surfaces/SearchView";
 import { SettingsView, type SettingsAnchor } from "./surfaces/SettingsView";
 import type { ConnectableInboxSource } from "./lib/inboxFilters";
@@ -709,16 +719,140 @@ export default function App({
   const [sidebarOpen, setSidebarOpen] = useState(loadSidebarOpen);
   const tabCloseScope = "project" as const;
   const currentProjectDock = findProjectTerminal(projectTerminals, projectCwd);
-  const dockVisible = !!currentProjectDock?.open;
   const [sidebarTab, setSidebarTab] = useState<SidebarTabId>(() => {
     const first = loadSidebarTabOrder()[0];
     return first && first !== "files" && first !== "changes"
       ? first
       : "sessions";
   });
-  const [rightDock, setRightDock] = useState<
-    "explorer" | "changes" | "panels" | null
-  >(null);
+  type RightDockKind = "picker" | RightDockType;
+  const [rightDock, setRightDock] = useState<RightDockKind | null>(null);
+  const [rightPanelClosing, setRightPanelClosing] = useState(false);
+  const [rightPanelRevealed, setRightPanelRevealed] = useState(false);
+  const rightPanelClosingRef = useRef(false);
+  const [rightDockTabs, setRightDockTabs] = useState<RightDockType[]>([]);
+  const rightDockTabsRef = useRef(rightDockTabs);
+  rightDockTabsRef.current = rightDockTabs;
+  const lastRightDockRef = useRef<RightDockKind>("picker");
+  const [panelBrowser, setPanelBrowser] = useState<FilePaneTab | null>(null);
+  const [panelTypeMenu, setPanelTypeMenu] = useState(false);
+  const panelAddRef = useRef<HTMLDivElement>(null);
+  const mainSplitRef = useRef<HTMLDivElement>(null);
+  const rightPanelResize = useDragResize({
+    direction: "left",
+    min: RIGHT_PANEL_WIDTH_MIN,
+    max: () => {
+      const available =
+        mainSplitRef.current?.clientWidth ?? window.innerWidth;
+      return Math.max(RIGHT_PANEL_WIDTH_MIN, available - 280);
+    },
+    defaultWidth: defaultRightPanelWidth(mainSplitRef.current?.clientWidth),
+    initial: loadRightPanelWidth(mainSplitRef.current?.clientWidth),
+    onCommit: saveRightPanelWidth,
+  });
+  const panelOpen = rightDock != null;
+  const rightPanelRevealedOpen =
+    !!rightDock && rightPanelRevealed && !rightPanelClosing;
+  const [rightPanelExpanded, setRightPanelExpanded] = useState(false);
+  useLayoutEffect(() => {
+    if (!panelOpen || rightPanelExpanded) return;
+    const available = mainSplitRef.current?.clientWidth;
+    if (!available) return;
+    const max = Math.max(RIGHT_PANEL_WIDTH_MIN, available - 280);
+    const next = hasStoredRightPanelWidth()
+      ? Math.min(loadRightPanelWidth(available), max)
+      : Math.min(Math.floor(available / 2), max);
+    rightPanelResize.setWidth(next);
+    // Only snap when the panel opens; dragging commits via onCommit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [panelOpen]);
+  const showRightDock = useCallback((kind: RightDockType) => {
+    lastRightDockRef.current = kind;
+    rightPanelClosingRef.current = false;
+    setRightPanelClosing(false);
+    setRightDockTabs((tabs) => (tabs.includes(kind) ? tabs : [...tabs, kind]));
+    setRightDock(kind);
+  }, []);
+  const closeRightDockType = useCallback((kind: RightDockType) => {
+    setRightDockTabs((tabs) => {
+      const next = tabs.filter((tab) => tab !== kind);
+      setRightDock((current) => {
+        if (current === kind) return next[0] ?? "picker";
+        if (current && next.length === 0) return "picker";
+        return current;
+      });
+      return next;
+    });
+  }, []);
+  const toggleRightDock = useCallback(() => {
+    setPanelTypeMenu(false);
+    setRightDock((dock) => {
+      if (dock) {
+        if (rightPanelClosingRef.current) {
+          rightPanelClosingRef.current = false;
+          setRightPanelClosing(false);
+          setRightPanelRevealed(true);
+          return dock;
+        }
+        rightPanelClosingRef.current = true;
+        setRightPanelExpanded(false);
+        setRightPanelClosing(true);
+        setRightPanelRevealed(false);
+        return dock;
+      }
+      rightPanelClosingRef.current = false;
+      setRightPanelClosing(false);
+      setRightPanelRevealed(false);
+      return lastRightDockRef.current ?? "picker";
+    });
+  }, []);
+  useLayoutEffect(() => {
+    if (!rightDock || rightPanelClosing) return;
+    let cancelled = false;
+    const outer = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (!cancelled) setRightPanelRevealed(true);
+      });
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(outer);
+    };
+  }, [rightDock, rightPanelClosing]);
+  useEffect(() => {
+    if (!rightPanelClosing) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const ms = reduce ? 0 : 320;
+    const id = window.setTimeout(() => {
+      rightPanelClosingRef.current = false;
+      setRightDock(null);
+      setRightPanelClosing(false);
+      setPanelTypeMenu(false);
+    }, ms);
+    return () => window.clearTimeout(id);
+  }, [rightPanelClosing]);
+  const restorePanelWidthRef = useRef<number | null>(null);
+  const toggleRightPanelExpanded = useCallback(() => {
+    if (rightPanelExpanded) {
+      const available = mainSplitRef.current?.clientWidth ?? window.innerWidth;
+      const restore =
+        restorePanelWidthRef.current ?? loadRightPanelWidth(available);
+      setRightPanelExpanded(false);
+      restorePanelWidthRef.current = null;
+      queueMicrotask(() => rightPanelResize.setWidth(restore));
+      return;
+    }
+    restorePanelWidthRef.current = rightPanelResize.width;
+    setRightPanelExpanded(true);
+  }, [rightPanelExpanded, rightPanelResize]);
+  useEffect(() => {
+    if (rightDock) return;
+    if (rightPanelExpanded && restorePanelWidthRef.current != null) {
+      saveRightPanelWidth(restorePanelWidthRef.current);
+    }
+    setRightPanelExpanded(false);
+    restorePanelWidthRef.current = null;
+  }, [rightDock, rightPanelExpanded]);
   const [filesSearchOpen, setFilesSearchOpen] = useState(false);
   const [searchFocusToken, setSearchFocusToken] = useState(0);
   const [searchViewOpen, setSearchViewOpen] = useState(false);
@@ -1152,14 +1286,14 @@ export default function App({
   const runningTerminalOpen = useMemo(() => {
     const ids = new Set(runningTerminals.map((terminal) => terminal.id));
     if (
-      currentProjectDock?.open &&
-      currentProjectDock.pane.files.some((file) => ids.has(file.id))
+      rightDock === "terminal" &&
+      currentProjectDock?.pane.files.some((file) => ids.has(file.id))
     ) {
       return true;
     }
     const focused = activeTab ? focusedFileTab(activeTab) : undefined;
     return !!focused && ids.has(focused.id);
-  }, [activeTab, currentProjectDock, runningTerminals]);
+  }, [activeTab, currentProjectDock, rightDock, runningTerminals]);
 
   const nextApprovalSessionIds = useMemo(() => {
     const ids = new Set<string>();
@@ -1899,7 +2033,7 @@ export default function App({
   }, []);
 
   const openProjectTerminal = useCallback(
-    (cwd: string) => {
+    (cwd: string, fromFileId?: string) => {
       const workdir = cwd || projectCwdRef.current;
       const projectPath = projectCwdRef.current;
       if (!looksLikeProject(projectPath)) return false;
@@ -1913,32 +2047,14 @@ export default function App({
           return [...prev, createProjectTerminal(projectPath, file)];
         }
         return mapProjectTerminal(prev, projectPath, (dock) =>
-          addTerminalToDock(dock, file),
+          addTerminalToDock(dock, file, fromFileId),
         );
       });
+      showRightDock("terminal");
       focusProjectTerminal();
       return true;
     },
-    [focusProjectTerminal],
-  );
-
-  const onRunProjectScript = useCallback(
-    (command: string) => {
-      const projectPath = projectCwdRef.current;
-      if (!looksLikeProject(projectPath) || !command.trim()) return;
-      openProjectTerminal(projectPath);
-      // Let the dock mount and the PTY spawn before typing the command.
-      window.setTimeout(() => {
-        const dock = findProjectTerminal(
-          projectTerminalsRef.current,
-          projectPath,
-        );
-        const id = dock?.pane.activeFileId;
-        if (!id) return;
-        void writePty(id, `${command}\r`).catch(() => undefined);
-      }, 400);
-    },
-    [openProjectTerminal],
+    [focusProjectTerminal, showRightDock],
   );
 
   const onOpenTerminal = useCallback(
@@ -1991,18 +2107,18 @@ export default function App({
   const onShowProjectTerminal = useCallback(() => {
     const dock = findProjectTerminal(projectTerminalsRef.current, projectCwd);
     if (dock && dock.pane.files.length > 0) {
-      if (!dock.open) {
-        setProjectTerminals((prev) =>
-          mapProjectTerminal(prev, projectCwd, (entry) =>
-            withDockOpen(entry, true),
-          ),
-        );
-      }
+      showRightDock("terminal");
       focusProjectTerminal();
       return;
     }
     onOpenTerminal(active?.cwd ?? projectCwd);
-  }, [active?.cwd, focusProjectTerminal, onOpenTerminal, projectCwd]);
+  }, [
+    active?.cwd,
+    focusProjectTerminal,
+    onOpenTerminal,
+    projectCwd,
+    showRightDock,
+  ]);
 
   const onNewTerminalInSession = useCallback(
     (sessionId: string) => {
@@ -2019,52 +2135,27 @@ export default function App({
   );
 
   const onToggleProjectTerminal = useCallback(() => {
+    if (rightDock === "terminal") {
+      setRightDock(null);
+      setProjectTerminalFocused(false);
+      return;
+    }
     if (!looksLikeProject(projectCwd)) return;
     const dock = findProjectTerminal(projectTerminalsRef.current, projectCwd);
-    if (!dock) {
+    if (!dock || dock.pane.files.length === 0) {
       openProjectTerminal(active?.cwd ?? projectCwd);
       return;
     }
-    const nextOpen = !dock.open;
-    setProjectTerminals((prev) =>
-      mapProjectTerminal(prev, projectCwd, (entry) =>
-        withDockOpen(entry, nextOpen),
-      ),
-    );
-    if (nextOpen) focusProjectTerminal();
-    else setProjectTerminalFocused(false);
-  }, [active?.cwd, focusProjectTerminal, openProjectTerminal, projectCwd]);
-
-  const onHideProjectTerminal = useCallback(() => {
-    setProjectTerminals((prev) =>
-      mapProjectTerminal(prev, projectCwdRef.current, (dock) =>
-        withDockOpen(dock, false),
-      ),
-    );
-    setProjectTerminalFocused(false);
-  }, []);
-
-  const onProjectTerminalSide = useCallback((side: DockSide) => {
-    setProjectTerminals((prev) =>
-      mapProjectTerminal(prev, projectCwdRef.current, (dock) =>
-        withDockSide(dock, side, {
-          width: window.innerWidth,
-          height: window.innerHeight,
-        }),
-      ),
-    );
-  }, []);
-
-  const onProjectTerminalSize = useCallback((size: number) => {
-    setProjectTerminals((prev) =>
-      mapProjectTerminal(prev, projectCwdRef.current, (dock) =>
-        withDockSize(dock, size, {
-          width: window.innerWidth,
-          height: window.innerHeight,
-        }),
-      ),
-    );
-  }, []);
+    showRightDock("terminal");
+    focusProjectTerminal();
+  }, [
+    active?.cwd,
+    focusProjectTerminal,
+    openProjectTerminal,
+    projectCwd,
+    rightDock,
+    showRightDock,
+  ]);
 
   const onSelectProjectTerminal = useCallback(
     (fileId: string) => {
@@ -2076,6 +2167,46 @@ export default function App({
       focusProjectTerminal();
     },
     [focusProjectTerminal],
+  );
+
+  const onSplitProjectTerminal = useCallback(
+    (dir: SplitDir, fromFileId: string) => {
+      const workdir = active?.cwd ?? projectCwdRef.current;
+      const projectPath = projectCwdRef.current;
+      if (!looksLikeProject(projectPath)) return;
+      setProjectTerminals((prev) => {
+        const existing = findProjectTerminal(prev, projectPath);
+        const file = newTerminalFile(
+          workdir,
+          existing ? nextDockTerminalTitle(existing, workdir) : undefined,
+        );
+        if (!existing) {
+          return [...prev, createProjectTerminal(projectPath, file)];
+        }
+        return mapProjectTerminal(prev, projectPath, (dock) =>
+          splitDockTerminal(dock, dir, file, fromFileId),
+        );
+      });
+      showRightDock("terminal");
+      focusProjectTerminal();
+    },
+    [active?.cwd, focusProjectTerminal, showRightDock],
+  );
+
+  const onProjectTerminalSplitRatio = useCallback(
+    (splitId: string, index: number, ratio: number) => {
+      setProjectTerminals((prev) =>
+        mapProjectTerminal(prev, projectCwdRef.current, (dock) =>
+          dock.layout
+            ? {
+                ...dock,
+                layout: setSplitRatio(dock.layout, splitId, index, ratio),
+              }
+            : dock,
+        ),
+      );
+    },
+    [],
   );
 
   const onReorderProjectTerminals = useCallback((ids: string[]) => {
@@ -2092,13 +2223,21 @@ export default function App({
       projectCwdRef.current,
     );
     const file = dock?.pane.files.find((entry) => entry.id === fileId);
-    if (!file) return;
+    if (!dock || !file) return;
     const finishClose = () => {
+      const last = dock.pane.files.length === 1;
       setProjectTerminals((prev) =>
         mapProjectTerminal(prev, projectCwdRef.current, (entry) =>
           closeTerminalInDock(entry, fileId),
         ),
       );
+      if (last) {
+        const next = rightDockTabsRef.current.filter(
+          (tab) => tab !== "terminal",
+        );
+        setRightDockTabs(next);
+        setRightDock(next[0] ?? "picker");
+      }
     };
     void confirmCloseTerminal(file).then((ok) => ok && finishClose());
   }, []);
@@ -2109,22 +2248,12 @@ export default function App({
     if (!dock?.pane.files.some((file) => file.id === fileId)) return;
     const closingFiles = dock.pane.files.filter((file) => file.id !== fileId);
     if (closingFiles.length === 0) return;
-    const closingIds = new Set(closingFiles.map((file) => file.id));
 
     const finishClose = () => {
       setProjectTerminals((prev) =>
-        mapProjectTerminal(prev, projectPath, (entry) => {
-          if (!entry.pane.files.some((file) => file.id === fileId)) {
-            return entry;
-          }
-          const files = entry.pane.files.filter(
-            (file) => !closingIds.has(file.id),
-          );
-          return {
-            ...entry,
-            pane: { ...entry.pane, files, activeFileId: fileId },
-          };
-        }),
+        mapProjectTerminal(prev, projectPath, (entry) =>
+          keepOnlyDockTerminal(entry, fileId),
+        ),
       );
     };
 
@@ -2241,20 +2370,17 @@ export default function App({
         entry.pane.files.some((file) => file.id === fileId),
       );
       if (dock) {
-        if (dock.open) {
-          setProjectTerminals((prev) =>
-            mapProjectTerminal(prev, dock.projectPath, (entry) =>
-              withDockOpen(entry, false),
-            ),
-          );
+        if (rightDock === "terminal") {
+          setRightDock(null);
           setProjectTerminalFocused(false);
           return;
         }
         setProjectTerminals((prev) =>
           mapProjectTerminal(prev, dock.projectPath, (entry) =>
-            withDockOpen(selectDockTerminal(entry, fileId), true),
+            selectDockTerminal(entry, fileId),
           ),
         );
+        showRightDock("terminal");
         focusProjectTerminal();
         return;
       }
@@ -2291,7 +2417,7 @@ export default function App({
         }
       }
     },
-    [focusProjectTerminal],
+    [focusProjectTerminal, rightDock, showRightDock],
   );
 
   const onNewTerminalTab = useCallback(() => {
@@ -3064,12 +3190,12 @@ export default function App({
   );
 
   const onShowSourceControl = useCallback(() => {
-    setRightDock("changes");
-  }, []);
+    showRightDock("changes");
+  }, [showRightDock]);
 
   const onShowChangesPanel = useCallback(() => {
-    setRightDock("changes");
-  }, []);
+    showRightDock("changes");
+  }, [showRightDock]);
 
   const onToggleChanges = useCallback(() => {
     onShowSourceControl();
@@ -6486,10 +6612,10 @@ export default function App({
     setSearchViewOpen(false);
     setInboxViewOpen(false);
     setNotesViewOpen(false);
-    setRightDock("explorer");
+    showRightDock("explorer");
     setFilesSearchOpen(true);
     setSearchFocusToken((token) => token + 1);
-  }, []);
+  }, [showRightDock]);
 
   const onOpenSearch = useCallback(() => {
     setFilePickerOpen(false);
@@ -6623,8 +6749,8 @@ export default function App({
   }, [sidebarTab]);
 
   useEffect(() => {
-    if (!dockVisible) setProjectTerminalFocused(false);
-  }, [dockVisible]);
+    if (rightDock !== "terminal") setProjectTerminalFocused(false);
+  }, [rightDock]);
 
   const openFilePaths = useMemo(() => {
     const paths: string[] = [];
@@ -7015,36 +7141,6 @@ export default function App({
     };
   }, [run]);
 
-  const dockGridRef = useRef<HTMLDivElement>(null);
-  const dockDragSize = useRef<number | null>(null);
-  const paintDockSize = useCallback((size: number) => {
-    const dock = findProjectTerminal(
-      projectTerminalsRef.current,
-      projectCwdRef.current,
-    );
-    const el = dockGridRef.current;
-    if (!dock || !el) return;
-    dockDragSize.current = size;
-    applyDockGridStyle(el, dock.side, size);
-  }, []);
-  const commitDockSize = useCallback(
-    (size: number) => {
-      dockDragSize.current = null;
-      onProjectTerminalSize(size);
-    },
-    [onProjectTerminalSize],
-  );
-  useLayoutEffect(() => {
-    if (dockDragSize.current != null) return;
-    const el = dockGridRef.current;
-    if (!el) return;
-    applyDockGridStyle(
-      el,
-      dockVisible && currentProjectDock ? currentProjectDock.side : null,
-      currentProjectDock?.size ?? 0,
-    );
-  }, [currentProjectDock, dockVisible]);
-
   const sessionPaneProps = {
     recents,
     hideProjectPicker: true,
@@ -7257,59 +7353,44 @@ export default function App({
                 onCloseMany={onCloseTabs}
                 onReorder={onReorderTabs}
                 onGoToFile={onGoToFile}
-                onOpenPanels={() =>
-                  setRightDock((dock) => (dock === "panels" ? null : "panels"))
-                }
-                panelsOpen={rightDock === "panels"}
+                onOpenPanels={toggleRightDock}
+                panelsOpen={!!rightDock}
                 recents={recents}
                 onSelectProject={onSelectProject}
+                panelChrome={
+                  rightDock ? (
+                    <RightDockTypeBar
+                      tabs={rightDockTabs}
+                      active={
+                        rightDock === "picker" ? null : rightDock
+                      }
+                      onSelect={showRightDock}
+                      onClose={closeRightDockType}
+                      onAdd={() => setPanelTypeMenu((open) => !open)}
+                      addRef={(el) => {
+                        panelAddRef.current = el;
+                      }}
+                      onExpand={toggleRightPanelExpanded}
+                      expanded={rightPanelExpanded}
+                      onTogglePanel={toggleRightDock}
+                    />
+                  ) : null
+                }
+                panelChromeWidth={rightPanelResize.width}
+                panelChromeCollapsed={!rightPanelRevealedOpen}
+                panelExpanded={rightPanelExpanded}
               />
 
               <main className="relative min-h-0 min-w-0 flex-1">
                 <div
-                  ref={dockGridRef}
-                  className="absolute inset-0 grid h-full min-h-0 min-w-0"
+                  ref={mainSplitRef}
+                  className="absolute inset-0 flex h-full min-h-0 min-w-0 flex-row"
                 >
-                  {projectTerminals.map((dock) => {
-                    const show =
-                      dock.open && sameProjectPath(dock.projectPath, projectCwd);
-                    return (
-                      <div
-                        key={dock.projectPath}
-                        className={
-                          show
-                            ? "h-full min-h-0 min-w-0 w-full overflow-hidden"
-                            : "hidden"
-                        }
-                        style={show ? { gridArea: "dock" } : undefined}
-                        aria-hidden={!show}
-                      >
-                        <ProjectTerminalDock
-                          dock={dock}
-                          focused={show && projectTerminalFocused}
-                          onFocus={focusProjectTerminal}
-                          onHide={onHideProjectTerminal}
-                          onSideChange={onProjectTerminalSide}
-                          onSizePaint={paintDockSize}
-                          onSizeCommit={commitDockSize}
-                          onAddTerminal={() =>
-                            onOpenTerminal(active?.cwd ?? projectCwd)
-                          }
-                          onSelectTerminal={onSelectProjectTerminal}
-                          onCloseTerminal={onCloseProjectTerminal}
-                          onCloseOtherTerminals={onCloseOtherProjectTerminals}
-                          onReorderTerminals={onReorderProjectTerminals}
-                          onTerminalMetaChange={onTerminalMetaChange}
-                          onRunScript={onRunProjectScript}
-                        />
-                      </div>
-                    );
-                  })}
                   <div
-                    className="relative flex min-h-0 min-w-0 flex-row"
-                    style={{ gridArea: "main" }}
+                    className={`relative min-h-0 min-w-0 ${
+                      rightPanelExpanded ? "hidden" : "flex-1"
+                    }`}
                   >
-                    <div className="relative min-h-0 min-w-0 flex-1">
                       {tabs.map((tab) => (
                         <div
                           key={tab.id}
@@ -7366,98 +7447,220 @@ export default function App({
                       ))}
                     </div>
                     <aside
-                      aria-hidden={!rightDock}
-                      className={`relative flex h-full min-h-0 shrink-0 flex-col overflow-hidden border-l border-content/10 transition-[width] duration-200 ease-out ${
-                        rightDock ? "w-[340px]" : "w-0"
+                      ref={(el) => {
+                        if (rightPanelExpanded) {
+                          if (el) {
+                            el.style.width = "";
+                            el.style.flex = "1 1 auto";
+                          }
+                          return;
+                        }
+                        if (el) el.style.flex = "";
+                        rightPanelResize.setPaneRef(el);
+                      }}
+                      aria-hidden={!rightPanelRevealedOpen}
+                      data-collapsed={
+                        rightPanelExpanded || rightPanelRevealedOpen
+                          ? "false"
+                          : "true"
+                      }
+                      data-dragging={
+                        rightPanelResize.dragging ? "true" : "false"
+                      }
+                      className={`right-panel-shell relative flex h-full min-h-0 shrink-0 flex-col overflow-hidden border-l border-content/10 ${
+                        !rightDock
+                          ? "hidden"
+                          : rightPanelExpanded
+                            ? "min-w-0 flex-1"
+                            : ""
                       }`}
                     >
-                      {rightDock ? (
-                        <>
-                        <button
-                          type="button"
-                          aria-label={t("Panels")}
-                          title={t("Panels")}
-                          data-tauri-drag-region="false"
-                          onClick={() => setRightDock(null)}
-                          className="absolute right-2 top-2 z-10 grid size-6 place-items-center rounded-md text-content/45 hover:bg-content/10 hover:text-content"
-                        >
-                          <PanelLeft className="size-3.5" strokeWidth={1.75} />
-                        </button>
-                        <div className="min-h-0 flex-1 overflow-hidden">
-                          {rightDock === "panels" ? (
-                            <div className="flex h-full flex-col items-center justify-center gap-1.5 p-4">
-                              {[
-                                {
-                                  id: "terminal",
-                                  label: t("Terminal"),
-                                  Icon: Terminal,
-                                  onPick: () => onNewTerminal?.(),
-                                },
-                                {
-                                  id: "browser",
-                                  label: t("Browser"),
-                                  Icon: Globe,
-                                  onPick: () => onNewBrowser?.(),
-                                },
-                                {
-                                  id: "explorer",
-                                  label: t("Explorer"),
-                                  Icon: Folder,
-                                  onPick: () => setRightDock("explorer"),
-                                },
-                              ].map(({ id, label, Icon, onPick }) => (
-                                <button
-                                  key={id}
-                                  type="button"
-                                  onClick={onPick}
-                                  className="flex w-full max-w-xs items-center gap-3 rounded-xl bg-content/[0.05] px-3 py-2.5 text-left text-[13px] text-content/80 hover:bg-content/10 hover:text-content"
-                                >
-                                  <Icon
-                                    className="size-4 shrink-0 text-content/60"
-                                    strokeWidth={1.75}
-                                  />
-                                  <span className="min-w-0 flex-1 truncate">
-                                    {label}
-                                  </span>
-                                </button>
-                              ))}
-                            </div>
-                          ) : rightDock === "explorer" ? (
-                            <FileTree
-                              key={gitCwd}
-                              cwd={gitCwd}
-                              onOpenFile={onOpenFile}
-                              onOpenTerminal={onOpenTerminal}
-                              onFileMoved={onFileMoved}
-                              onFileDeleted={onFileDeleted}
-                              onSearch={onFindInProject}
-                              gitStatuses={rightDockGitStatuses}
-                              sourceControlActive={false}
-                              onShowSourceControl={onShowChangesPanel}
-                            />
-                          ) : (
-                            <SourceControl
-                              cwd={gitCwd}
-                              enabled
-                              textHarness={active?.harness}
-                              selectedPath={
-                                activeTab
-                                  ? selectedChangePath(activeTab, gitCwd)
-                                  : undefined
+                      {rightPanelRevealedOpen && !rightPanelExpanded ? (
+                        <div
+                          role="separator"
+                          aria-orientation="vertical"
+                          aria-label={t("Resize panel")}
+                          aria-valuenow={rightPanelResize.width}
+                          aria-valuemin={RIGHT_PANEL_WIDTH_MIN}
+                          className={`absolute inset-y-0 -left-px z-10 w-1.5 cursor-col-resize touch-none ${
+                            rightPanelResize.dragging
+                              ? "bg-content/15"
+                              : "hover:bg-content/10"
+                          }`}
+                          onPointerDown={rightPanelResize.onPointerDown}
+                          onDoubleClick={rightPanelResize.onDoubleClick}
+                        />
+                      ) : null}
+                      {rightDock === "picker" ? (
+                        <RightPanelPicker
+                          onPick={(id) => {
+                            if (id === "terminal") {
+                              onShowProjectTerminal();
+                              return;
+                            }
+                            if (id === "browser") {
+                              setPanelBrowser(
+                                (current) =>
+                                  current ??
+                                  newBrowserTab(active?.cwd ?? projectCwd),
+                              );
+                              showRightDock("browser");
+                              return;
+                            }
+                            showRightDock("explorer");
+                          }}
+                        />
+                      ) : null}
+                      <div
+                        className={
+                          rightDock && rightDock !== "picker"
+                            ? "min-h-0 flex-1 overflow-hidden"
+                            : "hidden"
+                        }
+                      >
+                            <div
+                              className={
+                                rightDock === "terminal"
+                                  ? "relative h-full min-h-0 min-w-0"
+                                  : "hidden"
                               }
-                              onOpenFile={(path, kind) =>
-                                onOpenDiff(path, undefined, kind)
-                              }
-                              onOpenAllChanges={onOpenAllChanges}
-                              onOpenCommit={onOpenCommit}
-                            />
-                          )}
-                        </div>
-                        </>
+                            >
+                                {projectTerminals.map((dock) => {
+                                  const show =
+                                    dock.pane.files.length > 0 &&
+                                    sameProjectPath(
+                                      dock.projectPath,
+                                      projectCwd,
+                                    );
+                                  return (
+                                    <div
+                                      key={dock.projectPath}
+                                      aria-hidden={!show}
+                                      className={
+                                        show
+                                          ? "h-full min-h-0 min-w-0"
+                                          : "hidden"
+                                      }
+                                    >
+                                      <ProjectTerminalDock
+                                        dock={dock}
+                                        focused={
+                                          show && projectTerminalFocused
+                                        }
+                                        onFocus={focusProjectTerminal}
+                                        onAddTerminal={(fromFileId) => {
+                                          if (fromFileId) {
+                                            onSplitProjectTerminal(
+                                              "right",
+                                              fromFileId,
+                                            );
+                                            return;
+                                          }
+                                          onOpenTerminal(
+                                            active?.cwd ?? projectCwd,
+                                          );
+                                        }}
+                                        onSelectTerminal={
+                                          onSelectProjectTerminal
+                                        }
+                                        onCloseTerminal={
+                                          onCloseProjectTerminal
+                                        }
+                                        onCloseOtherTerminals={
+                                          onCloseOtherProjectTerminals
+                                        }
+                                        onReorderTerminals={
+                                          onReorderProjectTerminals
+                                        }
+                                        onSplit={onSplitProjectTerminal}
+                                        onSplitRatio={
+                                          onProjectTerminalSplitRatio
+                                        }
+                                        onTerminalMetaChange={
+                                          onTerminalMetaChange
+                                        }
+                                      />
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            {rightDock === "explorer" ? (
+                              <FileTree
+                                key={gitCwd}
+                                cwd={gitCwd}
+                                onOpenFile={onOpenFile}
+                                onOpenTerminal={onOpenTerminal}
+                                onFileMoved={onFileMoved}
+                                onFileDeleted={onFileDeleted}
+                                onSearch={onFindInProject}
+                                gitStatuses={rightDockGitStatuses}
+                                sourceControlActive={false}
+                                onShowSourceControl={onShowChangesPanel}
+                              />
+                            ) : null}
+                            {rightDock === "changes" ? (
+                              <SourceControl
+                                cwd={gitCwd}
+                                enabled
+                                textHarness={active?.harness}
+                                selectedPath={
+                                  activeTab
+                                    ? selectedChangePath(activeTab, gitCwd)
+                                    : undefined
+                                }
+                                onOpenFile={(path, kind) =>
+                                  onOpenDiff(path, undefined, kind)
+                                }
+                                onOpenAllChanges={onOpenAllChanges}
+                                onOpenCommit={onOpenCommit}
+                              />
+                            ) : null}
+                            {rightDock === "browser" && panelBrowser ? (
+                              <BrowserView
+                                id={panelBrowser.id}
+                                url={panelBrowser.path}
+                                cwd={panelBrowser.cwd}
+                                active
+                                onUrlChange={(url, title) =>
+                                  setPanelBrowser((current) =>
+                                    current
+                                      ? {
+                                          ...current,
+                                          path: url,
+                                          browserTitle:
+                                            title ?? current.browserTitle,
+                                        }
+                                      : current,
+                                  )
+                                }
+                              />
+                            ) : null}
+                      </div>
+                      {panelTypeMenu ? (
+                        <RightPanelTypeMenu
+                          anchor={panelAddRef}
+                          onPick={(id) => {
+                            setPanelTypeMenu(false);
+                            if (id === "terminal") {
+                              onShowProjectTerminal();
+                              return;
+                            }
+                            if (id === "browser") {
+                              setPanelBrowser(
+                                (current) =>
+                                  current ??
+                                  newBrowserTab(active?.cwd ?? projectCwd),
+                              );
+                              showRightDock("browser");
+                              return;
+                            }
+                            showRightDock("explorer");
+                          }}
+                          onClose={() => setPanelTypeMenu(false)}
+                        />
                       ) : null}
                     </aside>
                   </div>
-                </div>
               </main>
             </div>
             {searchViewOpen ? (

@@ -594,9 +594,16 @@ function sanitizeProjectTerminal(raw: unknown): ProjectTerminalDock | null {
   const activeFileId = files.some((file) => file.id === pane.activeFileId)
     ? pane.activeFileId
     : files[0].id;
+  const fileIds = new Set(files.map((file) => file.id));
+  const layout = sanitizeLayout(value.layout);
+  const layoutOk =
+    layout &&
+    leafIds(layout).length > 1 &&
+    leafIds(layout).every((id) => fileIds.has(id));
   return {
     projectPath: normalizeProjectPath(value.projectPath),
     pane: { ...pane, files, activeFileId },
+    ...(layoutOk ? { layout } : {}),
     side: value.side,
     size: clampDockSize(value.side, Number(value.size)),
     open: value.open !== false,

@@ -1,9 +1,14 @@
-import type { CSSProperties } from "react";
 import {
+  layoutLeaves,
+  leaf,
   newEditorPane,
   nextTerminalTitleFromFiles,
+  removePane,
+  splitPane,
   type EditorPane,
   type FilePaneTab,
+  type LayoutNode,
+  type SplitDir,
   type WorkspaceTab,
 } from "./layout";
 import {
@@ -22,6 +27,8 @@ export type DockSide = "top" | "bottom" | "left" | "right";
 export type ProjectTerminalDock = {
   projectPath: string;
   pane: EditorPane;
+  /** Visible split tree of terminal file ids. Absent or a single leaf is tab mode. */
+  layout?: LayoutNode;
   side: DockSide;
   size: number;
   open: boolean;
@@ -85,16 +92,61 @@ export function createProjectTerminal(
   return {
     projectPath: normalizeProjectPath(projectPath),
     pane: newEditorPane(file),
+    layout: leaf(file.id),
     side,
     size: defaultDockSize(side),
     open: true,
   };
 }
 
+export function isDockSplit(dock: ProjectTerminalDock): boolean {
+  return !!dock.layout && layoutLeaves(dock.layout).length > 1;
+}
+
+/** Layout used when splitting: the current tree, or the active tab as one pane. */
+export function dockSplitSource(dock: ProjectTerminalDock): LayoutNode {
+  if (isDockSplit(dock) && dock.layout) return dock.layout;
+  return leaf(dock.pane.activeFileId);
+}
+
+export function splitDockTerminal(
+  dock: ProjectTerminalDock,
+  dir: SplitDir,
+  file: FilePaneTab,
+  fromFileId?: string,
+): ProjectTerminalDock {
+  const source = dockSplitSource(dock);
+  const leaves = layoutLeaves(source);
+  const lastId = leaves[leaves.length - 1]?.id;
+  const preferred =
+    dir === "down"
+      ? lastId
+      : fromFileId && leaves.some((entry) => entry.id === fromFileId)
+        ? fromFileId
+        : dock.pane.activeFileId;
+  const targetId = leaves.some((entry) => entry.id === preferred)
+    ? preferred
+    : (leaves[0]?.id ?? dock.pane.activeFileId);
+  return {
+    ...dock,
+    open: true,
+    layout: splitPane(source, targetId, dir, file.id),
+    pane: {
+      ...dock.pane,
+      files: [...dock.pane.files, file],
+      activeFileId: file.id,
+    },
+  };
+}
+
 export function addTerminalToDock(
   dock: ProjectTerminalDock,
   file: FilePaneTab,
+  fromFileId?: string,
 ): ProjectTerminalDock {
+  if (isDockSplit(dock)) {
+    return splitDockTerminal(dock, "right", file, fromFileId);
+  }
   return {
     ...dock,
     open: true,
@@ -125,7 +177,24 @@ export function closeTerminalInDock(
     dock.pane.activeFileId === fileId
       ? files[Math.min(index, files.length - 1)].id
       : dock.pane.activeFileId;
-  return { ...dock, pane: { ...dock.pane, files, activeFileId } };
+  let layout = dock.layout;
+  if (layout) {
+    layout = removePane(layout, fileId) ?? leaf(activeFileId);
+  }
+  return { ...dock, pane: { ...dock.pane, files, activeFileId }, layout };
+}
+
+export function keepOnlyDockTerminal(
+  dock: ProjectTerminalDock,
+  fileId: string,
+): ProjectTerminalDock {
+  const file = dock.pane.files.find((entry) => entry.id === fileId);
+  if (!file) return dock;
+  return {
+    ...dock,
+    layout: leaf(fileId),
+    pane: { ...dock.pane, files: [file], activeFileId: fileId },
+  };
 }
 
 export function selectDockTerminal(
@@ -236,57 +305,6 @@ export function projectTerminalFileIds(
     }
   }
   return ids;
-}
-
-export function dockGridStyle(
-  side: DockSide | null,
-  size: number,
-): CSSProperties {
-  if (!side) {
-    return {
-      gridTemplateRows: "minmax(0, 1fr)",
-      gridTemplateColumns: "minmax(0, 1fr)",
-      gridTemplateAreas: '"main"',
-    };
-  }
-  const px = `${Math.max(1, Math.round(size))}px`;
-  if (side === "top") {
-    return {
-      gridTemplateRows: `${px} minmax(0, 1fr)`,
-      gridTemplateColumns: "minmax(0, 1fr)",
-      gridTemplateAreas: '"dock" "main"',
-    };
-  }
-  if (side === "bottom") {
-    return {
-      gridTemplateRows: `minmax(0, 1fr) ${px}`,
-      gridTemplateColumns: "minmax(0, 1fr)",
-      gridTemplateAreas: '"main" "dock"',
-    };
-  }
-  if (side === "left") {
-    return {
-      gridTemplateRows: "minmax(0, 1fr)",
-      gridTemplateColumns: `${px} minmax(0, 1fr)`,
-      gridTemplateAreas: '"dock main"',
-    };
-  }
-  return {
-    gridTemplateRows: "minmax(0, 1fr)",
-    gridTemplateColumns: `minmax(0, 1fr) ${px}`,
-    gridTemplateAreas: '"main dock"',
-  };
-}
-
-export function applyDockGridStyle(
-  el: HTMLElement,
-  side: DockSide | null,
-  size: number,
-): void {
-  const style = dockGridStyle(side, size);
-  el.style.gridTemplateRows = String(style.gridTemplateRows ?? "");
-  el.style.gridTemplateColumns = String(style.gridTemplateColumns ?? "");
-  el.style.gridTemplateAreas = String(style.gridTemplateAreas ?? "");
 }
 
 /**

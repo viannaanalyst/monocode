@@ -1,363 +1,318 @@
 import {
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronUp,
-  PanelBottom,
-  PanelLeft,
-  PanelRight,
-  PanelTop,
-  Play,
-  Plus,
+  LayoutTwoColumn,
+  LayoutTwoRow,
+  Trash2,
 } from "../chrome/icons";
-import {
-  useEffect,
-  useRef,
-  useState,
-  type PointerEvent as ReactPointerEvent,
-} from "react";
-import { ExplorerMenu } from "../chrome/ExplorerMenu";
+import { useEffect, useRef, useState } from "react";
 import { SurfaceTabs } from "../chrome/SurfaceTabs";
 import { IconButton } from "../chrome/TitleBar";
+import { suppressTextSelection } from "../lib/drag";
 import {
-  clampDockSize,
-  defaultDockSize,
-  isVerticalDock,
-  type DockSide,
+  isDockSplit,
   type ProjectTerminalDock,
 } from "../lib/projectTerminal";
-import { MOD } from "../lib/platform";
 import {
-  loadProjectScripts,
-  type ProjectScript,
-} from "../lib/projectScripts";
+  layoutLeaves,
+  layoutSashes,
+  setSplitRatio,
+  type LayoutNode,
+  type LayoutSash,
+  type SplitDir,
+} from "../lib/layout";
+import { MOD } from "../lib/platform";
 import type { TerminalMetaPatch } from "../lib/terminalTab";
 import { TerminalView } from "./TerminalView";
 import { t, withShortcut } from "../i18n";
-
 
 type Props = {
   dock: ProjectTerminalDock;
   focused: boolean;
   onFocus: () => void;
-  onHide: () => void;
-  onSideChange: (side: DockSide) => void;
-  onSizePaint: (size: number) => void;
-  onSizeCommit: (size: number) => void;
-  onAddTerminal: () => void;
+  onAddTerminal: (fromFileId?: string) => void;
   onSelectTerminal: (fileId: string) => void;
   onCloseTerminal: (fileId: string) => void;
   onCloseOtherTerminals: (fileId: string) => void;
   onReorderTerminals: (ids: string[]) => void;
+  onSplit: (dir: SplitDir, fromFileId: string) => void;
+  onSplitRatio: (splitId: string, index: number, ratio: number) => void;
   onTerminalMetaChange?: (fileId: string, patch: TerminalMetaPatch) => void;
-  onRunScript?: (command: string) => void;
 };
-
-function dockSideItems(): { id: DockSide; label: string }[] {
-  return [
-    { id: "bottom", label: t("Dock Bottom") },
-    { id: "top", label: t("Dock Top") },
-    { id: "left", label: t("Dock Left") },
-    { id: "right", label: t("Dock Right") },
-  ];
-}
-
-function sideIcon(side: DockSide) {
-  if (side === "top") return PanelTop;
-  if (side === "left") return PanelLeft;
-  if (side === "right") return PanelRight;
-  return PanelBottom;
-}
-
-function hideIcon(side: DockSide) {
-  if (side === "top") return ChevronUp;
-  if (side === "left") return ChevronLeft;
-  if (side === "right") return ChevronRight;
-  return ChevronDown;
-}
 
 export function ProjectTerminalDock({
   dock,
   focused,
   onFocus,
-  onHide,
-  onSideChange,
-  onSizePaint,
-  onSizeCommit,
   onAddTerminal,
   onSelectTerminal,
   onCloseTerminal,
   onCloseOtherTerminals,
   onReorderTerminals,
+  onSplit,
+  onSplitRatio,
   onTerminalMetaChange,
-  onRunScript,
 }: Props) {
-  const vertical = isVerticalDock(dock.side);
-  const [dragging, setDragging] = useState(false);
-  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
-  const [scripts, setScripts] = useState<ProjectScript[]>([]);
-  const [scriptsMenu, setScriptsMenu] = useState<{
-    x: number;
-    y: number;
-  } | null>(null);
-  const sideButton = useRef<HTMLDivElement>(null);
-  const scriptsButton = useRef<HTMLDivElement>(null);
+  const split = isDockSplit(dock);
+  const files = dock.pane.files;
+  const activeFileId = dock.pane.activeFileId;
+  const [draft, setDraft] = useState<LayoutNode | null>(null);
+  const treeRef = useRef<HTMLDivElement>(null);
+  const layoutRef = useRef(dock.layout);
+  layoutRef.current = dock.layout;
 
   useEffect(() => {
-    let cancelled = false;
-    setScripts([]);
-    void loadProjectScripts(dock.projectPath)
-      .then((next) => {
-        if (!cancelled) setScripts(next);
-      })
-      .catch(() => {
-        if (!cancelled) setScripts([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [dock.projectPath]);
-  const drag = useRef<{ start: number; size: number } | null>(null);
-  const sizeRef = useRef(dock.size);
-  sizeRef.current = dock.size;
-  const pending = useRef(dock.size);
-  const frame = useRef<number | null>(null);
-  const SideIcon = sideIcon(dock.side);
-  const HideIcon = hideIcon(dock.side);
+    setDraft(null);
+  }, [dock.layout]);
 
-  useEffect(() => {
-    if (!dragging) return;
-    const previous = document.body.style.cursor;
-    document.body.style.cursor = vertical ? "row-resize" : "col-resize";
-    return () => {
-      document.body.style.cursor = previous;
-    };
-  }, [dragging, vertical]);
+  const tree = draft ?? dock.layout;
+  const leaves = tree && split ? layoutLeaves(tree) : [];
+  const sashes = tree && split ? layoutSashes(tree) : [];
 
-  useEffect(
-    () => () => {
-      if (frame.current != null) cancelAnimationFrame(frame.current);
-    },
-    [],
+  const paneActions = (fileId: string) => (
+    <div className="flex shrink-0 items-center gap-0.5 px-1">
+      <IconButton
+        label={t("Split Pane Right")}
+        onClick={() => onSplit("right", fileId)}
+      >
+        <LayoutTwoColumn className="size-3.5" strokeWidth={1.75} />
+      </IconButton>
+      <IconButton
+        label={t("Split Pane Down")}
+        onClick={() => onSplit("down", fileId)}
+      >
+        <LayoutTwoRow className="size-3.5" strokeWidth={1.75} />
+      </IconButton>
+      <IconButton
+        label={t("Close Terminal")}
+        onClick={() => onCloseTerminal(fileId)}
+      >
+        <Trash2 className="size-3.5" strokeWidth={1.75} />
+      </IconButton>
+    </div>
   );
-
-  const viewport = () => ({
-    width: window.innerWidth,
-    height: window.innerHeight,
-  });
-
-  const paint = (next: number) => {
-    pending.current = next;
-    if (frame.current != null) return;
-    frame.current = requestAnimationFrame(() => {
-      frame.current = null;
-      onSizePaint(pending.current);
-    });
-  };
-
-  const commit = () => {
-    if (frame.current != null) {
-      cancelAnimationFrame(frame.current);
-      frame.current = null;
-    }
-    onSizeCommit(pending.current);
-  };
-
-  const onResizePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    drag.current = {
-      start: vertical ? event.clientY : event.clientX,
-      size: sizeRef.current,
-    };
-    pending.current = sizeRef.current;
-    setDragging(true);
-  };
-
-  const onResizePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!drag.current) return;
-    const point = vertical ? event.clientY : event.clientX;
-    const delta = point - drag.current.start;
-    const signed =
-      dock.side === "bottom" || dock.side === "right" ? -delta : delta;
-    paint(clampDockSize(dock.side, drag.current.size + signed, viewport()));
-  };
-
-  const onResizePointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!drag.current) return;
-    drag.current = null;
-    commit();
-    setDragging(false);
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-  };
-
-  const sash =
-    dock.side === "top"
-      ? "absolute inset-x-0 -bottom-px z-10 h-1.5 cursor-row-resize touch-none"
-      : dock.side === "bottom"
-        ? "absolute inset-x-0 -top-px z-10 h-1.5 cursor-row-resize touch-none"
-        : dock.side === "left"
-          ? "absolute inset-y-0 -right-px z-10 w-1.5 cursor-col-resize touch-none"
-          : "absolute inset-y-0 -left-px z-10 w-1.5 cursor-col-resize touch-none";
 
   return (
     <section
       data-project-terminal-dock=""
-      className={`relative flex h-full min-h-0 min-w-0 flex-col ${
-        focused ? "bg-content/3" : "bg-content/2"
-      } ${
-        dock.side === "top"
-          ? "border-b"
-          : dock.side === "bottom"
-            ? "border-t"
-            : dock.side === "left"
-              ? "border-r"
-              : "border-l"
-      } border-content/10`}
+      className="relative flex h-full min-h-0 min-w-0 flex-col"
       onMouseDown={onFocus}
     >
-      <div
-        role="separator"
-        aria-orientation={vertical ? "horizontal" : "vertical"}
-        aria-label={t("Resize terminal")}
-        aria-valuenow={dock.size}
-        className={`${sash} ${dragging ? "bg-content/15" : "hover:bg-content/10"}`}
-        onPointerDown={onResizePointerDown}
-        onPointerMove={onResizePointerMove}
-        onPointerUp={onResizePointerUp}
-        onPointerCancel={onResizePointerUp}
-        onDoubleClick={() => {
-          pending.current = defaultDockSize(dock.side);
-          commit();
-        }}
-      />
-      <SurfaceTabs
-        files={dock.pane.files}
-        activeFileId={dock.pane.activeFileId}
-        dirtyFileIds={EMPTY_IDS}
-        fileErrorCounts={EMPTY_ERRORS}
-        label={t("Terminals")}
-        onSelectFile={onSelectTerminal}
-        onCloseFile={onCloseTerminal}
-        onCloseOtherFiles={onCloseOtherTerminals}
-        onReorder={onReorderTerminals}
-        trailing={
-          <div className="flex shrink-0 items-center gap-0.5 border-l border-content/10 px-1">
-            {onRunScript ? (
-              <div ref={scriptsButton}>
-                <IconButton
-                  label={t("Run project script")}
-                  onClick={() => {
-                    const rect =
-                      scriptsButton.current?.getBoundingClientRect();
-                    if (!rect) return;
-                    setScriptsMenu({ x: rect.left, y: rect.bottom + 4 });
-                  }}
-                >
-                  <Play className="size-3.5" strokeWidth={1.75} />
-                </IconButton>
+      {split ? null : (
+        <SurfaceTabs
+          files={files}
+          activeFileId={activeFileId}
+          dirtyFileIds={EMPTY_IDS}
+          fileErrorCounts={EMPTY_ERRORS}
+          label={t("Terminals")}
+          compact
+          pills
+          onSelectFile={onSelectTerminal}
+          onCloseFile={onCloseTerminal}
+          onCloseOtherFiles={onCloseOtherTerminals}
+          onReorder={onReorderTerminals}
+          onNewTab={() => onAddTerminal()}
+          newTabLabel={withShortcut(t("New terminal"), `${MOD}\``)}
+          trailing={paneActions(activeFileId)}
+        />
+      )}
+      <div ref={treeRef} className="relative min-h-0 min-w-0 flex-1">
+        {files.map((file) => {
+          const leaf = leaves.find((entry) => entry.id === file.id);
+          const visible = split ? !!leaf : file.id === activeFileId;
+          const rect = leaf?.rect;
+          return (
+            <div
+              key={file.id}
+              aria-hidden={!visible}
+              className={
+                visible
+                  ? split
+                    ? "absolute flex min-h-0 min-w-0 flex-col"
+                    : "absolute inset-0 flex min-h-0 min-w-0 flex-col"
+                  : "hidden"
+              }
+              style={
+                visible && split && rect
+                  ? {
+                      left: `${rect.x * 100}%`,
+                      top: `${rect.y * 100}%`,
+                      width: `${rect.w * 100}%`,
+                      height: `${rect.h * 100}%`,
+                    }
+                  : undefined
+              }
+              onMouseDown={
+                visible ? () => onSelectTerminal(file.id) : undefined
+              }
+            >
+              {split ? (
+                <SurfaceTabs
+                  files={[file]}
+                  activeFileId={file.id}
+                  dirtyFileIds={EMPTY_IDS}
+                  fileErrorCounts={EMPTY_ERRORS}
+                  label={t("Terminals")}
+                  compact
+                  pills
+                  onSelectFile={onSelectTerminal}
+                  onCloseFile={onCloseTerminal}
+                  onCloseOtherFiles={onCloseOtherTerminals}
+                  onReorder={onReorderTerminals}
+                  onNewTab={() => onAddTerminal(file.id)}
+                  newTabLabel={withShortcut(t("New terminal"), `${MOD}\``)}
+                  trailing={paneActions(file.id)}
+                />
+              ) : null}
+              <div className="relative min-h-0 min-w-0 flex-1">
+                <TerminalView
+                  id={file.id}
+                  cwd={file.cwd}
+                  active={focused && file.id === activeFileId}
+                  onMetaChange={(patch) =>
+                    onTerminalMetaChange?.(file.id, patch)
+                  }
+                />
               </div>
-            ) : null}
-            <IconButton
-              label={withShortcut("Terminal", `${MOD}\``)}
-              onClick={onAddTerminal}
-            >
-              <Plus className="size-3.5" strokeWidth={1.75} />
-            </IconButton>
-            <div ref={sideButton}>
-            <IconButton
-              label={t("Move Terminal")}
-              onClick={() => {
-                const rect = sideButton.current?.getBoundingClientRect();
-                if (!rect) return;
-                setMenu({ x: rect.left, y: rect.bottom + 4 });
-              }}
-            >
-              <SideIcon className="size-3.5" strokeWidth={1.75} />
-            </IconButton>
             </div>
-            <IconButton
-              label={withShortcut("Hide Terminal", `${MOD}J`)}
-              onClick={onHide}
-            >
-              <HideIcon className="size-3.5" strokeWidth={1.75} />
-            </IconButton>
-          </div>
-        }
-      />
-      <div className="relative min-h-0 min-w-0 flex-1">
-        {dock.pane.files.map((file) => (
-          <div
-            key={file.id}
-            aria-hidden={file.id !== dock.pane.activeFileId}
-            className={
-              file.id === dock.pane.activeFileId
-                ? "absolute inset-0 h-full"
-                : "hidden"
-            }
-          >
-            <TerminalView
-              id={file.id}
-              cwd={file.cwd}
-              active={focused && file.id === dock.pane.activeFileId}
-              onMetaChange={(patch) => onTerminalMetaChange?.(file.id, patch)}
-            />
-          </div>
+          );
+        })}
+        {sashes.map((sash) => (
+          <SplitSash
+            key={`${sash.splitId}:${sash.index}`}
+            sash={sash}
+            containerRef={treeRef}
+            onPreview={(ratio) => {
+              if (!layoutRef.current) return;
+              setDraft(
+                setSplitRatio(
+                  layoutRef.current,
+                  sash.splitId,
+                  sash.index,
+                  ratio,
+                ),
+              );
+            }}
+            onCommit={(ratio) => {
+              setDraft(null);
+              onSplitRatio(sash.splitId, sash.index, ratio);
+            }}
+            onCancel={() => setDraft(null)}
+          />
         ))}
       </div>
-      {menu ? (
-        <ExplorerMenu
-          x={menu.x}
-          y={menu.y}
-          ariaLabel={t("Move terminal")}
-          items={dockSideItems().map((item) => ({
-            kind: "item" as const,
-            id: item.id,
-            label: item.label,
-            checked: item.id === dock.side,
-          }))}
-          onPick={(id) => {
-            if (id === "top" || id === "bottom" || id === "left" || id === "right") {
-              onSideChange(id);
-            }
-            setMenu(null);
-          }}
-          onClose={() => setMenu(null)}
-        />
-      ) : null}
-      {scriptsMenu ? (
-        <ExplorerMenu
-          x={scriptsMenu.x}
-          y={scriptsMenu.y}
-          width={260}
-          ariaLabel={t("Run project script")}
-          items={
-            scripts.length > 0
-              ? scripts.map((script) => ({
-                  kind: "item" as const,
-                  id: script.command,
-                  label: script.name,
-                }))
-              : [
-                  {
-                    kind: "item" as const,
-                    id: "none",
-                    label: t("Add scripts in .monocode/scripts.json"),
-                    disabled: true,
-                  },
-                ]
-          }
-          onPick={(id) => {
-            if (id !== "none") onRunScript?.(id);
-            setScriptsMenu(null);
-          }}
-          onClose={() => setScriptsMenu(null)}
-        />
-      ) : null}
     </section>
+  );
+}
+
+function SplitSash({
+  sash,
+  containerRef,
+  onPreview,
+  onCommit,
+  onCancel,
+}: {
+  sash: LayoutSash;
+  containerRef: { current: HTMLDivElement | null };
+  onPreview: (ratio: number) => void;
+  onCommit: (ratio: number) => void;
+  onCancel: () => void;
+}) {
+  const row = sash.dir === "right";
+  const boundary = sash.sizes
+    .slice(0, sash.index + 1)
+    .reduce((sum, size) => sum + size, 0);
+  const group = sash.group;
+
+  return (
+    <div
+      role="separator"
+      aria-orientation={row ? "vertical" : "horizontal"}
+      className={
+        row
+          ? "absolute z-10 w-px bg-content/10"
+          : "absolute z-10 h-px bg-content/10"
+      }
+      style={
+        row
+          ? {
+              left: `${(group.x + boundary * group.w) * 100}%`,
+              top: `${group.y * 100}%`,
+              height: `${group.h * 100}%`,
+            }
+          : {
+              left: `${group.x * 100}%`,
+              top: `${(group.y + boundary * group.h) * 100}%`,
+              width: `${group.w * 100}%`,
+            }
+      }
+    >
+      <div
+        className={
+          row
+            ? "absolute inset-y-0 -left-1.5 -right-1.5 cursor-col-resize touch-none"
+            : "absolute inset-x-0 -top-1.5 -bottom-1.5 cursor-row-resize touch-none"
+        }
+        onPointerDown={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          const handle = event.currentTarget;
+          const parent = containerRef.current;
+          if (!parent) return;
+          handle.setPointerCapture(event.pointerId);
+          const rect = parent.getBoundingClientRect();
+          const restoreSelection = suppressTextSelection();
+          const previousCursor = document.body.style.cursor;
+          document.body.style.cursor = row ? "col-resize" : "row-resize";
+          const origin = row
+            ? rect.left + group.x * rect.width
+            : rect.top + group.y * rect.height;
+          const span = row ? group.w * rect.width : group.h * rect.height;
+          let nextBoundary = boundary;
+          let moved = false;
+          let frame: number | null = null;
+
+          const move = (ev: PointerEvent) => {
+            const pos = row ? ev.clientX : ev.clientY;
+            if (span <= 0) return;
+            moved = true;
+            nextBoundary = (pos - origin) / span;
+            if (frame != null) return;
+            frame = requestAnimationFrame(() => {
+              frame = null;
+              onPreview(nextBoundary);
+            });
+          };
+          const finish = (commit: boolean) => {
+            if (frame != null) {
+              cancelAnimationFrame(frame);
+              frame = null;
+            }
+            if (handle.hasPointerCapture(event.pointerId)) {
+              handle.releasePointerCapture(event.pointerId);
+            }
+            handle.removeEventListener("pointermove", move);
+            handle.removeEventListener("pointerup", up);
+            handle.removeEventListener("pointercancel", cancel);
+            window.removeEventListener("keydown", keydown);
+            restoreSelection();
+            document.body.style.cursor = previousCursor;
+            if (!moved) return;
+            if (commit) onCommit(nextBoundary);
+            else onCancel();
+          };
+          const up = () => finish(true);
+          const cancel = () => finish(false);
+          const keydown = (event: KeyboardEvent) => {
+            if (event.key !== "Escape") return;
+            event.preventDefault();
+            finish(false);
+          };
+          handle.addEventListener("pointermove", move);
+          handle.addEventListener("pointerup", up);
+          handle.addEventListener("pointercancel", cancel);
+          window.addEventListener("keydown", keydown);
+        }}
+      />
+    </div>
   );
 }
 
