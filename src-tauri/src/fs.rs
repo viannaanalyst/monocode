@@ -1088,6 +1088,64 @@ pub async fn git_github_pr_merge(
     .map_err(|e| e.to_string())?
 }
 
+#[derive(Deserialize, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct GitHubPrEditInput {
+    #[serde(default)]
+    pub add_labels: Vec<String>,
+    #[serde(default)]
+    pub remove_labels: Vec<String>,
+    #[serde(default)]
+    pub add_assignees: Vec<String>,
+    #[serde(default)]
+    pub remove_assignees: Vec<String>,
+    #[serde(default)]
+    pub add_reviewers: Vec<String>,
+    #[serde(default)]
+    pub remove_reviewers: Vec<String>,
+}
+
+/// Close or reopen a pull request without merging it.
+#[tauri::command]
+pub async fn git_github_pr_state(cwd: String, number: i64, close: bool) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        git_github_pr_state_for(&expand_home(&cwd), number, close)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Add or remove labels, assignees, and reviewers on a pull request.
+#[tauri::command]
+pub async fn git_github_pr_edit(
+    cwd: String,
+    number: i64,
+    input: GitHubPrEditInput,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        git_github_pr_edit_for(&expand_home(&cwd), number, &input)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct GitHubRepoMeta {
+    pub viewer_login: String,
+    pub labels: Vec<GitHubLabel>,
+    pub assignees: Vec<String>,
+    pub reviewers: Vec<String>,
+}
+
+/// Labels, assignable users, collaborators, and the authenticated login for a repo.
+#[tauri::command]
+pub async fn git_github_repo_meta(cwd: String) -> Result<GitHubRepoMeta, String> {
+    tauri::async_runtime::spawn_blocking(move || git_github_repo_meta_for(&expand_home(&cwd)))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
 #[derive(Serialize, Clone, Debug, Default, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct GitBranches {
@@ -2133,6 +2191,23 @@ fn parse_github_work_item_details(json: &str) -> Result<GitHubWorkItemDetails, S
         head_ref_name: row.head_ref_name,
         review_decision: row.review_decision.unwrap_or_default(),
     })
+}
+
+fn parse_github_labels(json: &str) -> Result<Vec<GitHubLabel>, String> {
+    #[derive(Deserialize)]
+    struct Row {
+        name: String,
+        #[serde(default)]
+        color: String,
+    }
+    let rows: Vec<Row> = serde_json::from_str(json).map_err(|error| error.to_string())?;
+    Ok(rows
+        .into_iter()
+        .map(|row| GitHubLabel {
+            name: row.name,
+            color: row.color,
+        })
+        .collect())
 }
 
 const GITHUB_ISSUE_THREAD_QUERY: &str = r#"
@@ -3206,6 +3281,109 @@ fn git_github_pr_merge_for(
     // `gh pr merge` prints nothing on stdout when it succeeds.
     gh_run(root, &refs, true)?;
     Ok(())
+}
+
+fn push_list_flag(args: &mut Vec<String>, flag: &str, values: &[String]) {
+    let cleaned: Vec<&str> = values
+        .iter()
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty())
+        .collect();
+    if cleaned.is_empty() {
+        return;
+    }
+    args.push(flag.to_string());
+    args.push(cleaned.join(","));
+}
+
+fn pr_edit_flags(input: &GitHubPrEditInput) -> Vec<String> {
+    let mut args = Vec::new();
+    push_list_flag(&mut args, "--add-label", &input.add_labels);
+    push_list_flag(&mut args, "--remove-label", &input.remove_labels);
+    push_list_flag(&mut args, "--add-assignee", &input.add_assignees);
+    push_list_flag(&mut args, "--remove-assignee", &input.remove_assignees);
+    push_list_flag(&mut args, "--add-reviewer", &input.add_reviewers);
+    push_list_flag(&mut args, "--remove-reviewer", &input.remove_reviewers);
+    args
+}
+
+fn pr_state_args(number: i64, close: bool) -> Result<Vec<String>, String> {
+    if number <= 0 {
+        return Err("Invalid pull request number".into());
+    }
+    Ok(vec![
+        "pr".to_string(),
+        if close { "close" } else { "reopen" }.to_string(),
+        number.to_string(),
+    ])
+}
+
+fn git_github_pr_state_for(root: &Path, number: i64, close: bool) -> Result<(), String> {
+    let args = pr_state_args(number, close)?;
+    let refs: Vec<&str> = args.iter().map(String::as_str).collect();
+    // close/reopen are silent on success, so empty output is fine.
+    gh_run(root, &refs, true)?;
+    Ok(())
+}
+
+fn git_github_pr_edit_for(
+    root: &Path,
+    number: i64,
+    input: &GitHubPrEditInput,
+) -> Result<(), String> {
+    if number <= 0 {
+        return Err("Invalid pull request number".into());
+    }
+    let mut args = vec!["pr".to_string(), "edit".to_string(), number.to_string()];
+    args.extend(pr_edit_flags(input));
+    if args.len() == 3 {
+        return Err("No pull request changes requested".into());
+    }
+    let refs: Vec<&str> = args.iter().map(String::as_str).collect();
+    // `gh pr edit` is silent on success, so empty output is fine.
+    gh_run(root, &refs, true)?;
+    Ok(())
+}
+
+fn gh_login_list(root: &Path, path: &str) -> Vec<String> {
+    gh_stdout(root, &["api", path, "--jq", ".[].login"])
+        .map(|text| {
+            text.lines()
+                .map(str::trim)
+                .filter(|line| !line.is_empty())
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn git_github_repo_meta_for(root: &Path) -> Result<GitHubRepoMeta, String> {
+    let repo = git_github_repo_for(root)?;
+    let (owner, name) = split_github_repo(&repo)?;
+    let viewer_login = gh_checked(root, &["api", "user", "--jq", ".login"])?
+        .trim()
+        .to_string();
+    let labels = gh_checked(
+        root,
+        &["label", "list", "--json", "name,color", "--limit", "100"],
+    )
+    .ok()
+    .and_then(|json| parse_github_labels(&json).ok())
+    .unwrap_or_default();
+    let assignees = gh_login_list(
+        root,
+        &format!("repos/{owner}/{name}/assignees?per_page=100"),
+    );
+    let reviewers = gh_login_list(
+        root,
+        &format!("repos/{owner}/{name}/collaborators?per_page=100"),
+    );
+    Ok(GitHubRepoMeta {
+        viewer_login,
+        labels,
+        assignees,
+        reviewers,
+    })
 }
 
 fn gh_run(root: &Path, args: &[&str], allow_empty: bool) -> Result<String, String> {
@@ -5710,6 +5888,36 @@ mod tests {
         );
         assert!(pr_merge_args(42, "fast-forward", false).is_err());
         assert!(pr_merge_args(0, "squash", false).is_err());
+    }
+
+    #[test]
+    fn pr_edit_flags_join_values_and_skip_empty_lists() {
+        let input = GitHubPrEditInput {
+            add_labels: vec!["bug".into(), " ui ".into()],
+            remove_labels: vec!["".into()],
+            add_assignees: vec![],
+            remove_assignees: vec!["octocat".into()],
+            add_reviewers: vec!["alice".into(), "bob".into()],
+            remove_reviewers: vec![],
+        };
+        assert_eq!(
+            pr_edit_flags(&input),
+            vec![
+                "--add-label".to_string(),
+                "bug,ui".to_string(),
+                "--remove-assignee".to_string(),
+                "octocat".to_string(),
+                "--add-reviewer".to_string(),
+                "alice,bob".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn pr_state_args_choose_close_or_reopen() {
+        assert_eq!(pr_state_args(9, true).unwrap(), vec!["pr", "close", "9"]);
+        assert_eq!(pr_state_args(9, false).unwrap(), vec!["pr", "reopen", "9"]);
+        assert!(pr_state_args(0, true).is_err());
     }
 
     #[test]
