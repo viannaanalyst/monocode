@@ -40,6 +40,7 @@ import { InboxProviderMark } from "../chrome/InboxProviderMark";
 import { ProjectLogoIcon } from "../chrome/ProjectLogoIcon";
 import { ProjectMascot } from "../chrome/ProjectMascot";
 import { PrActions, type PrMergeMethod } from "../chrome/PrActions";
+import { PrMetadataEditor } from "../chrome/PrMetadataEditor";
 import { OverlayNav } from "../chrome/TitleBar";
 import { WindowControls } from "../chrome/WindowControls";
 import { useDragResize } from "../hooks/useDragResize";
@@ -49,6 +50,7 @@ import {
   asGithubPrDetails,
   githubStatus,
   githubPrDiff,
+  githubPrEdit,
   githubPrMerge,
   githubPrReview,
   githubPrState,
@@ -2286,6 +2288,18 @@ export function InboxDetail({
                 <InboxLabel key={label.name} label={label} />
               ))}
             </div>
+          ) : null}
+          {isPr && item.provider === "github" && prDetails && repoMeta ? (
+            <PrMetadataEditor
+              details={prDetails}
+              meta={repoMeta}
+              busy={busyAction}
+              onApply={(input) =>
+                runAction("metadata", () =>
+                  githubPrEdit(item.projectPath, item.number, input),
+                )
+              }
+            />
           ) : null}
           {isPr && tab === "code" ? (
             diffLoading ? (
