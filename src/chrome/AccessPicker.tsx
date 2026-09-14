@@ -1,7 +1,7 @@
 import {
   ChevronDown,
+  CircleAlert,
   Lock,
-  LockOpen,
   Pencil,
   Search,
   Sparkles,
@@ -31,13 +31,23 @@ type Props = {
 
 const MENU_WIDTH = 288;
 
+/** Only the three modes that matter day to day. */
+const VISIBLE_MODES: RuntimeMode[] = RUNTIME_MODES.filter(
+  (mode) => mode !== "auto-accept-edits" && mode !== "auto",
+);
+
 const ICONS: Record<RuntimeMode, typeof Lock> = {
   "read-only": Search,
   supervised: Lock,
   "auto-accept-edits": Pencil,
   auto: Sparkles,
-  "full-access": LockOpen,
+  "full-access": CircleAlert,
 };
+
+/** Full access reads as a warning, like Synara. */
+const FULL_ACCESS = "text-orange-400";
+const fullAccessClass = (mode: RuntimeMode) =>
+  mode === "full-access" ? FULL_ACCESS : "";
 
 export function AccessPicker({
   value,
@@ -47,7 +57,7 @@ export function AccessPicker({
 }: Props) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(() =>
-    Math.max(0, RUNTIME_MODES.indexOf(value)),
+    Math.max(0, VISIBLE_MODES.indexOf(value)),
   );
   const root = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
@@ -61,7 +71,7 @@ export function AccessPicker({
 
   useEffect(() => {
     if (!open) return;
-    setActive(Math.max(0, RUNTIME_MODES.indexOf(value)));
+    setActive(Math.max(0, VISIBLE_MODES.indexOf(value)));
   }, [open, value]);
 
   const pick = (mode: RuntimeMode) => {
@@ -72,7 +82,7 @@ export function AccessPicker({
   const onMenuKey = (e: ReactKeyboardEvent<HTMLDivElement>) => {
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setActive((i) => Math.min(RUNTIME_MODES.length - 1, i + 1));
+      setActive((i) => Math.min(VISIBLE_MODES.length - 1, i + 1));
       return;
     }
     if (e.key === "ArrowUp") {
@@ -82,7 +92,7 @@ export function AccessPicker({
     }
     if (e.key === "Enter") {
       e.preventDefault();
-      const mode = RUNTIME_MODES[active];
+      const mode = VISIBLE_MODES[active];
       if (mode) pick(mode);
     }
   };
@@ -111,8 +121,13 @@ export function AccessPicker({
             : "text-content/70 hover:bg-content/10 hover:text-content"
         }`}
       >
-        <Icon className="size-3.5 shrink-0" strokeWidth={1.75} />
-        <span className="min-w-0 truncate text-[11px]">
+        <Icon
+          className={`size-3.5 shrink-0 ${fullAccessClass(value)}`}
+          strokeWidth={1.75}
+        />
+        <span
+          className={`min-w-0 truncate text-[11px] ${fullAccessClass(value)}`}
+        >
           {t(RUNTIME_MODE_LABEL[value])}
         </span>
         <ChevronDown
@@ -134,7 +149,7 @@ export function AccessPicker({
           onKeyDown={onMenuKey}
           className="p-1"
         >
-          {RUNTIME_MODES.map((mode, index) => {
+          {VISIBLE_MODES.map((mode, index) => {
             const ModeIcon = ICONS[mode];
             const selected = mode === value;
             const highlighted = index === active;
@@ -154,14 +169,22 @@ export function AccessPicker({
                 }`}
               >
                 <ModeIcon
-                  className="mt-0.5 size-3.5 shrink-0 text-content/70"
+                  className={`mt-0.5 size-3.5 shrink-0 ${
+                    mode === "full-access" ? FULL_ACCESS : "text-content/70"
+                  }`}
                   strokeWidth={1.75}
                 />
                 <span className="min-w-0">
-                  <span className="block text-[13px] font-medium leading-5">
+                  <span
+                    className={`block text-[13px] font-medium leading-5 ${fullAccessClass(mode)}`}
+                  >
                     {t(RUNTIME_MODE_LABEL[mode])}
                   </span>
-                  <span className="mt-0.5 block text-[11px] leading-4 text-content/50">
+                  <span
+                    className={`mt-0.5 block text-[11px] leading-4 ${
+                      mode === "full-access" ? "text-orange-400/70" : "text-content/50"
+                    }`}
+                  >
                     {t(RUNTIME_MODE_HINT[mode])}
                   </span>
                 </span>

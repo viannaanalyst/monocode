@@ -45,6 +45,7 @@ import { MenuBar } from "./chrome/MenuBar";
 import { FilePicker } from "./chrome/FilePicker";
 import { FileTree } from "./chrome/FileTree";
 import { SourceControl } from "./chrome/SourceControl";
+import { Folder, GitPullRequest, Globe, Terminal } from "./chrome/icons";
 import { UsageFooter } from "./chrome/UsageFooter";
 import { ImportSessionDialog } from "./chrome/ImportSessionDialog";
 import { useProjectBranches } from "./hooks/useProjectBranches";
@@ -715,9 +716,9 @@ export default function App({
       ? first
       : "sessions";
   });
-  const [rightDock, setRightDock] = useState<"explorer" | "changes" | null>(
-    null,
-  );
+  const [rightDock, setRightDock] = useState<
+    "explorer" | "changes" | "panels" | null
+  >(null);
   const [filesSearchOpen, setFilesSearchOpen] = useState(false);
   const [searchFocusToken, setSearchFocusToken] = useState(0);
   const [searchViewOpen, setSearchViewOpen] = useState(false);
@@ -3064,10 +3065,6 @@ export default function App({
 
   const onShowSourceControl = useCallback(() => {
     setRightDock("changes");
-  }, []);
-
-  const onShowExplorer = useCallback(() => {
-    setRightDock("explorer");
   }, []);
 
   const onShowChangesPanel = useCallback(() => {
@@ -7260,8 +7257,10 @@ export default function App({
                 onCloseMany={onCloseTabs}
                 onReorder={onReorderTabs}
                 onGoToFile={onGoToFile}
-                onShowExplorer={onShowExplorer}
-                onOpenChanges={onShowChangesPanel}
+                onOpenPanels={() =>
+                  setRightDock((dock) => (dock === "panels" ? null : "panels"))
+                }
+                panelsOpen={rightDock === "panels"}
                 recents={recents}
                 onSelectProject={onSelectProject}
               />
@@ -7370,7 +7369,11 @@ export default function App({
                       <aside className="relative flex h-full min-h-0 w-[340px] shrink-0 flex-col border-l border-content/10">
                         <div className="flex h-9 shrink-0 items-center justify-between border-b border-content/10 px-3">
                           <span className="text-[12.5px] font-semibold text-content/75">
-                            {rightDock === "explorer" ? t("Explorer") : t("Changes")}
+                            {rightDock === "explorer"
+                              ? t("Explorer")
+                              : rightDock === "changes"
+                                ? t("Changes")
+                                : t("Panels")}
                           </span>
                           <button
                             type="button"
@@ -7384,7 +7387,51 @@ export default function App({
                           </button>
                         </div>
                         <div className="min-h-0 flex-1 overflow-hidden">
-                          {rightDock === "explorer" ? (
+                          {rightDock === "panels" ? (
+                            <div className="flex h-full flex-col items-center justify-center gap-1.5 p-4">
+                              {[
+                                {
+                                  id: "terminal",
+                                  label: t("Terminal"),
+                                  Icon: Terminal,
+                                  onPick: () => onNewTerminal?.(),
+                                },
+                                {
+                                  id: "browser",
+                                  label: t("Browser"),
+                                  Icon: Globe,
+                                  onPick: () => onNewBrowser?.(),
+                                },
+                                {
+                                  id: "explorer",
+                                  label: t("Explorer"),
+                                  Icon: Folder,
+                                  onPick: () => setRightDock("explorer"),
+                                },
+                                {
+                                  id: "changes",
+                                  label: t("Changes"),
+                                  Icon: GitPullRequest,
+                                  onPick: () => setRightDock("changes"),
+                                },
+                              ].map(({ id, label, Icon, onPick }) => (
+                                <button
+                                  key={id}
+                                  type="button"
+                                  onClick={onPick}
+                                  className="flex w-full max-w-xs items-center gap-3 rounded-xl bg-content/[0.05] px-3 py-2.5 text-left text-[13px] text-content/80 hover:bg-content/10 hover:text-content"
+                                >
+                                  <Icon
+                                    className="size-4 shrink-0 text-content/60"
+                                    strokeWidth={1.75}
+                                  />
+                                  <span className="min-w-0 flex-1 truncate">
+                                    {label}
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          ) : rightDock === "explorer" ? (
                             <FileTree
                               key={gitCwd}
                               cwd={gitCwd}

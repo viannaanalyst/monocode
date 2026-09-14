@@ -206,48 +206,14 @@ describe("TitleBar session brand", () => {
   });
 });
 
-describe("TitleBar terminal action", () => {
-  it("keeps its label and enabled pointer cursor when a callback is supplied", () => {
+describe("TitleBar panels action", () => {
+  it("opens the panels surface instead of showing terminal/browser buttons", () => {
     const container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);
     roots.push(root);
 
-    act(() => {
-      root.render(
-        createElement(TitleBar, {
-          tabs: [tab()],
-          activeId: "t1",
-          cwd: "/workspace/monocode",
-          onToggleSidebar: () => {},
-          onSelect: () => {},
-          onNew: () => {},
-          onNewTerminal: () => {},
-          onClose: () => {},
-          onCloseMany: () => {},
-          onReorder: () => {},
-        }),
-      );
-    });
-
-    const terminalAction = container.querySelector<HTMLButtonElement>(
-      '[aria-label="Terminal (Ctrl+`)"]',
-    );
-    expect(terminalAction).not.toBeNull();
-    expect(terminalAction?.getAttribute("aria-label")).toBe(
-      "Terminal (Ctrl+`)",
-    );
-    expect(terminalAction?.getAttribute("aria-disabled")).not.toBe("true");
-    expect(terminalAction?.className).toContain("cursor-pointer");
-    expect(terminalAction?.className).toContain("[&_*]:pointer-events-none");
-  });
-
-  it("shows a browser action next to the terminal action", () => {
-    const container = document.createElement("div");
-    document.body.append(container);
-    const root = createRoot(container);
-    roots.push(root);
-
+    const onOpenPanels = vi.fn();
     act(() => {
       root.render(
         createElement(TitleBar, {
@@ -259,6 +225,7 @@ describe("TitleBar terminal action", () => {
           onNew: () => {},
           onNewTerminal: () => {},
           onNewBrowser: () => {},
+          onOpenPanels,
           onClose: () => {},
           onCloseMany: () => {},
           onReorder: () => {},
@@ -266,10 +233,17 @@ describe("TitleBar terminal action", () => {
       );
     });
 
-    const browserAction = container.querySelector<HTMLButtonElement>(
-      '[aria-label="Browser"]',
+    expect(
+      container.querySelector('[aria-label="Terminal (Ctrl+`)"]'),
+    ).toBeNull();
+    expect(container.querySelector('[aria-label="Browser"]')).toBeNull();
+
+    const panels = container.querySelector<HTMLButtonElement>(
+      '[aria-label="Panels"]',
     );
-    expect(browserAction).not.toBeNull();
-    expect(browserAction?.className).toContain("cursor-pointer");
+    expect(panels).not.toBeNull();
+    expect(panels?.className).toContain("cursor-pointer");
+    act(() => panels?.click());
+    expect(onOpenPanels).toHaveBeenCalledTimes(1);
   });
 });
