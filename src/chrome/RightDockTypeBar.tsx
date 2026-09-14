@@ -66,7 +66,6 @@ export function RightDockTypeBar({
               </button>
               <button
                 type="button"
-                title={t("Close {name}", { name: label })}
                 aria-label={t("Close {name}", { name: label })}
                 className="invisible absolute top-1/2 left-2.5 grid size-3.5 -translate-y-1/2 cursor-pointer place-items-center text-content/70 hover:text-content group-hover:visible"
                 onClick={() => onClose(id)}

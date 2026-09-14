@@ -179,6 +179,45 @@ html.has-native-glass:not(.theme-light) #root {
   }
 }
 
+.effort-fast-spark {
+  position: absolute;
+  border-radius: 999px;
+  background: #fff;
+  pointer-events: none;
+  animation-name: effort-fast-twinkle, effort-fast-drift;
+  animation-timing-function: ease-in-out, ease-in-out;
+  animation-iteration-count: infinite, infinite;
+  animation-delay: var(--effort-delay, 0s), var(--effort-delay, 0s);
+  animation-duration: var(--effort-twinkle, 1.7s), 2.8s;
+}
+
+@keyframes effort-fast-twinkle {
+  0%,
+  100% {
+    opacity: 0.18;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+
+@keyframes effort-fast-drift {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 7px -3px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .effort-fast-spark {
+    animation: none;
+    opacity: 0.55;
+  }
+}
+
 .workspace-tab:not([data-reordering])
   > button:not([aria-selected="true"]):hover,
 .workspace-tab[data-dragging] > button:not([aria-selected="true"]),

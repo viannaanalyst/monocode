@@ -61,8 +61,8 @@ type Submenu =
 
 type RecentMenu = { models: AgentModel[] };
 
-const MENU_WIDTH = 268;
-const SETTING_MENU_WIDTH = 210;
+const MENU_WIDTH = 252;
+const SETTING_MENU_WIDTH = 228;
 const SUBMENU_OVERLAP = -4;
 const MODELS_SUBMENU_GAP = 8;
 const SELF = "[data-model-picker]";
@@ -223,12 +223,14 @@ function EffortSlider({
   value,
   label,
   valueText,
+  fast = false,
   onChange,
 }: {
   options: ModelSettingChoice[];
   value: string;
   label: string;
   valueText: string;
+  fast?: boolean;
   onChange: (value: string) => void;
 }) {
   const track = useRef<HTMLDivElement>(null);
@@ -292,18 +294,36 @@ function EffortSlider({
         const next = options[Math.min(max, Math.max(0, selected + delta))];
         if (next) onChange(next.value);
       }}
-      className="relative mt-3 h-8 w-full cursor-pointer touch-none outline-none"
+      className="relative mt-1 h-[30px] w-full cursor-pointer touch-none outline-none"
     >
-      <div className="absolute inset-x-0 top-1/2 h-3.5 -translate-y-1/2 rounded-full bg-content/12" />
+      <div className="absolute inset-x-0 top-1/2 h-[22px] -translate-y-1/2 rounded-full bg-content/12" />
       <div
-        className="absolute top-1/2 left-0 h-3.5 -translate-y-1/2 rounded-full bg-accent"
+        className="absolute top-1/2 left-0 h-[22px] -translate-y-1/2 overflow-hidden rounded-full bg-accent"
         style={{
           width:
             ratio >= 1
               ? "100%"
               : `calc(${effortStop(ratio)} + 10px)`,
         }}
-      />
+      >
+        {fast
+          ? FAST_SPARKS.map((spark, index) => (
+              <span
+                key={index}
+                aria-hidden="true"
+                className="effort-fast-spark"
+                style={{
+                  left: spark.left,
+                  top: spark.top,
+                  width: spark.size,
+                  height: spark.size,
+                  ["--effort-delay" as string]: spark.delay,
+                  ["--effort-twinkle" as string]: spark.duration,
+                }}
+              />
+            ))
+          : null}
+      </div>
       {options.map((option, index) => (
         <span
           key={option.value}
@@ -322,6 +342,18 @@ function EffortSlider({
     </div>
   );
 }
+
+const FAST_SPARKS = [
+  { left: "8%", top: "38%", size: 3, delay: "0s", duration: "1.7s" },
+  { left: "18%", top: "62%", size: 2, delay: "0.25s", duration: "2.1s" },
+  { left: "27%", top: "28%", size: 2.5, delay: "0.5s", duration: "1.5s" },
+  { left: "38%", top: "58%", size: 3.5, delay: "0.1s", duration: "1.9s" },
+  { left: "48%", top: "32%", size: 2, delay: "0.7s", duration: "1.6s" },
+  { left: "57%", top: "68%", size: 2.5, delay: "0.35s", duration: "2s" },
+  { left: "68%", top: "40%", size: 3, delay: "0.9s", duration: "1.8s" },
+  { left: "78%", top: "55%", size: 2, delay: "0.15s", duration: "1.4s" },
+  { left: "88%", top: "30%", size: 2.5, delay: "0.55s", duration: "2.2s" },
+];
 
 export function ModelPicker({
   harness,
@@ -863,7 +895,7 @@ export function ModelPicker({
               </div>
             ) : (
               <>
-                <div className="flex items-start gap-1 px-1 pt-1">
+                <div className="flex items-center gap-1 px-0.5">
                   {fast && fastToggleable ? (
                     <button
                       type="button"
@@ -877,7 +909,7 @@ export function ModelPicker({
                           fastOn ? fastOffValue(fast) : fastOnValue(fast),
                         )
                       }
-                      className={`mt-0.5 grid size-7 shrink-0 place-items-center rounded-md ${
+                      className={`grid size-7 shrink-0 place-items-center rounded-md ${
                         fastOn
                           ? "text-accent"
                           : "text-content/40 hover:bg-content/10 hover:text-content"
@@ -898,7 +930,7 @@ export function ModelPicker({
                       setSubmenu(null);
                       setPanel("models");
                     }}
-                    className="min-w-0 flex-1 rounded-md px-1 py-0.5 text-center hover:bg-content/5"
+                    className="min-w-0 flex-1 rounded-md px-1 py-0 text-center hover:bg-content/5"
                   >
                     <span className="flex items-center justify-center gap-1 text-[13px] font-medium text-accent">
                       <span className="min-w-0 truncate">
@@ -912,7 +944,7 @@ export function ModelPicker({
                       />
                     </span>
                     {effortSetting ? (
-                      <span className="mt-0.5 block truncate text-[12px] text-content/45">
+                      <span className="block truncate text-[12px] leading-tight text-content/45">
                         {current.name}
                       </span>
                     ) : null}
@@ -925,7 +957,7 @@ export function ModelPicker({
                       onClick={() =>
                         setSetting(effortSetting, effortSetting.value)
                       }
-                      className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-md text-content/40 hover:bg-content/10 hover:text-content"
+                      className="grid size-7 shrink-0 place-items-center rounded-md text-content/40 hover:bg-content/10 hover:text-content"
                     >
                       <RotateCcw className="size-3.5" strokeWidth={1.75} />
                     </button>
@@ -935,12 +967,13 @@ export function ModelPicker({
                 </div>
 
                 {effortSetting ? (
-                  <div className="px-3 pb-3 pt-1">
+                  <div className="px-2.5 pb-2 pt-0">
                     <EffortSlider
                       options={effortOptions}
                       value={effortValue}
                       label={settingLabel(effortSetting)}
                       valueText={settingValueLabel(effortSetting, values)}
+                      fast={fastOn}
                       onChange={(value) => setSetting(effortSetting, value)}
                     />
                   </div>

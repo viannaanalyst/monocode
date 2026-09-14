@@ -386,7 +386,7 @@ export function SurfaceTabs({
               type="button"
               role="tab"
               aria-selected={active}
-              title={appendProblems(tooltip, errors)}
+              title={pills ? undefined : appendProblems(tooltip, errors)}
               onClick={() => {
                 if (sortable.consumeClick()) return;
                 onSelectFile(file.id);
@@ -450,7 +450,6 @@ export function SurfaceTabs({
             {pills ? (
             <button
               type="button"
-              title={t("Close {name}", { name: label })}
               aria-label={t("Close {name}", { name: label })}
               data-no-drag
               onPointerDown={(event) => event.stopPropagation()}
