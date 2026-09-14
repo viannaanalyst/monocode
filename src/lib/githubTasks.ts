@@ -118,13 +118,15 @@ export function asGithubPrDetails(
   details: GithubWorkItemDetails | null,
 ): GithubPrDetails | null {
   if (!details) return null;
-  if (typeof details.id !== "string" || typeof details.state !== "string") {
+  const id = details.id?.trim() ?? "";
+  const state = details.state?.trim() ?? "";
+  if (!id || !state) {
     return null;
   }
   return {
     ...details,
-    id: details.id,
-    state: details.state,
+    id,
+    state,
     draft: details.draft === true,
     mergeable: details.mergeable ?? "",
     mergeStateStatus: details.mergeStateStatus ?? "",

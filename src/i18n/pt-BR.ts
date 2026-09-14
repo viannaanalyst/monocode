@@ -1284,6 +1284,9 @@ export const PT_BR: Record<string, string> = {
   "Reopen pull request": "Reabrir pull request",
   "Merge pull request #{number} with {method}?":
     "Mesclar pull request #{number} com {method}?",
+  "Merge pull request #{number} with {method} and delete the branch?":
+    "Mesclar pull request #{number} com {method} e excluir a branch?",
+  "Delete branch after merge": "Excluir a branch após o merge",
   "Close pull request #{number}?": "Fechar pull request #{number}?",
   "Edit labels": "Editar rótulos",
   "Edit assignees": "Editar responsáveis",

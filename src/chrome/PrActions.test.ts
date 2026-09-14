@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { GithubPrDetails } from "../lib/githubTasks";
-import { PrActions } from "./PrActions";
+import { PrActions, type PrMergeMethod } from "./PrActions";
 
 function details(overrides: Partial<GithubPrDetails> = {}): GithubPrDetails {
   return {
@@ -31,7 +31,7 @@ function render(value: GithubPrDetails, viewerLogin = "me") {
       busy: null,
       onSubmitReview: () => {},
       onToggleState: () => {},
-      onMerge: () => {},
+      onMerge: (_method: PrMergeMethod, _deleteBranch: boolean) => {},
     }),
   );
 }
@@ -58,6 +58,12 @@ describe("PrActions", () => {
   it("offers reopen on a closed pull request", () => {
     const markup = render(details({ state: "CLOSED" }));
     expect(markup).toContain("Reopen pull request");
+    expect(markup).not.toContain("Close pull request");
+  });
+
+  it("does not offer reopen or close on a merged pull request", () => {
+    const markup = render(details({ state: "MERGED" }));
+    expect(markup).not.toContain("Reopen pull request");
     expect(markup).not.toContain("Close pull request");
   });
 });

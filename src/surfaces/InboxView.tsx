@@ -1529,6 +1529,10 @@ export function InboxDetail({
     () => peekReviewDraft(draftKey) ?? emptyReviewDraft(),
   );
   const [reviewPublishCount, setReviewPublishCount] = useState(0);
+  const [reviewRequest, setReviewRequest] = useState<{
+    event: PrReviewEvent;
+    id: number;
+  } | null>(null);
 
   useEffect(() => {
     setReviewDraft(peekReviewDraft(draftKey) ?? emptyReviewDraft());
@@ -1885,28 +1889,38 @@ export function InboxDetail({
     setActionError(null);
     try {
       await work();
-      await refreshDetails();
     } catch (error) {
       setActionError(inboxErrorMessage(error));
+      return;
     } finally {
       setBusyAction(null);
+    }
+    try {
+      await refreshDetails();
+    } catch {
+      // A failed refresh is not an action failure; the next revision reload retries.
     }
   };
 
   const confirmPr = (message: string, okLabel: string) =>
     ask(message, { title: t("MonoCode"), kind: "warning", okLabel });
 
-  const onMerge = (method: PrMergeMethod) =>
+  const onMerge = (method: PrMergeMethod, deleteBranch: boolean) =>
     runAction("merge", async () => {
       const ok = await confirmPr(
-        t("Merge pull request #{number} with {method}?", {
-          number: item.number,
-          method: t(METHOD_LABELS_FOR_CONFIRM[method]),
-        }),
+        deleteBranch
+          ? t("Merge pull request #{number} with {method} and delete the branch?", {
+              number: item.number,
+              method: t(METHOD_LABELS_FOR_CONFIRM[method]),
+            })
+          : t("Merge pull request #{number} with {method}?", {
+              number: item.number,
+              method: t(METHOD_LABELS_FOR_CONFIRM[method]),
+            }),
         t("Merge"),
       );
       if (!ok) return;
-      await githubPrMerge(item.projectPath, item.number, method, false);
+      await githubPrMerge(item.projectPath, item.number, method, deleteBranch);
     });
 
   const onToggleState = (close: boolean) =>
@@ -1943,11 +1957,12 @@ export function InboxDetail({
     });
 
   const onSubmitReview = (event: PrReviewEvent) => {
-    if (event !== "approve" && reviewDraft.comments.length === 0) {
-      setActionError(t("Add a review comment before requesting changes"));
+    if (event === "approve") {
+      void publishReview("approve", "");
       return;
     }
-    void publishReview(event, "");
+    setTab("code");
+    setReviewRequest({ event, id: Date.now() });
   };
 
   const statusPill = (
@@ -2349,6 +2364,7 @@ export function InboxDetail({
               key={reviewPublishCount}
               draft={reviewDraft}
               busy={busyAction}
+              request={reviewRequest}
               onSubmit={publishReview}
               onDiscard={() => {
                 clearReviewDraft(draftKey);

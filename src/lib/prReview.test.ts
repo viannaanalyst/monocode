@@ -63,7 +63,9 @@ describe("review draft", () => {
       body: "x",
     });
     expect(canSubmitReview(withComment, "comment")).toBe(true);
-    expect(canSubmitReview(withComment, "request-changes")).toBe(true);
+    expect(canSubmitReview(withComment, "request-changes")).toBe(false);
+    expect(canSubmitReview(withComment, "request-changes", "why")).toBe(true);
+    expect(canSubmitReview(draft, "comment", "why")).toBe(true);
   });
 
   it("ignores comments with empty bodies", () => {
@@ -74,11 +76,14 @@ describe("review draft", () => {
       body: "   ",
     });
     expect(canSubmitReview(draft, "comment")).toBe(false);
+    expect(canSubmitReview(draft, "comment", "why")).toBe(true);
     const id = draft.comments[0]!.id;
     draft = updateReviewComment(draft, id, "  ");
     expect(canSubmitReview(draft, "comment")).toBe(false);
     draft = updateReviewComment(draft, id, "ok");
     expect(canSubmitReview(draft, "comment")).toBe(true);
+    expect(canSubmitReview(draft, "request-changes")).toBe(false);
+    expect(canSubmitReview(draft, "request-changes", "why")).toBe(true);
   });
 
   it("persists and clears drafts by key", () => {

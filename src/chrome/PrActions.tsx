@@ -34,12 +34,14 @@ export function PrActions({
   busy: string | null;
   onSubmitReview: (event: PrReviewEvent) => void;
   onToggleState: (close: boolean) => void;
-  onMerge: (method: PrMergeMethod) => void;
+  onMerge: (method: PrMergeMethod, deleteBranch: boolean) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [deleteBranch, setDeleteBranch] = useState(false);
   const merge = prMergeAvailability(details);
   const approve = prApproveAvailability(details, viewerLogin);
   const closed = details.state.trim().toUpperCase() !== "OPEN";
+  const merged = details.state.trim().toUpperCase() === "MERGED";
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -48,7 +50,7 @@ export function PrActions({
           type="button"
           disabled={busy != null || !merge.enabled}
           title={t(merge.reason)}
-          onClick={() => onMerge("squash")}
+          onClick={() => onMerge("squash", deleteBranch)}
           className={`${ACTION_FILLED} rounded-r-none`}
         >
           {busy === "merge" ? (
@@ -75,13 +77,22 @@ export function PrActions({
                 type="button"
                 onClick={() => {
                   setMenuOpen(false);
-                  onMerge(method);
+                  onMerge(method, deleteBranch);
                 }}
                 className="flex h-7 w-full items-center px-3 text-left text-[12px] text-content hover:bg-content/10"
               >
                 {t(METHOD_LABELS[method])}
               </button>
             ))}
+            <label className="flex h-7 cursor-pointer items-center gap-2 border-t border-content/10 px-3 text-[12px] text-content/80">
+              <input
+                type="checkbox"
+                checked={deleteBranch}
+                onChange={(input) => setDeleteBranch(input.target.checked)}
+                className="size-3 accent-current"
+              />
+              {t("Delete branch after merge")}
+            </label>
           </div>
         ) : null}
       </div>
@@ -102,19 +113,21 @@ export function PrActions({
       >
         {t("Request changes")}
       </button>
-      <button
-        type="button"
-        disabled={busy != null}
-        onClick={() => onToggleState(!closed)}
-        className={ACTION_OUTLINE}
-      >
-        {closed ? (
-          <RotateCcw className="size-3.5" strokeWidth={1.75} />
-        ) : (
-          <X className="size-3.5" strokeWidth={1.75} />
-        )}
-        {closed ? t("Reopen pull request") : t("Close pull request")}
-      </button>
+      {merged ? null : (
+        <button
+          type="button"
+          disabled={busy != null}
+          onClick={() => onToggleState(!closed)}
+          className={ACTION_OUTLINE}
+        >
+          {closed ? (
+            <RotateCcw className="size-3.5" strokeWidth={1.75} />
+          ) : (
+            <X className="size-3.5" strokeWidth={1.75} />
+          )}
+          {closed ? t("Reopen pull request") : t("Close pull request")}
+        </button>
+      )}
     </div>
   );
 }

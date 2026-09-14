@@ -83,6 +83,9 @@ describe("PR write wrappers", () => {
   it("narrows GitHub PR details only when backend fields are present", () => {
     expect(asGithubPrDetails(null)).toBeNull();
     expect(asGithubPrDetails({ body: "", author: "" })).toBeNull();
+    expect(
+      asGithubPrDetails({ body: "", author: "", id: "", state: "" }),
+    ).toBeNull();
     const pr = asGithubPrDetails({
       body: "",
       author: "me",

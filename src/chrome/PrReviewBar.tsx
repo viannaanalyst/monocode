@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { GitPullRequest, Trash2 } from "./icons";
 import {
   canSubmitReview,
@@ -11,6 +11,7 @@ import { t } from "../i18n";
 export function PrReviewBar({
   draft,
   busy,
+  request,
   onSubmit,
   onDiscard,
   onEdit,
@@ -18,6 +19,7 @@ export function PrReviewBar({
 }: {
   draft: PrReviewDraft;
   busy: string | null;
+  request?: { event: PrReviewEvent; id: number } | null;
   onSubmit: (event: PrReviewEvent, body: string) => void;
   onDiscard: () => void;
   onEdit: (id: string, body: string) => void;
@@ -29,6 +31,12 @@ export function PrReviewBar({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingBody, setEditingBody] = useState("");
   const count = draft.comments.length;
+
+  useEffect(() => {
+    if (!request) return;
+    setOpen(true);
+    setEvent(request.event);
+  }, [request]);
 
   return (
     <div className="rounded-md border border-content/15 bg-content/[0.03] p-3">
@@ -49,7 +57,7 @@ export function PrReviewBar({
         </button>
         <button
           type="button"
-          disabled={busy != null || (event !== "approve" && !canSubmitReview(draft, event))}
+          disabled={busy != null || (event !== "approve" && !canSubmitReview(draft, event, body))}
           onClick={() => setOpen((value) => !value)}
           className="inline-flex h-7 items-center gap-1.5 rounded-md bg-content px-2.5 text-[12px] font-medium text-background-base disabled:opacity-40"
         >
@@ -156,9 +164,7 @@ export function PrReviewBar({
             ))}
             <button
               type="button"
-              disabled={
-                busy != null || (event !== "approve" && !canSubmitReview(draft, event))
-              }
+              disabled={busy != null || !canSubmitReview(draft, event, body)}
               onClick={() => onSubmit(event, body.trim())}
               className="ml-auto inline-flex h-7 items-center rounded-md bg-content px-2.5 text-[12px] font-medium text-background-base disabled:opacity-40"
             >

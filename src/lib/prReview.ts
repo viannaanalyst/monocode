@@ -61,9 +61,12 @@ export function reviewCommentCount(draft: PrReviewDraft): number {
 export function canSubmitReview(
   draft: PrReviewDraft,
   event: PrReviewEvent,
+  body = "",
 ): boolean {
+  const hasBody = body.trim().length > 0;
   if (event === "approve") return true;
-  return draft.comments.some((comment) => comment.body.trim().length > 0);
+  if (event === "request-changes") return hasBody;
+  return hasBody || draft.comments.some((comment) => comment.body.trim().length > 0);
 }
 
 export function prMergeAvailability(

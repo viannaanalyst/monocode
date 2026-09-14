@@ -2452,6 +2452,9 @@ fn pr_review_payload(
             "body": text,
         }));
     }
+    if event == "REQUEST_CHANGES" && body.is_empty() {
+        return Err("Request changes needs a review body".into());
+    }
     if event != "APPROVE" && body.is_empty() && rows.is_empty() {
         return Err("Add a review body or at least one line comment".into());
     }
@@ -6676,6 +6679,15 @@ mod tests {
         assert!(pr_review_payload("", "approve", "", &[]).is_err());
         assert!(pr_review_payload("PR_x", "bless", "", &[]).is_err());
         assert!(pr_review_payload("PR_x", "request-changes", "", &[]).is_err());
+        let comments = vec![GitHubPrReviewCommentInput {
+            path: "a.ts".into(),
+            line: 1,
+            side: "right".into(),
+            body: "x".into(),
+        }];
+        assert!(pr_review_payload("PR_x", "request-changes", "", &comments).is_err());
+        assert!(pr_review_payload("PR_x", "request-changes", "why", &comments).is_ok());
+        assert!(pr_review_payload("PR_x", "comment", "", &comments).is_ok());
         let bad = vec![GitHubPrReviewCommentInput {
             path: "".into(),
             line: 0,
