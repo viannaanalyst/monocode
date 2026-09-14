@@ -1704,6 +1704,7 @@ function SidebarComponent({
           onSetReminders={onSetReminders}
           onCancelReminders={onCancelReminders}
           reminderSessionIds={new Set(reminders.map((item) => item.sessionId))}
+          onNewInProject={onNewInProject}
           onSelectProject={onSelectProject}
           onOpenProject={onOpenProject}
           onRemoveProject={onRemoveProject}

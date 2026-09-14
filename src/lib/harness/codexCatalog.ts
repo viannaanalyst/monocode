@@ -233,12 +233,14 @@ function parseModelSettings(rec: Record<string, unknown>): ModelSetting[] {
       stringField(rec, "defaultServiceTier") ?? "default";
     settings.push({
       id: "serviceTier",
-      label: "Service Tier",
-      kind: "select",
-      value: tierOptions.some((o) => o.value === defaultTier)
-        ? defaultTier
-        : "default",
-      options: tierOptions,
+      label: "Fast",
+      description: "Significantly faster but consumes more usage",
+      kind: "toggle",
+      value: defaultTier !== "default" ? "true" : "false",
+      options: [
+        { value: "false", label: "Standard" },
+        { value: "true", label: "Fast" },
+      ],
     });
   }
 

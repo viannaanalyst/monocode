@@ -41,6 +41,16 @@ import type {
 
 type ApprovalOutcome = ApprovalDecision | "cancelled";
 
+/** The Fast toggle stores "true"/"false"; Codex wants a service tier id. */
+function serviceTierFrom(
+  settings?: Record<string, string>,
+): string | undefined {
+  const raw = settings?.serviceTier;
+  if (raw === "true") return "fast";
+  if (raw === "false" || raw === "default") return undefined;
+  return raw;
+}
+
 type PendingApproval = {
   rpcId: JsonRpcId;
   threadId: string;
@@ -400,7 +410,7 @@ async function ensureLive(input: HarnessSessionInput): Promise<Live> {
     await rpc.notify("initialized", undefined);
 
     const model = nativeModelId(input.model);
-    const serviceTier = input.modelSettings?.serviceTier;
+    const serviceTier = serviceTierFrom(input.modelSettings);
     const effort = input.modelSettings?.reasoningEffort;
 
     let threadId: string | undefined;
@@ -494,7 +504,7 @@ async function ensureLive(input: HarnessSessionInput): Promise<Live> {
 async function runTurn(live: Live, input: SendTurnInput): Promise<void> {
   const model = nativeModelId(input.model);
   const effort = input.modelSettings?.reasoningEffort;
-  const serviceTier = input.modelSettings?.serviceTier;
+  const serviceTier = serviceTierFrom(input.modelSettings);
 
   const params = buildTurnStartParams({
     threadId: live.threadId,

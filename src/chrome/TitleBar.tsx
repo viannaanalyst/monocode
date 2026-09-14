@@ -3,8 +3,6 @@ import {
   ChevronRight,
   Inbox,
   PanelLeft,
-  Plus,
-  Search,
   Settings,
   StickyNote,
 } from "./icons";
@@ -306,12 +304,10 @@ function TitleBarComponent({
   cwd,
   projectRailOpen = true,
   onToggleSidebar,
-  onNew,
   onNewTerminal,
   onOpenSettings,
   onOpenInbox,
   onOpenNotes,
-  onGoToFile,
   onOpenPanels,
   panelsOpen = false,
   recents = [],
@@ -364,11 +360,6 @@ function TitleBarComponent({
         {projectless && railClosed && onOpenNotes ? (
           <IconButton label={t("Notes")} onClick={onOpenNotes}>
             <StickyNote className="size-3.5" strokeWidth={1.75} />
-          </IconButton>
-        ) : null}
-        {railClosed && !projectless ? (
-          <IconButton label={`${t("Go to File")} (${MOD}P)`} onClick={onGoToFile}>
-            <Search className="size-3.5" strokeWidth={1.75} />
           </IconButton>
         ) : null}
         {!projectless && onOpenPanels ? (
@@ -439,20 +430,7 @@ function TitleBarComponent({
           showProjectButton ? " border-l border-content/10" : ""
         }`}
       >
-        <div className="flex min-w-0 flex-1 items-center px-2">
-          {!projectless ? (
-            <button
-              type="button"
-              title={`${t("New session")} (${MOD}T)`}
-              aria-label={t("New session")}
-              data-tauri-drag-region="false"
-              onClick={onNew}
-              className="grid size-6 shrink-0 place-items-center rounded-md text-content/45 hover:bg-content/10 hover:text-content"
-            >
-              <Plus className="size-3.5" strokeWidth={1.75} />
-            </button>
-          ) : null}
-        </div>
+        <div className="flex min-w-0 flex-1 items-center px-2" />
 
         {!IS_MAC && !IS_WIN ? (
           <div className="flex min-w-0 flex-1 items-center justify-center px-4">

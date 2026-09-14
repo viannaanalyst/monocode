@@ -107,7 +107,11 @@ function ToggleSetting({
 }) {
   const on = value === "true";
   const Icon =
-    setting.id === "fast" ? Zap : setting.id === "thinking" ? AiIdea : Gauge;
+    setting.id === "fast" || setting.id === "serviceTier"
+      ? Zap
+      : setting.id === "thinking"
+        ? AiIdea
+        : Gauge;
   return (
     <button
       type="button"

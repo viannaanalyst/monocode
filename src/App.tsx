@@ -7365,8 +7365,14 @@ export default function App({
                         </div>
                       ))}
                     </div>
-                    {rightDock ? (
-                      <aside className="relative flex h-full min-h-0 w-[340px] shrink-0 flex-col border-l border-content/10">
+                    <aside
+                      aria-hidden={!rightDock}
+                      className={`relative flex h-full min-h-0 shrink-0 flex-col overflow-hidden border-l border-content/10 transition-[width,opacity] duration-200 ease-out ${
+                        rightDock ? "w-[340px] opacity-100" : "w-0 opacity-0"
+                      }`}
+                    >
+                      {rightDock ? (
+                        <>
                         <div className="flex h-9 shrink-0 items-center justify-between border-b border-content/10 px-3">
                           <span className="text-[12.5px] font-semibold text-content/75">
                             {rightDock === "explorer"
@@ -7456,8 +7462,9 @@ export default function App({
                             />
                           )}
                         </div>
-                      </aside>
-                    ) : null}
+                        </>
+                      ) : null}
+                    </aside>
                   </div>
                 </div>
               </main>

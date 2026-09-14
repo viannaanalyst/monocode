@@ -151,6 +151,7 @@ type Props = {
   onSetReminders?: (sessionIds: readonly string[], dueAt: number) => void;
   onCancelReminders?: (sessionIds: readonly string[]) => void;
   reminderSessionIds?: Set<string>;
+  onNewInProject?: (cwd: string) => void;
   onSelectProject: (path: string) => void;
   onOpenProject: () => void;
   onRemoveProject?: (path: string, options: { purgeData: boolean }) => void;
@@ -192,6 +193,7 @@ export function ProjectRail({
   onSetReminders,
   onCancelReminders,
   reminderSessionIds,
+  onNewInProject,
   onSelectProject,
   onOpenProject,
   onRemoveProject,
@@ -474,6 +476,7 @@ export function ProjectRail({
                 onSetReminders={onSetReminders}
                 onCancelReminders={onCancelReminders}
                 reminderSessionIds={reminderSessionIds}
+                onNewInProject={onNewInProject}
               />
             ) : null}
 
@@ -843,6 +846,7 @@ function ProjectSection({
   onSetReminders,
   onCancelReminders,
   reminderSessionIds,
+  onNewInProject,
 }: {
   label: string;
   items: RecentProject[];
@@ -873,6 +877,7 @@ function ProjectSection({
   onSetReminders?: (sessionIds: readonly string[], dueAt: number) => void;
   onCancelReminders?: (sessionIds: readonly string[]) => void;
   reminderSessionIds?: Set<string>;
+  onNewInProject?: (cwd: string) => void;
 }) {
   return (
     <div className="shrink-0 mb-2">
@@ -926,6 +931,7 @@ function ProjectSection({
             onSetReminders={onSetReminders}
             onCancelReminders={onCancelReminders}
             reminderSessionIds={reminderSessionIds}
+            onNewInProject={onNewInProject}
           />
         ))}
       </div>
@@ -962,6 +968,7 @@ function ProjectCard({
   onSetReminders,
   onCancelReminders,
   reminderSessionIds,
+  onNewInProject,
 }: {
   item: RecentProject;
   selected: boolean;
@@ -988,6 +995,7 @@ function ProjectCard({
   onSetReminders?: (sessionIds: readonly string[], dueAt: number) => void;
   onCancelReminders?: (sessionIds: readonly string[]) => void;
   reminderSessionIds?: Set<string>;
+  onNewInProject?: (cwd: string) => void;
 }) {
   const fallbackName = basename(item.path);
   const key = projectKey(item.path);
@@ -1049,7 +1057,7 @@ function ProjectCard({
         data-no-tooltip
         aria-label={cardAriaLabel}
         aria-current={selected ? "true" : undefined}
-        className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left group-hover:pr-12"
+        className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left group-hover:pr-20"
       >
         <div className="project-card-logo grid size-4 shrink-0 place-items-center">
           <span
@@ -1123,6 +1131,22 @@ function ProjectCard({
       >
         <MoreHorizontal className="size-4" strokeWidth={1.75} />
       </button>
+      {onNewInProject ? (
+        <button
+          type="button"
+          data-no-drag
+          title={t("New session")}
+          aria-label={t("New session")}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
+            onNewInProject(item.path);
+          }}
+          className="absolute right-14 top-1/2 hidden size-4 -translate-y-1/2 place-items-center rounded-sm text-content/55 hover:bg-content/8 hover:text-content group-hover:grid"
+        >
+          <Plus className="size-3.5" strokeWidth={1.75} />
+        </button>
+      ) : null}
       <button
         type="button"
         data-no-drag
