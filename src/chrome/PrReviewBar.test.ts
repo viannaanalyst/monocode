@@ -129,4 +129,30 @@ describe("PrReviewBar inline editing", () => {
     act(() => button("Cancel").click());
     expect(container.querySelector("textarea")).toBeNull();
   });
+
+  it("consumes a request and opens the form with it", () => {
+    const onRequestHandled = vi.fn();
+    act(() =>
+      root.render(
+        createElement(PrReviewBar, {
+          draft,
+          busy: null,
+          request: { event: "request-changes", id: 1 },
+          onSubmit: () => {},
+          onRequestHandled,
+          onDiscard: () => {},
+          onEdit: () => {},
+          onRemove: () => {},
+        }),
+      ),
+    );
+
+    expect(onRequestHandled).toHaveBeenCalledTimes(1);
+
+    const publish = button("Publish review");
+    expect(publish.disabled).toBe(true);
+
+    type(container.querySelector("textarea")!, "why");
+    expect(button("Publish review").disabled).toBe(false);
+  });
 });

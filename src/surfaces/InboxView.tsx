@@ -2366,6 +2366,7 @@ export function InboxDetail({
               busy={busyAction}
               request={reviewRequest}
               onSubmit={publishReview}
+              onRequestHandled={() => setReviewRequest(null)}
               onDiscard={() => {
                 clearReviewDraft(draftKey);
                 updateDraft(emptyReviewDraft());

@@ -13,6 +13,7 @@ export function PrReviewBar({
   busy,
   request,
   onSubmit,
+  onRequestHandled,
   onDiscard,
   onEdit,
   onRemove,
@@ -21,6 +22,7 @@ export function PrReviewBar({
   busy: string | null;
   request?: { event: PrReviewEvent; id: number } | null;
   onSubmit: (event: PrReviewEvent, body: string) => void;
+  onRequestHandled: () => void;
   onDiscard: () => void;
   onEdit: (id: string, body: string) => void;
   onRemove: (id: string) => void;
@@ -36,6 +38,7 @@ export function PrReviewBar({
     if (!request) return;
     setOpen(true);
     setEvent(request.event);
+    onRequestHandled();
   }, [request]);
 
   return (
@@ -169,6 +172,13 @@ export function PrReviewBar({
               className="ml-auto inline-flex h-7 items-center rounded-md bg-content px-2.5 text-[12px] font-medium text-background-base disabled:opacity-40"
             >
               {t("Publish review")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="inline-flex h-7 items-center rounded-md border border-content/15 px-2 text-[11px] text-content/70"
+            >
+              {t("Cancel")}
             </button>
           </div>
         </div>
