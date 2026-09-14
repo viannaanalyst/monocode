@@ -1273,4 +1273,46 @@ export const PT_BR: Record<string, string> = {
   "Recommended set of models": "Conjunto recomendado de modelos",
   "Reset effort": "Redefinir esforço",
   "No models found": "Nenhum modelo encontrado",
+  Merge: "Mesclar",
+  "Merge options": "Opções de mesclagem",
+  "Squash and merge": "Squash e mesclar",
+  "Create a merge commit": "Criar um commit de merge",
+  "Rebase and merge": "Rebase e mesclar",
+  Approve: "Aprovar",
+  "Request changes": "Solicitar alterações",
+  "Close pull request": "Fechar pull request",
+  "Reopen pull request": "Reabrir pull request",
+  "Merge pull request #{number} with {method}?":
+    "Mesclar pull request #{number} com {method}?",
+  "Close pull request #{number}?": "Fechar pull request #{number}?",
+  "Edit labels": "Editar rótulos",
+  "Edit assignees": "Editar responsáveis",
+  "Edit reviewers": "Editar revisores",
+  Apply: "Aplicar",
+  "Filter…": "Filtrar…",
+  "Add to review": "Adicionar à revisão",
+  "Add a review comment before requesting changes":
+    "Adicione um comentário de revisão antes de solicitar alterações",
+  "Submit review": "Enviar revisão",
+  "Discard review": "Descartar revisão",
+  "Publish review": "Publicar revisão",
+  "Review summary (optional for approve)":
+    "Resumo da revisão (opcional para aprovar)",
+  "No pending comments": "Nenhum comentário pendente",
+  "{count} review comments": "{count} comentários de revisão",
+  "1 review comment": "1 comentário de revisão",
+  "Edit comment": "Editar comentário",
+  "Remove comment": "Remover comentário",
+  "Pull request is not open": "O pull request não está aberto",
+  "Draft pull requests cannot be merged":
+    "Pull requests em rascunho não podem ser mesclados",
+  "Resolve merge conflicts first": "Resolva os conflitos de mesclagem primeiro",
+  "Mergeability is still being computed":
+    "A mesclabilidade ainda está sendo calculada",
+  "Required checks or reviews are blocking":
+    "Verificações ou revisões obrigatórias estão bloqueando",
+  "The branch has conflicts": "A branch tem conflitos",
+  "You cannot approve your own pull request":
+    "Você não pode aprovar seu próprio pull request",
+  "No labels": "Sem rótulos",
 };
