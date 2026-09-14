@@ -5,6 +5,7 @@ const { invoke } = vi.hoisted(() => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke }));
 
 import {
+  asGithubPrDetails,
   githubPrEdit,
   githubPrReview,
   githubWorkItemDetails,
@@ -77,5 +78,19 @@ describe("PR write wrappers", () => {
     const details = await githubWorkItemDetails("/tmp/repo", "pr", 7);
     expect(details.id).toBe("PR_1");
     expect(details.mergeStateStatus).toBe("CLEAN");
+  });
+
+  it("narrows GitHub PR details only when backend fields are present", () => {
+    expect(asGithubPrDetails(null)).toBeNull();
+    expect(asGithubPrDetails({ body: "", author: "" })).toBeNull();
+    const pr = asGithubPrDetails({
+      body: "",
+      author: "me",
+      id: "PR_1",
+      state: "OPEN",
+    });
+    expect(pr?.mergeStateStatus).toBe("");
+    expect(pr?.draft).toBe(false);
+    expect(pr?.labels).toEqual([]);
   });
 });

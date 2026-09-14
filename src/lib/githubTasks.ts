@@ -92,6 +92,17 @@ export type GithubWorkItemDetails = {
   baseRefName?: string;
   headRefName?: string;
   reviewDecision?: string;
+  id?: string;
+  state?: string;
+  draft?: boolean;
+  mergeable?: string;
+  mergeStateStatus?: string;
+  labels?: GithubLabel[];
+  assignees?: GithubAssignee[];
+  reviewRequests?: string[];
+};
+
+export type GithubPrDetails = GithubWorkItemDetails & {
   id: string;
   state: string;
   draft: boolean;
@@ -101,6 +112,27 @@ export type GithubWorkItemDetails = {
   assignees: GithubAssignee[];
   reviewRequests: string[];
 };
+
+/** The backend returns the required fields for GitHub PRs; tracker rows lack them. */
+export function asGithubPrDetails(
+  details: GithubWorkItemDetails | null,
+): GithubPrDetails | null {
+  if (!details) return null;
+  if (typeof details.id !== "string" || typeof details.state !== "string") {
+    return null;
+  }
+  return {
+    ...details,
+    id: details.id,
+    state: details.state,
+    draft: details.draft === true,
+    mergeable: details.mergeable ?? "",
+    mergeStateStatus: details.mergeStateStatus ?? "",
+    labels: details.labels ?? [],
+    assignees: details.assignees ?? [],
+    reviewRequests: details.reviewRequests ?? [],
+  };
+}
 
 export type GithubRepoMeta = {
   viewerLogin: string;
