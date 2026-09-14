@@ -45,7 +45,7 @@ import { MenuBar } from "./chrome/MenuBar";
 import { FilePicker } from "./chrome/FilePicker";
 import { FileTree } from "./chrome/FileTree";
 import { SourceControl } from "./chrome/SourceControl";
-import { Folder, GitPullRequest, Globe, Terminal } from "./chrome/icons";
+import { Folder, Globe, Terminal } from "./chrome/icons";
 import { UsageFooter } from "./chrome/UsageFooter";
 import { ImportSessionDialog } from "./chrome/ImportSessionDialog";
 import { useProjectBranches } from "./hooks/useProjectBranches";
@@ -7407,12 +7407,6 @@ export default function App({
                                   label: t("Explorer"),
                                   Icon: Folder,
                                   onPick: () => setRightDock("explorer"),
-                                },
-                                {
-                                  id: "changes",
-                                  label: t("Changes"),
-                                  Icon: GitPullRequest,
-                                  onPick: () => setRightDock("changes"),
                                 },
                               ].map(({ id, label, Icon, onPick }) => (
                                 <button
