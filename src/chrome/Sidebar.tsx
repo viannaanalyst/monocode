@@ -28,11 +28,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
-import {
-  loadSidebarTabOrder,
-  saveSidebarTabOrder,
-  type SidebarTabId,
-} from "../lib/appearance";
+import { type SidebarTabId } from "../lib/appearance";
 import {
   basename,
   type GitFileDiffKind,
@@ -89,6 +85,12 @@ import {
 } from "../lib/sessionFolders";
 import { LIST_PAGE_SIZE, listWindowSize } from "../lib/listWindow";
 import {
+  groupSessionsByProject,
+  loadCollapsedProjects,
+  saveCollapsedProjects,
+  subscribeCollapsedProjects,
+} from "../lib/sessionProjects";
+import {
   filterSessionsByHarness,
   filterSessionsByStatus,
   filterSessionsByTime,
@@ -117,13 +119,10 @@ import {
 import { useDragResize } from "../hooks/useDragResize";
 import { useGitFileStatuses } from "../hooks/useGitFileStatuses";
 import { useLockOverscroll } from "../hooks/useLockOverscroll";
-import { useProjectDiffStats } from "../hooks/useProjectDiffStats";
 import { useSortable } from "../hooks/useSortable";
-import { useAnimatedReorder } from "../hooks/useAnimatedReorder";
 import { useTabGroupLogos } from "../hooks/useTabGroupLogos";
 import { normalizeHex } from "../lib/colorUtils";
 import {
-  looksLikeProject,
   projectRailItems,
   sameProjectPath,
   type RecentProject,
@@ -164,13 +163,6 @@ let rememberedWidth = DEFAULT_WIDTH;
 
 type SidebarTab = SidebarTabId;
 
-const TAB_LABELS: Record<SidebarTab, string> = {
-  sessions: "Sessions",
-  inbox: "Inbox",
-  files: "Explorer",
-  changes: "Changes",
-};
-
 function projectPathBusy(
   paths: Iterable<string> | undefined,
   cwd: string,
@@ -188,10 +180,8 @@ type Props = {
   gitCwd?: string;
   open: boolean;
   sessions: SessionSummary[];
-  /** Show each session's project name (the "All sessions" scope). */
+  /** Show each session's project name. */
   showProject?: boolean;
-  allSessionsActive?: boolean;
-  onOpenAllSessions?: () => void;
   busySessionIds: Set<string>;
   approvalSessionIds: Set<string>;
   activeSessionId?: string;
@@ -264,7 +254,6 @@ type Props = {
   inboxActive?: boolean;
   notesActive?: boolean;
   notesEnabled?: boolean;
-  onToggleProjectRail?: () => void;
   projectRailOpen?: boolean;
   unseenFinishedIds?: Set<string>;
   inboxUnseen?: boolean;
@@ -286,8 +275,6 @@ function SidebarComponent({
   open,
   sessions,
   showProject = false,
-  allSessionsActive = false,
-  onOpenAllSessions,
   busySessionIds,
   approvalSessionIds,
   activeSessionId,
@@ -316,7 +303,6 @@ function SidebarComponent({
   onFileMoved,
   onFileDeleted,
   tab,
-  onTabChange,
   filesSearchOpen,
   onFilesSearchOpenChange,
   onOpenFilesSearch,
@@ -350,7 +336,6 @@ function SidebarComponent({
   inboxActive = false,
   notesActive = false,
   notesEnabled = true,
-  onToggleProjectRail,
   projectRailOpen = true,
   unseenFinishedIds: unseenFinishedIdsProp,
   inboxUnseen = false,
@@ -374,7 +359,6 @@ function SidebarComponent({
       rememberedWidth = next;
     },
   });
-  const [tabOrder, setTabOrder] = useState<SidebarTab[]>(loadSidebarTabOrder);
   const [now, setNow] = useState(() => Date.now());
   const sessionsLock = useLockOverscroll<HTMLDivElement>();
   const sessionsScrollRef = useRef<HTMLDivElement>(null);
@@ -398,6 +382,9 @@ function SidebarComponent({
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
   const [sessionFolders, setSessionFolders] = useState<SessionFolder[]>(() =>
     loadSessionFolders(cwd),
+  );
+  const [collapsedProjects, setCollapsedProjects] = useState(
+    loadCollapsedProjects,
   );
   const [pinnedSessionsCollapsed, setPinnedSessionsCollapsed] = useState(() =>
     loadPinnedSessionsCollapsed(cwd),
@@ -467,6 +454,24 @@ function SidebarComponent({
       searchQuery,
     ),
   ].sort(compareSessionSummaries);
+  // The project tree groups every project's conversations, pinned ones first.
+  const pinnedInTree = showProject
+    ? visibleSessions.filter((session) => session.pinned)
+    : [];
+  const projectGroups = showProject
+    ? groupSessionsByProject(
+        visibleSessions.filter((session) => !session.pinned),
+      )
+    : [];
+  const toggleProjectCollapsed = (key: string) => {
+    setCollapsedProjects((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      saveCollapsedProjects(next);
+      return next;
+    });
+  };
   const filtersActive = hasActiveSessionFilters(sessionFilters);
   const searchNarrowed = Boolean(searchQuery.trim());
   // Summaries for the whole project stay in `sessions` so filters still work.
@@ -528,15 +533,6 @@ function SidebarComponent({
   const sessionListKey = `${cwd}\0${sessionFilters.showArchived}\0${sessionFilters.time}\0${sessionFilters.hiddenHarnesses.join(",")}\0${sessionFilters.status.working}\0${sessionFilters.status.needsApproval}\0${sessionFilters.status.done}\0${searchQuery}`;
   const sessionHarnesses = harnessesInSessions(sessions);
   const narrowedByUser = searchNarrowed || filtersActive;
-  const visibleTabs = tabOrder.filter((itemId) => itemId !== "inbox");
-  const sortable = useAnimatedReorder(visibleTabs, (ids) => {
-    let index = 0;
-    const next = tabOrder.map((itemId) =>
-      itemId === "inbox" ? itemId : ids[index++],
-    );
-    setTabOrder(next);
-    saveSidebarTabOrder(next);
-  });
   const visibleFolderIds = sessionListEntries.flatMap((entry) =>
     entry.kind === "folder" ? [entry.folder.id] : [],
   );
@@ -553,22 +549,12 @@ function SidebarComponent({
     { axis: "y" },
   );
   const showProjectRail = Boolean(onSelectProject && onOpenProject);
-  // Settings live in the rail slot, so they keep it visible even when the
-  // project rail itself is collapsed.
-  const railVisible = showProjectRail && ((open && projectRailOpen) || settingsOpen);
-  const inProject = looksLikeProject(cwd);
+  // The project rail is the sidebar now: projects expand into their sessions.
+  const railVisible = showProjectRail && (open || settingsOpen);
   const showSidebarFooter = !projectRailOpen;
-  // A blank session has no project to browse, so the shell stands alone until
-  // one is picked — whether or not the rail is open.
-  const sidebarVisible =
-    open &&
-    !searchActive &&
-    !inboxActive &&
-    !notesActive &&
-    !settingsOpen &&
-    inProject;
+  // The wide session list is gone; sessions live inside each project.
+  const sidebarVisible = false;
   const gitStatuses = useGitFileStatuses(gitRoot, open && tab === "files");
-  const changeStats = useProjectDiffStats(gitRoot, open);
 
   useEffect(() => {
     setSessionListLimit(LIST_PAGE_SIZE);
@@ -609,6 +595,10 @@ function SidebarComponent({
       }),
     [cwd],
   );
+
+  useEffect(() => subscribeCollapsedProjects(() => {
+    setCollapsedProjects(loadCollapsedProjects());
+  }), []);
 
   useEffect(() => {
     if (pending || status === "error") return;
@@ -1119,65 +1109,6 @@ function SidebarComponent({
     />
   );
 
-  const onTabPick = (itemId: SidebarTab) => {
-    onTabChange(itemId);
-  };
-
-  const changeAdditions = changeStats?.additions ?? 0;
-  const changeDeletions = changeStats?.deletions ?? 0;
-  const hasChangeStats = changeAdditions > 0 || changeDeletions > 0;
-
-  const workspaceTabItems = visibleTabs.map((itemId) => {
-    const active = tab === itemId;
-    const isChangesTab = itemId === "changes";
-    return (
-      <div
-        key={itemId}
-        ref={(el) => sortable.setItemRef(itemId, el)}
-        className="reorder-item workspace-tab relative flex min-w-0 flex-1 touch-none items-stretch"
-        onPointerDown={(event) => {
-          if (event.button !== 0) return;
-          sortable.onItemPointerDown(itemId, event);
-        }}
-      >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={active}
-          aria-label={
-            isChangesTab
-              ? hasChangeStats
-                ? [
-                    t("Changes"),
-                    changeAdditions > 0 ? `+${changeAdditions}` : "",
-                    changeDeletions > 0 ? `-${changeDeletions}` : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")
-                : t("Changes")
-              : undefined
-          }
-          data-tauri-drag-region="false"
-          onClick={() => {
-            if (sortable.consumeClick()) return;
-            onTabPick(itemId);
-          }}
-          className={`flex h-6 min-w-0 flex-1 items-center justify-center self-center rounded-md px-2 text-[12px] leading-none ${
-            active ? "bg-content/10 text-content" : "text-content/50"
-          }`}
-        >
-          {isChangesTab && hasChangeStats ? (
-            <DiffStat additions={changeAdditions} deletions={changeDeletions} />
-          ) : (
-            <span className="block truncate leading-label">
-              {t(TAB_LABELS[itemId])}
-            </span>
-          )}
-        </button>
-      </div>
-    );
-  });
-
   const sidebarContent = (
     <aside
       ref={resize.setPaneRef}
@@ -1189,9 +1120,7 @@ function SidebarComponent({
             className="flex h-10 shrink-0 select-none items-center gap-1 border-b border-content/10 pl-3 pr-1.5"
             data-tauri-drag-region="deep"
           >
-            <span className="min-w-0 flex-1 truncate text-sm font-medium leading-tight">
-              {t("Workspace")}
-            </span>
+            <div className="min-w-0 flex-1" />
             <WorkspaceTitleActions
               cwd={cwd}
               recents={recents}
@@ -1199,13 +1128,6 @@ function SidebarComponent({
               onNew={onNew}
               onNewInProject={onNewInProject}
             />
-          </div>
-          <div
-            role="tablist"
-            aria-label={t("Workspace")}
-            className="flex h-9 shrink-0 items-center gap-px border-b border-content/10 px-2"
-          >
-            {workspaceTabItems}
           </div>
         </>
       ) : (
@@ -1221,8 +1143,6 @@ function SidebarComponent({
               canGoForward={canGoForward}
               onGoBack={onGoBack}
               onGoForward={onGoForward}
-              onTogglePanel={onToggleProjectRail}
-              panelActive={false}
             />
           </div>
           {onSelectProject ? (
@@ -1242,13 +1162,6 @@ function SidebarComponent({
               inboxUnseen={inboxUnseen}
             />
           ) : null}
-          <div
-            role="tablist"
-            aria-label={t("Workspace")}
-            className="flex h-9 shrink-0 items-center gap-px overflow-visible border-b border-content/10 px-2"
-          >
-            {workspaceTabItems}
-          </div>
         </>
       )}
       <>
@@ -1340,6 +1253,76 @@ function SidebarComponent({
                 ) : (
                   <SessionsEmpty message={t("Sessions you start will show up here")} />
                 )
+              ) : showProject ? (
+                <ul className="flex flex-col gap-0.5 p-1.5">
+                  {pinnedInTree.length > 0 ? (
+                    <li className="mb-1.5">
+                      <div className="overflow-hidden rounded-md bg-content/5">
+                        <div className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold text-content/50">
+                          <Pin className="size-3.5" strokeWidth={1.75} />
+                          <span className="truncate">{t("Pinned")}</span>
+                          <span className="ml-auto shrink-0 text-[10px] tabular-nums text-content/40">
+                            {pinnedInTree.length}
+                          </span>
+                        </div>
+                        <ul className="flex flex-col gap-px p-1">
+                          {pinnedInTree.map((session) => (
+                            <li key={session.id}>
+                              {renderSessionCard(session, true)}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </li>
+                  ) : null}
+                  {projectGroups.map((group) => {
+                    const collapsed = collapsedProjects.has(group.key);
+                    return (
+                      <li key={group.key} className="mb-1">
+                        <button
+                          type="button"
+                          data-no-drag
+                          data-tauri-drag-region="false"
+                          data-no-tooltip
+                          aria-expanded={!collapsed}
+                          onClick={() => toggleProjectCollapsed(group.key)}
+                          className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left hover:bg-content/5"
+                        >
+                          {collapsed ? (
+                            <ChevronRight
+                              className="size-3.5 shrink-0 text-content/40"
+                              strokeWidth={1.75}
+                            />
+                          ) : (
+                            <ChevronDown
+                              className="size-3.5 shrink-0 text-content/40"
+                              strokeWidth={1.75}
+                            />
+                          )}
+                          <Folder
+                            className="size-3.5 shrink-0 text-content/45"
+                            strokeWidth={1.75}
+                          />
+                          <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-content/80">
+                            {group.name}
+                          </span>
+                          <span className="shrink-0 text-[10px] tabular-nums text-content/40">
+                            {group.sessions.length}
+                          </span>
+                        </button>
+                        {collapsed ? null : (
+                          <ul className="flex flex-col gap-px p-1">
+                            {group.sessions.map((session) => (
+                              <li key={session.id}>
+                                {renderSessionCard(session, true)}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
               ) : (
                 <ul className="flex flex-col gap-0.5 p-1.5">
                   {sessionListEntries.map((entry, index) => {
@@ -1709,9 +1692,17 @@ function SidebarComponent({
           notesEnabled={notesEnabled}
           onOpenNotes={onOpenNotes}
           notesActive={notesActive}
-          allSessionsActive={allSessionsActive}
-          onOpenAllSessions={onOpenAllSessions}
-          onTogglePanel={onToggleProjectRail}
+          sessions={sessions}
+          onSelectSession={onSelectSession}
+          busySessionIds={busySessionIds}
+          approvalSessionIds={approvalSessionIds}
+          onRenameSession={onRenameSession}
+          onArchiveSession={onArchiveSession}
+          onPinSession={onPinSession}
+          onDeleteSession={onDeleteSession}
+          onSetReminders={onSetReminders}
+          onCancelReminders={onCancelReminders}
+          reminderSessionIds={new Set(reminders.map((item) => item.sessionId))}
           onSelectProject={onSelectProject}
           onOpenProject={onOpenProject}
           onRemoveProject={onRemoveProject}
@@ -2870,37 +2861,6 @@ function SessionRenameRow({
         className="w-full rounded bg-content/10 px-2 py-1 text-[13px] font-semibold leading-snug text-content outline-none ring-1 ring-accent/40"
       />
     </div>
-  );
-}
-
-function DiffStat({
-  additions,
-  deletions,
-}: {
-  additions: number;
-  deletions: number;
-}) {
-  if (additions <= 0 && deletions <= 0) return null;
-
-  const label = [
-    additions > 0 ? `+${additions}` : "",
-    deletions > 0 ? `-${deletions}` : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
-
-  return (
-    <span
-      title={t("{label} uncommitted", { label })}
-      className="flex shrink-0 items-center gap-1.5 font-mono text-[11px] font-semibold tabular-nums"
-    >
-      {additions > 0 ? (
-        <span className="text-emerald-400">+{additions}</span>
-      ) : null}
-      {deletions > 0 ? (
-        <span className="text-red-400">-{deletions}</span>
-      ) : null}
-    </span>
   );
 }
 

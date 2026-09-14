@@ -19,15 +19,17 @@ import { TitleBar, type Tab as TitleTab } from "./chrome/TitleBar";
 import { TooltipLayer } from "./chrome/Tooltip";
 import { MenuBar } from "./chrome/MenuBar";
 import { FilePicker } from "./chrome/FilePicker";
+import { FileTree } from "./chrome/FileTree";
+import { SourceControl } from "./chrome/SourceControl";
 import { UsageFooter } from "./chrome/UsageFooter";
 import { ImportSessionDialog } from "./chrome/ImportSessionDialog";
 import { useProjectBranches } from "./hooks/useProjectBranches";
+import { useGitFileStatuses } from "./hooks/useGitFileStatuses";
 import { useInboxActivity } from "./hooks/useInboxUnseen";
 import {
   loadProjectRailOpen,
   loadSidebarOpen,
   loadSidebarTabOrder,
-  saveProjectRailOpen,
   saveSidebarOpen,
   type SidebarTabId,
 } from "./lib/appearance";
@@ -408,7 +410,6 @@ import {
   mergeHistorySummary,
   mergeProjectHistorySummary,
   replaceProjectHistory,
-  historyWithLiveSessions,
   allProjectsHistoryWithLiveSessions,
   summaryFromSession,
 } from "./lib/sessionHistory";
@@ -678,15 +679,20 @@ export default function App({
     (id: string) => tabProjectsRef.current.get(id),
     [],
   );
-  const [projectRailOpen, setProjectRailOpen] = useState(loadProjectRailOpen);
+  const [projectRailOpen] = useState(loadProjectRailOpen);
   const [sidebarOpen, setSidebarOpen] = useState(loadSidebarOpen);
   const tabCloseScope = "project" as const;
   const currentProjectDock = findProjectTerminal(projectTerminals, projectCwd);
   const dockVisible = !!currentProjectDock?.open;
-  const [sidebarTab, setSidebarTab] = useState<SidebarTabId>(
-    () => loadSidebarTabOrder()[0] ?? "sessions",
+  const [sidebarTab, setSidebarTab] = useState<SidebarTabId>(() => {
+    const first = loadSidebarTabOrder()[0];
+    return first && first !== "files" && first !== "changes"
+      ? first
+      : "sessions";
+  });
+  const [rightDock, setRightDock] = useState<"explorer" | "changes" | null>(
+    null,
   );
-  const [allSessions, setAllSessions] = useState(false);
   const [filesSearchOpen, setFilesSearchOpen] = useState(false);
   const [searchFocusToken, setSearchFocusToken] = useState(0);
   const [searchViewOpen, setSearchViewOpen] = useState(false);
@@ -1044,6 +1050,10 @@ export default function App({
   const gitCwd = active ? sessionWorkCwd(active) : sidebarCwd;
   const gitCwdRef = useRef(gitCwd);
   gitCwdRef.current = gitCwd;
+  const rightDockGitStatuses = useGitFileStatuses(
+    gitCwd,
+    rightDock === "explorer",
+  );
   const projectBranches = useProjectBranches(
     sidebarCwd,
     Boolean(sidebarCwd) && sidebarCwd !== "~",
@@ -1267,10 +1277,9 @@ export default function App({
     void refreshHistory(sidebarCwd);
   }, [sidebarCwd, refreshHistory]);
 
-  // "All sessions" spans every project, so pull the recent projects' rows
-  // (visited projects are already cached in `history`).
+  // The project sidebar shows sessions for every visited project, so pull each
+  // recent project's rows (visited projects are already cached in `history`).
   useEffect(() => {
-    if (!allSessions) return;
     let cancelled = false;
     const paths = [
       ...new Set(
@@ -1304,7 +1313,7 @@ export default function App({
     return () => {
       cancelled = true;
     };
-  }, [allSessions, recents, sidebarCwd]);
+  }, [recents, sidebarCwd]);
 
   useEffect(() => {
     if (!inboxViewOpen) return;
@@ -2930,7 +2939,6 @@ export default function App({
             );
           }),
         );
-        setSidebarTab("changes");
         setComposerFocused(false);
       })();
     },
@@ -2973,7 +2981,15 @@ export default function App({
   );
 
   const onShowSourceControl = useCallback(() => {
-    setSidebarTab("changes");
+    setRightDock("changes");
+  }, []);
+
+  const onShowExplorer = useCallback(() => {
+    setRightDock("explorer");
+  }, []);
+
+  const onShowChangesPanel = useCallback(() => {
+    setRightDock("changes");
   }, []);
 
   const onToggleChanges = useCallback(() => {
@@ -3040,6 +3056,11 @@ export default function App({
       leafIds(entry.layout).includes(sessionId),
     );
     if (!tab) return false;
+    const session = sessionsRef.current.find((entry) => entry.id === sessionId);
+    if (session) {
+      setProjectCwd(session.cwd);
+      setRecents(rememberProject(session.cwd));
+    }
     setActiveTabId(tab.id);
     setTabs((prev) =>
       prev.map((entry) =>
@@ -3321,9 +3342,37 @@ export default function App({
         if (linkedUpdate) revealLinkedSessionUpdate(sessionId, linkedUpdate);
         return;
       }
-      const tab = newTab(session.id);
-      appendTab(tab, session.cwd);
-      setActiveTabId(tab.id);
+      const tab =
+        tabsRef.current.find((entry) => entry.id === activeTabIdRef.current) ??
+        tabsRef.current[0];
+      if (tab) {
+        setSessions((prev) =>
+          prev.some((entry) => entry.id === session.id)
+            ? prev
+            : [...prev, session],
+        );
+        setTabs((prev) =>
+          prev.map((entry) =>
+            entry.id === tab.id
+              ? {
+                  ...resetTabToSession(entry, session.id),
+                  ...(entry.groupId ? { groupId: entry.groupId } : {}),
+                }
+              : entry,
+          ),
+        );
+        setActiveTabId(tab.id);
+        setProjectCwd(session.cwd);
+        setRecents(rememberProject(session.cwd));
+        setComposerFocused(true);
+        if (linkedUpdate) revealLinkedSessionUpdate(sessionId, linkedUpdate);
+        return;
+      }
+      const newWorkspaceTab = newTab(session.id);
+      appendTab(newWorkspaceTab, session.cwd);
+      setActiveTabId(newWorkspaceTab.id);
+      setProjectCwd(session.cwd);
+      setRecents(rememberProject(session.cwd));
       setComposerFocused(true);
       if (linkedUpdate) revealLinkedSessionUpdate(sessionId, linkedUpdate);
     },
@@ -3940,7 +3989,6 @@ export default function App({
 
   const onSelectProject = useCallback(
     (path: string) => {
-      setAllSessions(false);
       setSearchViewOpen(false);
       setInboxViewOpen(false);
       setNotesViewOpen(false);
@@ -4006,7 +4054,6 @@ export default function App({
     (path: string) => {
       const normalized = normalizeProjectPath(path);
       if (!looksLikeProject(normalized)) return;
-      setAllSessions(false);
       setSearchViewOpen(false);
       setInboxViewOpen(false);
       setNotesViewOpen(false);
@@ -5520,18 +5567,8 @@ export default function App({
   );
 
   const sidebarHistory = useMemo(
-    () =>
-      allSessions
-        ? allProjectsHistoryWithLiveSessions(history, sessions)
-        : historyWithLiveSessions(history, sessions, sidebarCwd, {
-            ...(projectBranches?.current
-              ? { branch: projectBranches.current }
-              : {}),
-            ...(sidebarCwd && sidebarCwd !== "~"
-              ? { repo: projectName(sidebarCwd) }
-              : {}),
-          }),
-    [allSessions, history, projectBranches, sessions, sidebarCwd],
+    () => allProjectsHistoryWithLiveSessions(history, sessions),
+    [history, sessions],
   );
   const {
     unseen: inboxUnseen,
@@ -5596,14 +5633,6 @@ export default function App({
     })
   }, []);
 
-  const onToggleProjectRail = useCallback(() => {
-    setProjectRailOpen((open) => {
-      const next = !open;
-      saveProjectRailOpen(next);
-      return next;
-    });
-  }, []);
-
   const onGoToFile = useCallback(() => {
     setSearchViewOpen(false);
     setInboxViewOpen(false);
@@ -5615,7 +5644,7 @@ export default function App({
     setSearchViewOpen(false);
     setInboxViewOpen(false);
     setNotesViewOpen(false);
-    setSidebarTab("files");
+    setRightDock("explorer");
     setFilesSearchOpen(true);
     setSearchFocusToken((token) => token + 1);
   }, []);
@@ -6227,9 +6256,7 @@ export default function App({
         onOpenFilesSearch={onFindInProject}
         searchFocusToken={searchFocusToken}
         sessions={sidebarHistory}
-        showProject={allSessions}
-        allSessionsActive={allSessions}
-        onOpenAllSessions={() => setAllSessions((value) => !value)}
+        showProject
         busySessionIds={busySessionIds}
         approvalSessionIds={approvalSessionIds}
         activeSessionId={active?.id}
@@ -6297,7 +6324,6 @@ export default function App({
         notesActive={notesViewOpen}
         notesEnabled={notesEnabled}
         projectRailOpen={projectRailOpen}
-        onToggleProjectRail={onToggleProjectRail}
         unseenFinishedIds={unseenFinishedIds}
         inboxUnseen={inboxUnseen}
         linkedSessionUpdateIds={linkedSessionUpdateIds}
@@ -6382,6 +6408,8 @@ export default function App({
             onCloseMany={onCloseTabs}
             onReorder={onReorderTabs}
             onGoToFile={onGoToFile}
+            onShowExplorer={onShowExplorer}
+            onOpenChanges={onShowChangesPanel}
             recents={recents}
             onSelectProject={onSelectProject}
           />
@@ -6486,6 +6514,57 @@ export default function App({
                     </div>
                   ))}
                 </div>
+                {rightDock ? (
+                  <aside className="relative flex h-full min-h-0 w-[340px] shrink-0 flex-col border-l border-content/10">
+                    <div className="flex h-9 shrink-0 items-center justify-between border-b border-content/10 px-3">
+                      <span className="text-[12.5px] font-semibold text-content/75">
+                        {rightDock === "explorer" ? t("Explorer") : t("Changes")}
+                      </span>
+                      <button
+                        type="button"
+                        aria-label={t("Close")}
+                        title={t("Close")}
+                        data-tauri-drag-region="false"
+                        onClick={() => setRightDock(null)}
+                        className="grid size-6 place-items-center rounded-md text-content/45 hover:bg-content/10 hover:text-content"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <div className="min-h-0 flex-1 overflow-hidden">
+                      {rightDock === "explorer" ? (
+                        <FileTree
+                          key={gitCwd}
+                          cwd={gitCwd}
+                          onOpenFile={onOpenFile}
+                          onOpenTerminal={onOpenTerminal}
+                          onFileMoved={onFileMoved}
+                          onFileDeleted={onFileDeleted}
+                          onSearch={onFindInProject}
+                          gitStatuses={rightDockGitStatuses}
+                          sourceControlActive={false}
+                          onShowSourceControl={onShowChangesPanel}
+                        />
+                      ) : (
+                        <SourceControl
+                          cwd={gitCwd}
+                          enabled
+                          textHarness={active?.harness}
+                          selectedPath={
+                            activeTab
+                              ? selectedChangePath(activeTab, gitCwd)
+                              : undefined
+                          }
+                          onOpenFile={(path, kind) =>
+                            onOpenDiff(path, undefined, kind)
+                          }
+                          onOpenAllChanges={onOpenAllChanges}
+                          onOpenCommit={onOpenCommit}
+                        />
+                      )}
+                    </div>
+                  </aside>
+                ) : null}
               </div>
             </div>
           </main>

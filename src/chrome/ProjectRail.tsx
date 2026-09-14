@@ -2,19 +2,17 @@ import {
   Archive,
   Check,
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   CircleAlert,
   FilePlusCorner,
   FolderOpen,
   ImagePlus,
   Inbox,
-  ListBullet,
   MoreHorizontal,
   Pin,
   PinOff,
-  File,
   Plus,
-  Search,
   Settings,
   Trash2,
 } from "./icons";
@@ -62,11 +60,18 @@ import {
   saveTabGroupMascot,
 } from "../lib/tabGroups";
 import { formatLiveElapsed, type LiveAgent } from "../lib/liveAgents";
+import type { SessionSummary } from "../lib/sessionStore";
 import { HarnessIcon } from "./HarnessIcon";
+import { ExplorerMenu, type ExplorerMenuItem } from "./ExplorerMenu";
+import { ModelBrandIcon } from "./ModelBrandIcon";
+import { resolveModel } from "../lib/models";
+import { sessionDisplayTitle } from "../lib/session";
+import { sessionReminderPresets } from "./sessionReminderPresets";
+import { reminderTime } from "../lib/sessionReminders";
 import { ProjectLogoIcon } from "./ProjectLogoIcon";
 import { ProjectBackgroundDialog } from "./ProjectBackgroundDialog";
 import { ProjectMascot } from "./ProjectMascot";
-import { RailAction, RailIconAction, RailSearch } from "./RailAction";
+import { RailAction } from "./RailAction";
 import { RemoveProjectDialog } from "./RemoveProjectDialog";
 import { DevModeSlot, TabVisitNav } from "./TitleBar";
 import { SidebarUpdateFooter } from "./SidebarUpdate";
@@ -134,9 +139,18 @@ type Props = {
   notesEnabled?: boolean;
   onOpenNotes?: () => void;
   notesActive?: boolean;
-  allSessionsActive?: boolean;
-  onOpenAllSessions?: () => void;
-  onTogglePanel?: () => void;
+  /** Conversations per project, rendered under each expanded project. */
+  sessions?: SessionSummary[];
+  onSelectSession?: (sessionId: string) => void;
+  busySessionIds?: Set<string>;
+  approvalSessionIds?: Set<string>;
+  onRenameSession?: (sessionId: string, title: string) => void;
+  onArchiveSession?: (sessionId: string, archived: boolean) => void;
+  onPinSession?: (sessionId: string, pinned: boolean) => void;
+  onDeleteSession?: (sessionId: string) => void;
+  onSetReminders?: (sessionIds: readonly string[], dueAt: number) => void;
+  onCancelReminders?: (sessionIds: readonly string[]) => void;
+  reminderSessionIds?: Set<string>;
   onSelectProject: (path: string) => void;
   onOpenProject: () => void;
   onRemoveProject?: (path: string, options: { purgeData: boolean }) => void;
@@ -163,16 +177,21 @@ export function ProjectRail({
   canGoForward = false,
   onGoBack,
   onGoForward,
-  onSearch,
   searchActive = false,
   onOpenInbox,
   inboxActive = false,
-  notesEnabled = true,
-  onOpenNotes,
   notesActive = false,
-  allSessionsActive = false,
-  onOpenAllSessions,
-  onTogglePanel,
+  sessions = [],
+  onSelectSession,
+  busySessionIds,
+  approvalSessionIds,
+  onRenameSession,
+  onArchiveSession,
+  onPinSession,
+  onDeleteSession,
+  onSetReminders,
+  onCancelReminders,
+  reminderSessionIds,
   onSelectProject,
   onOpenProject,
   onRemoveProject,
@@ -392,14 +411,12 @@ export function ProjectRail({
       >
         {IS_MAC ? <div className="w-[78px] shrink-0" /> : null}
         <DevModeSlot />
-        <TabVisitNav
-          canGoBack={canGoBack}
-          canGoForward={canGoForward}
-          onGoBack={onGoBack}
-          onGoForward={onGoForward}
-          onTogglePanel={settingsOpen ? undefined : onTogglePanel}
-          panelActive
-        />
+            <TabVisitNav
+              canGoBack={canGoBack}
+              canGoForward={canGoForward}
+              onGoBack={onGoBack}
+              onGoForward={onGoForward}
+            />
       </div>
 
       {settingsOpen ? (
@@ -410,43 +427,15 @@ export function ProjectRail({
         />
       ) : (
         <>
-          <div className="flex shrink-0 flex-col gap-1.5 px-2 pb-2 pt-0.5">
-            <RailSearch
-              label={t("Search")}
-              icon={Search}
-              onClick={onSearch}
-              active={searchActive}
-              shortcut={`${MOD}K`}
-              ariaLabel={withShortcut("Search", `${MOD}K`)}
-            />
-            <div className="flex items-center gap-1">
-              <RailIconAction
+          <div className="flex shrink-0 flex-col gap-px px-2 pb-2 pt-0.5">
+            {onOpenInbox ? (
+              <RailAction
                 label={t("Inbox")}
                 icon={Inbox}
                 onClick={onOpenInbox}
-                active={inboxActive}
-                dot={inboxUnseen}
                 ariaLabel={inboxUnseen ? t("Inbox, new items") : t("Inbox")}
               />
-              {notesEnabled ? (
-                <RailIconAction
-                  label={t("Notes")}
-                  icon={File}
-                  onClick={onOpenNotes}
-                  active={notesActive}
-                  ariaLabel={t("Notes")}
-                />
-              ) : null}
-              {onOpenAllSessions ? (
-                <RailIconAction
-                  label={t("All sessions")}
-                  icon={ListBullet}
-                  onClick={onOpenAllSessions}
-                  active={allSessionsActive}
-                  ariaLabel={t("All sessions")}
-                />
-              ) : null}
-            </div>
+            ) : null}
           </div>
 
           <div
@@ -474,6 +463,17 @@ export function ProjectRail({
                 groupCustomColors={groupCustomColors}
                 groupLogos={groupLogos}
                 groupMascots={groupMascots}
+                sessions={sessions}
+                onSelectSession={onSelectSession}
+                busySessionIds={busySessionIds}
+                approvalSessionIds={approvalSessionIds}
+                onRenameSession={onRenameSession}
+                onArchiveSession={onArchiveSession}
+                onPinSession={onPinSession}
+                onDeleteSession={onDeleteSession}
+                onSetReminders={onSetReminders}
+                onCancelReminders={onCancelReminders}
+                reminderSessionIds={reminderSessionIds}
               />
             ) : null}
 
@@ -496,6 +496,14 @@ export function ProjectRail({
               groupCustomColors={groupCustomColors}
               groupLogos={groupLogos}
               groupMascots={groupMascots}
+              sessions={sessions}
+              onSelectSession={onSelectSession}
+              busySessionIds={busySessionIds}
+              approvalSessionIds={approvalSessionIds}
+              onRenameSession={onRenameSession}
+              onArchiveSession={onArchiveSession}
+              onPinSession={onPinSession}
+              onDeleteSession={onDeleteSession}
             />
           </div>
           <LiveAgentsPreview
@@ -824,6 +832,17 @@ function ProjectSection({
   groupCustomColors,
   groupLogos,
   groupMascots,
+  sessions = [],
+  onSelectSession,
+  busySessionIds,
+  approvalSessionIds,
+  onRenameSession,
+  onArchiveSession,
+  onPinSession,
+  onDeleteSession,
+  onSetReminders,
+  onCancelReminders,
+  reminderSessionIds,
 }: {
   label: string;
   items: RecentProject[];
@@ -843,6 +862,17 @@ function ProjectSection({
   groupCustomColors: Record<string, string>;
   groupLogos: ReturnType<typeof useTabGroupLogos>;
   groupMascots: Record<string, string>;
+  sessions?: SessionSummary[];
+  onSelectSession?: (sessionId: string) => void;
+  busySessionIds?: Set<string>;
+  approvalSessionIds?: Set<string>;
+  onRenameSession?: (sessionId: string, title: string) => void;
+  onArchiveSession?: (sessionId: string, archived: boolean) => void;
+  onPinSession?: (sessionId: string, pinned: boolean) => void;
+  onDeleteSession?: (sessionId: string) => void;
+  onSetReminders?: (sessionIds: readonly string[], dueAt: number) => void;
+  onCancelReminders?: (sessionIds: readonly string[]) => void;
+  reminderSessionIds?: Set<string>;
 }) {
   return (
     <div className="shrink-0 mb-2">
@@ -885,6 +915,17 @@ function ProjectSection({
             groupCustomColors={groupCustomColors}
             groupLogos={groupLogos}
             groupMascots={groupMascots}
+            sessions={sessions}
+            onSelectSession={onSelectSession}
+            busySessionIds={busySessionIds}
+            approvalSessionIds={approvalSessionIds}
+            onRenameSession={onRenameSession}
+            onArchiveSession={onArchiveSession}
+            onPinSession={onPinSession}
+            onDeleteSession={onDeleteSession}
+            onSetReminders={onSetReminders}
+            onCancelReminders={onCancelReminders}
+            reminderSessionIds={reminderSessionIds}
           />
         ))}
       </div>
@@ -910,6 +951,17 @@ function ProjectCard({
   groupCustomColors,
   groupLogos,
   groupMascots,
+  sessions = [],
+  onSelectSession,
+  busySessionIds,
+  approvalSessionIds,
+  onRenameSession,
+  onArchiveSession,
+  onPinSession,
+  onDeleteSession,
+  onSetReminders,
+  onCancelReminders,
+  reminderSessionIds,
 }: {
   item: RecentProject;
   selected: boolean;
@@ -925,6 +977,17 @@ function ProjectCard({
   groupCustomColors: Record<string, string>;
   groupLogos: ReturnType<typeof useTabGroupLogos>;
   groupMascots: Record<string, string>;
+  sessions?: SessionSummary[];
+  onSelectSession?: (sessionId: string) => void;
+  busySessionIds?: Set<string>;
+  approvalSessionIds?: Set<string>;
+  onRenameSession?: (sessionId: string, title: string) => void;
+  onArchiveSession?: (sessionId: string, archived: boolean) => void;
+  onPinSession?: (sessionId: string, pinned: boolean) => void;
+  onDeleteSession?: (sessionId: string) => void;
+  onSetReminders?: (sessionIds: readonly string[], dueAt: number) => void;
+  onCancelReminders?: (sessionIds: readonly string[]) => void;
+  reminderSessionIds?: Set<string>;
 }) {
   const fallbackName = basename(item.path);
   const key = projectKey(item.path);
@@ -939,8 +1002,24 @@ function ProjectCard({
   const deletions = stats?.deletions ?? 0;
   const hasChanges = files > 0 || additions > 0 || deletions > 0;
   const cardAriaLabel = projectCardAriaLabel(name, stats, busy);
+  const [expanded, setExpanded] = useState<boolean | null>(null);
+  const isExpanded = expanded ?? selected;
+  const [sessionMenu, setSessionMenu] = useState<{
+    x: number;
+    y: number;
+    session: SessionSummary;
+  } | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const projectSessions = sessions.filter((session) =>
+    sameProjectPath(session.cwd, item.path),
+  );
+  const shownSessions = [...projectSessions].sort(
+    (a, b) => b.updatedAt - a.updatedAt,
+  );
 
   return (
+    <div className="min-w-0">
     <div
       ref={(el) => sortable.setItemRef(item.path, el)}
       data-selected={selected || undefined}
@@ -948,7 +1027,7 @@ function ProjectCard({
         selected
           ? "bg-content/12 text-content"
           : "opacity-65"
-      } cursor-default`}
+      } cursor-pointer`}
       onPointerDown={(event) => {
         if (event.button !== 0) return;
         if ((event.target as HTMLElement | null)?.closest("[data-no-drag]")) {
@@ -970,24 +1049,51 @@ function ProjectCard({
         data-no-tooltip
         aria-label={cardAriaLabel}
         aria-current={selected ? "true" : undefined}
-        className="flex min-w-0 flex-1 cursor-default items-center gap-2 text-left group-hover:pr-6"
+        className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left group-hover:pr-12"
       >
-        <div className="project-card-logo grid size-4 shrink-0 place-items-center transition-opacity group-hover:opacity-0">
-          {logoPath && !busy ? (
-            <ProjectLogoIcon
-              path={logoPath}
-              className="size-4 rounded-sm"
-              imageClassName="size-4"
-            />
-          ) : (
-            <ProjectMascot
-              project={seed}
-              color={color}
-              name={resolveTabGroupMascot(key, groupMascots)}
-              className="size-3"
-              active={busy}
-            />
-          )}
+        <div className="project-card-logo grid size-4 shrink-0 place-items-center">
+          <span
+            className={projectSessions.length > 0 ? "group-hover:hidden" : ""}
+          >
+            {logoPath && !busy ? (
+              <ProjectLogoIcon
+                path={logoPath}
+                className="size-4 rounded-sm"
+                imageClassName="size-4"
+              />
+            ) : (
+              <ProjectMascot
+                project={seed}
+                color={color}
+                name={resolveTabGroupMascot(key, groupMascots)}
+                className="size-3"
+                active={busy}
+              />
+            )}
+          </span>
+          {projectSessions.length > 0 ? (
+            <span
+              role="button"
+              tabIndex={0}
+              data-no-drag
+              aria-label={
+                isExpanded ? t("Collapse project") : t("Expand project")
+              }
+              aria-expanded={isExpanded}
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation();
+                setExpanded(!isExpanded);
+              }}
+              className="hidden size-4 place-items-center rounded-sm text-content/50 hover:bg-content/8 hover:text-content group-hover:grid"
+            >
+              {isExpanded ? (
+                <ChevronDown className="size-3" strokeWidth={1.75} />
+              ) : (
+                <ChevronRight className="size-3" strokeWidth={1.75} />
+              )}
+            </span>
+          ) : null}
         </div>
         {busy ? (
           <Shimmer as="span" duration={1.4} className={nameClassName}>
@@ -1027,7 +1133,7 @@ function ProjectCard({
           event.stopPropagation();
           onTogglePin(item.path);
         }}
-        className="absolute left-2 top-1/2 grid size-4 -translate-y-1/2 place-items-center rounded-sm text-content/55 opacity-0 pointer-events-none transition-opacity hover:text-content group-hover:pointer-events-auto group-hover:opacity-100"
+        className="absolute right-8 top-1/2 grid size-4 -translate-y-1/2 place-items-center rounded-sm text-content/55 opacity-0 pointer-events-none transition-opacity hover:text-content group-hover:pointer-events-auto group-hover:opacity-100"
       >
         {pinned ? (
           <PinOff className="size-3.5" strokeWidth={1.75} />
@@ -1035,6 +1141,126 @@ function ProjectCard({
           <Pin className="size-3.5" strokeWidth={1.75} />
         )}
       </button>
+      </div>
+      {projectSessions.length > 0 ? (
+        <div
+          className={`grid transition-[grid-template-rows] duration-200 ease-out ${
+            isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+          }`}
+        >
+          <div className="overflow-hidden">
+            <div className="mt-0.5 flex flex-col gap-px pb-0.5 pl-6 pr-1">
+              {shownSessions.map((session) =>
+                renamingId === session.id ? (
+                  <input
+                    key={session.id}
+                    autoFocus
+                    value={renameValue}
+                    onChange={(event) => setRenameValue(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        const next = renameValue.trim();
+                        if (next) onRenameSession?.(session.id, next);
+                        setRenamingId(null);
+                      } else if (event.key === "Escape") {
+                        setRenamingId(null);
+                      }
+                    }}
+                    onBlur={() => setRenamingId(null)}
+                    className="h-7 w-full rounded-md bg-content/10 px-2 text-[12px] text-content outline-none"
+                  />
+                ) : (
+                <button
+                  key={session.id}
+                  type="button"
+                  data-no-drag
+                  onClick={() => onSelectSession?.(session.id)}
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    setSessionMenu({
+                      x: event.clientX,
+                      y: event.clientY,
+                      session,
+                    });
+                  }}
+                  className="flex h-7 min-w-0 items-center gap-1.5 rounded-md px-2 text-left text-[12px] text-content/60 hover:bg-content/5 hover:text-content"
+                >
+                  {approvalSessionIds?.has(session.id) ? (
+                    <span className="size-1.5 shrink-0 rounded-full bg-amber-400" />
+                  ) : busySessionIds?.has(session.id) ? (
+                    <span className="size-1.5 shrink-0 rounded-full bg-emerald-400" />
+                  ) : null}
+                  <ModelBrandIcon
+                    model={resolveModel(session.harness, session.model)}
+                    className="size-3.5 shrink-0"
+                  />
+                  <span className="min-w-0 flex-1 truncate">
+                    {sessionDisplayTitle(session.title, session.harness)}
+                  </span>
+                </button>
+                )
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {sessionMenu ? (
+        <ExplorerMenu
+          x={sessionMenu.x}
+          y={sessionMenu.y}
+          width={200}
+          items={
+            [
+              {
+                kind: "item",
+                id: "pin",
+                label: sessionMenu.session.pinned ? t("Unpin") : t("Pin"),
+              },
+              {
+                kind: "item",
+                id: "archive",
+                label: sessionMenu.session.archived
+                  ? t("Unarchive")
+                  : t("Archive"),
+              },
+              { kind: "sep" },
+              { kind: "item", id: "rename", label: t("Rename") },
+              { kind: "sep" },
+              ...(reminderSessionIds?.has(sessionMenu.session.id)
+                ? [
+                    {
+                      kind: "item",
+                      id: "reminder:cancel",
+                      label: t("Cancel reminder"),
+                    },
+                  ]
+                : sessionReminderPresets()),
+              { kind: "item", id: "delete", label: t("Delete") },
+            ] as ExplorerMenuItem[]
+          }
+          onPick={(id) => {
+            const session = sessionMenu.session;
+            if (id === "pin") onPinSession?.(session.id, !session.pinned);
+            else if (id === "archive")
+              onArchiveSession?.(session.id, !session.archived);
+            else if (id === "rename") {
+              setRenameValue(
+                sessionDisplayTitle(session.title, session.harness),
+              );
+              setRenamingId(session.id);
+            } else if (id === "delete") onDeleteSession?.(session.id);
+            else if (id.startsWith("reminder:")) {
+              if (id === "reminder:cancel") onCancelReminders?.([session.id]);
+              else {
+                const dueAt = reminderTime(id, new Date());
+                if (dueAt != null) onSetReminders?.([session.id], dueAt);
+              }
+            }
+            setSessionMenu(null);
+          }}
+          onClose={() => setSessionMenu(null)}
+        />
+      ) : null}
     </div>
   );
 }

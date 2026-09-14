@@ -87,6 +87,8 @@ type Props = {
   onCloseMany: (ids: string[], fallbackId: string) => void;
   onReorder: (ids: string[], movedId?: string) => void;
   onGoToFile?: () => void;
+  onShowExplorer?: () => void;
+  onOpenChanges?: () => void;
   recents?: RecentProject[];
   onSelectProject?: (path: string) => void;
 };
@@ -543,6 +545,8 @@ function TitleBarComponent({
   onCloseMany,
   onReorder,
   onGoToFile,
+  onShowExplorer,
+  onOpenChanges,
   recents = [],
   onSelectProject,
 }: Props) {
@@ -563,6 +567,9 @@ function TitleBarComponent({
     x: number;
     y: number;
   } | null>(null);
+  const [panelMenu, setPanelMenu] = useState<{ x: number; y: number } | null>(
+    null,
+  );
   const syncTabOverflow = useCallback(() => {
     const el = tabStripRef.current;
     const next = el
@@ -686,6 +693,31 @@ function TitleBarComponent({
     }
   };
 
+  const panelMenuItems: ExplorerMenuItem[] = [
+    {
+      kind: "item",
+      id: "terminal",
+      label: t("Terminal"),
+      disabled: !onShowTerminal && !onNewTerminal,
+    },
+    { kind: "item", id: "browser", label: t("Browser"), disabled: !onNewBrowser },
+    {
+      kind: "item",
+      id: "explorer",
+      label: t("Explorer"),
+      disabled: !onShowExplorer,
+    },
+    { kind: "item", id: "changes", label: t("Changes"), disabled: !onOpenChanges },
+  ];
+
+  const onPickPanelMenu = (id: string) => {
+    setPanelMenu(null);
+    if (id === "terminal") (onShowTerminal ?? onNewTerminal)?.();
+    else if (id === "browser") onNewBrowser?.();
+    else if (id === "explorer") onShowExplorer?.();
+    else if (id === "changes") onOpenChanges?.();
+  };
+
   const railClosed = !projectRailOpen;
   const showCurrentProject = looksLikeProject(cwd);
   // Until a project is picked, the rail and the sidebar hide, so nothing
@@ -712,6 +744,34 @@ function TitleBarComponent({
           <IconButton label={`${t("Go to File")} (${MOD}P)`} onClick={onGoToFile}>
             <Search className="size-3.5" strokeWidth={1.75} />
           </IconButton>
+        ) : null}
+        {!projectless ? (
+          <button
+            type="button"
+            title={t("Panels")}
+            aria-label={t("Panels")}
+            aria-haspopup="menu"
+            aria-expanded={!!panelMenu}
+            data-tauri-drag-region="false"
+            onClick={(event) => {
+              if (panelMenu) {
+                setPanelMenu(null);
+                return;
+              }
+              const rect = event.currentTarget.getBoundingClientRect();
+              setPanelMenu({
+                x: Math.max(8, rect.right - 200),
+                y: rect.bottom + 4,
+              });
+            }}
+            className={`grid size-6.5 place-items-center rounded-md [&_*]:pointer-events-none ${
+              panelMenu
+                ? "cursor-pointer text-content hover:bg-content/10"
+                : "cursor-pointer text-content/50 hover:bg-content/10 hover:text-content"
+            }`}
+          >
+            <PanelLeft className="size-3.5" strokeWidth={1.75} />
+          </button>
         ) : null}
         {!projectless && (onShowTerminal || onNewTerminal) ? (
           <IconButton
@@ -872,6 +932,17 @@ function TitleBarComponent({
           })}
           onPick={onPickTabMenu}
           onClose={() => setTabMenu(null)}
+        />
+      ) : null}
+      {panelMenu ? (
+        <ExplorerMenu
+          x={panelMenu.x}
+          y={panelMenu.y}
+          width={200}
+          items={panelMenuItems}
+          ariaLabel={t("Panels")}
+          onPick={onPickPanelMenu}
+          onClose={() => setPanelMenu(null)}
         />
       ) : null}
     </header>
