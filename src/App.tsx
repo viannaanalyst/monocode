@@ -45,7 +45,7 @@ import { MenuBar } from "./chrome/MenuBar";
 import { FilePicker } from "./chrome/FilePicker";
 import { FileTree } from "./chrome/FileTree";
 import { SourceControl } from "./chrome/SourceControl";
-import { Folder, Globe, Terminal } from "./chrome/icons";
+import { Folder, Globe, PanelLeft, Terminal } from "./chrome/icons";
 import { UsageFooter } from "./chrome/UsageFooter";
 import { ImportSessionDialog } from "./chrome/ImportSessionDialog";
 import { useProjectBranches } from "./hooks/useProjectBranches";
@@ -7089,7 +7089,7 @@ export default function App({
       <OrchestrationActions.Provider value={orchestrationActions}>
         <OrchestrationWorkers.Provider value={orchestrationWorkers}>
           <div
-            className={`relative flex h-full text-content ${
+            className={`flex h-full text-content ${
               HAS_NATIVE_GLASS ? "bg-background-base/40" : "bg-background-base"
             }`}
           >
@@ -7186,11 +7186,7 @@ export default function App({
             onDismissUpdate={() => setUpdateNotice(null)}
           />
 
-          <div
-            className={`body-glass flex min-h-0 min-w-0 flex-1 flex-col transition-[margin] duration-200 ease-out ${
-              rightDock ? "mr-[340px]" : ""
-            }`}
-          >
+          <div className="body-glass flex min-h-0 min-w-0 flex-1 flex-col">
             <div
               className={
                 searchViewOpen || settingsOpen || inboxViewOpen || notesViewOpen
@@ -7371,23 +7367,21 @@ export default function App({
                     </div>
                     <aside
                       aria-hidden={!rightDock}
-                      className={`fixed inset-y-0 right-0 z-40 flex w-[340px] flex-col overflow-hidden border-l border-content/10 bg-background-base transition-transform duration-150 ease-out ${
-                        rightDock
-                          ? "translate-x-0"
-                          : "pointer-events-none translate-x-full"
+                      className={`relative flex h-full min-h-0 shrink-0 flex-col overflow-hidden border-l border-content/10 transition-[width] duration-200 ease-out ${
+                        rightDock ? "w-[340px]" : "w-0"
                       }`}
                     >
                       {rightDock ? (
                         <>
                         <button
                           type="button"
-                          aria-label={t("Close")}
-                          title={t("Close")}
+                          aria-label={t("Panels")}
+                          title={t("Panels")}
                           data-tauri-drag-region="false"
                           onClick={() => setRightDock(null)}
                           className="absolute right-2 top-2 z-10 grid size-6 place-items-center rounded-md text-content/45 hover:bg-content/10 hover:text-content"
                         >
-                          ✕
+                          <PanelLeft className="size-3.5" strokeWidth={1.75} />
                         </button>
                         <div className="min-h-0 flex-1 overflow-hidden">
                           {rightDock === "panels" ? (

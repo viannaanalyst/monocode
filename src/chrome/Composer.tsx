@@ -235,6 +235,7 @@ function ToolButton({
       type="button"
       title={tooltip ? label : undefined}
       aria-label={label}
+      data-no-tooltip={tooltip ? undefined : ""}
       disabled={disabled}
       onClick={onClick}
       className={`grid size-6.5 shrink-0 place-items-center rounded-full ${
@@ -1574,18 +1575,16 @@ export function Composer({
                     }}
                     className="flex w-full items-start gap-2.5 rounded-lg px-2 py-2 text-left text-content hover:bg-content/10 disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    <FilePlus className="mt-0.5 size-4 shrink-0" />
-                    <span className="min-w-0">
-                      <span className="block text-[13px]">
-                        {t("Files and folders")}
-                      </span>
-                      <span className="block truncate whitespace-nowrap text-[11px] leading-4 text-content/45">
-                        {attachmentsSupported
-                          ? t("Attach files or images to this message")
-                          : t("{name} does not support attachments", {
-                              name: HARNESS_TITLE[harness],
-                            })}
-                      </span>
+                    <FilePlus className="size-4 shrink-0 text-content/70" />
+                    <span className="min-w-0 truncate text-[13px]">
+                      {t("Files and folders")}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-[12px] text-content/40">
+                      {attachmentsSupported
+                        ? t("Attach files or images")
+                        : t("{name} does not support attachments", {
+                            name: HARNESS_TITLE[harness],
+                          })}
                     </span>
                   </button>
                   <button
@@ -1600,15 +1599,15 @@ export function Composer({
                     }}
                     className="flex w-full items-start gap-2.5 rounded-lg px-2 py-2 text-left text-content hover:bg-content/10"
                   >
-                    <AiIdea className="mt-0.5 size-4 shrink-0 text-yellow-300/80" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-[13px]">{t("Plan mode")}</span>
-                      <span className="block truncate whitespace-nowrap text-[11px] leading-4 text-content/45">
-                        {t("Create a plan to review before building")}
-                      </span>
+                    <AiIdea className="size-4 shrink-0 text-yellow-300/80" />
+                    <span className="min-w-0 truncate text-[13px]">
+                      {t("Plan mode")}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-[12px] text-content/40">
+                      {t("Turn plan mode on")}
                     </span>
                     {planSelected ? (
-                      <Check className="mt-0.5 size-3.5 shrink-0 text-accent" />
+                      <Check className="size-3.5 shrink-0 text-accent" />
                     ) : null}
                   </button>
                   {!hideTopBar && (
