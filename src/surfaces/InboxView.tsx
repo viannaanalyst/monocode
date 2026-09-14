@@ -1936,14 +1936,20 @@ export function InboxDetail({
                     dateTime={item.createdAt}
                     title={new Date(item.createdAt).toLocaleString()}
                   >
-                    Created {formatRelativeTime(item.createdAt)}
+                    {t("Created {time}", {
+                      time: formatRelativeTime(item.createdAt) ?? "",
+                    })}
                   </time>
                 </>
               ) : null}
               {formatRelativeTime(item.updatedAt) ? (
                 <>
                   <span aria-hidden>·</span>
-                  <span>Updated {formatRelativeTime(item.updatedAt)}</span>
+                  <span>
+                    {t("Updated {time}", {
+                      time: formatRelativeTime(item.updatedAt) ?? "",
+                    })}
+                  </span>
                 </>
               ) : null}
               {baseRef && headRef ? (
