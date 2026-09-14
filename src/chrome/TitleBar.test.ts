@@ -12,7 +12,6 @@ import {
   type Tab,
 } from "./TitleBar";
 import type { AgentModel } from "../lib/models";
-
 vi.mock("./WindowControls", () => ({ WindowControls: () => null }));
 
 const roots: ReturnType<typeof createRoot>[] = [];
@@ -161,48 +160,6 @@ describe("titleTabContextCloseIds", () => {
     expect(titleTabContextCloseIds(tabs, "a", "left")).toEqual([]);
     expect(titleTabContextCloseIds(tabs, "d", "right")).toEqual([]);
     expect(titleTabContextCloseIds(tabs, "missing", "others")).toEqual([]);
-  });
-});
-
-describe("TitleBar session brand", () => {
-  it("shows the model vendor mark instead of the harness icon", () => {
-    const container = document.createElement("div");
-    document.body.append(container);
-    const root = createRoot(container);
-    roots.push(root);
-
-    act(() => {
-      root.render(
-        createElement(TitleBar, {
-          tabs: [
-            tab({
-              harnesses: ["codex"],
-              models: [
-                {
-                  id: "codex:gpt-5.5",
-                  harness: "codex",
-                  name: "GPT-5.5",
-                  nativeId: "gpt-5.5",
-                } satisfies AgentModel,
-              ],
-            }),
-          ],
-          activeId: "t1",
-          cwd: "/workspace/monocode",
-          onToggleSidebar: () => {},
-          onSelect: () => {},
-          onNew: () => {},
-          onNewTerminal: () => {},
-          onClose: () => {},
-          onCloseMany: () => {},
-          onReorder: () => {},
-        }),
-      );
-    });
-
-    // The vendor mark is drawn by ModelBrandIcon, not the harness-icon path.
-    const brand = container.querySelector("[data-model-brand]");
-    expect(brand).not.toBeNull();
   });
 });
 

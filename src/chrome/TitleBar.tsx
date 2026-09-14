@@ -7,35 +7,17 @@ import {
   Search,
   Settings,
   StickyNote,
-  Terminal,
-  X,
 } from "./icons";
-import {
-  memo,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type MouseEvent as ReactMouseEvent,
-  type ReactNode,
-} from "react";
+import { memo, useEffect, useMemo, type ReactNode } from "react";
 import { basename } from "../lib/fs";
 import { looksLikeProject } from "../lib/recents";
 import type { HarnessId } from "../lib/session";
 import { CwdPicker } from "./CwdPicker";
-import { useLockOverscroll } from "../hooks/useLockOverscroll";
-import { useAnimatedReorder } from "../hooks/useAnimatedReorder";
-import { FileTypeIcon } from "./FileTypeIcon";
-import { ModelBrandIcon } from "./ModelBrandIcon";
 import type { AgentModel } from "../lib/models";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { TerminalSpinner } from "./TerminalSpinner";
 import { WindowControls } from "./WindowControls";
 import { IS_MAC, IS_WIN, MOD } from "../lib/platform";
 import type { RecentProject } from "../lib/recents";
-import { ExplorerMenu, type ExplorerMenuItem } from "./ExplorerMenu";
 import { t, withShortcut } from "../i18n";
 
 
@@ -181,213 +163,6 @@ export function titleTabContextCloseIds(
   return tabs.filter((tab) => tab.id !== targetId).map((tab) => tab.id);
 }
 
-function TabHarnesses({
-  models,
-  busyHarnesses,
-  dimmed,
-}: {
-  models: AgentModel[];
-  busyHarnesses: HarnessId[];
-  dimmed: boolean;
-}) {
-  const shown = models.slice(0, 3);
-  const extra = models.length - shown.length;
-  const opacity = dimmed ? "opacity-55" : "opacity-100";
-  const busy = new Set(busyHarnesses);
-
-  return (
-    <span className="flex shrink-0 items-center">
-      {shown.map((model, i) => (
-        <span
-          key={model.id}
-          className={`grid size-3.5 shrink-0 place-items-center ${opacity} ${
-            i > 0 ? "-ml-0.5" : ""
-          }`}
-        >
-          {busy.has(model.harness) ? (
-            <TerminalSpinner className="inline-block w-3.5 select-none text-center text-[11px] leading-none text-accent" />
-          ) : (
-            <ModelBrandIcon model={model} className="size-3.5 shrink-0" />
-          )}
-        </span>
-      ))}
-      {extra > 0 ? (
-        <span
-          className={`pl-0.5 text-[10px] leading-none ${dimmed ? "text-content/50" : "text-content"}`}
-        >
-          +{extra}
-        </span>
-      ) : null}
-    </span>
-  );
-}
-
-type SortableApi = ReturnType<typeof useAnimatedReorder>;
-
-function TitleTabItem({
-  tab,
-  active,
-  closable,
-  canDrag,
-  sortable,
-  onSelect,
-  onClose,
-  onContextMenu,
-  itemRef,
-}: {
-  tab: Tab;
-  active: boolean;
-  closable: boolean;
-  canDrag: boolean;
-  sortable: SortableApi;
-  onSelect: (id: string) => void;
-  onClose: (id: string) => void;
-  onContextMenu: (id: string, event: ReactMouseEvent<HTMLDivElement>) => void;
-  itemRef?: (el: HTMLDivElement | null) => void;
-}) {
-  const { headline, meta, tooltip } = tabCopy(tab);
-  const fileIcon = tab.files[0];
-
-  return (
-    <div
-      ref={(el) => {
-        sortable.setItemRef(tab.id, el);
-        itemRef?.(el);
-      }}
-      className="reorder-item tab-motion group @container relative flex h-full cursor-default touch-none items-center self-stretch min-w-0 w-full"
-      data-tauri-drag-region="false"
-      onContextMenu={(event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        onContextMenu(tab.id, event);
-      }}
-      onMouseDownCapture={(event) => {
-        if (event.button === 1) event.preventDefault();
-      }}
-      onAuxClick={(event) => {
-        if (event.button !== 1 || !closable) return;
-        event.preventDefault();
-        event.stopPropagation();
-        onClose(tab.id);
-      }}
-      onPointerDown={(event) => {
-        if (event.button !== 0) return;
-        if ((event.target as HTMLElement | null)?.closest("[data-no-drag]")) {
-          return;
-        }
-        onSelect(tab.id);
-        if (canDrag) sortable.onItemPointerDown(tab.id, event);
-      }}
-    >
-      <button
-        type="button"
-        title={tooltip}
-        aria-label={tooltip}
-        data-tauri-drag-region="false"
-        onClick={() => {
-          if (sortable.consumeClick()) return;
-          onSelect(tab.id);
-        }}
-        className={`relative flex h-7.5 min-w-0 flex-1 cursor-default items-center gap-1.5 self-center rounded-md px-2.5 text-left ${
-          closable ? "pr-7" : "pr-2.5"
-        } ${
-          active
-            ? "bg-content/10 text-content"
-            : "text-content/50 hover:bg-content/5 hover:text-content"
-        }`}
-      >
-        {tab.harnesses.length > 0 ? (
-          <TabHarnesses
-            models={tab.models}
-            busyHarnesses={tab.busyHarnesses}
-            dimmed={!active}
-          />
-        ) : tab.terminal || !fileIcon ? (
-          <Terminal
-            className={`size-3.5 shrink-0 ${
-              active ? "text-content" : "text-content/55"
-            }`}
-            strokeWidth={1.75}
-          />
-        ) : (
-          <span className={!active ? "opacity-55" : undefined}>
-            <FileTypeIcon name={fileIcon} isDir={false} size={14} />
-          </span>
-        )}
-        {/* Keep two-line tabs compact while leaving room for descenders. */}
-        <span className="flex min-w-0 flex-1 flex-col justify-center">
-          <span className="flex min-w-0 items-center gap-1">
-            <span
-              className={`min-w-0 truncate leading-tight ${
-                meta
-                  ? "text-[13px] @min-[11rem]:text-[10px] @min-[11rem]:font-medium"
-                  : "text-[13px]"
-              }`}
-            >
-              {headline}
-            </span>
-            {tab.dirty ? (
-              <span
-                className="size-1.5 shrink-0 rounded-full bg-content/70"
-                title={t("Unsaved changes")}
-                aria-label={t("Unsaved changes")}
-              />
-            ) : null}
-          </span>
-          {meta ? (
-            <span className="hidden min-w-0 truncate text-[10px] leading-tight text-content/45 @min-[11rem]:block">
-              {meta}
-            </span>
-          ) : null}
-        </span>
-      </button>
-      {closable ? (
-        <button
-          type="button"
-          title={t("Close Tab")}
-          aria-label={t("Close {name}", { name: headline })}
-          data-no-drag
-          data-tauri-drag-region="false"
-          onPointerDown={(event) => event.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            onClose(tab.id);
-          }}
-          className="absolute right-1 top-1/2 grid size-5 -translate-y-1/2 place-items-center rounded text-content/50 opacity-0 hover:bg-content/10 hover:text-content group-hover:opacity-100"
-        >
-          <X className="size-3" strokeWidth={1.75} />
-        </button>
-      ) : null}
-    </div>
-  );
-}
-
-function TabStripChevron({
-  side,
-  onClick,
-}: {
-  side: "left" | "right";
-  onClick: () => void;
-}) {
-  const label = side === "left" ? t("Scroll tabs left") : t("Scroll tabs right");
-  const Icon = side === "left" ? ChevronLeft : ChevronRight;
-  return (
-    <button
-      type="button"
-      title={label}
-      aria-label={label}
-      data-tauri-drag-region="false"
-      onPointerDown={(event) => event.stopPropagation()}
-      onClick={onClick}
-      className={`absolute top-1/2 z-40 grid size-6.5 -translate-y-1/2 place-items-center rounded-md bg-content/10 backdrop-blur-xl text-content/70 hover:bg-content/15 hover:text-content ${
-        side === "left" ? "left-1" : "right-1"
-      }`}
-    >
-      <Icon className="size-3.5" strokeWidth={1.75} />
-    </button>
-  );
-}
-
 export function IconButton({
   label,
   active,
@@ -531,81 +306,17 @@ function TitleBarComponent({
   cwd,
   projectRailOpen = true,
   onToggleSidebar,
-  onSelect,
   onNew,
   onNewTerminal,
   onOpenSettings,
   onOpenInbox,
   onOpenNotes,
-  onClose,
-  onCloseMany,
-  onReorder,
   onGoToFile,
   onOpenPanels,
   panelsOpen = false,
   recents = [],
   onSelectProject,
 }: Props) {
-  const tabIds = tabs.map((tab) => tab.id);
-  const sortable = useAnimatedReorder(tabIds, onReorder);
-  const lockOverscroll = useLockOverscroll<HTMLDivElement>();
-  const tabStripRef = useRef<HTMLDivElement | null>(null);
-  const setTabStripRef = useCallback(
-    (el: HTMLDivElement | null) => {
-      tabStripRef.current = el;
-      lockOverscroll(el);
-    },
-    [lockOverscroll],
-  );
-  const [tabOverflow, setTabOverflow] = useState({ left: false, right: false });
-  const [tabMenu, setTabMenu] = useState<{
-    tabId: string;
-    x: number;
-    y: number;
-  } | null>(null);
-  const syncTabOverflow = useCallback(() => {
-    const el = tabStripRef.current;
-    const next = el
-      ? tabStripOverflow(el.scrollLeft, el.clientWidth, el.scrollWidth)
-      : { left: false, right: false };
-    setTabOverflow((prev) =>
-      prev.left === next.left && prev.right === next.right ? prev : next,
-    );
-  }, []);
-  const scrollTabsBy = useCallback((direction: -1 | 1) => {
-    const el = tabStripRef.current;
-    if (!el) return;
-    const amount = Math.max(el.clientWidth * 0.6, 112);
-    el.scrollBy({ left: direction * amount, behavior: "smooth" });
-  }, []);
-  const activeTabRef = useRef<HTMLDivElement | null>(null);
-  const canDrag = tabs.length > 1;
-
-  useEffect(() => {
-    if (sortable.draggingId) return;
-    activeTabRef.current?.scrollIntoView({
-      inline: "nearest",
-      block: "nearest",
-    });
-  }, [activeId, sortable.draggingId]);
-
-  useLayoutEffect(() => {
-    const el = tabStripRef.current;
-    if (!el) return;
-    syncTabOverflow();
-    el.addEventListener("scroll", syncTabOverflow, { passive: true });
-    const ro = new ResizeObserver(syncTabOverflow);
-    ro.observe(el);
-    return () => {
-      el.removeEventListener("scroll", syncTabOverflow);
-      ro.disconnect();
-    };
-  }, [syncTabOverflow]);
-
-  useLayoutEffect(() => {
-    syncTabOverflow();
-  }, [activeId, syncTabOverflow, tabs]);
-
   const activeTab = useMemo(
     () => tabs.find((t) => t.id === activeId),
     [activeId, tabs],
@@ -632,59 +343,6 @@ function TitleBarComponent({
       void getCurrentWindow().setTitle(systemTitle);
     } catch {}
   }, [systemTitle]);
-
-  const contextTab = tabMenu
-    ? tabs.find((tab) => tab.id === tabMenu.tabId)
-    : undefined;
-  const contextCloseIds = contextTab
-    ? {
-        others: titleTabContextCloseIds(tabs, contextTab.id, "others"),
-        right: titleTabContextCloseIds(tabs, contextTab.id, "right"),
-        left: titleTabContextCloseIds(tabs, contextTab.id, "left"),
-      }
-    : null;
-  const contextMenuItems: ExplorerMenuItem[] = contextTab
-    ? [
-        {
-          kind: "item",
-          id: "close",
-          label: t("Close Tab"),
-          shortcut: `${MOD}W`,
-          disabled: !titleTabClosable(contextTab, tabs.length),
-        },
-        { kind: "sep" },
-        {
-          kind: "item",
-          id: "others",
-          label: t("Close Other Tabs"),
-          disabled: contextCloseIds?.others.length === 0,
-        },
-        {
-          kind: "item",
-          id: "right",
-          label: t("Close Tabs to the Right"),
-          disabled: contextCloseIds?.right.length === 0,
-        },
-        {
-          kind: "item",
-          id: "left",
-          label: t("Close Tabs to the Left"),
-          disabled: contextCloseIds?.left.length === 0,
-        },
-      ]
-    : [];
-
-  const onPickTabMenu = (id: string) => {
-    if (!contextTab || !contextCloseIds) return;
-    setTabMenu(null);
-    if (id === "close") {
-      onClose(contextTab.id);
-      return;
-    }
-    if (id === "others" || id === "right" || id === "left") {
-      onCloseMany(contextCloseIds[id], contextTab.id);
-    }
-  };
 
   const railClosed = !projectRailOpen;
   const showCurrentProject = looksLikeProject(cwd);
@@ -781,70 +439,19 @@ function TitleBarComponent({
           showProjectButton ? " border-l border-content/10" : ""
         }`}
       >
-        <div
-          className="relative flex h-full min-w-0 flex-1 items-center overflow-hidden"
-          onWheel={(event) => {
-            const el = tabStripRef.current;
-            if (!el || el.scrollWidth <= el.clientWidth) return;
-            if (event.deltaX === 0 && event.deltaY !== 0) {
-              el.scrollLeft += event.deltaY;
-            }
-          }}
-        >
-          {tabOverflow.left ? (
-            <TabStripChevron side="left" onClick={() => scrollTabsBy(-1)} />
+        <div className="flex min-w-0 flex-1 items-center px-2">
+          {!projectless ? (
+            <button
+              type="button"
+              title={`${t("New session")} (${MOD}T)`}
+              aria-label={t("New session")}
+              data-tauri-drag-region="false"
+              onClick={onNew}
+              className="grid size-6 shrink-0 place-items-center rounded-md text-content/45 hover:bg-content/10 hover:text-content"
+            >
+              <Plus className="size-3.5" strokeWidth={1.75} />
+            </button>
           ) : null}
-          {tabOverflow.right ? (
-            <TabStripChevron side="right" onClick={() => scrollTabsBy(1)} />
-          ) : null}
-          <div
-            ref={setTabStripRef}
-            className="scrollbar-none flex h-full min-w-0 flex-1 cursor-default items-center gap-0.5 overflow-x-auto overflow-y-hidden overscroll-none px-1.5"
-          >
-            {tabs.map((tab) => (
-              <div
-                key={tab.id}
-                className="relative flex h-full w-56 min-w-28 shrink cursor-default items-center"
-                data-tauri-drag-region="false"
-              >
-                <TitleTabItem
-                  tab={tab}
-                  active={tab.id === activeId}
-                  closable={titleTabClosable(tab, tabs.length)}
-                  canDrag={canDrag}
-                  sortable={sortable}
-                  onSelect={onSelect}
-                  onClose={onClose}
-                  onContextMenu={(tabId, event) =>
-                    setTabMenu({
-                      tabId,
-                      x: event.clientX,
-                      y: event.clientY,
-                    })
-                  }
-                  itemRef={
-                    tab.id === activeId
-                      ? (el) => {
-                          activeTabRef.current = el;
-                        }
-                      : undefined
-                  }
-                />
-              </div>
-            ))}
-            {!projectless ? (
-              <button
-                type="button"
-                title={`${t("New session")} (${MOD}T)`}
-                aria-label={t("New session")}
-                data-tauri-drag-region="false"
-                onClick={onNew}
-                className="ml-1 grid size-6 shrink-0 place-items-center rounded-md text-content/45 hover:bg-content/10 hover:text-content"
-              >
-                <Plus className="size-3.5" strokeWidth={1.75} />
-              </button>
-            ) : null}
-          </div>
         </div>
 
         {!IS_MAC && !IS_WIN ? (
@@ -856,19 +463,6 @@ function TitleBarComponent({
         ) : null}
         {trailingControls}
       </div>
-      {tabMenu && contextTab ? (
-        <ExplorerMenu
-          x={tabMenu.x}
-          y={tabMenu.y}
-          width={244}
-          items={contextMenuItems}
-          ariaLabel={t("Tab actions for {name}", {
-            name: tabCopy(contextTab).headline,
-          })}
-          onPick={onPickTabMenu}
-          onClose={() => setTabMenu(null)}
-        />
-      ) : null}
     </header>
   );
 }
