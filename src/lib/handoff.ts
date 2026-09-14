@@ -63,6 +63,15 @@ export type ComposerSwitchPlan =
   | { kind: "revert"; restoreProviderSessionId?: string }
   | { kind: "arm"; pending: PendingHarnessSwitch };
 
+/** Switching providers while a turn is live leaves the old CLI running and
+ *  the transcript clock labeled as the new model. Cancel and seal first. */
+export function composerSwitchInterruptsBusyTurn(
+  session: Session,
+  next: HarnessId,
+): boolean {
+  return session.busy && session.harness !== next;
+}
+
 export function planComposerSwitch(
   session: Session,
   next: HarnessId,

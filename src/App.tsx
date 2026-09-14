@@ -218,6 +218,7 @@ import {
   isPreparingHandoff,
   pendingHandoff,
   planComposerSwitch,
+  composerSwitchInterruptsBusyTurn,
   sessionChildHarnesses,
   sessionThroughTurn,
   shouldAskOutgoingAgent,
@@ -4736,14 +4737,26 @@ export default function App({
         current.modelSettings,
       );
       const plan = planComposerSwitch(current, harness);
+      const interrupt = composerSwitchInterruptsBusyTurn(current, harness);
+      if (interrupt) {
+        turnGen.current.set(
+          sessionId,
+          (turnGen.current.get(sessionId) ?? 0) + 1,
+        );
+        flushHarnessEvents();
+        for (const id of sessionChildHarnesses(current)) {
+          void cancelHarnessTurn(id, sessionId);
+        }
+      }
       if (plan.kind === "empty") {
         void forgetHarnessSession(plan.forget, sessionId);
       }
       setSessions((prev) =>
         prev.map((s) => {
           if (s.id !== sessionId) return s;
+          const sealed = interrupt ? stopStreaming(s) : s;
           const next = withHarnessChoice(
-            s,
+            sealed,
             harness,
             resolved.id,
             modelSettings,
@@ -4767,7 +4780,7 @@ export default function App({
         }),
       );
     },
-    [],
+    [flushHarnessEvents, settleOrphanedHandoff],
   );
 
   const onModelSettingsChange = useCallback(

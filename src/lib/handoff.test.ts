@@ -11,6 +11,7 @@ import {
   handoffTurnCard,
   hasSessionEdits,
   pendingHandoff,
+  composerSwitchInterruptsBusyTurn,
   planComposerSwitch,
   sessionChildHarnesses,
   sessionThroughTurn,
@@ -30,6 +31,23 @@ function sessionWith(
     ...extra,
   };
 }
+
+describe("composerSwitchInterruptsBusyTurn", () => {
+  it("interrupts when the picker leaves the provider that is still working", () => {
+    const session = sessionWith([{ id: "u1", role: "user", text: "hey" }], {
+      busy: true,
+    });
+    expect(composerSwitchInterruptsBusyTurn(session, "opencode")).toBe(true);
+    expect(composerSwitchInterruptsBusyTurn(session, "cursor")).toBe(false);
+  });
+
+  it("does not interrupt a settled turn", () => {
+    const session = sessionWith([{ id: "u1", role: "user", text: "hey" }], {
+      busy: false,
+    });
+    expect(composerSwitchInterruptsBusyTurn(session, "opencode")).toBe(false);
+  });
+});
 
 describe("planComposerSwitch", () => {
   it("only updates the composer on an empty session", () => {

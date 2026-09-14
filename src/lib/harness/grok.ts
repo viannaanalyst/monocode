@@ -179,10 +179,10 @@ export async function cancelGrokTurn(sessionId: string): Promise<void> {
   live.approvals.clear();
   for (const [, resolve] of live.questions) resolve({ kind: "skipped" });
   live.questions.clear();
+  live.acp.rejectPending(new Error("cancelled"));
   await live.acp
     .notify("session/cancel", { sessionId: live.acpSessionId })
     .catch(() => undefined);
-  live.acp.rejectPending(new Error("cancelled"));
 }
 
 export async function stopGrokSession(sessionId: string): Promise<void> {

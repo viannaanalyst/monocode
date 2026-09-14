@@ -8,7 +8,7 @@ import {
 import { mergeStream } from "./harness/streamText";
 import type { HarnessId } from "./session";
 
-const HANDOFF_TIMEOUT_MS = 45_000;
+export const HANDOFF_TIMEOUT_MS = 45_000;
 
 export async function requestOutgoingHandoff(input: {
   harness: HarnessId;
@@ -19,44 +19,55 @@ export async function requestOutgoingHandoff(input: {
   userRequest: string;
 }): Promise<string> {
   let brief = "";
-  const timer = setTimeout(() => {
-    void cancelHarnessTurn(input.harness, input.sessionId);
-  }, HANDOFF_TIMEOUT_MS);
+  const send = (async () => {
+    try {
+      await sendHarnessTurn({
+        harness: input.harness,
+        sessionId: input.sessionId,
+        cwd: input.cwd,
+        model: input.model,
+        modelSettings: input.modelSettings,
+        runtimeMode: "supervised",
+        text: buildOutgoingHandoffPrompt(input.userRequest),
+        onEvent: (event) => {
+          if (event.type === "message.delta") {
+            brief = mergeStream(brief, event.text);
+          }
+          if (event.type === "approval.requested") {
+            respondHarnessApproval(
+              input.harness,
+              input.sessionId,
+              event.requestId,
+              "deny",
+            );
+          }
+          if (event.type === "question.asked") {
+            respondHarnessQuestion(
+              input.harness,
+              input.sessionId,
+              event.requestId,
+              { kind: "skipped" },
+            );
+          }
+        },
+      });
+    } catch {
+      // Caller falls back to the deterministic packet.
+    }
+    return brief.trim();
+  })();
+
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<string>((resolve) => {
+    timer = setTimeout(() => {
+      void cancelHarnessTurn(input.harness, input.sessionId);
+      resolve("");
+    }, HANDOFF_TIMEOUT_MS);
+  });
+
   try {
-    await sendHarnessTurn({
-      harness: input.harness,
-      sessionId: input.sessionId,
-      cwd: input.cwd,
-      model: input.model,
-      modelSettings: input.modelSettings,
-      runtimeMode: "supervised",
-      text: buildOutgoingHandoffPrompt(input.userRequest),
-      onEvent: (event) => {
-        if (event.type === "message.delta") {
-          brief = mergeStream(brief, event.text);
-        }
-        if (event.type === "approval.requested") {
-          respondHarnessApproval(
-            input.harness,
-            input.sessionId,
-            event.requestId,
-            "deny",
-          );
-        }
-        if (event.type === "question.asked") {
-          respondHarnessQuestion(
-            input.harness,
-            input.sessionId,
-            event.requestId,
-            { kind: "skipped" },
-          );
-        }
-      },
-    });
-  } catch {
-    // Caller falls back to the deterministic packet.
+    return await Promise.race([send, timeout]);
   } finally {
-    clearTimeout(timer);
+    if (timer) clearTimeout(timer);
   }
-  return brief.trim();
 }

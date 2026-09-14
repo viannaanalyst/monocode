@@ -198,10 +198,10 @@ export async function cancelCursorTurn(sessionId: string): Promise<void> {
   live.approvals.clear();
   for (const [, resolve] of live.questions) resolve({ kind: "skipped" });
   live.questions.clear();
+  live.acp.rejectPending(new Error("cancelled"));
   await live.acp
     .notify("session/cancel", { sessionId: live.acpSessionId })
     .catch(() => undefined);
-  live.acp.rejectPending(new Error("cancelled"));
 }
 
 /** Kill the Cursor process but keep the ACP session id so we can session/load. */

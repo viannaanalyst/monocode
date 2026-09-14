@@ -161,10 +161,10 @@ export async function cancelFxTurn(sessionId: string): Promise<void> {
   }
   live.cancelled = true;
   live.muteUpdates = true;
+  live.acp.rejectPending(new Error("cancelled"));
   await live.acp
     .notify("session/cancel", { sessionId: live.acpSessionId })
     .catch(() => undefined);
-  live.acp.rejectPending(new Error("cancelled"));
 }
 
 export async function stopFxSession(sessionId: string): Promise<void> {
