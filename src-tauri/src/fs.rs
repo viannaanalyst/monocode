@@ -3203,7 +3203,8 @@ fn git_github_pr_merge_for(
 ) -> Result<(), String> {
     let args = pr_merge_args(number, method, delete_branch)?;
     let refs: Vec<&str> = args.iter().map(String::as_str).collect();
-    gh_checked(root, &refs)?;
+    // `gh pr merge` prints nothing on stdout when it succeeds.
+    gh_run(root, &refs, true)?;
     Ok(())
 }
 
