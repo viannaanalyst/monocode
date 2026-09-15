@@ -14,7 +14,7 @@
 - Scale: base **14px** (`text-sm`), secondary **12px** (`text-xs`), badge **10px** (`text-2xs`), surface title **17px** (`text-display` with `font-display`).
 - Weight roles: **400** body/nav/list rows (active state is a background change only), **500** buttons/actions/values, **600** settings row titles, card titles, modal titles and surface section headings. **700 is retired.**
 - Icon sizes inside text rows: default **14px** (`size-3.5`); **16px** (`size-4`) only for surface headers, empty states and prominent toolbar actions. `size-2.5` is retired; `size-2` stays only on project mascots.
-- Migration mapping: `text-[13px]`→`text-sm`, `text-[11px]`→`text-xs`, `text-[9px]`→`text-2xs`; `text-[12px]` and `text-[10px]` stay as literals (they already equal the `xs`/`2xs` values, and renaming 350 call sites buys nothing); `font-bold`→`font-semibold`; `leading-tight`/`leading-relaxed` give way to the token line heights; `leading-none` stays only on badges/gutters.
+- Migration mapping: `text-[13px]`→`text-sm`, `text-[11px]`→`text-xs`, `text-[10px]`→`text-2xs`, `text-[9px]`→`text-2xs`; `text-[12px]` stays as a literal (it already equals `text-xs`, and renaming 306 call sites buys nothing); `font-bold`→`font-semibold`; `leading-tight`/`leading-relaxed` give way to the token line heights; `leading-none` stays only on badges/gutters.
 - User font settings (`src/lib/fonts.ts`) keep overriding the stacks when set; this plan only changes the defaults.
 - English strings are the i18n keys; no copy changes.
 - Commit messages follow the repo style: imperative sentence ending with a period.
@@ -303,7 +303,7 @@ git commit -m "Standardize surface typography."
 
 ### Task 6: Sweep diffs, editor, and terminals
 
-**Files:** `src/surfaces/UnifiedDiffView.tsx`, `src/surfaces/WorkingTreeDiff.tsx`, `src/surfaces/SessionChangesDiff.tsx`, `src/surfaces/InboxPrDiff.tsx`, `src/surfaces/DiffCommentComposer.tsx`, `src/surfaces/CommitDiff.tsx`, `src/surfaces/SessionReview.tsx`, `src/surfaces/FilePane.tsx`, `src/surfaces/FileEditor.tsx`, `src/surfaces/BinaryFileView.tsx`, `src/surfaces/SkillDocumentPreview.tsx`, `src/surfaces/TerminalView.tsx`, `src/surfaces/ProjectTerminalDock.tsx`, `src/surfaces/BrowserView.tsx`, `src/surfaces/TerminalGridBackground.tsx`, `src/chrome/GitChangesPanel.tsx`, `src/chrome/GitHistoryGraph.tsx`, `src/chrome/ToolDiffPreview.tsx`, `src/chrome/PrActions.tsx`, `src/chrome/PrReviewBar.tsx`, `src/chrome/PrMetadataEditor.tsx`, `src/chrome/BrowserAgentBridge.tsx`, `src/chrome/TerminalSpinner.tsx`, `src/chrome/ImageLightbox.tsx`
+**Files:** `src/surfaces/UnifiedDiffView.tsx`, `src/surfaces/WorkingTreeDiff.tsx`, `src/surfaces/SessionChangesDiff.tsx`, `src/surfaces/InboxPrDiff.tsx`, `src/surfaces/DiffCommentComposer.tsx`, `src/surfaces/CommitDiff.tsx`, `src/chrome/SessionReview.tsx`, `src/surfaces/FilePane.tsx`, `src/surfaces/FileEditor.tsx`, `src/surfaces/BinaryFileView.tsx`, `src/surfaces/SkillDocumentPreview.tsx`, `src/surfaces/TerminalView.tsx`, `src/surfaces/ProjectTerminalDock.tsx`, `src/surfaces/BrowserView.tsx`, `src/surfaces/TerminalGridBackground.tsx`, `src/chrome/GitChangesPanel.tsx`, `src/chrome/GitHistoryGraph.tsx`, `src/chrome/ToolDiffPreview.tsx`, `src/chrome/PrActions.tsx`, `src/chrome/PrReviewBar.tsx`, `src/chrome/PrMetadataEditor.tsx`, `src/chrome/BrowserAgentBridge.tsx`, `src/chrome/TerminalSpinner.tsx`, `src/chrome/ImageLightbox.tsx`
 
 **Interfaces:**
 - Consumes: Task 1 tokens and the JetBrains Mono default.
@@ -327,8 +327,8 @@ Expected: green.
 - [ ] **Step 3: Acceptance greps**
 
 ```bash
-grep -rnE 'text-\[(13|11|10|12\.5|11\.5|10\.5|9)px\]' src/surfaces/UnifiedDiffView.tsx src/surfaces/WorkingTreeDiff.tsx src/surfaces/SessionChangesDiff.tsx src/surfaces/InboxPrDiff.tsx src/surfaces/DiffCommentComposer.tsx src/surfaces/CommitDiff.tsx src/surfaces/SessionReview.tsx src/surfaces/FilePane.tsx src/surfaces/FileEditor.tsx src/surfaces/BinaryFileView.tsx src/surfaces/SkillDocumentPreview.tsx src/surfaces/TerminalView.tsx src/surfaces/ProjectTerminalDock.tsx src/surfaces/BrowserView.tsx src/surfaces/TerminalGridBackground.tsx src/chrome/GitChangesPanel.tsx src/chrome/GitHistoryGraph.tsx src/chrome/ToolDiffPreview.tsx src/chrome/PrActions.tsx src/chrome/PrReviewBar.tsx src/chrome/PrMetadataEditor.tsx src/chrome/BrowserAgentBridge.tsx src/chrome/TerminalSpinner.tsx src/chrome/ImageLightbox.tsx
-grep -rn 'font-bold' src/surfaces/UnifiedDiffView.tsx src/surfaces/WorkingTreeDiff.tsx src/surfaces/SessionChangesDiff.tsx src/surfaces/InboxPrDiff.tsx src/surfaces/DiffCommentComposer.tsx src/surfaces/CommitDiff.tsx src/surfaces/SessionReview.tsx src/surfaces/FilePane.tsx src/surfaces/FileEditor.tsx src/surfaces/BinaryFileView.tsx src/surfaces/SkillDocumentPreview.tsx src/surfaces/TerminalView.tsx src/surfaces/ProjectTerminalDock.tsx src/surfaces/BrowserView.tsx src/surfaces/TerminalGridBackground.tsx src/chrome/GitChangesPanel.tsx src/chrome/GitHistoryGraph.tsx src/chrome/ToolDiffPreview.tsx src/chrome/PrActions.tsx src/chrome/PrReviewBar.tsx src/chrome/PrMetadataEditor.tsx src/chrome/BrowserAgentBridge.tsx src/chrome/TerminalSpinner.tsx src/chrome/ImageLightbox.tsx
+grep -rnE 'text-\[(13|11|10|12\.5|11\.5|10\.5|9)px\]' src/surfaces/UnifiedDiffView.tsx src/surfaces/WorkingTreeDiff.tsx src/surfaces/SessionChangesDiff.tsx src/surfaces/InboxPrDiff.tsx src/surfaces/DiffCommentComposer.tsx src/surfaces/CommitDiff.tsx src/chrome/SessionReview.tsx src/surfaces/FilePane.tsx src/surfaces/FileEditor.tsx src/surfaces/BinaryFileView.tsx src/surfaces/SkillDocumentPreview.tsx src/surfaces/TerminalView.tsx src/surfaces/ProjectTerminalDock.tsx src/surfaces/BrowserView.tsx src/surfaces/TerminalGridBackground.tsx src/chrome/GitChangesPanel.tsx src/chrome/GitHistoryGraph.tsx src/chrome/ToolDiffPreview.tsx src/chrome/PrActions.tsx src/chrome/PrReviewBar.tsx src/chrome/PrMetadataEditor.tsx src/chrome/BrowserAgentBridge.tsx src/chrome/TerminalSpinner.tsx src/chrome/ImageLightbox.tsx
+grep -rn 'font-bold' src/surfaces/UnifiedDiffView.tsx src/surfaces/WorkingTreeDiff.tsx src/surfaces/SessionChangesDiff.tsx src/surfaces/InboxPrDiff.tsx src/surfaces/DiffCommentComposer.tsx src/surfaces/CommitDiff.tsx src/chrome/SessionReview.tsx src/surfaces/FilePane.tsx src/surfaces/FileEditor.tsx src/surfaces/BinaryFileView.tsx src/surfaces/SkillDocumentPreview.tsx src/surfaces/TerminalView.tsx src/surfaces/ProjectTerminalDock.tsx src/surfaces/BrowserView.tsx src/surfaces/TerminalGridBackground.tsx src/chrome/GitChangesPanel.tsx src/chrome/GitHistoryGraph.tsx src/chrome/ToolDiffPreview.tsx src/chrome/PrActions.tsx src/chrome/PrReviewBar.tsx src/chrome/PrMetadataEditor.tsx src/chrome/BrowserAgentBridge.tsx src/chrome/TerminalSpinner.tsx src/chrome/ImageLightbox.tsx
 ```
 
 Expected: no output (except the documented gutter exception, if the implementer had to keep one — they must note it in the report and the guard in Task 7 will list it explicitly).
@@ -336,7 +336,7 @@ Expected: no output (except the documented gutter exception, if the implementer 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add src/surfaces/UnifiedDiffView.tsx src/surfaces/WorkingTreeDiff.tsx src/surfaces/SessionChangesDiff.tsx src/surfaces/InboxPrDiff.tsx src/surfaces/DiffCommentComposer.tsx src/surfaces/CommitDiff.tsx src/surfaces/SessionReview.tsx src/surfaces/FilePane.tsx src/surfaces/FileEditor.tsx src/surfaces/BinaryFileView.tsx src/surfaces/SkillDocumentPreview.tsx src/surfaces/TerminalView.tsx src/surfaces/ProjectTerminalDock.tsx src/surfaces/BrowserView.tsx src/surfaces/TerminalGridBackground.tsx src/chrome/GitChangesPanel.tsx src/chrome/GitHistoryGraph.tsx src/chrome/ToolDiffPreview.tsx src/chrome/PrActions.tsx src/chrome/PrReviewBar.tsx src/chrome/PrMetadataEditor.tsx src/chrome/BrowserAgentBridge.tsx src/chrome/TerminalSpinner.tsx src/chrome/ImageLightbox.tsx
+git add src/surfaces/UnifiedDiffView.tsx src/surfaces/WorkingTreeDiff.tsx src/surfaces/SessionChangesDiff.tsx src/surfaces/InboxPrDiff.tsx src/surfaces/DiffCommentComposer.tsx src/surfaces/CommitDiff.tsx src/chrome/SessionReview.tsx src/surfaces/FilePane.tsx src/surfaces/FileEditor.tsx src/surfaces/BinaryFileView.tsx src/surfaces/SkillDocumentPreview.tsx src/surfaces/TerminalView.tsx src/surfaces/ProjectTerminalDock.tsx src/surfaces/BrowserView.tsx src/surfaces/TerminalGridBackground.tsx src/chrome/GitChangesPanel.tsx src/chrome/GitHistoryGraph.tsx src/chrome/ToolDiffPreview.tsx src/chrome/PrActions.tsx src/chrome/PrReviewBar.tsx src/chrome/PrMetadataEditor.tsx src/chrome/BrowserAgentBridge.tsx src/chrome/TerminalSpinner.tsx src/chrome/ImageLightbox.tsx
 git commit -m "Standardize diff and editor typography."
 ```
 
@@ -360,18 +360,16 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const SRC = fileURLToPath(new URL(".", import.meta.url));
-const BANNED_TEXT = [
-  "text-[13px]",
-  "text-[11px]",
-  "text-[10.5px]",
-  "text-[11.5px]",
-  "text-[12.5px]",
-  "text-[9px]",
-];
+/** Any arbitrary text size except the two literals the scale keeps. */
+const BANNED_TEXT = /text-\[(?!12px\]|10px\])[0-9.]+px\]/;
 const BANNED_WEIGHT = ["font-bold"];
 const BANNED_ICON = ["size-2.5"];
-/** Files that render project mascots, which keep their 8px size. */
-const MASCOT_FILES = new Set(["chrome/ProjectRail.tsx"]);
+/** `size-2` stays on project mascots, RailAction's status dot, and the color-swatch glyph. */
+const SIZE_2_FILES = new Set([
+  "chrome/ProjectRail.tsx",
+  "chrome/RailAction.tsx",
+  "chrome/ColorPickerPopover.tsx",
+]);
 
 function sourceFiles(dir: string): string[] {
   const out: string[] = [];
@@ -395,13 +393,16 @@ describe("typography scale", () => {
       for (const file of sourceFiles(dir)) {
         const source = readFileSync(file, "utf8");
         for (const line of source.split("\n")) {
-          for (const banned of [...BANNED_TEXT, ...BANNED_WEIGHT, ...BANNED_ICON]) {
+          if (BANNED_TEXT.test(line)) {
+            offenders.push(`${file.slice(SRC.length)}: ${line.match(BANNED_TEXT)?.[0]}`);
+          }
+          for (const banned of [...BANNED_WEIGHT, ...BANNED_ICON]) {
             if (line.includes(banned)) {
               offenders.push(`${file.slice(SRC.length)}: ${banned}`);
             }
           }
           if (
-            !MASCOT_FILES.has(file.slice(SRC.length)) &&
+            !SIZE_2_FILES.has(file.slice(SRC.length)) &&
             line.includes("size-2 ")
           ) {
             offenders.push(`${file.slice(SRC.length)}: size-2`);

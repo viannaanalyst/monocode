@@ -61,8 +61,7 @@ Migration mapping from the current arbitrary values:
 | `text-[13px]`, `text-sm` | `text-sm` (14) | nav, lists, buttons, inputs, settings rows |
 | `text-[12px]`, `text-xs` | stays (12) | descriptions, metadata, hints, timestamps; the literal equals the `xs` token, so it is not renamed |
 | `text-[11px]` | `text-xs` (12) | same as above; no 11px level survives |
-| `text-[10px]` | stays (10) | counts, tags, pills; the literal equals the `2xs` token |
-| `text-[9px]` | `text-2xs` (10) | tiny labels |
+| `text-[10px]`, `text-[9px]` | `text-2xs` (10) | counts, tags, pills |
 | `text-[20px]`, `text-[22px]` titles | `text-display` (17) | surface titles only |
 
 Other literals at 16px or above, plus `text-lg`/`text-2xl`, are reviewed case by case in their wave: surface titles become `text-display`; anything else drops to the role table (14 or 12).
@@ -91,9 +90,9 @@ The Settings row in `ProjectRail` gains a `border-t border-content/10` divider (
 
 `src/typography.test.ts` scans `src/**/*.tsx`/`*.css` (the pattern used by `src/chrome/icons.test.ts`) and fails on:
 
-- `text-[13px]`, `text-[11px]`, `text-[10.5px]`, `text-[11.5px]`, `text-[12.5px]`, `text-[9px]`
+- any arbitrary text size other than the two literals the scale keeps (`text-[12px]`, `text-[10px]`) — this catches the retired odd sizes (13, 11, 9, 12.5, 11.5, 10.5) plus outliers like 7px and 22px
 - `font-bold`
-- `size-2.5` anywhere, and `size-2` outside a two-entry allowlist naming the files that render project mascots (mascots keep their current size)
+- `size-2.5` anywhere, and `size-2` outside a three-entry allowlist (`chrome/ProjectRail.tsx` for project mascots, `chrome/RailAction.tsx` for the decorative status dot, and `chrome/ColorPickerPopover.tsx` for the glyph inside a color swatch)
 
 The text and weight rules ship with an empty allowlist; the icon rule keeps only the mascot exception, documented inline in the test.
 
