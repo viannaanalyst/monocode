@@ -87,7 +87,6 @@ export function KanbanView({
       let lastColumn: BoardColumn | null = null;
       let lastX = startX;
       let lastY = startY;
-      handle.setPointerCapture(pointerId);
       const restoreSelection = suppressTextSelection();
 
       const onMove = (moveEvent: PointerEvent) => {
@@ -96,6 +95,13 @@ export function KanbanView({
         if (!active) {
           if (Math.hypot(lastX - startX, lastY - startY) < 5) return;
           active = true;
+          // Capture only once the drag is real, so a plain click keeps
+          // targeting the card's inner button.
+          try {
+            handle.setPointerCapture(pointerId);
+          } catch {
+            /* capture unsupported */
+          }
           setGrabbing(true);
           setDraggingId(session.id);
           ghost = startDragGhost(handle, lastX, lastY);
