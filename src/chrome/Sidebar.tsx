@@ -250,11 +250,14 @@ type Props = {
   onOpenInbox?: () => void;
   onOpenInboxItem?: (item: LinkedWorkItem) => void;
   onOpenKanban?: () => void;
+  onOpenAutomations?: () => void;
   onOpenNotes?: () => void;
   onGoToFile?: () => void;
   searchActive?: boolean;
   inboxActive?: boolean;
   kanbanActive?: boolean;
+  automationsActive?: boolean;
+  automationsPaused?: boolean;
   notesActive?: boolean;
   notesEnabled?: boolean;
   projectRailOpen?: boolean;
@@ -334,11 +337,14 @@ function SidebarComponent({
   onOpenInbox,
   onOpenInboxItem,
   onOpenKanban,
+  onOpenAutomations,
   onOpenNotes,
   onGoToFile,
   searchActive = false,
   inboxActive = false,
   kanbanActive = false,
+  automationsActive = false,
+  automationsPaused = false,
   notesActive = false,
   notesEnabled = true,
   projectRailOpen = true,
@@ -1696,6 +1702,9 @@ function SidebarComponent({
           inboxActive={inboxActive}
           onOpenKanban={onOpenKanban}
           kanbanActive={kanbanActive}
+          onOpenAutomations={onOpenAutomations}
+          automationsActive={automationsActive}
+          automationsPaused={automationsPaused}
           notesEnabled={notesEnabled}
           onOpenNotes={onOpenNotes}
           notesActive={notesActive}

@@ -20,4 +20,19 @@ describe("ProjectRail board entry", () => {
     const kanban = markup.indexOf("Kanban");
     expect(kanban).toBeGreaterThan(inbox);
   });
+
+  it("renders Automations below Kanban when wired", () => {
+    const markup = renderToStaticMarkup(
+      createElement(ProjectRail, {
+        cwd: "/tmp/web",
+        recents: [],
+        onSelectProject: () => {},
+        onOpenProject: () => {},
+        onOpenInbox: () => {},
+        onOpenKanban: () => {},
+        onOpenAutomations: () => {},
+      }),
+    );
+    expect(markup.indexOf("Automations")).toBeGreaterThan(markup.indexOf("Kanban"));
+  });
 });
