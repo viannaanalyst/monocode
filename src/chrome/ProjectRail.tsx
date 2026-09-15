@@ -433,6 +433,14 @@ export function ProjectRail({
             />
       </div>
 
+      {cwd && cwd !== "~" ? (
+        <div className="flex shrink-0 items-center px-3 pb-1 pt-2.5">
+          <span className="min-w-0 truncate font-display text-display text-content">
+            {resolveTabGroupLabel(projectKey(cwd), groupLabels, basename(cwd))}
+          </span>
+        </div>
+      ) : null}
+
       {settingsOpen ? (
         <SettingsNav
           section={settingsSection}

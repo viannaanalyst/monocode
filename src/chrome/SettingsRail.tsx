@@ -13,6 +13,7 @@ import {
 } from "./icons";
 import { useLockOverscroll } from "../hooks/useLockOverscroll";
 import { t } from "../i18n";
+import { RailAction } from "./RailAction";
 import {
   SETTINGS_NAV_GROUPS,
   settingsSectionLabel,
@@ -67,8 +68,8 @@ export function SettingsNav({ section, onSelect, onClose }: Props) {
           </div>
         ))}
       </div>
-      <div className="flex shrink-0 flex-col gap-px p-2">
-        <NavRow label={t("Back")} icon={ArrowLeft} onClick={onClose} />
+      <div className="flex shrink-0 flex-col gap-px border-t border-content/10 p-2">
+        <RailAction label={t("Back")} icon={ArrowLeft} onClick={onClose} />
       </div>
     </>
   );
