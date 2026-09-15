@@ -73,7 +73,7 @@ export function ModalPanel({
           <div className="min-w-0 flex-1 pt-0.5">
             <h2
               id={titleId}
-              className="text-2xl font-semibold leading-tight text-content"
+              className="text-sm font-semibold text-content"
             >
               {title}
             </h2>
