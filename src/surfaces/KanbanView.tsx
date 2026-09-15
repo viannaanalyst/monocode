@@ -54,7 +54,7 @@ const COLUMN_BADGES: Record<BoardColumn, string> = {
   working: "bg-sky-500/15 text-sky-300",
   needs_you: "bg-amber-500/15 text-amber-300",
   idle: "bg-content/10 text-content/55",
-  archived: "bg-content/10 text-content/45",
+  archived: "bg-content/10 text-content/55",
 };
 
 type Props = {
@@ -412,8 +412,9 @@ function KanbanCard({
           type="button"
           data-no-drag
           aria-label={t("{name} menu", { name: session.title })}
+          aria-haspopup="menu"
           onClick={onMenu}
-          className="ml-auto grid size-6 shrink-0 place-items-center rounded-md text-content/45 opacity-0 transition-opacity hover:bg-content/10 hover:text-content group-hover:opacity-100 group-focus-within:opacity-100"
+          className="pointer-events-none ml-auto grid size-6 shrink-0 place-items-center rounded-md text-content/45 opacity-0 transition-opacity hover:bg-content/10 hover:text-content group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100"
         >
           <MoreHorizontal className="size-3.5" strokeWidth={1.75} />
         </button>
