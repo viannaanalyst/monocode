@@ -377,7 +377,11 @@ fn record_missed(
         "INSERT OR IGNORE INTO automation_runs
            (id, automation_id, scheduled_for, status)
          VALUES (?1, ?2, ?3, 'missed')",
-        params![format!("{id}:{expected_next_run_at}"), id, expected_next_run_at],
+        params![
+            format!("{id}:{expected_next_run_at}"),
+            id,
+            expected_next_run_at
+        ],
     )
     .map_err(|error| error.to_string())?;
     tx.commit().map_err(|error| error.to_string())?;
@@ -525,6 +529,7 @@ pub fn automation_record_missed(
     Ok(recorded)
 }
 
+#[allow(clippy::too_many_arguments)]
 #[tauri::command(async)]
 pub fn automation_record_result(
     app: AppHandle,

@@ -368,9 +368,13 @@ export function AutomationsView({
                   {(() => {
                     const schedule = describeSchedule(scheduleOf(automation));
                     const next = nextRunLabel(automation, now);
+                    const scheduleVars =
+                      schedule.vars && typeof schedule.vars.weekday === "string"
+                        ? { ...schedule.vars, weekday: t(schedule.vars.weekday) }
+                        : schedule.vars;
                     return (
                       <p className="mt-1 text-[11px] text-content/50">
-                        {t(schedule.key, schedule.vars)}
+                        {t(schedule.key, scheduleVars)}
                         {" · "}
                         {t(next.key, next.vars)}
                       </p>
