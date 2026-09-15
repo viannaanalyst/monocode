@@ -232,6 +232,17 @@ describe("provider defaults", () => {
     });
   });
 
+  it("follows the saved provider order for the fallback", () => {
+    localStorage.setItem(
+      "monocode.providerOrder",
+      JSON.stringify(["pi", "claude", "codex"]),
+    );
+    expect(defaultSessionChoice((harness) => harness === "pi" || harness === "claude")).toEqual({
+      harness: "pi",
+      model: defaultModelId("pi"),
+    });
+  });
+
   it("keeps an installed saved default provider", () => {
     saveLastModelChoice("opencode", "opencode:glm-5");
     expect(defaultSessionChoice((harness) => harness === "opencode")).toEqual({

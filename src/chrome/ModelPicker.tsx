@@ -35,8 +35,13 @@ import {
   pickerModelsFor,
   subscribeModelVisibility,
 } from "../lib/modelVisibility";
-import { HARNESSES, HARNESS_TITLE, type HarnessId } from "../lib/session";
+import { HARNESS_TITLE, type HarnessId } from "../lib/session";
 import { LAYER } from "../lib/layers";
+import {
+  getProviderOrderSnapshot,
+  orderedHarnesses,
+  subscribeProviderOrder,
+} from "../lib/providerOrder";
 import { HarnessIcon } from "./HarnessIcon";
 import { ModelBrandIcon } from "./ModelBrandIcon";
 import { Popover } from "./Popover";
@@ -379,6 +384,11 @@ export function ModelPicker({
     getPickerVisibilitySnapshot,
     getPickerVisibilitySnapshot,
   );
+  const providerOrder = useSyncExternalStore(
+    subscribeProviderOrder,
+    getProviderOrderSnapshot,
+    getProviderOrderSnapshot,
+  );
   const modelVisibility = useSyncExternalStore(
     subscribeModelVisibility,
     modelVisibilityVersion,
@@ -435,8 +445,9 @@ export function ModelPicker({
 
   const pickerHarnesses = useMemo(() => {
     void visibilityVersion;
-    return HARNESSES.filter((id) => isPickerProviderVisible(id));
-  }, [visibilityVersion]);
+    void providerOrder;
+    return orderedHarnesses((id) => isPickerProviderVisible(id));
+  }, [providerOrder, visibilityVersion]);
   const providerGroups = useMemo(() => {
     void catalogVersion;
     void modelVisibility;

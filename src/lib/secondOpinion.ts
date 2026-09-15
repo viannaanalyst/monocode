@@ -2,8 +2,8 @@ import { isEditTool } from "./harness/preview";
 import { limitSection } from "./jsonText";
 import { displayPath } from "./paths";
 import { responseLanguageDirective } from "./promptLanguage";
+import { orderedHarnesses } from "./providerOrder";
 import {
-  HARNESSES,
   HARNESS_TITLE,
   type Block,
   type HarnessId,
@@ -88,7 +88,7 @@ export function secondOpinionTargets(
     includeCurrent?: boolean;
   },
 ): HarnessId[] {
-  const others = HARNESSES.filter((id) => {
+  const others = orderedHarnesses().filter((id) => {
     if (id === from) return false;
     if (!options.visible(id)) return false;
     if (!options.probed) return true;

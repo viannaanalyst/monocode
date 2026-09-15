@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Block, HarnessId } from "./session";
 import {
   buildSecondOpinionCard,
@@ -9,6 +9,20 @@ import {
   turnReport,
   turnUserRequest,
 } from "./secondOpinion";
+
+beforeEach(() => {
+  const stored = new Map<string, string>();
+  vi.stubGlobal("localStorage", {
+    getItem: (key: string) => stored.get(key) ?? null,
+    setItem: (key: string, value: string) => stored.set(key, value),
+    removeItem: (key: string) => stored.delete(key),
+    clear: () => stored.clear(),
+  });
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 function user(id: string, text: string): Block {
   return { id, role: "user", text };
@@ -163,6 +177,20 @@ describe("secondOpinionTargets", () => {
         visible,
         probed: true,
         includeCurrent: true,
+      }),
+    ).toEqual(["codex", "claude"]);
+  });
+
+  it("follows the saved provider order", () => {
+    localStorage.setItem(
+      "monocode.providerOrder",
+      JSON.stringify(["codex", "claude"]),
+    );
+    expect(
+      secondOpinionTargets("pi", {
+        installed: (id) => id === "claude" || id === "codex",
+        visible: () => true,
+        probed: true,
       }),
     ).toEqual(["codex", "claude"]);
   });

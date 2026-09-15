@@ -264,6 +264,38 @@ describe("model picker", () => {
     ).toBe(true);
   });
 
+  it("orders provider groups by the saved provider order", () => {
+    localStorage.setItem(
+      "monocode.providerOrder",
+      JSON.stringify(["opencode", "grok", "claude"]),
+    );
+    for (const harness of HARNESSES) setHarnessModelsEnabled(harness, true);
+    act(() =>
+      root.render(
+        createElement(ModelPicker, {
+          harness: "grok",
+          model: "grok:grok-4.6",
+          values: { effort: "high" },
+          onChange: vi.fn(),
+          onSettingsChange: vi.fn(),
+        }),
+      ),
+    );
+    const list = openModelsList();
+    const providers = [
+      ...(list?.querySelectorAll<HTMLButtonElement>("[data-provider-harness]") ?? []),
+    ].map((el) => el.getAttribute("data-provider-harness"));
+    expect(providers).toEqual([
+      "opencode",
+      "grok",
+      "claude",
+      "cursor",
+      "pi",
+      "omp",
+      "fx",
+    ]);
+  });
+
   it("picks a model from a provider submenu", () => {
     setHarnessModelsEnabled("grok", true);
     const onChange = vi.fn();

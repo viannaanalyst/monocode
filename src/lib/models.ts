@@ -1,5 +1,6 @@
 import type { HarnessId } from "./session";
 import { HARNESSES } from "./session";
+import { orderedHarnesses } from "./providerOrder";
 import {
   appendCustomModels,
   CUSTOM_MODEL_HARNESSES,
@@ -771,7 +772,7 @@ export function defaultSessionChoice(
   const preferred = last?.harness ?? "cursor";
   const harness =
     available && !available(preferred)
-      ? (HARNESSES.find(available) ?? preferred)
+      ? (orderedHarnesses(available)[0] ?? preferred)
       : preferred;
   return { harness, model: preferredModelId(harness) };
 }
