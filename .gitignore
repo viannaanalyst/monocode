@@ -56,3 +56,5 @@ Desktop.ini
 .monocode-browser.json
 .monocode-browser-result.json
 .monocode-browser-mcp.mjs
+
+.worktrees/

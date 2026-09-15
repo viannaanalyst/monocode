@@ -10,9 +10,14 @@ type Props = {
   diff: GithubPrDiff;
   /** When true, show the whole file (no fold rows). */
   fullFile?: boolean;
+  onLineComment?: (comment: {
+    filePath: string;
+    line: UnifiedLine;
+    body: string;
+  }) => void;
 };
 
-export function InboxPrDiff({ diff, fullFile = false }: Props) {
+export function InboxPrDiff({ diff, fullFile = false, onLineComment }: Props) {
   const files = useMemo(() => {
     const parsed = mergePrDiff(diff.files, parsePrPatch(diff.patch));
     const context = fullFile ? Number.POSITIVE_INFINITY : undefined;
@@ -27,6 +32,7 @@ export function InboxPrDiff({ diff, fullFile = false }: Props) {
       fill={false}
       fileLayout="cards"
       initialExpansion="first"
+      onLineComment={onLineComment}
     />
   );
 }
