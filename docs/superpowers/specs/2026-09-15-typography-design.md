@@ -39,9 +39,10 @@ Out of scope:
 
 ### Fonts
 
-- `public/fonts/` gains: `cal-sans-latin-400-normal.woff2`, `cal-sans-latin-ext-400-normal.woff2`, `jetbrains-mono-latin-400-normal.woff2`, `jetbrains-mono-latin-ext-400-normal.woff2`, `jetbrains-mono-latin-600-normal.woff2`, `jetbrains-mono-latin-ext-600-normal.woff2` (all OFL-1.1), downloaded from `@fontsource/cal-sans@5.3.0` and `@fontsource/jetbrains-mono@5.3.0` on jsDelivr, with the two OFL license texts copied alongside.
-- `src/index.css` declares `@font-face` blocks (one per file, `font-display: swap`, correct `unicode-range`) and updates the theme tokens: `--font-display: "Cal Sans", var(--font-sans)` and `--font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace`. `--font-sans` stays the system stack.
-- Cal Sans applies only to top-level surface titles (Kanban, Automations, Inbox, Notes, Search, Settings) at `text-[17px]` with `font-display`; nothing else uses it. JetBrains Mono replaces the mono default everywhere (`font-mono`, code blocks, diffs, terminals).
+- `public/fonts/` gains: `cal-sans-latin-400-normal.woff2`, `jetbrains-mono-latin-400-normal.woff2`, `jetbrains-mono-latin-600-normal.woff2` (all OFL-1.1), downloaded from `@fontsource/cal-sans@5.3.0` and `@fontsource/jetbrains-mono@5.3.0` on jsDelivr, with the two OFL license texts copied alongside. Only the `latin` subset is bundled: it already covers Portuguese accents, and fontsource's `latin.css` faces carry no `unicode-range`, so merging latin-ext would require hand-writing ranges for no gain.
+- `src/index.css` declares `@font-face` blocks (one per file, `font-display: swap`) and updates the theme tokens: `--font-display: "Cal Sans", var(--font-sans)` and `--font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace`. `--font-sans` stays the system stack.
+- The app's font layer (`src/lib/fonts.ts`) overrides `--font-mono` at boot with its own fallback stack, so `MONO_FALLBACK` there must also start with `"JetBrains Mono"`; otherwise the CSS token never wins. The user's font settings keep overriding both stacks when set.
+- Cal Sans applies only to top-level surface titles (Kanban, Automations, Inbox, Notes, Search, Settings) at `text-display` with `font-display`; nothing else uses it. JetBrains Mono replaces the mono default everywhere (`font-mono`, code blocks, diffs, terminals).
 - `NOTICE` notes both fonts and their license.
 
 ### Type scale and weights
@@ -58,9 +59,10 @@ Migration mapping from the current arbitrary values:
 | Current | Becomes | Role |
 | --- | --- | --- |
 | `text-[13px]`, `text-sm` | `text-sm` (14) | nav, lists, buttons, inputs, settings rows |
-| `text-[12px]`, `text-xs` | `text-xs` (12) | descriptions, metadata, hints, timestamps |
+| `text-[12px]`, `text-xs` | stays (12) | descriptions, metadata, hints, timestamps; the literal equals the `xs` token, so it is not renamed |
 | `text-[11px]` | `text-xs` (12) | same as above; no 11px level survives |
-| `text-[10px]`, `text-[9px]` | `text-2xs` (10) | counts, tags, pills |
+| `text-[10px]` | stays (10) | counts, tags, pills; the literal equals the `2xs` token |
+| `text-[9px]` | `text-2xs` (10) | tiny labels |
 | `text-[20px]`, `text-[22px]` titles | `text-display` (17) | surface titles only |
 
 Other literals at 16px or above, plus `text-lg`/`text-2xl`, are reviewed case by case in their wave: surface titles become `text-display`; anything else drops to the role table (14 or 12).
