@@ -25,7 +25,7 @@ export const CODE_FONT_WEIGHT_DEFAULT = 400;
 const SANS_FALLBACK =
   'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif';
 const MONO_FALLBACK =
-  'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
+  '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
