@@ -27,7 +27,7 @@ Out of scope (explicitly deferred):
 
 Two tables created by an unconditional `ensure_automations_table(conn)` called from `migrate` in `session_store.rs`, following the `notes`/`reminders` pattern:
 
-- `automations`: `id`, `title`, `prompt`, `session_id` (nullable), `cwd`, `harness`, `model`, `runtime_mode`, `model_settings_json`, schedule fields (`schedule_kind` = `hourly | daily | weekdays | weekly`, `interval_hours`, `weekday` 0–6, `hour`, `minute`), `next_run_at` (epoch ms), `enabled`, `consecutive_failures`, `failure_policy` (`pause_after_1 | pause_after_3 | pause_after_5 | keep_running`), `paused_reason`, `created_at`, `updated_at`.
+- `automations`: `id`, `title`, `prompt`, `session_id` (nullable), `cwd`, `harness`, `model`, `runtime_mode`, `model_settings_json`, schedule fields (`schedule_kind` = `hourly | daily | weekdays | weekly`, `interval_hours`, `weekday` 0–6 (0 = Sunday, matching `Date.getDay()`), `hour`, `minute`), `next_run_at` (epoch ms), `enabled`, `consecutive_failures`, `failure_policy` (`pause_after_1 | pause_after_3 | pause_after_5 | keep_running`), `paused_reason`, `created_at`, `updated_at`.
 - `automation_runs`: `id`, `automation_id` (cascade delete), `scheduled_for`, `started_at`, `finished_at`, `status` (`running | completed | failed | cancelled | skipped_busy | missed`), `error`.
 
 Commands mirror the reminders module (`automation_list`, `automation_upsert`, `automation_delete`, `automation_set_enabled`, `automation_runs`) and add two conditional mutations that make dispatch single-winner across windows and reloads:
