@@ -46,6 +46,14 @@ describe("nextRunAt", () => {
     expect(next.getMinutes()).toBe(30);
     expect(next.getDate()).toBe(14);
   });
+
+  it("returns today's first slot when the time is before the minute offset", () => {
+    const from = at("2026-09-14T00:10:00");
+    const next = new Date(nextRunAt(schedule({ kind: "hourly", intervalHours: 2, minute: 30 }), from));
+    expect(next.getHours()).toBe(0);
+    expect(next.getMinutes()).toBe(30);
+    expect(next.getDate()).toBe(14);
+  });
 });
 
 describe("missedSlots", () => {

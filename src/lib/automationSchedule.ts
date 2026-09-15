@@ -53,7 +53,7 @@ export function nextRunAt(schedule: AutomationSchedule, from: number): number {
     const interval = Math.min(24, Math.max(1, Math.round(schedule.intervalHours)));
     const base = startOfDay(from).getTime() + schedule.minute * 60_000;
     const step = interval * 3_600_000;
-    const index = from < base ? 1 : Math.floor((from - base) / step) + 1;
+    const index = from < base ? 0 : Math.floor((from - base) / step) + 1;
     return base + index * step;
   }
   if (schedule.kind === "daily") {
