@@ -3,6 +3,8 @@ import {
   ArrowDownCircle,
   Check,
   ChevronDown,
+  ChevronUp,
+  GripVertical,
   ImagePlus,
   Loader,
   RefreshCw,
@@ -18,6 +20,7 @@ import {
   useState,
   useSyncExternalStore,
   type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
 import { ask, message } from "@tauri-apps/plugin-dialog";
@@ -37,6 +40,7 @@ import { terminalTheme } from "./TerminalView";
 import { WindowControls } from "../chrome/WindowControls";
 import { useLockOverscroll } from "../hooks/useLockOverscroll";
 import { useColorScheme } from "../hooks/useColorScheme";
+import { useSortable } from "../hooks/useSortable";
 import {
   applyChatBackground,
   applyChatBackgroundEmptyOpacity,
@@ -180,6 +184,14 @@ import {
 } from "../lib/modelVisibility";
 import { supportsCustomModels } from "../lib/customModels";
 import {
+  getProviderOrderSnapshot,
+  mergeProviderOrder,
+  moveProvider,
+  orderedHarnesses,
+  saveProviderOrder,
+  subscribeProviderOrder,
+} from "../lib/providerOrder";
+import {
   loadProjectInstructions,
   saveProjectInstructions,
   type ProjectInstructions,
@@ -193,7 +205,6 @@ import {
   type ArchivedProject,
 } from "../lib/recents";
 import {
-  HARNESSES,
   HARNESS_TITLE,
   sessionDisplayTitle,
   type HarnessId,
@@ -2798,6 +2809,64 @@ function KeybindingsPage() {
   );
 }
 
+export function ProvidersOrderList({
+  rowProps,
+}: {
+  rowProps?: (harness: HarnessId) => {
+    selectedModel: string;
+    isDefault: boolean;
+    onDefault: (harness: HarnessId, model: string) => void;
+    onModelChange: (harness: HarnessId, model: string) => void;
+  };
+} = {}) {
+  const providerOrder = useSyncExternalStore(
+    subscribeProviderOrder,
+    getProviderOrderSnapshot,
+    getProviderOrderSnapshot,
+  );
+  const providers = useMemo(() => {
+    void providerOrder;
+    return orderedHarnesses();
+  }, [providerOrder]);
+  const sortable = useSortable(
+    providers,
+    (ids) => saveProviderOrder(mergeProviderOrder(ids, providers)),
+    { axis: "y" },
+  );
+
+  return (
+    <div className="flex flex-col gap-3">
+      {providers.map((harness, index) => (
+        <ProviderRow
+          key={harness}
+          harness={harness}
+          orderIndex={index}
+          orderCount={providers.length}
+          dragging={sortable.draggingId === harness}
+          dropStart={
+            sortable.toIndex === index &&
+            sortable.fromIndex !== null &&
+            sortable.toIndex < sortable.fromIndex
+          }
+          dropEnd={
+            sortable.toIndex === index &&
+            sortable.fromIndex !== null &&
+            sortable.toIndex > sortable.fromIndex
+          }
+          itemRef={(el) => sortable.setItemRef(harness, el)}
+          onGripPointerDown={(event) =>
+            sortable.onItemPointerDown(harness, event)
+          }
+          onMove={(delta) =>
+            saveProviderOrder(moveProvider(providers, harness, delta))
+          }
+          {...(rowProps?.(harness) ?? {})}
+        />
+      ))}
+    </div>
+  );
+}
+
 function ProvidersPage() {
   const catalogVersion = useSyncExternalStore(
     subscribeModels,
@@ -2840,38 +2909,49 @@ function ProvidersPage() {
   };
 
   return (
-    <div className="flex flex-col gap-3">
-      {HARNESSES.map((harness) => (
-        <ProviderRow
-          key={harness}
-          harness={harness}
-          selectedModel={
-            defaultModels[harness] ??
-            (choice?.harness === harness
-              ? choice.model
-              : defaultModelId(harness))
-          }
-          isDefault={effectiveChoice?.harness === harness}
-          onDefault={onDefault}
-          onModelChange={onModelChange}
-        />
-      ))}
-    </div>
+    <ProvidersOrderList
+      rowProps={(harness) => ({
+        selectedModel:
+          defaultModels[harness] ??
+          (choice?.harness === harness
+            ? choice.model
+            : defaultModelId(harness)),
+        isDefault: effectiveChoice?.harness === harness,
+        onDefault,
+        onModelChange,
+      })}
+    />
   );
 }
 
 function ProviderRow({
   harness,
-  selectedModel,
-  isDefault,
-  onDefault,
-  onModelChange,
+  selectedModel = "",
+  isDefault = false,
+  onDefault = () => {},
+  onModelChange = () => {},
+  orderIndex,
+  orderCount,
+  dragging,
+  dropStart,
+  dropEnd,
+  itemRef,
+  onGripPointerDown,
+  onMove,
 }: {
   harness: HarnessId;
-  selectedModel: string;
-  isDefault: boolean;
-  onDefault: (harness: HarnessId, model: string) => void;
-  onModelChange: (harness: HarnessId, model: string) => void;
+  selectedModel?: string;
+  isDefault?: boolean;
+  onDefault?: (harness: HarnessId, model: string) => void;
+  onModelChange?: (harness: HarnessId, model: string) => void;
+  orderIndex: number;
+  orderCount: number;
+  dragging: boolean;
+  dropStart: boolean;
+  dropEnd: boolean;
+  itemRef: (el: HTMLElement | null) => void;
+  onGripPointerDown: (event: ReactPointerEvent<HTMLButtonElement>) => void;
+  onMove: (delta: -1 | 1) => void;
 }) {
   const models = modelsFor(harness);
   const liveCatalog = hasLiveCatalog(harness);
@@ -2922,8 +3002,47 @@ function ProviderRow({
   };
 
   return (
-    <section className="rounded-xl border border-content/10 px-4 py-3">
+    <section
+      ref={itemRef}
+      className={`relative rounded-xl border border-content/10 px-4 py-3 ${
+        dragging ? "opacity-40" : ""
+      }`}
+    >
+      {dropStart ? (
+        <div className="pointer-events-none absolute inset-x-1 -top-1.5 z-20 h-0.5 rounded-full bg-accent" />
+      ) : null}
+      {dropEnd ? (
+        <div className="pointer-events-none absolute inset-x-1 -bottom-1.5 z-20 h-0.5 rounded-full bg-accent" />
+      ) : null}
       <div className="flex items-start gap-3">
+        <div className="mt-0.5 flex shrink-0 flex-col items-center gap-0.5">
+          <button
+            type="button"
+            aria-label={t("Reorder {name}", { name: HARNESS_TITLE[harness] })}
+            onPointerDown={onGripPointerDown}
+            className="grid size-5 cursor-grab place-items-center rounded text-content/35 hover:bg-content/10 hover:text-content active:cursor-grabbing"
+          >
+            <GripVertical className="size-3.5" strokeWidth={1.75} />
+          </button>
+          <button
+            type="button"
+            aria-label={t("Move {name} up", { name: HARNESS_TITLE[harness] })}
+            disabled={orderIndex === 0}
+            onClick={() => onMove(-1)}
+            className="grid size-5 place-items-center rounded text-content/35 hover:bg-content/10 hover:text-content disabled:opacity-30"
+          >
+            <ChevronUp className="size-3" strokeWidth={2} />
+          </button>
+          <button
+            type="button"
+            aria-label={t("Move {name} down", { name: HARNESS_TITLE[harness] })}
+            disabled={orderIndex === orderCount - 1}
+            onClick={() => onMove(1)}
+            className="grid size-5 place-items-center rounded text-content/35 hover:bg-content/10 hover:text-content disabled:opacity-30"
+          >
+            <ChevronDown className="size-3" strokeWidth={2} />
+          </button>
+        </div>
         <HarnessIcon harness={harness} className="mt-0.5 size-4 shrink-0" />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
