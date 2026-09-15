@@ -935,7 +935,7 @@ function ProjectSection({
         {onAdd ? (
           <button
             type="button"
-            title={t("Open project")}
+            data-no-tooltip
             aria-label={t("Open project")}
             onClick={onAdd}
             className="grid size-5 shrink-0 place-items-center rounded-md text-content/50 hover:bg-content/8 hover:text-content"
@@ -1166,7 +1166,7 @@ function ProjectCard({
       <button
         type="button"
         data-no-drag
-        title={t("Project options")}
+        data-no-tooltip
         aria-label={t("Project options")}
         aria-haspopup="menu"
         onPointerDown={(event) => event.stopPropagation()}
@@ -1178,11 +1178,11 @@ function ProjectCard({
       >
         <MoreHorizontal className="size-3.5" strokeWidth={1.75} />
       </button>
-      {onNewInProject ? (
+      {onNewInProject && pinned ? (
         <button
           type="button"
           data-no-drag
-          title={t("New session")}
+          data-no-tooltip
           aria-label={t("New session")}
           onPointerDown={(event) => event.stopPropagation()}
           onClick={(event) => {
@@ -1197,7 +1197,7 @@ function ProjectCard({
       <button
         type="button"
         data-no-drag
-        title={pinned ? t("Unpin project") : t("Pin project")}
+        data-no-tooltip
         aria-label={pinned ? t("Unpin project") : t("Pin project")}
         onPointerDown={(event) => event.stopPropagation()}
         onClick={(event) => {
