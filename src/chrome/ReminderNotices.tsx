@@ -102,7 +102,7 @@ export function ReminderNotices({
                 className="block w-full text-left"
                 onClick={() => onOpen(reminder)}
               >
-                <span className="block truncate text-sm font-medium hover:underline">
+                <span className="block truncate text-sm font-semibold hover:underline">
                   {sessionDisplayTitle(reminder.title, reminder.harness)}
                 </span>
                 <span

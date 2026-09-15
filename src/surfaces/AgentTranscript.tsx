@@ -2683,7 +2683,7 @@ function BrowserActionCard({ card }: { card: BrowserCardMeta }) {
     <div className="mx-4 my-1 overflow-hidden rounded-lg border border-content/10 bg-content/5">
       <div className="flex items-center gap-2 px-3 py-2">
         <Globe className="size-3.5 shrink-0 text-content/55" strokeWidth={1.75} />
-        <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-content">
+        <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-content">
           {title}
         </span>
         <span

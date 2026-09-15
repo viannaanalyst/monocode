@@ -173,7 +173,7 @@ export function LinkedWorkItemUpdateNotice({
           <span className="block text-xs text-content/50">
             {kindLabel} #{card.number} · {card.repo}
           </span>
-          <span className="mt-0.5 block truncate text-sm font-medium hover:underline">
+          <span className="mt-0.5 block truncate text-sm font-semibold hover:underline">
             {card.title}
           </span>
         </button>

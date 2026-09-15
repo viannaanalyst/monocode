@@ -349,13 +349,13 @@ export function OrchestrationPreview({
           )}
         </span>
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-medium leading-tight text-content/90">
+          <div className="truncate text-sm font-semibold leading-tight text-content/90">
             {planning ? "Planning assignments…" : proposal.title}
           </div>
           <div className="mt-1 flex items-center gap-1.5 text-xs leading-tight text-content/45">
             <HarnessIcon
               harness={proposal.author.harness}
-              className="size-3 shrink-0"
+              className="size-3.5 shrink-0"
             />
             <span
               className="truncate"
@@ -468,7 +468,7 @@ export function OrchestrationPreview({
                       >
                         <HarnessIcon
                           harness={task.harness}
-                          className="size-3 shrink-0"
+                          className="size-3.5 shrink-0"
                         />
                         <span className="truncate">
                           {proposal.settings.choices.find(

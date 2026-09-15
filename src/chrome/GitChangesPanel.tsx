@@ -142,7 +142,7 @@ export function GitChangesPanel({
       className="flex h-full min-h-0 flex-1 flex-col overflow-hidden"
     >
       <header className="flex h-9 shrink-0 items-center gap-2 border-b border-content/10 px-3">
-        <span className="text-[12px] font-medium text-content">{t("Changes")}</span>
+        <span className="text-[12px] font-semibold text-content">{t("Changes")}</span>
         {index?.branch ? (
           <span className="ml-auto flex min-w-0 items-center gap-1 text-xs text-content/50">
             <GitBranch className="size-3.5 shrink-0" strokeWidth={1.75} />

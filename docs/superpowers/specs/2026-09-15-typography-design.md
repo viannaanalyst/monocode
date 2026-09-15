@@ -42,7 +42,7 @@ Out of scope:
 - `public/fonts/` gains: `cal-sans-latin-400-normal.woff2`, `jetbrains-mono-latin-400-normal.woff2`, `jetbrains-mono-latin-600-normal.woff2` (all OFL-1.1), downloaded from `@fontsource/cal-sans@5.3.0` and `@fontsource/jetbrains-mono@5.3.0` on jsDelivr, with the two OFL license texts copied alongside. Only the `latin` subset is bundled: it already covers Portuguese accents, and fontsource's `latin.css` faces carry no `unicode-range`, so merging latin-ext would require hand-writing ranges for no gain.
 - `src/index.css` declares `@font-face` blocks (one per file, `font-display: swap`) and updates the theme tokens: `--font-display: "Cal Sans", var(--font-sans)` and `--font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace`. `--font-sans` stays the system stack.
 - The app's font layer (`src/lib/fonts.ts`) overrides `--font-mono` at boot with its own fallback stack, so `MONO_FALLBACK` there must also start with `"JetBrains Mono"`; otherwise the CSS token never wins. The user's font settings keep overriding both stacks when set.
-- Cal Sans applies only to top-level surface titles (Kanban, Automations, Inbox, Notes, Search, Settings) at `text-display` with `font-display`; nothing else uses it. JetBrains Mono replaces the mono default everywhere (`font-mono`, code blocks, diffs, terminals).
+- Cal Sans applies only to top-level surface titles (Kanban, Automations, Inbox, Notes, Settings) at `text-display` with `font-display`; nothing else uses it. Search has no surface title (its header is the input), so it never uses Cal Sans. JetBrains Mono replaces the mono default everywhere (`font-mono`, code blocks, diffs, terminals).
 - `NOTICE` notes both fonts and their license.
 
 ### Type scale and weights
@@ -79,7 +79,7 @@ Line height follows the token pairs; `leading-none` is only allowed on badges/gu
 
 - Default inline icon = **14px** (`size-3.5`) in rail items, list rows, buttons, menus, tooltips, and settings rows.
 - **16px** (`size-4`) is allowed only for surface-level headers, empty states, and prominent toolbar actions.
-- `size-3`, `size-2.5`, `size-2` are retired inside text rows (mascots/logos keep their current sizing).
+- `size-3`, `size-2.5`, `size-2` are retired inside text rows. Identity marks keep their sizing as documented exceptions: project mascots and the color-swatch glyph (`size-2`), `FileTypeIcon size={16}` and `ModelBrandIcon size-4` brand marks, the 12px status glyphs aligned to the `w-3` spinner box in `OrchestrationSidebarAgents`, and status dots at `size-1.5` (the app's dot idiom).
 - Icons inheriting color from `currentColor` keep doing so; no color changes.
 
 ### Rail footer

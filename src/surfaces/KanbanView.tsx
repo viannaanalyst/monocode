@@ -222,7 +222,7 @@ export function KanbanView({
             >
               <header className="flex h-9 shrink-0 items-center gap-2 border-b border-content/10 px-3">
                 <span className={`size-1.5 rounded-full ${COLUMN_DOTS[column]}`} />
-                <span className="text-[12px] font-medium">
+                <span className="text-[12px] font-semibold">
                   {t(COLUMN_LABELS[column])}
                 </span>
                 <span className="ml-auto text-xs tabular-nums text-content/40">
