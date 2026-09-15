@@ -1,4 +1,9 @@
-import { nextRunAt, scheduleOf, type AutomationSchedule } from "./automationSchedule";
+import {
+  nextRunAt,
+  scheduleOf,
+  type AutomationLabel,
+  type AutomationSchedule,
+} from "./automationSchedule";
 import type { Automation, AutomationRunStatus } from "./automationStore";
 
 export type RunOutcome = "completed" | "failed" | "cancelled";
@@ -59,20 +64,23 @@ export function nextSchedule(schedule: AutomationSchedule, slot: number): number
   return nextRunAt(schedule, slot);
 }
 
-export function nextRunLabel(automation: Automation, now: number): string {
+export function nextRunLabel(automation: Automation, now: number): AutomationLabel {
   if (!automation.enabled) {
     if (automation.pausedReason === "failures") {
-      return `Paused after ${automation.consecutiveFailures} failures`;
+      return {
+        key: "Paused after {count} failures",
+        vars: { count: automation.consecutiveFailures },
+      };
     }
-    return "Paused";
+    return { key: "Paused" };
   }
   const ms = automation.nextRunAt - now;
-  if (ms <= 0) return "Due now";
+  if (ms <= 0) return { key: "Due now" };
   const minutes = Math.round(ms / 60_000);
-  if (minutes < 60) return `in ${minutes} min`;
+  if (minutes < 60) return { key: "in {minutes} min", vars: { minutes } };
   const hours = Math.round(minutes / 60);
-  if (hours < 24) return `in ${hours}h`;
-  return `in ${Math.round(hours / 24)}d`;
+  if (hours < 24) return { key: "in {hours}h", vars: { hours } };
+  return { key: "in {days}d", vars: { days: Math.round(hours / 24) } };
 }
 
 export function runStatusLabel(status: AutomationRunStatus): string {

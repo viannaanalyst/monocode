@@ -365,11 +365,17 @@ export function AutomationsView({
                       {t(automationStatusLabel(automation))}
                     </span>
                   </div>
-                  <p className="mt-1 text-[11px] text-content/50">
-                    {t(describeSchedule(scheduleOf(automation)))}
-                    {" · "}
-                    {t(nextRunLabel(automation, now))}
-                  </p>
+                  {(() => {
+                    const schedule = describeSchedule(scheduleOf(automation));
+                    const next = nextRunLabel(automation, now);
+                    return (
+                      <p className="mt-1 text-[11px] text-content/50">
+                        {t(schedule.key, schedule.vars)}
+                        {" · "}
+                        {t(next.key, next.vars)}
+                      </p>
+                    );
+                  })()}
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
                     <button
                       type="button"

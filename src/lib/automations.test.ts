@@ -95,8 +95,16 @@ describe("automationTickPlan", () => {
 describe("labels", () => {
   it("labels next-run states and statuses", () => {
     const now = 1_700_000_000_000;
-    expect(nextRunLabel(automation({ nextRunAt: now + 3_600_000 }), now)).toContain("1");
-    expect(nextRunLabel(automation({ enabled: false, pausedReason: "failures", consecutiveFailures: 3 }), now)).toContain("3");
+    expect(nextRunLabel(automation({ nextRunAt: now + 3_600_000 }), now)).toEqual({
+      key: "in {hours}h",
+      vars: { hours: 1 },
+    });
+    expect(
+      nextRunLabel(
+        automation({ enabled: false, pausedReason: "failures", consecutiveFailures: 3 }),
+        now,
+      ),
+    ).toEqual({ key: "Paused after {count} failures", vars: { count: 3 } });
     expect(runStatusLabel("skipped_busy")).toBe("Skipped");
   });
 });

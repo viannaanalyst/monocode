@@ -71,9 +71,15 @@ describe("missedSlots", () => {
 
 describe("describeSchedule", () => {
   it("labels presets and reads the schedule off an automation", () => {
-    expect(describeSchedule(schedule())).toContain("09:00");
-    expect(describeSchedule(schedule({ kind: "weekdays" }))).toContain("09:00");
-    expect(describeSchedule(schedule({ kind: "hourly", intervalHours: 3 }))).toContain("3");
+    expect(describeSchedule(schedule())).toEqual({ key: "Daily at {time}", vars: { time: "09:00" } });
+    expect(describeSchedule(schedule({ kind: "weekdays" }))).toEqual({
+      key: "Weekdays at {time}",
+      vars: { time: "09:00" },
+    });
+    expect(describeSchedule(schedule({ kind: "hourly", intervalHours: 3, minute: 30 }))).toEqual({
+      key: "Every {count}h at :{minute}",
+      vars: { count: 3, minute: "30" },
+    });
     const automation = { scheduleKind: "daily" as const, intervalHours: 1, weekday: 1, hour: 8, minute: 5 };
     expect(scheduleOf(automation)).toEqual({
       kind: "daily",

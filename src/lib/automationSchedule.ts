@@ -99,14 +99,22 @@ export function formatScheduleTime(schedule: AutomationSchedule): string {
   return `${hour}:${minute}`;
 }
 
-export function describeSchedule(schedule: AutomationSchedule): string {
-  const time = formatScheduleTime(schedule);
+export type AutomationLabel = {
+  key: string;
+  vars?: Record<string, string | number>;
+};
+
+export function describeSchedule(schedule: AutomationSchedule): AutomationLabel {
   if (schedule.kind === "hourly") {
     const interval = Math.min(24, Math.max(1, Math.round(schedule.intervalHours)));
-    return `Every ${interval}h at :${String(schedule.minute).padStart(2, "0")}`;
+    return {
+      key: "Every {count}h at :{minute}",
+      vars: { count: interval, minute: String(schedule.minute).padStart(2, "0") },
+    };
   }
-  if (schedule.kind === "daily") return `Daily at ${time}`;
-  if (schedule.kind === "weekdays") return `Weekdays at ${time}`;
+  const time = formatScheduleTime(schedule);
+  if (schedule.kind === "daily") return { key: "Daily at {time}", vars: { time } };
+  if (schedule.kind === "weekdays") return { key: "Weekdays at {time}", vars: { time } };
   const weekday = WEEKDAYS[((schedule.weekday % 7) + 7) % 7];
-  return `Weekly on ${weekday} at ${time}`;
+  return { key: "Weekly on {weekday} at {time}", vars: { weekday, time } };
 }
