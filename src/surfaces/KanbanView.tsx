@@ -77,6 +77,7 @@ export function KanbanView({
   const onCardPointerDown = useCallback(
     (session: SessionSummary, event: ReactPointerEvent<HTMLDivElement>) => {
       if (event.button !== 0) return;
+      if ((event.target as HTMLElement | null)?.closest?.("[data-no-drag]")) return;
       const handle = event.currentTarget;
       const pointerId = event.pointerId;
       const startX = event.clientX;
