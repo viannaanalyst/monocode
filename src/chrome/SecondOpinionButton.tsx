@@ -33,6 +33,10 @@ import {
 } from "../lib/models";
 import { LAYER } from "../lib/layers";
 import { pickerModelsFor } from "../lib/modelVisibility";
+import {
+  getProviderOrderSnapshot,
+  subscribeProviderOrder,
+} from "../lib/providerOrder";
 import { secondOpinionTargets } from "../lib/secondOpinion";
 import { HARNESS_TITLE, type HarnessId } from "../lib/session";
 import { HarnessIcon } from "./HarnessIcon";
@@ -135,6 +139,11 @@ export function SecondOpinionButton({
     getModelSnapshot,
     getModelSnapshot,
   );
+  const providerOrder = useSyncExternalStore(
+    subscribeProviderOrder,
+    getProviderOrderSnapshot,
+    getProviderOrderSnapshot,
+  );
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const [modelActive, setModelActive] = useState(0);
@@ -147,13 +156,21 @@ export function SecondOpinionButton({
   const targets = useMemo(() => {
     void availabilityVersion;
     void visibilityVersion;
+    void providerOrder;
     return secondOpinionTargets(from, {
       installed: isHarnessAvailable,
       visible: isPickerProviderVisible,
       probed,
       includeCurrent,
     });
-  }, [from, includeCurrent, probed, availabilityVersion, visibilityVersion]);
+  }, [
+    from,
+    includeCurrent,
+    probed,
+    availabilityVersion,
+    visibilityVersion,
+    providerOrder,
+  ]);
 
   const activeHarness = targets[active];
   const models = useMemo(() => {
