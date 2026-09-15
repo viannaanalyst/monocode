@@ -307,7 +307,8 @@ import {
   type Session,
   type TurnIntent,
 } from "./lib/session";
-import type { SessionGoal } from "./lib/goal";
+import { debugTurnPrompt } from "./lib/debugMode";
+import { goalCompleted, goalTurnPrompt, type SessionGoal } from "./lib/goal";
 
 import {
   canDispatchQueuedHead,
@@ -5421,6 +5422,8 @@ export default function App({
         }
         if (turnGen.current.get(sessionId) !== gen) return;
         let buildSucceeded = false;
+        let goalText = "";
+        const goalActive = Boolean(current.goal && !current.goal.completedAt);
         try {
           const prepared = await prepareAttachments(attachments);
           const prompt =
@@ -5431,11 +5434,15 @@ export default function App({
                   sessionId,
                   cwd: workCwd,
                 });
-          const turnPrompt = proposalDraft
+          const base = proposalDraft
             ? orchestrationPlanningPrompt(prompt, proposalDraft.settings)
             : intent === "plan" && !rawCommand
               ? planTurnPrompt(prompt)
               : prompt;
+          const withDebug = options?.debug ? debugTurnPrompt(base) : base;
+          const turnPrompt = current.goal
+            ? goalTurnPrompt(current.goal, withDebug)
+            : withDebug;
           const earlier = queuedHandoff
             ? userMessagesAfterHandoff(current)
             : [];
@@ -5474,6 +5481,12 @@ export default function App({
                 controlText += "\n";
               if (event.type === "session.error")
                 controlOutcome.error = event.message;
+              if (goalActive && event.type === "message.delta") {
+                goalText = (goalText + event.text).slice(-200_000);
+              }
+              if (goalActive && event.type === "message.completed") {
+                goalText += "\n";
+              }
               if (
                 wrap &&
                 (event.type === "session.started" ||
@@ -5593,6 +5606,23 @@ export default function App({
           nudgeWorkspace(workCwd);
           nudgeWatchedFiles();
           window.setTimeout(() => nudgeWatchedFiles(), 150);
+        }
+        if (
+          goalActive &&
+          buildSucceeded &&
+          turnGen.current.get(sessionId) === gen &&
+          goalCompleted(goalText)
+        ) {
+          setSessions((prev) =>
+            prev.map((session) =>
+              session.id === sessionId && session.goal
+                ? {
+                    ...session,
+                    goal: { ...session.goal, completedAt: Date.now() },
+                  }
+                : session,
+            ),
+          );
         }
       })()
         .catch((error: unknown) => {
