@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { OverlayNav } from "../chrome/TitleBar";
+import { WindowControls } from "../chrome/WindowControls";
 import { HarnessIcon } from "../chrome/HarnessIcon";
 import { LayoutTwoColumn, LoaderCircle, Pin } from "../chrome/icons";
 import { t } from "../i18n";
@@ -116,6 +117,7 @@ export function KanbanView({
             ))}
           </div>
         </div>
+        {IS_MAC ? null : <WindowControls />}
       </div>
       <div className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden overscroll-none px-3 py-3">
         <div className="flex h-full min-h-0 items-stretch gap-3">
