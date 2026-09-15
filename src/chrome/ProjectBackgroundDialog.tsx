@@ -164,7 +164,7 @@ export function ProjectBackgroundDialog({ project, name, onClose }: Props) {
           <div
             role="radiogroup"
             aria-label={t("Show project background on")}
-            className="grid w-44 grid-cols-2 gap-0.5 rounded-md border border-content/10 p-0.5 text-sm"
+            className="grid w-44 grid-cols-2 gap-0.5 rounded-md border border-content/10 p-0.5 text-xs"
           >
             {[
               { value: "empty" as const, label: t("Empty only") },
