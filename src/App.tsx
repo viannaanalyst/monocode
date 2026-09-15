@@ -307,8 +307,7 @@ import {
   type Session,
   type TurnIntent,
 } from "./lib/session";
-import { debugTurnPrompt } from "./lib/debugMode";
-import { goalCompleted, goalTurnPrompt, type SessionGoal } from "./lib/goal";
+import { composeTurnPrompt, goalCompleted, type SessionGoal } from "./lib/goal";
 
 import {
   canDispatchQueuedHead,
@@ -5034,6 +5033,7 @@ export default function App({
                         noteCard,
                         handoffCard,
                         intent,
+                        debug: options?.debug,
                       },
                     ],
                     queueStatus:
@@ -5434,15 +5434,18 @@ export default function App({
                   sessionId,
                   cwd: workCwd,
                 });
-          const base = proposalDraft
+          const mode = proposalDraft
             ? orchestrationPlanningPrompt(prompt, proposalDraft.settings)
             : intent === "plan" && !rawCommand
               ? planTurnPrompt(prompt)
               : prompt;
-          const withDebug = options?.debug ? debugTurnPrompt(base) : base;
-          const turnPrompt = current.goal
-            ? goalTurnPrompt(current.goal, withDebug)
-            : withDebug;
+          const turnPrompt = composeTurnPrompt({
+            request: prompt,
+            rawCommand,
+            debug: Boolean(options?.debug),
+            goal: current.goal,
+            mode,
+          });
           const earlier = queuedHandoff
             ? userMessagesAfterHandoff(current)
             : [];
@@ -5610,6 +5613,7 @@ export default function App({
         if (
           goalActive &&
           buildSucceeded &&
+          !providerFailureSeen &&
           turnGen.current.get(sessionId) === gen &&
           goalCompleted(goalText)
         ) {
@@ -5798,6 +5802,7 @@ export default function App({
             noteCard: head.noteCard,
             handoffCard: head.handoffCard,
             intent: head.intent,
+            debug: head.debug,
           });
         }, 0),
       );
@@ -5876,6 +5881,7 @@ export default function App({
         noteCard: message.noteCard,
         handoffCard: message.handoffCard,
         intent: message.intent,
+        debug: message.debug,
       });
     },
     [onSubmit, enqueueHarnessEvent, flushHarnessEvents],

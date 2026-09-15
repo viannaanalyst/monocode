@@ -78,6 +78,17 @@ describe("parseImportedSession", () => {
     expect(restored?.blocks[0]?.text).toBe("Please fix it");
   });
 
+  it("round-trips the session goal", () => {
+    const session = makeSession();
+    session.goal = { text: "Ship the login", createdAt: 1, completedAt: 2 };
+    const restored = parseImportedSession(sessionToExportJson(session));
+    expect(restored?.goal).toEqual({
+      text: "Ship the login",
+      createdAt: 1,
+      completedAt: 2,
+    });
+  });
+
   it("rejects anything that is not a MonoCode export", () => {
     expect(parseImportedSession("not json")).toBeNull();
     expect(parseImportedSession("{}")).toBeNull();

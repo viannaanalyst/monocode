@@ -1,3 +1,5 @@
+import { debugTurnPrompt } from "./debugMode";
+
 /** A session objective the agent keeps pursuing until the user closes it. */
 export type SessionGoal = {
   text: string;
@@ -6,6 +8,27 @@ export type SessionGoal = {
 };
 
 const GOAL_COMPLETED_RE = /^GOAL COMPLETED:\s*(.+)$/i;
+const GOAL_PLACEHOLDER_RE = /^<.*>$/;
+
+/**
+ * Composes one turn prompt: Goal → Debug → mode → request. Native slash
+ * commands skip the Goal and Debug blocks so the harness still executes them.
+ */
+export function composeTurnPrompt(input: {
+  request: string;
+  rawCommand: boolean;
+  debug: boolean;
+  goal?: SessionGoal;
+  /** Already-composed Plan/Orchestrator wrapper; defaults to the request. */
+  mode?: string;
+}): string {
+  const base = input.mode ?? input.request;
+  const withDebug =
+    input.debug && !input.rawCommand ? debugTurnPrompt(base) : base;
+  return input.goal && !input.rawCommand
+    ? goalTurnPrompt(input.goal, withDebug)
+    : withDebug;
+}
 
 /** Keeps every turn pointed at the session's goal until it is achieved. */
 export function goalTurnPrompt(goal: SessionGoal, request: string): string {
@@ -33,7 +56,9 @@ export function goalCompleted(text: string): string | null {
     const line = lines[index]!.trim();
     if (!line) continue;
     const match = GOAL_COMPLETED_RE.exec(line);
-    return match?.[1]?.trim() || null;
+    const summary = match?.[1]?.trim() ?? "";
+    if (!summary || GOAL_PLACEHOLDER_RE.test(summary)) return null;
+    return summary;
   }
   return null;
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  composeTurnPrompt,
   goalChipLabel,
   goalCompleted,
   goalTurnPrompt,
@@ -8,6 +9,49 @@ import {
 } from "./goal";
 
 const goal: SessionGoal = { text: "Ship the login screen", createdAt: 1 };
+
+describe("composeTurnPrompt", () => {
+  it("wraps the mode with debug, then the goal outermost", () => {
+    const prompt = composeTurnPrompt({
+      request: "fix the parser",
+      rawCommand: false,
+      debug: true,
+      goal,
+      mode: "MODE: fix the parser",
+    });
+    expect(prompt.startsWith("You are pursuing a goal")).toBe(true);
+    expect(prompt).toContain("Ship the login screen");
+    expect(prompt.indexOf("You are in debug mode")).toBeGreaterThan(
+      prompt.indexOf("## Goal"),
+    );
+    expect(prompt.indexOf("MODE: fix the parser")).toBeGreaterThan(
+      prompt.indexOf("You are in debug mode"),
+    );
+    expect(prompt.trimEnd().endsWith("MODE: fix the parser")).toBe(true);
+  });
+
+  it("leaves raw native commands free of the goal and debug blocks", () => {
+    expect(
+      composeTurnPrompt({
+        request: "/help",
+        rawCommand: true,
+        debug: true,
+        goal,
+        mode: "/help",
+      }),
+    ).toBe("/help");
+  });
+
+  it("passes the request through when no mode applies", () => {
+    expect(
+      composeTurnPrompt({
+        request: "  just ask  ",
+        rawCommand: false,
+        debug: false,
+      }),
+    ).toBe("  just ask  ");
+  });
+});
 
 describe("goalTurnPrompt", () => {
   it("carries the goal, the marker instruction, and the request", () => {
@@ -34,6 +78,11 @@ describe("goalCompleted", () => {
     expect(goalCompleted("still working")).toBe(null);
     expect(goalCompleted("GOAL COMPLETED:")).toBe(null);
     expect(goalCompleted("")).toBe(null);
+  });
+
+  it("rejects the echoed placeholder marker", () => {
+    expect(goalCompleted("GOAL COMPLETED: <one-line summary>")).toBe(null);
+    expect(goalCompleted("GOAL COMPLETED:  <one-line summary>  ")).toBe(null);
   });
 });
 

@@ -193,6 +193,7 @@ export type QueuedMessage = {
   noteCard?: NoteComposerCard;
   handoffCard?: HandoffComposerCard;
   intent?: TurnIntent;
+  debug?: boolean;
 };
 
 export type MessageQueueStatus = "active" | "paused" | "resuming";

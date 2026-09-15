@@ -9,6 +9,7 @@ import {
   type Session,
   type ToolPreview,
 } from "./session";
+import { sanitizeSessionGoal } from "./goal";
 import { sanitizeBlock, sanitizeLinkedWorkItem } from "./sessionStore";
 
 /**
@@ -59,6 +60,7 @@ export function sessionToExportJson(session: Session): string {
       ...(session.linkedWorkItem
         ? { linkedWorkItem: session.linkedWorkItem }
         : {}),
+      ...(session.goal ? { goal: session.goal } : {}),
     },
   };
   return `${JSON.stringify(envelope, null, 2)}\n`;
@@ -92,6 +94,7 @@ export function parseImportedSession(text: string): Session | null {
     : [];
   if (blocks.length === 0) return null;
   const linkedWorkItem = sanitizeLinkedWorkItem(raw.linkedWorkItem);
+  const goal = sanitizeSessionGoal(raw.goal);
   return {
     id: crypto.randomUUID(),
     harness,
@@ -110,6 +113,7 @@ export function parseImportedSession(text: string): Session | null {
       ? { branch: raw.branch }
       : {}),
     ...(linkedWorkItem ? { linkedWorkItem } : {}),
+    ...(goal ? { goal } : {}),
   };
 }
 
