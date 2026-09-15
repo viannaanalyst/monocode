@@ -42,6 +42,8 @@ export function classifySessionBoard(input: {
   };
   const cards: BoardCard[] = [];
   for (const session of rows) {
+    // Orchestration workers are children of a lead session, not board items.
+    if (session.orchestrationLeadId) continue;
     if (
       scope === "project" &&
       projectCwd &&

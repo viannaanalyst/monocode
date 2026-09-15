@@ -1318,7 +1318,9 @@ export default function App({
 
   const activeSessionId = inboxViewOpen
     ? inboxAskPortal?.sessionId
-    : active?.id;
+    : kanbanViewOpen
+      ? undefined
+      : active?.id;
   const activeSessionIdRef = useRef(activeSessionId);
   activeSessionIdRef.current = activeSessionId;
 

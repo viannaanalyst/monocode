@@ -86,4 +86,15 @@ describe("classifySessionBoard", () => {
       "old",
     ]);
   });
+
+  it("skips orchestration worker rows", () => {
+    const board = classifySessionBoard({
+      rows: [row("lead"), row("worker", { orchestrationLeadId: "lead" })],
+      busyIds: new Set(["worker"]),
+      approvalIds: none,
+      unseenIds: none,
+      scope: "all",
+    });
+    expect(board.cards.map((card) => card.session.id)).toEqual(["lead"]);
+  });
 });
