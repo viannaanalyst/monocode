@@ -101,7 +101,7 @@ export function InboxComments({
         ) : null}
         {loading ? (
           <LoaderCircle
-            className="size-3 animate-spin text-content/35"
+            className="size-3.5 animate-spin text-content/35"
             strokeWidth={1.75}
           />
         ) : null}
@@ -192,7 +192,7 @@ export function InboxCommentForm({
             onClick={onCancelReply}
             className="grid size-5 shrink-0 place-items-center rounded-md text-content/45 hover:bg-content/10 hover:text-content"
           >
-            <X className="size-3" strokeWidth={1.75} />
+            <X className="size-3.5" strokeWidth={1.75} />
           </button>
         </div>
       ) : null}
@@ -209,13 +209,13 @@ export function InboxCommentForm({
           }
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={onKeyDown}
-          className="max-h-40 w-full resize-none overflow-y-auto bg-transparent px-3 py-2 text-[13px] leading-5 text-content outline-none placeholder:text-content/35 disabled:opacity-40"
+          className="max-h-40 w-full resize-none overflow-y-auto bg-transparent px-3 py-2 text-sm leading-5 text-content outline-none placeholder:text-content/35 disabled:opacity-40"
         />
         <div className="flex items-center justify-end px-2 pb-2">
           <button
             type="submit"
             disabled={!canPost}
-            className="inline-flex h-7 items-center rounded-md bg-content px-3 text-[12px] text-background-base hover:bg-content/80 disabled:cursor-default disabled:opacity-40"
+            className="inline-flex h-7 items-center rounded-md bg-content px-3 text-sm font-medium text-background-base hover:bg-content/80 disabled:cursor-default disabled:opacity-40"
           >
             {posting ? "Posting..." : replyTo ? t("Reply") : t("Comment")}
           </button>
@@ -415,7 +415,7 @@ function InboxCommentPerson({
       ) : (
         <span
           aria-hidden
-          className="grid size-5 shrink-0 place-items-center rounded-full bg-content/12 text-[10px] font-medium text-content/55"
+          className="grid size-5 shrink-0 place-items-center rounded-full bg-content/12 text-2xs font-medium text-content/55"
         >
           {initial}
         </span>

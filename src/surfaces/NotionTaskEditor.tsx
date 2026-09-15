@@ -72,7 +72,7 @@ function OptionChip({
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <p className="text-[10px] uppercase tracking-widest text-content/45">
+      <p className="text-2xs uppercase tracking-widest text-content/45">
         {label}
       </p>
       <div className="flex flex-wrap gap-1.5">{children}</div>
@@ -186,7 +186,7 @@ export function NotionTaskEditor({ mode, target, onClose, onSaved }: Props) {
         className="absolute left-1/2 top-[16%] flex w-[min(560px,calc(100vw-24px))] -translate-x-1/2 flex-col gap-4 rounded-lg border border-content/10 bg-background-base/95 p-4 shadow-xl backdrop-blur-xl"
       >
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-[13px] font-medium leading-tight text-content">
+          <h2 className="text-sm font-semibold text-content">
             {mode === "create" ? t("New Notion page") : t("Edit Notion page")}
           </h2>
           <button
@@ -208,7 +208,7 @@ export function NotionTaskEditor({ mode, target, onClose, onSaved }: Props) {
             <div className="flex flex-col gap-1.5">
               <label
                 htmlFor="notion-title"
-                className="text-[10px] uppercase tracking-widest text-content/45"
+                className="text-2xs uppercase tracking-widest text-content/45"
               >
                 {t("Title")}
               </label>
@@ -225,7 +225,7 @@ export function NotionTaskEditor({ mode, target, onClose, onSaved }: Props) {
                 }}
                 placeholder={t("Page title")}
                 spellCheck={false}
-                className="rounded-md border border-content/10 bg-content/5 px-2.5 py-1.5 text-[13px] text-content outline-none focus:border-content/25"
+                className="rounded-md border border-content/10 bg-content/5 px-2.5 py-1.5 text-sm text-content outline-none focus:border-content/25"
               />
             </div>
 
@@ -269,7 +269,7 @@ export function NotionTaskEditor({ mode, target, onClose, onSaved }: Props) {
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md px-3 py-1.5 text-[12px] text-content/70 hover:bg-content/8 hover:text-content"
+            className="rounded-md px-3 py-1.5 text-sm font-medium text-content/70 hover:bg-content/8 hover:text-content"
           >
             {t("Cancel")}
           </button>
@@ -277,7 +277,7 @@ export function NotionTaskEditor({ mode, target, onClose, onSaved }: Props) {
             type="button"
             disabled={busy || loading || !title.trim()}
             onClick={() => void onSave()}
-            className="rounded-md bg-content px-3 py-1.5 text-[12px] font-medium text-background-base hover:bg-content/80 disabled:opacity-40"
+            className="rounded-md bg-content px-3 py-1.5 text-sm font-medium text-background-base hover:bg-content/80 disabled:opacity-40"
           >
             {mode === "create" ? t("Create page") : t("Save")}
           </button>

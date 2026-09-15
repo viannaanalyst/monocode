@@ -220,7 +220,7 @@ const MAX_WIDTH = 420;
 
 // One height for the whole detail action row; `border` is inside it, so the
 // outline variant lines up with the filled and ghost ones.
-const ACTION = "inline-flex items-center gap-1.5 rounded-md px-3 text-[12px]";
+const ACTION = "inline-flex items-center gap-1.5 rounded-md px-3 text-sm font-medium";
 const ACTION_FILLED = `${ACTION} h-6.5 bg-content text-background-base hover:bg-content/80`;
 const ACTION_OUTLINE = `${ACTION} h-7 border border-content/15 text-content/80 hover:bg-content/5`;
 const ACTION_GHOST = `${ACTION} h-7 text-content/70 hover:bg-content/10 hover:text-content`;
@@ -882,7 +882,7 @@ export function InboxView({
       {noSourcesConnected ? null : (
         <div className="flex h-9 shrink-0 items-center gap-1 border-b border-content/10 px-2">
           <div className="relative flex h-7 min-w-0 flex-1 items-center">
-            <Search className="pointer-events-none absolute left-2 size-3 shrink-0 opacity-50" />
+            <Search className="pointer-events-none absolute left-2 size-3.5 shrink-0 opacity-50" />
             <input
               value={searchInput}
               onChange={(event) => setSearchInput(event.target.value)}
@@ -890,7 +890,7 @@ export function InboxView({
               aria-label={t("Filter inbox")}
               spellCheck={false}
               autoComplete="off"
-              className="h-7 w-full rounded-md bg-transparent pl-7 pr-2 text-[12px] text-content outline-none placeholder:text-content/40"
+              className="h-7 w-full rounded-md bg-transparent pl-7 pr-2 text-sm text-content outline-none placeholder:text-content/40"
             />
           </div>
           <button
@@ -904,7 +904,7 @@ export function InboxView({
               filterMenu || filtersActive ? "bg-content/10 text-content" : ""
             }`}
           >
-            <ListFilter className="size-3" strokeWidth={1.75} />
+            <ListFilter className="size-3.5" strokeWidth={1.75} />
           </button>
           <button
             type="button"
@@ -1098,12 +1098,12 @@ export function InboxView({
         {besideRail ? null : (
           <OverlayNav onBack={onClose} onToggleSidebar={onToggleSidebar} />
         )}
-        <div className="flex min-w-0 flex-1 items-center gap-2 px-3 text-[13px]">
+        <div className="flex min-w-0 flex-1 items-center gap-2 px-3 text-sm">
           <Inbox
             className="size-3.5 shrink-0 text-content/45"
             strokeWidth={1.75}
           />
-          <span className="min-w-0 truncate text-content">{t("Inbox")}</span>
+          <span className="min-w-0 truncate font-display text-display text-content">{t("Inbox")}</span>
         </div>
         {IS_MAC ? null : <WindowControls />}
       </div>
@@ -1191,7 +1191,7 @@ function InboxDetailBody({
     return (
       <div className="flex h-full flex-col items-center justify-center px-6 text-center">
         <Inbox className="mb-3 size-6 text-content/30" strokeWidth={1.75} />
-        <p className="text-[13px] text-content/45">{t("Select an inbox item")}</p>
+        <p className="text-sm text-content/45">{t("Select an inbox item")}</p>
       </div>
     );
   }
@@ -1306,10 +1306,10 @@ function InboxCard({
             className="size-3.5 shrink-0"
           />
           <status.Icon
-            className={`size-3 shrink-0 ${status.className}`}
+            className={`size-3.5 shrink-0 ${status.className}`}
             strokeWidth={1.75}
           />
-          <span className="min-w-0 truncate text-[11px] text-content/50">
+          <span className="min-w-0 truncate text-xs text-content/50">
             {kindLabel} · {inboxItemRef(item)}
             {attentionLabel ? ` · ${attentionLabel}` : ""}
           </span>
@@ -1319,14 +1319,14 @@ function InboxCard({
             {relatedSessionCount > 0 ? (
               <span
                 title={`${relatedSessionCount} related ${relatedSessionCount === 1 ? "thread" : "threads"}`}
-                className="inline-flex items-center gap-0.5 text-[11px] tabular-nums text-accent"
+                className="inline-flex items-center gap-0.5 text-xs tabular-nums text-accent"
               >
-                <MessageMultiple className="size-3" strokeWidth={1.75} />
+                <MessageMultiple className="size-3.5" strokeWidth={1.75} />
                 {relatedSessionCount}
               </span>
             ) : null}
             {time ? (
-              <span className="text-[11px] tabular-nums text-content/45">
+              <span className="text-xs tabular-nums text-content/45">
                 {time}
               </span>
             ) : null}
@@ -1336,11 +1336,11 @@ function InboxCard({
           </span>
         ) : null}
       </span>
-      <span className="mt-1 line-clamp-1 text-[13px] font-semibold leading-snug text-content">
+      <span className="mt-1 line-clamp-1 text-sm font-semibold leading-snug text-content">
         {item.title}
       </span>
       <span className="mt-1 flex min-w-0 items-center gap-2">
-        <span className="flex min-w-0 flex-1 items-center gap-1.5 text-[11px] text-content/45">
+        <span className="flex min-w-0 flex-1 items-center gap-1.5 text-xs text-content/45">
           {tracker || !item.projectPath ? null : logoPath ? (
             <ProjectLogoIcon
               path={logoPath}
@@ -2003,7 +2003,7 @@ export function InboxDetail({
         {item.labels.map((label) => (
           <span
             key={label.name}
-            className="inline-flex items-center rounded-md border border-content/10 px-1.5 py-0.5 text-[11px] text-content/70"
+            className="inline-flex items-center rounded-md border border-content/10 px-1.5 py-0.5 text-xs text-content/70"
           >
             {label.name}
           </span>
@@ -2061,7 +2061,7 @@ export function InboxDetail({
             </div>
             <h1
               title={item.title}
-              className="line-clamp-2 text-[20px] font-semibold leading-tight text-content"
+              className="line-clamp-2 text-sm font-semibold leading-tight text-content"
             >
               {item.title}
             </h1>
@@ -2128,7 +2128,7 @@ export function InboxDetail({
                   <span aria-hidden>·</span>
                   <span className="inline-flex min-w-0 items-center gap-1">
                     <GitCompare
-                      className="size-3 shrink-0"
+                      className="size-3.5 shrink-0"
                       strokeWidth={1.75}
                     />
                     <span className="min-w-0 truncate">
@@ -2146,7 +2146,7 @@ export function InboxDetail({
             </div>
             {relatedSessions.length > 0 ? (
               <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
-                <span className="mr-0.5 inline-flex shrink-0 items-center gap-1 text-[11px] text-content/45">
+                <span className="mr-0.5 inline-flex shrink-0 items-center gap-1 text-xs text-content/45">
                   <MessageMultiple className="size-3.5" strokeWidth={1.75} />
                   Related {relatedSessions.length === 1 ? "thread" : "threads"}
                 </span>
@@ -2161,7 +2161,7 @@ export function InboxDetail({
                       type="button"
                       title={`Open thread: ${title}`}
                       onClick={() => void onOpenSession?.(session.id)}
-                      className="inline-flex min-w-0 max-w-64 items-center gap-1 rounded-md bg-content/5 px-2 py-1 text-[11px] text-content/70 hover:bg-content/10 hover:text-content"
+                      className="inline-flex min-w-0 max-w-64 items-center gap-1 rounded-md bg-content/5 px-2 py-1 text-xs text-content/70 hover:bg-content/10 hover:text-content"
                     >
                       <span className="truncate">{title}</span>
                       {session.archived ? (
@@ -2306,7 +2306,7 @@ export function InboxDetail({
                     type="button"
                     aria-pressed={diffMode === "hunks"}
                     onClick={() => setDiffMode("hunks")}
-                    className={`rounded px-2.5 py-1 text-[11px] leading-none ${
+                    className={`rounded px-2.5 py-1 text-xs leading-none ${
                       diffMode === "hunks"
                         ? "bg-content/10 text-content"
                         : "text-content/45 hover:text-content/70"
@@ -2318,7 +2318,7 @@ export function InboxDetail({
                     type="button"
                     aria-pressed={diffMode === "full"}
                     onClick={() => setDiffMode("full")}
-                    className={`rounded px-2.5 py-1 text-[11px] leading-none ${
+                    className={`rounded px-2.5 py-1 text-xs leading-none ${
                       diffMode === "full"
                         ? "bg-content/10 text-content"
                         : "text-content/45 hover:text-content/70"
@@ -2384,7 +2384,7 @@ export function InboxDetail({
                 />
               </div>
             ) : diffError ? (
-              <p className="text-[13px] text-content/50">{diffError}</p>
+              <p className="text-sm text-content/50">{diffError}</p>
             ) : prDiff ? (
               <InboxPrDiff
                 key={`${item.projectPath}:${item.number}:${revision}:${diffMode}`}
@@ -2404,7 +2404,7 @@ export function InboxDetail({
                 }}
               />
             ) : (
-              <p className="text-[13px] text-content/45">{t("No file changes")}</p>
+              <p className="text-sm text-content/45">{t("No file changes")}</p>
             )
           ) : loading ? (
             <div className="flex justify-center py-10 text-content/40">
@@ -2414,7 +2414,7 @@ export function InboxDetail({
               />
             </div>
           ) : error ? (
-            <p className="text-[13px] text-content/50">{error}</p>
+            <p className="text-sm text-content/50">{error}</p>
           ) : (
             <>
               {details?.body.trim() ? (
@@ -2424,7 +2424,7 @@ export function InboxDetail({
                   allowRemoteMedia
                 />
               ) : (
-                <p className="text-[13px] text-content/45">{t("No description")}</p>
+                <p className="text-sm text-content/45">{t("No description")}</p>
               )}
               <InboxComments
                 thread={thread}
@@ -2484,7 +2484,7 @@ export function InboxDetail({
               <button
                 type="button"
                 onClick={() => onEditNotion(item)}
-                className="inline-flex h-7 items-center justify-center gap-1.5 rounded-md border border-content/15 text-[12px] text-content/80 hover:bg-content/5"
+                className="inline-flex h-7 items-center justify-center gap-1.5 rounded-md border border-content/15 text-sm font-medium text-content/80 hover:bg-content/5"
               >
                 <Pencil className="size-3.5" strokeWidth={1.75} />
                 {t("Edit page")}
@@ -2507,7 +2507,7 @@ function InboxProp({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-[10px] uppercase tracking-widest text-content/40">
+      <span className="text-2xs uppercase tracking-widest text-content/40">
         {label}
       </span>
       <div className="min-w-0">{children}</div>
@@ -2611,14 +2611,14 @@ function InboxProjectPicker({
         type="button"
         disabled={projects.length === 0}
         onClick={() => setOpen((next) => !next)}
-        className="inline-flex h-7 max-w-48 items-center gap-1.5 rounded-md border border-content/10 bg-content/5 px-2 text-[12px] text-content/80 hover:bg-content/10 hover:text-content disabled:cursor-default disabled:opacity-40"
+        className="inline-flex h-7 max-w-48 items-center gap-1.5 rounded-md border border-content/10 bg-content/5 px-2 text-sm text-content/80 hover:bg-content/10 hover:text-content disabled:cursor-default disabled:opacity-40"
       >
         {selected ? <InboxProjectMark project={selected} /> : null}
         <span className="min-w-0 truncate">
           {selected?.name ?? "Choose project"}
         </span>
         <ChevronDown
-          className="size-3 shrink-0 text-content/45"
+          className="size-3.5 shrink-0 text-content/45"
           strokeWidth={1.75}
         />
       </button>
@@ -2642,7 +2642,7 @@ function InboxProjectPicker({
                   onChange(project.path);
                   setOpen(false);
                 }}
-                className={`flex h-7 w-full items-center gap-1.5 rounded-md px-2 text-left text-[12px] ${
+                className={`flex h-7 w-full items-center gap-1.5 rounded-md px-2 text-left text-sm ${
                   active
                     ? "bg-content/10 text-content"
                     : "text-content/80 hover:bg-content/5 hover:text-content"
@@ -2670,7 +2670,7 @@ function InboxLabel({
   return (
     <span
       className={`inline-flex min-w-0 items-center gap-1 rounded px-1.5 py-px text-content/50 bg-content/8 ${
-        compact ? "max-w-20 text-[10px]" : "text-[11px]"
+        compact ? "max-w-20 text-2xs" : "text-xs"
       }`}
     >
       {color ? (

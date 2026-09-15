@@ -30,7 +30,7 @@ export function InboxConnectMenu({
       onContextMenu={(event) => event.preventDefault()}
       className="p-1"
     >
-      <div className="px-2 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-content/40">{t("Not connected")}</div>
+      <div className="px-2 pb-1 pt-1 text-2xs font-medium uppercase tracking-[0.08em] text-content/40">{t("Not connected")}</div>
       {sources.map((source) => (
         <button
           key={source}
@@ -41,7 +41,7 @@ export function InboxConnectMenu({
             onClose();
             onConnect(source);
           }}
-          className="flex h-7 w-full items-center gap-2 rounded-lg px-2 text-left text-[13px] leading-none text-content hover:bg-content/5"
+          className="flex h-7 w-full items-center gap-2 rounded-lg px-2 text-left text-sm leading-none text-content hover:bg-content/5"
         >
           <InboxProviderMark
             provider={source}

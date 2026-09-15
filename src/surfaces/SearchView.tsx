@@ -361,7 +361,7 @@ export function SearchView({
             autoCorrect="off"
             autoCapitalize="off"
             data-tauri-drag-region="false"
-            className="min-w-0 flex-1 bg-transparent text-[13px] text-content outline-none select-text placeholder:text-content/40"
+            className="min-w-0 flex-1 bg-transparent font-display text-display text-content outline-none select-text placeholder:text-content/40"
           />
           {loading ? (
             <LoaderCircle
@@ -450,7 +450,7 @@ function EmptyState() {
         </div>
       </div>
 
-      <p className="max-w-xs text-center text-[13px] text-content/45">{t("Find files, conversations, messages, and projects.")}</p>
+      <p className="max-w-xs text-center text-sm text-content/45">{t("Find files, conversations, messages, and projects.")}</p>
     </div>
   );
 }
@@ -520,7 +520,7 @@ function ResultList({
             onMouseDown={(event) => event.preventDefault()}
             onMouseEnter={() => onRowEnter(index)}
             onClick={() => onOpen(hit)}
-            className={`flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-[13px] leading-none ${
+            className={`flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-sm leading-none ${
               highlighted ? "bg-content/10 text-content" : "text-content"
             }`}
           >
@@ -529,7 +529,7 @@ function ResultList({
             </span>
             <span className="min-w-0 flex-1 truncate">{row.title}</span>
             {row.meta ? (
-              <span className="min-w-0 max-w-[45%] truncate font-mono text-[11px] text-content/40">
+              <span className="min-w-0 max-w-[45%] truncate font-mono text-xs text-content/40">
                 {row.meta}
               </span>
             ) : null}

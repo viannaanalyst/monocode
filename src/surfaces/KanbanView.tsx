@@ -181,10 +181,10 @@ export function KanbanView({
         {besideRail ? null : (
           <OverlayNav onBack={onClose} onToggleSidebar={onToggleSidebar} />
         )}
-        <div className="flex min-w-0 flex-1 items-center gap-2 px-3 text-[13px]">
+        <div className="flex min-w-0 flex-1 items-center gap-2 px-3 text-sm">
           <LayoutTwoColumn className="size-3.5 shrink-0 text-content/45" strokeWidth={1.75} />
-          <span className="font-medium">{t("Kanban")}</span>
-          <span className="text-content/40">
+          <span className="font-display text-display text-content">{t("Kanban")}</span>
+          <span className="text-xs text-content/40">
             {t("{count} sessions", { count: board.cards.length })}
           </span>
           <div
@@ -198,7 +198,7 @@ export function KanbanView({
                 type="button"
                 aria-pressed={scope === option}
                 onClick={() => setScope(option)}
-                className={`rounded px-2.5 py-1 text-[11px] leading-none ${
+                className={`rounded px-2.5 py-1 text-xs leading-none ${
                   scope === option
                     ? "bg-content/10 text-content"
                     : "text-content/45 hover:text-content/70"
@@ -225,13 +225,13 @@ export function KanbanView({
                 <span className="text-[12px] font-medium">
                   {t(COLUMN_LABELS[column])}
                 </span>
-                <span className="ml-auto text-[11px] tabular-nums text-content/40">
+                <span className="ml-auto text-xs tabular-nums text-content/40">
                   {board.counts[column]}
                 </span>
               </header>
               <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-none p-2">
                 {board.columns[column].length === 0 ? (
-                  <p className="px-1 py-2 text-[11px] text-content/35">
+                  <p className="px-1 py-2 text-xs text-content/35">
                     {t("No sessions here")}
                   </p>
                 ) : (
@@ -304,17 +304,17 @@ function KanbanCard({
       >
         <span className="flex min-w-0 items-center gap-1.5">
           {column === "working" ? (
-            <LoaderCircle className="size-3 shrink-0 animate-spin text-sky-400" strokeWidth={1.75} />
+            <LoaderCircle className="size-3.5 shrink-0 animate-spin text-sky-400" strokeWidth={1.75} />
           ) : null}
-          <span className="min-w-0 flex-1 truncate text-[12px] text-content">
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-content">
             {session.title}
           </span>
           {session.pinned ? (
-            <Pin className="size-3 shrink-0 text-content/40" strokeWidth={1.75} />
+            <Pin className="size-3.5 shrink-0 text-content/40" strokeWidth={1.75} />
           ) : null}
         </span>
-        <span className="flex min-w-0 items-center gap-1.5 text-[11px] text-content/45">
-          <HarnessIcon harness={session.harness} className="size-3 shrink-0" />
+        <span className="flex min-w-0 items-center gap-1.5 text-xs text-content/45">
+          <HarnessIcon harness={session.harness} className="size-3.5 shrink-0" />
           {showProject ? (
             <span className="truncate">{projectName(session.cwd)}</span>
           ) : null}
@@ -329,7 +329,7 @@ function KanbanCard({
         </span>
         {needsYouReason ? (
           <span
-            className={`inline-flex w-fit items-center rounded px-1.5 py-0.5 text-[10px] ${
+            className={`inline-flex w-fit items-center rounded px-1.5 py-0.5 text-2xs ${
               needsYouReason === "waiting"
                 ? "bg-amber-500/15 text-amber-300"
                 : "bg-emerald-500/15 text-emerald-300"
@@ -348,7 +348,7 @@ function KanbanCard({
             : t("Archive {title}", { title: session.title })
         }
         onClick={column === "archived" ? onUnarchive : onArchive}
-        className="absolute top-1.5 right-1.5 hidden rounded border border-content/10 bg-background-base px-1.5 py-0.5 text-[10px] text-content/60 hover:text-content group-hover:block group-focus-within:block"
+        className="absolute top-1.5 right-1.5 hidden rounded border border-content/10 bg-background-base px-1.5 py-0.5 text-2xs font-medium text-content/60 hover:text-content group-hover:block group-focus-within:block"
       >
         {column === "archived" ? t("Unarchive") : t("Archive")}
       </button>

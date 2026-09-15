@@ -235,7 +235,7 @@ export function NotesView({
     >
       <div className="flex h-9 shrink-0 items-center gap-1 border-b border-content/10 px-2">
         <div className="relative flex h-7 min-w-0 flex-1 items-center">
-          <Search className="pointer-events-none absolute left-2 size-3 shrink-0 opacity-50" />
+          <Search className="pointer-events-none absolute left-2 size-3.5 shrink-0 opacity-50" />
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -243,7 +243,7 @@ export function NotesView({
             aria-label={t("Filter notes")}
             spellCheck={false}
             autoComplete="off"
-            className="h-7 w-full rounded-md bg-transparent pl-7 pr-2 text-[12px] text-content outline-none placeholder:text-content/40"
+            className="h-7 w-full rounded-md bg-transparent pl-7 pr-2 text-sm text-content outline-none placeholder:text-content/40"
           />
         </div>
         <button
@@ -326,12 +326,12 @@ export function NotesView({
         {besideRail ? null : (
           <OverlayNav onBack={onClose} onToggleSidebar={onToggleSidebar} />
         )}
-        <div className="flex min-w-0 flex-1 items-center gap-2 px-3 text-[13px]">
+        <div className="flex min-w-0 flex-1 items-center gap-2 px-3 text-sm">
           <File
             className="size-3.5 shrink-0 text-content/45"
             strokeWidth={1.75}
           />
-          <span className="min-w-0 truncate text-content">{t("Notes")}</span>
+          <span className="min-w-0 truncate font-display text-display text-content">{t("Notes")}</span>
         </div>
         {IS_MAC ? null : <WindowControls />}
       </div>
@@ -452,7 +452,7 @@ function NoteCard({
     >
       <span className="flex items-center gap-2">
         {project && note.sourceCwd ? (
-          <span className="min-w-0 flex-1 text-[11px] text-content/50">
+          <span className="min-w-0 flex-1 text-xs text-content/50">
             <NoteProjectMark
               cwd={note.sourceCwd}
               logos={logos}
@@ -465,12 +465,12 @@ function NoteCard({
           <span className="min-w-0 flex-1" />
         )}
         {time ? (
-          <span className="shrink-0 text-[11px] tabular-nums text-content/45">
+          <span className="shrink-0 text-xs tabular-nums text-content/45">
             {time}
           </span>
         ) : null}
       </span>
-      <span className="mt-1 line-clamp-1 text-[13px] font-semibold leading-snug text-content">
+      <span className="mt-1 line-clamp-1 text-sm font-semibold leading-snug text-content">
         {note.title}
       </span>
       {preview ? (
@@ -483,13 +483,13 @@ function NoteCard({
           {note.tags.slice(0, 3).map((tag) => (
             <span
               key={tag}
-              className="max-w-24 truncate rounded bg-content/8 px-1.5 py-0.5 text-[10px] leading-none text-content/55"
+              className="max-w-24 truncate rounded bg-content/8 px-1.5 py-0.5 text-2xs leading-none text-content/55"
             >
               #{tag}
             </span>
           ))}
           {note.tags.length > 3 ? (
-            <span className="shrink-0 text-[10px] text-content/40">
+            <span className="shrink-0 text-2xs text-content/40">
               +{note.tags.length - 3}
             </span>
           ) : null}
@@ -522,7 +522,7 @@ function NoteDetail({
     return (
       <div className="flex h-full min-w-0 flex-1 flex-col items-center justify-center px-6 text-center">
         <File className="mb-3 size-6 text-content/30" strokeWidth={1.75} />
-        <p className="text-[13px] text-content/45">{t("Select a note")}</p>
+        <p className="text-sm text-content/45">{t("Select a note")}</p>
       </div>
     );
   }
@@ -826,7 +826,7 @@ function NoteEditor({
               )}
               placement="below"
               chevron
-              buttonClassName="flex min-w-0 items-center gap-1.5 rounded-md px-1.5 py-1 text-[12px] text-content/60 hover:text-content"
+              buttonClassName="flex min-w-0 items-center gap-1.5 rounded-md px-1.5 py-1 text-sm text-content/60 hover:text-content"
               onCwdChange={(path) => {
                 const change = { path };
                 projectChangeRef.current = change;
@@ -860,7 +860,7 @@ function NoteEditor({
             }}
             onKeyDown={onTitleKeyDown}
             aria-label={t("Note title")}
-            className="w-full border-0 bg-transparent p-0 text-[20px] font-semibold leading-tight text-content outline-none placeholder:text-content/35"
+            className="w-full border-0 bg-transparent p-0 text-sm font-semibold leading-tight text-content outline-none placeholder:text-content/35"
             placeholder={t("Untitled")}
           />
           {time ? (
@@ -878,7 +878,7 @@ function NoteEditor({
               type="button"
               disabled={!canAddToChat}
               onClick={() => onAddToChat(draft)}
-              className="inline-flex items-center gap-1 rounded-md bg-content px-3 h-6.5 text-[12px] text-background-base hover:bg-content/80 disabled:cursor-default disabled:opacity-40"
+              className="inline-flex items-center gap-1 rounded-md bg-content px-3 h-6.5 text-sm font-medium text-background-base hover:bg-content/80 disabled:cursor-default disabled:opacity-40"
             >{t("Add to chat")}</button>
             <button
               type="button"
@@ -888,7 +888,7 @@ function NoteEditor({
                   window.clearTimeout(saveTimer.current);
                 void enqueueNoteSave(note.id, () => onDelete(note.id));
               }}
-              className="inline-flex items-center gap-1.5 rounded-md px-3 h-7 text-[12px] text-content/70 hover:bg-content/10 hover:text-red-400"
+              className="inline-flex items-center gap-1.5 rounded-md px-3 h-7 text-sm font-medium text-content/70 hover:bg-content/10 hover:text-red-400"
             >
               <Trash2 className="size-3.5" strokeWidth={1.75} />
               Delete
@@ -979,7 +979,7 @@ function NoteEditor({
           ) : body.trim() ? (
             <AgentMarkdown text={body} cwd={sourceCwd} />
           ) : (
-            <p className="text-[13px] text-content/45">{t("No description")}</p>
+            <p className="text-sm text-content/45">{t("No description")}</p>
           )}
         </div>
       </div>
@@ -1006,7 +1006,7 @@ function NoteSource({
     <div className="relative min-h-[448px]">
       <div
         aria-hidden
-        className="pointer-events-none grid font-mono text-[13px] leading-5 text-content/85"
+        className="pointer-events-none grid font-mono text-sm leading-5 text-content/85"
         style={{
           gridTemplateColumns: `${gutterWidth} minmax(0, 1fr)`,
         }}
@@ -1034,7 +1034,7 @@ function NoteSource({
         onChange={(event) => onChange(event.target.value)}
         spellCheck={false}
         placeholder={t("Write markdown…")}
-        className="markdown-source-field absolute inset-0 h-full w-full resize-none overflow-hidden border-0 bg-transparent py-0 pr-0 font-mono text-[13px] leading-5 whitespace-pre-wrap wrap-break-word outline-none"
+        className="markdown-source-field absolute inset-0 h-full w-full resize-none overflow-hidden border-0 bg-transparent py-0 pr-0 font-mono text-sm leading-5 whitespace-pre-wrap wrap-break-word outline-none"
         style={{ paddingLeft: textOffset }}
       />
     </div>
@@ -1061,13 +1061,13 @@ function NoteTagsEditor({
       className="flex min-w-0 flex-wrap items-center gap-1.5"
       aria-label={t("Tags")}
     >
-      <span className="mr-0.5 text-[11px] text-content/45">
+      <span className="mr-0.5 text-xs text-content/45">
         {t("Tags")}
       </span>
       {tags.map((tag) => (
         <span
           key={tag}
-          className="inline-flex h-6 max-w-48 items-center gap-1 rounded-md bg-content/8 pl-2 pr-1 text-[11px] text-content/70"
+          className="inline-flex h-6 max-w-48 items-center gap-1 rounded-md bg-content/8 pl-2 pr-1 text-xs text-content/70"
         >
           <span className="truncate">#{tag}</span>
           <button
@@ -1077,7 +1077,7 @@ function NoteTagsEditor({
             onClick={() => onChange(tags.filter((item) => item !== tag))}
             className="grid size-4 shrink-0 place-items-center rounded text-content/40 hover:bg-content/10 hover:text-content"
           >
-            <X className="size-2.5" strokeWidth={1.75} />
+            <X className="size-3.5" strokeWidth={1.75} />
           </button>
         </span>
       ))}
@@ -1106,7 +1106,7 @@ function NoteTagsEditor({
           placeholder={t("Add tag…")}
           spellCheck={false}
           autoComplete="off"
-          className="h-6 min-w-20 flex-1 border-0 bg-transparent px-1 text-[11px] text-content outline-none placeholder:text-content/35"
+          className="h-6 min-w-20 flex-1 border-0 bg-transparent px-1 text-xs text-content outline-none placeholder:text-content/35"
         />
       ) : null}
     </div>

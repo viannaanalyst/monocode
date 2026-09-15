@@ -51,7 +51,7 @@ export function EmptySession({ cwd, composer, hasChatBackground }: Props) {
         <div className="pointer-events-none relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center px-6 py-12">
           <div className="pointer-events-auto mb-4 px-2.5">
             <h1
-              className="truncate text-lg text-content"
+              className="truncate text-sm font-semibold text-content"
               title={project ? cwd : undefined}
             >
               {title}

@@ -130,14 +130,14 @@ export function AutomationEditor({
         value={title}
         onChange={(event) => setTitle(event.target.value)}
         placeholder={t("Title")}
-        className="h-8 rounded-md border border-content/10 bg-background-base/70 px-2.5 text-[13px] text-content outline-none placeholder:text-content/35"
+        className="h-8 rounded-md border border-content/10 bg-background-base/70 px-2.5 text-sm text-content outline-none placeholder:text-content/35"
       />
       <textarea
         rows={3}
         value={prompt}
         onChange={(event) => setPrompt(event.target.value)}
         placeholder={t("Prompt the automation should run")}
-        className="resize-y rounded-md border border-content/10 bg-background-base/70 px-2.5 py-2 text-[13px] leading-5 text-content outline-none placeholder:text-content/35"
+        className="resize-y rounded-md border border-content/10 bg-background-base/70 px-2.5 py-2 text-sm leading-5 text-content outline-none placeholder:text-content/35"
       />
       <div className="flex flex-wrap items-center gap-2">
         <CwdPicker cwd={projectCwd} recents={recents} onCwdChange={setProjectCwd} />
@@ -157,7 +157,7 @@ export function AutomationEditor({
         <select
           value={scheduleKind}
           onChange={(event) => setScheduleKind(event.target.value as ScheduleKind)}
-          className="h-7 rounded-md border border-content/10 bg-background-base/70 px-2 text-[12px] text-content"
+          className="h-7 rounded-md border border-content/10 bg-background-base/70 px-2 text-sm text-content"
         >
           {SCHEDULE_OPTIONS.map((option) => (
             <option key={option.kind} value={option.kind}>
@@ -172,7 +172,7 @@ export function AutomationEditor({
             max={24}
             value={intervalHours}
             onChange={(event) => setIntervalHours(Number(event.target.value))}
-            className="h-7 w-16 rounded-md border border-content/10 bg-background-base/70 px-2 text-[12px] text-content"
+            className="h-7 w-16 rounded-md border border-content/10 bg-background-base/70 px-2 text-sm text-content"
             aria-label={t("Hours")}
           />
         ) : null}
@@ -180,7 +180,7 @@ export function AutomationEditor({
           <select
             value={weekday}
             onChange={(event) => setWeekday(Number(event.target.value))}
-            className="h-7 rounded-md border border-content/10 bg-background-base/70 px-2 text-[12px] text-content"
+            className="h-7 rounded-md border border-content/10 bg-background-base/70 px-2 text-sm text-content"
             aria-label={t("Weekday")}
           >
             {WEEKDAYS.map((label, index) => (
@@ -198,7 +198,7 @@ export function AutomationEditor({
               max={23}
               value={hour}
               onChange={(event) => setHour(Number(event.target.value))}
-              className="h-7 w-16 rounded-md border border-content/10 bg-background-base/70 px-2 text-[12px] text-content"
+              className="h-7 w-16 rounded-md border border-content/10 bg-background-base/70 px-2 text-sm text-content"
               aria-label={t("Hour")}
             />
             <input
@@ -207,7 +207,7 @@ export function AutomationEditor({
               max={59}
               value={minute}
               onChange={(event) => setMinute(Number(event.target.value))}
-              className="h-7 w-16 rounded-md border border-content/10 bg-background-base/70 px-2 text-[12px] text-content"
+              className="h-7 w-16 rounded-md border border-content/10 bg-background-base/70 px-2 text-sm text-content"
               aria-label={t("Minute")}
             />
           </>
@@ -218,7 +218,7 @@ export function AutomationEditor({
         onChange={(event) =>
           setFailurePolicy(event.target.value as Automation["failurePolicy"])
         }
-        className="h-7 w-fit rounded-md border border-content/10 bg-background-base/70 px-2 text-[12px] text-content"
+        className="h-7 w-fit rounded-md border border-content/10 bg-background-base/70 px-2 text-sm text-content"
         aria-label={t("Failure policy")}
       >
         <option value="pause_after_1">{t("Pause after 1 failure")}</option>
@@ -230,14 +230,14 @@ export function AutomationEditor({
         <button
           type="submit"
           disabled={!title.trim() || !prompt.trim() || projectCwd === "~"}
-          className="inline-flex h-7 items-center rounded-md bg-content px-2.5 text-[12px] font-medium text-background-base disabled:opacity-40"
+          className="inline-flex h-7 items-center rounded-md bg-content px-2.5 text-sm font-medium text-background-base disabled:opacity-40"
         >
           {t("Save")}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="inline-flex h-7 items-center rounded-md border border-content/15 px-2.5 text-[12px] text-content/75"
+          className="inline-flex h-7 items-center rounded-md border border-content/15 px-2.5 text-sm font-medium text-content/75"
         >
           {t("Cancel")}
         </button>
@@ -304,17 +304,17 @@ export function AutomationsView({
         {besideRail ? null : (
           <OverlayNav onBack={onClose} onToggleSidebar={onToggleSidebar} />
         )}
-        <div className="flex min-w-0 flex-1 items-center gap-2 px-3 text-[13px]">
+        <div className="flex min-w-0 flex-1 items-center gap-2 px-3 text-sm">
           <LayoutTwoColumn className="size-3.5 shrink-0 text-content/45" strokeWidth={1.75} />
-          <span className="font-medium">{t("Automations")}</span>
-          <span className="text-content/40">
+          <span className="font-display text-display text-content">{t("Automations")}</span>
+          <span className="text-xs text-content/40">
             {t("{count} scheduled", { count: automations.length })}
           </span>
         </div>
         <button
           type="button"
           onClick={onCreate}
-          className="mr-3 inline-flex h-7 items-center gap-1.5 rounded-md bg-content px-2.5 text-[12px] font-medium text-background-base"
+          className="mr-3 inline-flex h-7 items-center gap-1.5 rounded-md bg-content px-2.5 text-sm font-medium text-background-base"
         >
           <Plus className="size-3.5" strokeWidth={1.75} />
           {t("New automation")}
@@ -334,7 +334,7 @@ export function AutomationsView({
           />
         ) : null}
         {automations.length === 0 ? (
-          <p className="px-1 py-6 text-[13px] text-content/45">
+          <p className="px-1 py-6 text-sm text-content/45">
             {t("No automations yet")}
           </p>
         ) : (
@@ -352,11 +352,11 @@ export function AutomationsView({
                       harness={automation.harness as HarnessId}
                       className="size-3.5 shrink-0"
                     />
-                    <span className="min-w-0 flex-1 truncate text-[13px]">
+                    <span className="min-w-0 flex-1 truncate text-sm font-semibold">
                       {automation.title}
                     </span>
                     <span
-                      className={`rounded px-1.5 py-0.5 text-[10px] ${
+                      className={`rounded px-1.5 py-0.5 text-2xs ${
                         automation.enabled
                           ? "bg-emerald-500/15 text-emerald-300"
                           : "bg-amber-500/15 text-amber-300"
@@ -373,7 +373,7 @@ export function AutomationsView({
                         ? { ...schedule.vars, weekday: t(schedule.vars.weekday) }
                         : schedule.vars;
                     return (
-                      <p className="mt-1 text-[11px] text-content/50">
+                      <p className="mt-1 text-xs text-content/50">
                         {t(schedule.key, scheduleVars)}
                         {" · "}
                         {t(next.key, next.vars)}
@@ -385,29 +385,29 @@ export function AutomationsView({
                       type="button"
                       disabled={active || !automation.enabled}
                       onClick={() => onRunNow(automation)}
-                      className="inline-flex h-6 items-center gap-1 rounded-md border border-content/15 px-2 text-[11px] text-content/75 disabled:opacity-40"
+                      className="inline-flex h-6 items-center gap-1 rounded-md border border-content/15 px-2 text-xs font-medium text-content/75 disabled:opacity-40"
                     >
                       {active ? (
-                        <LoaderCircle className="size-3 animate-spin" strokeWidth={1.75} />
+                        <LoaderCircle className="size-3.5 animate-spin" strokeWidth={1.75} />
                       ) : (
-                        <Play className="size-3" strokeWidth={1.75} />
+                        <Play className="size-3.5" strokeWidth={1.75} />
                       )}
                       {t("Run now")}
                     </button>
                     <button
                       type="button"
                       onClick={() => onToggle(automation)}
-                      className="inline-flex h-6 items-center gap-1 rounded-md border border-content/15 px-2 text-[11px] text-content/75"
+                      className="inline-flex h-6 items-center gap-1 rounded-md border border-content/15 px-2 text-xs font-medium text-content/75"
                     >
-                      <Pause className="size-3" strokeWidth={1.75} />
+                      <Pause className="size-3.5" strokeWidth={1.75} />
                       {automation.enabled ? t("Pause") : t("Resume")}
                     </button>
                     <button
                       type="button"
                       onClick={() => setEditing(automation)}
-                      className="inline-flex h-6 items-center gap-1 rounded-md border border-content/15 px-2 text-[11px] text-content/75"
+                      className="inline-flex h-6 items-center gap-1 rounded-md border border-content/15 px-2 text-xs font-medium text-content/75"
                     >
-                      <Pencil className="size-3" strokeWidth={1.75} />
+                      <Pencil className="size-3.5" strokeWidth={1.75} />
                       {t("Edit")}
                     </button>
                     <button
@@ -417,21 +417,21 @@ export function AutomationsView({
                         setExpanded(next);
                         if (next) onLoadRuns(automation.id);
                       }}
-                      className="inline-flex h-6 items-center rounded-md border border-content/15 px-2 text-[11px] text-content/75"
+                      className="inline-flex h-6 items-center rounded-md border border-content/15 px-2 text-xs font-medium text-content/75"
                     >
                       {t("History")}
                     </button>
                     <button
                       type="button"
                       onClick={() => setConfirming(automation.id)}
-                      className="ml-auto inline-flex h-6 items-center gap-1 rounded-md px-2 text-[11px] text-rose-300/90 hover:bg-rose-500/10"
+                      className="ml-auto inline-flex h-6 items-center gap-1 rounded-md px-2 text-xs font-medium text-rose-300/90 hover:bg-rose-500/10"
                     >
-                      <Trash2 className="size-3" strokeWidth={1.75} />
+                      <Trash2 className="size-3.5" strokeWidth={1.75} />
                       {t("Delete")}
                     </button>
                   </div>
                   {confirming === automation.id ? (
-                    <div className="mt-2 flex items-center gap-2 rounded-md bg-rose-500/10 px-2 py-1.5 text-[11px] text-rose-200">
+                    <div className="mt-2 flex items-center gap-2 rounded-md bg-rose-500/10 px-2 py-1.5 text-xs text-rose-200">
                       {t("Delete this automation? Its session is kept.")}
                       <button
                         type="button"
@@ -439,14 +439,14 @@ export function AutomationsView({
                           onDelete(automation);
                           setConfirming(null);
                         }}
-                        className="ml-auto rounded bg-rose-500/20 px-2 py-0.5"
+                        className="ml-auto rounded bg-rose-500/20 px-2 py-0.5 font-medium"
                       >
                         {t("Delete")}
                       </button>
                       <button
                         type="button"
                         onClick={() => setConfirming(null)}
-                        className="rounded border border-content/15 px-2 py-0.5"
+                        className="rounded border border-content/15 px-2 py-0.5 font-medium"
                       >
                         {t("Cancel")}
                       </button>
@@ -454,13 +454,13 @@ export function AutomationsView({
                   ) : null}
                   {expanded === automation.id ? (
                     history.length === 0 ? (
-                      <p className="mt-2 text-[11px] text-content/40">{t("No runs yet")}</p>
+                      <p className="mt-2 text-xs text-content/40">{t("No runs yet")}</p>
                     ) : (
                       <ul className="mt-2 flex flex-col gap-1">
                         {history.map((run) => (
                           <li
                             key={run.id}
-                            className="flex items-center gap-2 rounded bg-content/5 px-2 py-1 text-[11px] text-content/70"
+                            className="flex items-center gap-2 rounded bg-content/5 px-2 py-1 text-xs text-content/70"
                           >
                             <span className="tabular-nums">
                               {new Date(run.scheduledFor).toLocaleString()}
@@ -475,7 +475,7 @@ export function AutomationsView({
                               <button
                                 type="button"
                                 onClick={() => onOpenSession(automation.sessionId as string)}
-                                className="ml-auto shrink-0 text-content/50 hover:text-content"
+                                className="ml-auto shrink-0 font-medium text-content/50 hover:text-content"
                               >
                                 {t("Open session")}
                               </button>
