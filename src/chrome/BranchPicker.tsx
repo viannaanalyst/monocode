@@ -244,11 +244,6 @@ export function BranchPicker({
       ? `detached ${current}`
       : current
     : "No repo";
-  const title = awaitingBranch
-    ? "Loading branch…"
-    : missingGit
-      ? "No git repository"
-      : label;
   const interactive = enabled && !awaitingBranch && !missingGit;
 
   return (
@@ -256,7 +251,7 @@ export function BranchPicker({
       <div ref={root} className="relative min-w-0">
         <button
           type="button"
-          title={title}
+          data-no-tooltip
           aria-label={
             awaitingBranch
               ? "Loading branch"
