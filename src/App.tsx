@@ -406,6 +406,7 @@ import { InboxView } from "./surfaces/InboxView";
 import type { InboxSessionPortal } from "./surfaces/InboxDiscussionPanel";
 import { inboxAskKey, inboxAskPrompt } from "./lib/inboxAsk";
 import { NotesView } from "./surfaces/NotesView";
+import { KanbanView } from "./surfaces/KanbanView";
 import {
   githubWorkItemThread,
   inboxComposerCard,
@@ -864,6 +865,7 @@ export default function App({
     useState<InboxSessionPortal | null>(null);
   const openingInboxSessions = useRef(new Map<string, Promise<string>>());
   const [notesViewOpen, setNotesViewOpen] = useState(false);
+  const [kanbanViewOpen, setKanbanViewOpen] = useState(false);
   const [inspectedWorkerId, setInspectedWorkerId] = useState<string | null>(
     null,
   );
@@ -6618,6 +6620,7 @@ export default function App({
     setSearchViewOpen(false);
     setInboxViewOpen(false);
     setNotesViewOpen(false);
+    setKanbanViewOpen(false);
     setFilePickerOpen(true);
   }, []);
 
@@ -6625,6 +6628,7 @@ export default function App({
     setSearchViewOpen(false);
     setInboxViewOpen(false);
     setNotesViewOpen(false);
+    setKanbanViewOpen(false);
     showRightDock("explorer");
     setFilesSearchOpen(true);
     setSearchFocusToken((token) => token + 1);
@@ -6635,6 +6639,7 @@ export default function App({
     setSettingsOpen(false);
     setInboxViewOpen(false);
     setNotesViewOpen(false);
+    setKanbanViewOpen(false);
     setSearchViewOpen(true);
     setSearchViewFocusToken((token) => token + 1);
   }, []);
@@ -6648,6 +6653,7 @@ export default function App({
     setSettingsOpen(false);
     setSearchViewOpen(false);
     setNotesViewOpen(false);
+    setKanbanViewOpen(false);
     setInboxTarget(null);
     setInboxViewOpen(true);
   }, []);
@@ -6657,6 +6663,7 @@ export default function App({
     setSettingsOpen(false);
     setSearchViewOpen(false);
     setNotesViewOpen(false);
+    setKanbanViewOpen(false);
     setInboxTarget(item);
     setInboxViewOpen(true);
   }, []);
@@ -6682,6 +6689,7 @@ export default function App({
     setSettingsOpen(false);
     setSearchViewOpen(false);
     setInboxViewOpen(false);
+    setKanbanViewOpen(false);
     setNotesViewOpen(true);
   }, []);
 
@@ -6689,12 +6697,35 @@ export default function App({
     setNotesViewOpen(false);
   }, []);
 
+  const onOpenKanban = useCallback(() => {
+    setFilePickerOpen(false);
+    setSettingsOpen(false);
+    setSearchViewOpen(false);
+    setInboxViewOpen(false);
+    setNotesViewOpen(false);
+    setKanbanViewOpen(true);
+  }, []);
+
+  const onLeaveKanban = useCallback(() => {
+    setKanbanViewOpen(false);
+  }, []);
+
+  const onOpenKanbanSession = useCallback(
+    (sessionId: string) => {
+      setKanbanViewOpen(false);
+      setSidebarTab("sessions");
+      void onSelectHistorySession(sessionId);
+    },
+    [onSelectHistorySession],
+  );
+
   const openSettings = useCallback(
     (section?: SettingsSectionId, anchor?: SettingsAnchor) => {
       setFilePickerOpen(false);
       setSearchViewOpen(false);
       setInboxViewOpen(false);
       setNotesViewOpen(false);
+      setKanbanViewOpen(false);
       if (section) {
         setSettingsSection(section);
         saveSettingsSection(section);
@@ -6746,14 +6777,26 @@ export default function App({
       setNotesViewOpen(false);
       return;
     }
+    if (kanbanViewOpen) {
+      setKanbanViewOpen(false);
+      return;
+    }
     onVisitBack();
-  }, [onVisitBack, searchViewOpen, settingsOpen, inboxViewOpen, notesViewOpen]);
+  }, [
+    onVisitBack,
+    searchViewOpen,
+    settingsOpen,
+    inboxViewOpen,
+    notesViewOpen,
+    kanbanViewOpen,
+  ]);
 
   const onRailForward = useCallback(() => {
     setSearchViewOpen(false);
     setSettingsOpen(false);
     setInboxViewOpen(false);
     setNotesViewOpen(false);
+    setKanbanViewOpen(false);
     onVisitForward();
   }, [onVisitForward]);
 
@@ -6843,6 +6886,7 @@ export default function App({
     onFindInProject,
     onOpenSearch,
     onOpenInbox,
+    onOpenKanban,
     onOpenNotes,
     pickProject,
     onNewTerminal,
@@ -6871,6 +6915,7 @@ export default function App({
     onFindInProject,
     onOpenSearch,
     onOpenInbox,
+    onOpenKanban,
     onOpenNotes,
     pickProject,
     onNewTerminal,
@@ -7250,7 +7295,8 @@ export default function App({
               searchViewOpen ||
               settingsOpen ||
               inboxViewOpen ||
-              notesViewOpen
+              notesViewOpen ||
+              kanbanViewOpen
             }
             canGoForward={tabVisitNav.canForward}
             onGoBack={onRailBack}
@@ -7280,10 +7326,12 @@ export default function App({
             onSearch={onOpenSearch}
             onOpenInbox={onOpenInbox}
             onOpenInboxItem={onOpenLinkedWorkItem}
+            onOpenKanban={onOpenKanban}
             onOpenNotes={notesEnabled ? onOpenNotes : undefined}
             onGoToFile={onGoToFile}
             searchActive={searchViewOpen}
             inboxActive={inboxViewOpen}
+            kanbanActive={kanbanViewOpen}
             notesActive={notesViewOpen}
             notesEnabled={notesEnabled}
             projectRailOpen={projectRailOpen}
@@ -7303,18 +7351,27 @@ export default function App({
           <div className="body-glass flex min-h-0 min-w-0 flex-1 flex-col">
             <div
               className={
-                searchViewOpen || settingsOpen || inboxViewOpen || notesViewOpen
+                searchViewOpen ||
+                settingsOpen ||
+                inboxViewOpen ||
+                notesViewOpen ||
+                kanbanViewOpen
                   ? "hidden"
                   : "flex min-h-0 min-w-0 flex-1 flex-col"
               }
               aria-hidden={
-                searchViewOpen || settingsOpen || inboxViewOpen || notesViewOpen
+                searchViewOpen ||
+                settingsOpen ||
+                inboxViewOpen ||
+                notesViewOpen ||
+                kanbanViewOpen
               }
               inert={
                 searchViewOpen ||
                 settingsOpen ||
                 inboxViewOpen ||
                 notesViewOpen ||
+                kanbanViewOpen ||
                 undefined
               }
             >
@@ -7735,6 +7792,20 @@ export default function App({
                 onOpenSession={onOpenInboxSession}
                 target={inboxTarget}
                 onOpenIntegrations={onOpenInboxIntegrations}
+              />
+            ) : null}
+            {kanbanViewOpen ? (
+              <KanbanView
+                cwd={sidebarCwd}
+                rows={sidebarHistory}
+                busyIds={busySessionIds}
+                approvalIds={approvalSessionIds}
+                unseenIds={unseenFinishedIds}
+                besideRail={projectRailOpen}
+                onClose={onLeaveKanban}
+                onToggleSidebar={onToggleSidebar}
+                onOpenSession={onOpenKanbanSession}
+                onArchiveSession={onArchiveHistorySession}
               />
             ) : null}
             {notesViewOpen ? (

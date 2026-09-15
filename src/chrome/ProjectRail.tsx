@@ -9,6 +9,7 @@ import {
   FolderOpen,
   ImagePlus,
   Inbox,
+  LayoutTwoColumn,
   MoreHorizontal,
   Pin,
   PinOff,
@@ -136,6 +137,8 @@ type Props = {
   searchActive?: boolean;
   onOpenInbox?: () => void;
   inboxActive?: boolean;
+  onOpenKanban?: () => void;
+  kanbanActive?: boolean;
   notesEnabled?: boolean;
   onOpenNotes?: () => void;
   notesActive?: boolean;
@@ -181,6 +184,8 @@ export function ProjectRail({
   searchActive = false,
   onOpenInbox,
   inboxActive = false,
+  onOpenKanban,
+  kanbanActive = false,
   notesActive = false,
   sessions = [],
   onSelectSession,
@@ -436,6 +441,14 @@ export function ProjectRail({
                 icon={Inbox}
                 onClick={onOpenInbox}
                 ariaLabel={inboxUnseen ? t("Inbox, new items") : t("Inbox")}
+              />
+            ) : null}
+            {onOpenKanban ? (
+              <RailAction
+                label={t("Kanban")}
+                icon={LayoutTwoColumn}
+                active={kanbanActive}
+                onClick={onOpenKanban}
               />
             ) : null}
           </div>
