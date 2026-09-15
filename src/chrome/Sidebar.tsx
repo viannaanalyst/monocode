@@ -249,10 +249,12 @@ type Props = {
   onSearch?: () => void;
   onOpenInbox?: () => void;
   onOpenInboxItem?: (item: LinkedWorkItem) => void;
+  onOpenKanban?: () => void;
   onOpenNotes?: () => void;
   onGoToFile?: () => void;
   searchActive?: boolean;
   inboxActive?: boolean;
+  kanbanActive?: boolean;
   notesActive?: boolean;
   notesEnabled?: boolean;
   projectRailOpen?: boolean;
@@ -331,10 +333,12 @@ function SidebarComponent({
   onSearch,
   onOpenInbox,
   onOpenInboxItem,
+  onOpenKanban,
   onOpenNotes,
   onGoToFile,
   searchActive = false,
   inboxActive = false,
+  kanbanActive = false,
   notesActive = false,
   notesEnabled = true,
   projectRailOpen = true,
@@ -1690,6 +1694,8 @@ function SidebarComponent({
           searchActive={searchActive}
           onOpenInbox={onOpenInbox}
           inboxActive={inboxActive}
+          onOpenKanban={onOpenKanban}
+          kanbanActive={kanbanActive}
           notesEnabled={notesEnabled}
           onOpenNotes={onOpenNotes}
           notesActive={notesActive}
