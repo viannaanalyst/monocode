@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { recoverCursorSubagents } from "./harness/cursorSubagents";
 import { persistableAttachment } from "./attachments";
 import type { ContextUsage } from "./contextUsage";
+import { sanitizeSessionGoal, type SessionGoal } from "./goal";
 import { normalizeProjectPath } from "./recents";
 import { ompActiveAssistantTexts, ompSessionInterjections } from "./fs";
 import { backfillOmpInterjections, ompStatusSplitTexts } from "./ompInterjections";
@@ -64,6 +65,7 @@ type SessionRecord = {
   branch?: string | null;
   worktreeCwd?: string | null;
   linkedWorkItem?: LinkedWorkItem | null;
+  goal?: SessionGoal | null;
   createdAt: number;
   updatedAt: number;
 };
@@ -83,6 +85,7 @@ type SessionUpsertPayload = {
   branch?: string;
   worktreeCwd?: string;
   linkedWorkItem?: LinkedWorkItem;
+  goal?: SessionGoal;
 };
 
 /** Only real chats belong in project history — blank tabs stay ephemeral. */
@@ -103,6 +106,7 @@ function persistableMeta(
   session: Session,
 ): Omit<SessionUpsertPayload, "blocks"> {
   const linkedWorkItem = sanitizeLinkedWorkItem(session.linkedWorkItem);
+  const goal = sanitizeSessionGoal(session.goal);
   return {
     id: session.id,
     cwd: normalizeProjectPath(session.cwd),
@@ -121,6 +125,7 @@ function persistableMeta(
     ...(session.branch ? { branch: session.branch } : {}),
     ...(session.worktreeCwd ? { worktreeCwd: session.worktreeCwd } : {}),
     ...(linkedWorkItem ? { linkedWorkItem } : {}),
+    ...(goal ? { goal } : {}),
   };
 }
 
@@ -700,6 +705,7 @@ function recordToSession(record: SessionRecord): Session {
         .filter((block): block is Block => block != null)
     : [];
   const linkedWorkItem = sanitizeLinkedWorkItem(record.linkedWorkItem);
+  const goal = sanitizeSessionGoal(record.goal);
   return {
     id: record.id,
     cwd: record.cwd,
@@ -723,6 +729,7 @@ function recordToSession(record: SessionRecord): Session {
     ...(record.branch ? { branch: record.branch } : {}),
     ...(record.worktreeCwd ? { worktreeCwd: record.worktreeCwd } : {}),
     ...(linkedWorkItem ? { linkedWorkItem } : {}),
+    ...(goal ? { goal } : {}),
     ...(contextFromRecord(record) ?? {}),
   };
 }

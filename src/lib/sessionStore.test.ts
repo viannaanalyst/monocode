@@ -510,3 +510,15 @@ describe("persistFingerprint", () => {
     ).toBe(persistFingerprint({ ...session, context: { used: 10 } }));
   });
 });
+
+describe("persisting a session goal", () => {
+  it("carries the goal through the payload and the fingerprint", () => {
+    const session = newSession("cursor", "/tmp/project");
+    session.goal = { text: "Ship the login", createdAt: 1 };
+    const payload = sanitizeSessionForPersist(session);
+    expect(payload?.goal).toEqual({ text: "Ship the login", createdAt: 1 });
+    const fingerprint = persistFingerprint(session);
+    session.goal = { text: "Ship the login", createdAt: 1, completedAt: 2 };
+    expect(persistFingerprint(session)).not.toBe(fingerprint);
+  });
+});

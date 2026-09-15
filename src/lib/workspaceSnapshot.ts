@@ -23,6 +23,7 @@ import { normalizeProjectPath } from "./recents";
 import { pathKey } from "./paths";
 import { reconcileProjectReturn, type ProjectReturnMemory } from "./projectReturn";
 import type { InboxAskContext } from "./inboxAsk";
+import { sanitizeSessionGoal, type SessionGoal } from "./goal";
 import {
   HARNESSES,
   RUNTIME_MODES,
@@ -44,6 +45,7 @@ export type WorkspaceSessionStub = {
   providerSessionId?: string;
   branch?: string;
   worktreeCwd?: string;
+  goal?: SessionGoal;
 };
 
 export type WorkspaceSnapshot = {
@@ -314,6 +316,7 @@ function sessionStub(session: Session): WorkspaceSessionStub | null {
       : {}),
     ...(session.branch ? { branch: session.branch } : {}),
     ...(session.worktreeCwd ? { worktreeCwd: session.worktreeCwd } : {}),
+    ...(session.goal ? { goal: session.goal } : {}),
   };
 }
 
@@ -335,6 +338,7 @@ function sessionFromStub(stub: WorkspaceSessionStub): Session {
       : {}),
     ...(stub.branch ? { branch: stub.branch } : {}),
     ...(stub.worktreeCwd ? { worktreeCwd: stub.worktreeCwd } : {}),
+    ...(stub.goal ? { goal: stub.goal } : {}),
   };
 }
 
@@ -355,6 +359,7 @@ function sanitizeStub(raw: unknown): WorkspaceSessionStub | null {
           ),
         )
       : {};
+  const goal = sanitizeSessionGoal(value.goal);
   return {
     id: value.id,
     cwd:
@@ -375,6 +380,7 @@ function sanitizeStub(raw: unknown): WorkspaceSessionStub | null {
     ...(typeof value.worktreeCwd === "string" && value.worktreeCwd.trim()
       ? { worktreeCwd: value.worktreeCwd.trim() }
       : {}),
+    ...(goal ? { goal } : {}),
   };
 }
 

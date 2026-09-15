@@ -545,4 +545,24 @@ describe("hydrateWorkspaceSnapshot", () => {
       workspace?.projectTerminals?.[0]?.pane.files[0]?.foreground,
     ).toBeUndefined();
   });
+
+  it("round-trips a session goal", () => {
+    const session = chat("s1", "/tmp/a");
+    session.goal = { text: "Ship the login", createdAt: 1 };
+    const snapshot = collectWorkspaceSnapshot(
+      [newTab("s1")],
+      [session],
+      "t1",
+      "/tmp/a",
+      new Map(),
+    );
+    expect(snapshot.sessions[0]?.goal).toEqual({
+      text: "Ship the login",
+      createdAt: 1,
+    });
+    const restored = hydrateWorkspaceSnapshot(snapshot, new Map());
+    expect(
+      restored?.sessions.find((item) => item.id === "s1")?.goal,
+    ).toEqual({ text: "Ship the login", createdAt: 1 });
+  });
 });

@@ -93,6 +93,8 @@ pub struct SessionUpsert {
     pub worktree_cwd: Option<String>,
     #[serde(default)]
     pub linked_work_item: Option<Value>,
+    #[serde(default)]
+    pub goal: Option<Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -151,6 +153,8 @@ pub struct SessionRecord {
     pub worktree_cwd: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub linked_work_item: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub goal: Option<Value>,
     pub created_at: i64,
     pub updated_at: i64,
 }
@@ -603,6 +607,7 @@ fn migrate(conn: &Connection) -> rusqlite::Result<()> {
     // Compatibility only: earlier Inbox Ask builds saved temporary chats here.
     // Keep those records off normal surfaces without deleting their transcripts.
     ensure_session_column(conn, "inbox_ask", "TEXT")?;
+    ensure_session_column(conn, "goal_json", "TEXT")?;
     conn.execute_batch(
         "CREATE INDEX IF NOT EXISTS sessions_legacy_inbox
          ON sessions (id) WHERE inbox_ask IS NOT NULL;",
@@ -744,6 +749,12 @@ fn upsert_session(conn: &Connection, session: &SessionUpsert) -> rusqlite::Resul
         .map(serde_json::to_string)
         .transpose()
         .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
+    let goal_json = session
+        .goal
+        .as_ref()
+        .map(serde_json::to_string)
+        .transpose()
+        .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
     let provider_session_id = session
         .provider_session_id
         .as_ref()
@@ -795,8 +806,8 @@ fn upsert_session(conn: &Connection, session: &SessionUpsert) -> rusqlite::Resul
            id, cwd, harness, model, model_settings, runtime_mode, title,
            provider_session_id, blocks_json, created_at, updated_at, branch,
            context_used, context_window, worktree_cwd, has_user_message,
-           linked_work_item_json
-         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)
+           linked_work_item_json, goal_json
+         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)
          ON CONFLICT(id) DO UPDATE SET
            cwd = excluded.cwd,
            harness = excluded.harness,
@@ -812,7 +823,8 @@ fn upsert_session(conn: &Connection, session: &SessionUpsert) -> rusqlite::Resul
            context_window = excluded.context_window,
            worktree_cwd = excluded.worktree_cwd,
            has_user_message = excluded.has_user_message,
-           linked_work_item_json = excluded.linked_work_item_json",
+           linked_work_item_json = excluded.linked_work_item_json,
+           goal_json = excluded.goal_json",
         params![
             session.id,
             session.cwd,
@@ -831,6 +843,7 @@ fn upsert_session(conn: &Connection, session: &SessionUpsert) -> rusqlite::Resul
             worktree_cwd,
             i64::from(has_user_message),
             linked_work_item_json,
+            goal_json,
         ],
     )?;
 
@@ -1343,7 +1356,7 @@ fn get_session(conn: &Connection, session_id: &str) -> rusqlite::Result<Option<S
         "SELECT id, cwd, harness, model, model_settings, runtime_mode, title,
                 provider_session_id, blocks_json, created_at, updated_at,
                 context_used, context_window, branch, worktree_cwd,
-                linked_work_item_json
+                linked_work_item_json, goal_json
          FROM sessions
          WHERE id = ?1 AND inbox_ask IS NULL",
         params![session_id],
@@ -1380,6 +1393,7 @@ fn get_session(conn: &Connection, session_id: &str) -> rusqlite::Result<Option<S
                 branch: row.get(13)?,
                 worktree_cwd: row.get(14)?,
                 linked_work_item: optional_json(row.get(15)?),
+                goal: optional_json(row.get(16)?),
                 created_at: row.get(9)?,
                 updated_at: row.get(10)?,
             })
@@ -1496,6 +1510,7 @@ mod tests {
             branch: None,
             worktree_cwd: None,
             linked_work_item: None,
+            goal: None,
         }
     }
 
@@ -1527,6 +1542,17 @@ mod tests {
             .query_row("SELECT COUNT(*) FROM sessions", [], |row| row.get(0))
             .unwrap();
         assert_eq!(count, 2);
+    }
+
+    #[test]
+    fn goal_round_trips_through_upsert_and_get() {
+        let store = SessionStore::open_in_memory().unwrap();
+        let conn = store.lock_conn().unwrap();
+        let mut session = sample("goal", "/tmp/project", "Login");
+        session.goal = Some(json!({ "text": "Ship the login", "createdAt": 1 }));
+        upsert_session(&conn, &session).unwrap();
+        let record = get_session(&conn, "goal").unwrap().unwrap();
+        assert_eq!(record.goal, session.goal);
     }
 
     #[test]
