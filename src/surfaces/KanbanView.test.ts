@@ -67,6 +67,24 @@ describe("KanbanView", () => {
     expect(markup).toContain("Finished");
   });
 
+  it("renders the status pill and the card menu for each column", () => {
+    const markup = render({
+      rows: [
+        row("busy"),
+        row("waiting"),
+        row("plain"),
+        row("old", { archived: true }),
+      ],
+      busyIds: new Set(["busy"]),
+      approvalIds: new Set(["waiting"]),
+    });
+    expect(markup).toContain("Working");
+    expect(markup).toContain("Waiting for you");
+    expect(markup).toContain("Idle session");
+    expect(markup).toContain("Archived session");
+    expect(markup).toContain('aria-label="plain menu"');
+  });
+
   it("shows project names only in the all-projects scope", () => {
     const rows = [row("a")];
     expect(render({ rows })).not.toContain(">web<");

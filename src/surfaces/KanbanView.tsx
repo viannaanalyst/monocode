@@ -3,18 +3,30 @@ import {
   useMemo,
   useRef,
   useState,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
+  type ReactNode,
 } from "react";
 import { OverlayNav } from "../chrome/TitleBar";
 import { WindowControls } from "../chrome/WindowControls";
+import { ExplorerMenu } from "../chrome/ExplorerMenu";
 import { HarnessIcon } from "../chrome/HarnessIcon";
-import { LayoutTwoColumn, LoaderCircle, Pin } from "../chrome/icons";
+import {
+  Archive,
+  Check,
+  Clock,
+  LayoutTwoColumn,
+  LoaderCircle,
+  MoreHorizontal,
+  Pin,
+} from "../chrome/icons";
 import { t } from "../i18n";
 import { setGrabbing, suppressTextSelection } from "../lib/drag";
 import { startDragGhost, type DragGhost } from "../lib/dragGhost";
 import { boardDropOutcome, kanbanColumnFromPoint } from "../lib/kanbanDrag";
 import { projectName } from "../lib/paths";
 import { IS_MAC } from "../lib/platform";
+import { HARNESS_LABEL } from "../lib/session";
 import {
   classifySessionBoard,
   BOARD_COLUMNS,
@@ -36,6 +48,13 @@ const COLUMN_DOTS: Record<BoardColumn, string> = {
   needs_you: "bg-amber-400",
   idle: "bg-content/25",
   archived: "bg-content/20",
+};
+
+const COLUMN_BADGES: Record<BoardColumn, string> = {
+  working: "bg-sky-500/15 text-sky-300",
+  needs_you: "bg-amber-500/15 text-amber-300",
+  idle: "bg-content/10 text-content/55",
+  archived: "bg-content/10 text-content/45",
 };
 
 type Props = {
@@ -72,6 +91,11 @@ export function KanbanView({
   const [scope, setScope] = useState<BoardScope>(initialScope);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropColumn, setDropColumn] = useState<BoardColumn | null>(null);
+  const [cardMenu, setCardMenu] = useState<{
+    x: number;
+    y: number;
+    card: BoardCard;
+  } | null>(null);
   const skipClickUntil = useRef(0);
 
   const onCardPointerDown = useCallback(
@@ -218,18 +242,22 @@ export function KanbanView({
               key={column}
               data-kanban-column={column}
               aria-label={t(COLUMN_LABELS[column])}
-              className="flex h-full min-h-0 w-72 shrink-0 flex-col rounded-lg border border-content/10 bg-content/[0.03]"
+              className="flex h-full min-h-0 w-72 shrink-0 flex-col"
             >
-              <header className="flex h-9 shrink-0 items-center gap-2 border-b border-content/10 px-3">
+              <header className="flex h-8 shrink-0 items-center gap-2 px-0.5">
                 <span className={`size-1.5 rounded-full ${COLUMN_DOTS[column]}`} />
-                <span className="text-[12px] font-semibold">
+                <span className="text-sm font-semibold">
                   {t(COLUMN_LABELS[column])}
                 </span>
-                <span className="ml-auto text-xs tabular-nums text-content/40">
+                <span
+                  className={`ml-auto grid h-5 min-w-5 place-items-center rounded-md px-1 text-2xs font-medium tabular-nums ${COLUMN_BADGES[column]} ${
+                    dropColumn === column ? "ring-1 ring-accent/60" : ""
+                  }`}
+                >
                   {board.counts[column]}
                 </span>
               </header>
-              <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-none p-2">
+              <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-none px-0.5 pb-2 pt-2.5">
                 {board.columns[column].length === 0 ? (
                   <p className="px-1 py-2 text-xs text-content/35">
                     {t("No sessions here")}
@@ -248,8 +276,14 @@ export function KanbanView({
                         if (performance.now() < skipClickUntil.current) return;
                         onOpenSession(card.session.id);
                       }}
-                      onArchive={() => onArchiveSession(card.session.id, true)}
-                      onUnarchive={() => onArchiveSession(card.session.id, false)}
+                      onMenu={(event) => {
+                        const rect = event.currentTarget.getBoundingClientRect();
+                        setCardMenu({
+                          x: rect.left,
+                          y: rect.bottom + 4,
+                          card,
+                        });
+                      }}
                     />
                   ))
                 )}
@@ -258,7 +292,80 @@ export function KanbanView({
           ))}
         </div>
       </div>
+      {cardMenu ? (
+        <ExplorerMenu
+          x={cardMenu.x}
+          y={cardMenu.y}
+          ariaLabel={t("{name} menu", { name: cardMenu.card.session.title })}
+          items={[
+            { kind: "item", id: "open", label: t("Open") },
+            { kind: "sep" },
+            cardMenu.card.column === "archived"
+              ? { kind: "item", id: "unarchive", label: t("Unarchive") }
+              : { kind: "item", id: "archive", label: t("Archive") },
+          ]}
+          onPick={(id) => {
+            if (id === "open") onOpenSession(cardMenu.card.session.id);
+            if (id === "archive") onArchiveSession(cardMenu.card.session.id, true);
+            if (id === "unarchive") onArchiveSession(cardMenu.card.session.id, false);
+            setCardMenu(null);
+          }}
+          onClose={() => setCardMenu(null)}
+        />
+      ) : null}
     </div>
+  );
+}
+
+function StatusPill({ card }: { card: BoardCard }) {
+  const { column, needsYouReason } = card;
+  if (column === "working") {
+    return (
+      <Pill className="bg-sky-500/15 text-sky-300">
+        <LoaderCircle className="size-3 shrink-0 animate-spin" strokeWidth={2} />
+        {t("Working")}
+      </Pill>
+    );
+  }
+  if (column === "needs_you") {
+    return needsYouReason === "finished" ? (
+      <Pill className="bg-emerald-500/15 text-emerald-300">
+        <Check className="size-3 shrink-0" strokeWidth={2.25} />
+        {t("Finished")}
+      </Pill>
+    ) : (
+      <Pill className="bg-amber-500/15 text-amber-300">
+        <Clock className="size-3 shrink-0" strokeWidth={1.75} />
+        {t("Waiting for you")}
+      </Pill>
+    );
+  }
+  return column === "archived" ? (
+    <Pill className="bg-content/10 text-content/45">
+      <Archive className="size-3 shrink-0" strokeWidth={1.75} />
+      {t("Archived session")}
+    </Pill>
+  ) : (
+    <Pill className="bg-content/10 text-content/55">
+      <Clock className="size-3 shrink-0" strokeWidth={1.75} />
+      {t("Idle session")}
+    </Pill>
+  );
+}
+
+function Pill({
+  className,
+  children,
+}: {
+  className: string;
+  children: ReactNode;
+}) {
+  return (
+    <span
+      className={`inline-flex w-fit items-center gap-1 rounded-md px-1.5 py-0.5 text-2xs font-medium leading-none ${className}`}
+    >
+      {children}
+    </span>
   );
 }
 
@@ -270,8 +377,7 @@ function KanbanCard({
   dropTarget,
   onPointerDown,
   onOpen,
-  onArchive,
-  onUnarchive,
+  onMenu,
 }: {
   card: BoardCard;
   showProject: boolean;
@@ -280,32 +386,45 @@ function KanbanCard({
   dropTarget: boolean;
   onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
   onOpen: () => void;
-  onArchive: () => void;
-  onUnarchive: () => void;
+  onMenu: (event: ReactMouseEvent<HTMLButtonElement>) => void;
 }) {
-  const { session, needsYouReason, column } = card;
+  const { session } = card;
+  const meta = [
+    showProject ? projectName(session.cwd) : null,
+    session.repo,
+    session.branch,
+  ].filter(Boolean);
   return (
     <div
       data-kanban-card={session.id}
       onPointerDown={onPointerDown}
-      className={`group relative rounded-md border p-2 ${
+      className={`group relative rounded-lg border p-3 ${
         dragging
           ? "opacity-40"
           : dropTarget
-            ? "border-accent/60 bg-accent/5"
-            : "border-content/10 bg-background-base/60"
+            ? "border-accent/50 bg-accent/[0.06]"
+            : "border-content/10 bg-content/[0.04] hover:border-content/20 hover:bg-content/[0.06]"
       }`}
     >
+      <div className="flex min-w-0 items-center gap-1.5">
+        <StatusPill card={card} />
+        <button
+          type="button"
+          data-no-drag
+          aria-label={t("{name} menu", { name: session.title })}
+          onClick={onMenu}
+          className="ml-auto grid size-6 shrink-0 place-items-center rounded-md text-content/45 opacity-0 transition-opacity hover:bg-content/10 hover:text-content group-hover:opacity-100 group-focus-within:opacity-100"
+        >
+          <MoreHorizontal className="size-3.5" strokeWidth={1.75} />
+        </button>
+      </div>
       <button
         type="button"
         onClick={onOpen}
         aria-label={t("Open {title}", { title: session.title })}
-        className="flex w-full min-w-0 flex-col gap-1.5 text-left"
+        className="mt-1.5 flex w-full min-w-0 flex-col gap-1.5 text-left"
       >
         <span className="flex min-w-0 items-center gap-1.5">
-          {column === "working" ? (
-            <LoaderCircle className="size-3.5 shrink-0 animate-spin text-sky-400" strokeWidth={1.75} />
-          ) : null}
           <span className="min-w-0 flex-1 truncate text-sm font-semibold text-content">
             {session.title}
           </span>
@@ -313,45 +432,19 @@ function KanbanCard({
             <Pin className="size-3.5 shrink-0 text-content/40" strokeWidth={1.75} />
           ) : null}
         </span>
-        <span className="flex min-w-0 items-center gap-1.5 text-xs text-content/45">
-          <HarnessIcon harness={session.harness} className="size-3.5 shrink-0" />
-          {showProject ? (
-            <span className="truncate">{projectName(session.cwd)}</span>
-          ) : null}
-          {session.repo || session.branch ? (
-            <span className="min-w-0 truncate">
-              {[session.repo, session.branch].filter(Boolean).join(" · ")}
-            </span>
-          ) : null}
-          <span className="ml-auto shrink-0 tabular-nums">
-            {formatCardTime(session.updatedAt, now)}
-          </span>
-        </span>
-        {needsYouReason ? (
-          <span
-            className={`inline-flex w-fit items-center rounded px-1.5 py-0.5 text-2xs font-medium ${
-              needsYouReason === "waiting"
-                ? "bg-amber-500/15 text-amber-300"
-                : "bg-emerald-500/15 text-emerald-300"
-            }`}
-          >
-            {needsYouReason === "waiting" ? t("Waiting for you") : t("Finished")}
+        {meta.length > 0 ? (
+          <span className="min-w-0 truncate text-[12px] text-content/50">
+            {meta.join(" · ")}
           </span>
         ) : null}
       </button>
-      <button
-        type="button"
-        data-no-drag
-        aria-label={
-          column === "archived"
-            ? t("Unarchive {title}", { title: session.title })
-            : t("Archive {title}", { title: session.title })
-        }
-        onClick={column === "archived" ? onUnarchive : onArchive}
-        className="absolute top-1.5 right-1.5 hidden rounded border border-content/10 bg-background-base px-1.5 py-0.5 text-2xs font-medium text-content/60 hover:text-content group-hover:block group-focus-within:block"
-      >
-        {column === "archived" ? t("Unarchive") : t("Archive")}
-      </button>
+      <div className="mt-2 flex items-center gap-1.5 border-t border-dashed border-content/10 pt-2 text-[12px] text-content/45">
+        <HarnessIcon harness={session.harness} className="size-3.5 shrink-0" />
+        <span className="min-w-0 truncate">{HARNESS_LABEL[session.harness]}</span>
+        <span className="ml-auto shrink-0 tabular-nums">
+          {formatCardTime(session.updatedAt, now)}
+        </span>
+      </div>
     </div>
   );
 }

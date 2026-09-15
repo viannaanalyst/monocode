@@ -1326,6 +1326,8 @@ export const PT_BR: Record<string, string> = {
   "All projects": "Todos os projetos",
   "Needs you": "Precisa de você",
   Idle: "Ociosas",
+  "Idle session": "Ociosa",
+  "Archived session": "Arquivada",
   "Waiting for you": "Aguardando você",
   Finished: "Concluído",
   "No sessions here": "Nenhuma sessão aqui",
