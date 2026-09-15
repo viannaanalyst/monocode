@@ -24,6 +24,7 @@ fn tr(en: &str) -> String {
         "Go to File…" => "Ir para arquivo…",
         "Search…" => "Buscar…",
         "Inbox" => "Inbox",
+        "Kanban" => "Kanban",
         "Notes" => "Notas",
         "New Tab" => "Nova aba",
         "New Terminal" => "Novo terminal",
@@ -84,8 +85,8 @@ pub fn dispatch(app: &AppHandle, id: &str) {
         "new_tab" | "close_tab" | "close_other_tabs" | "next_tab" | "prev_tab" | "back_tab"
         | "forward_tab" | "split_right" | "split_down" | "focus_left" | "focus_right"
         | "focus_up" | "focus_down" | "toggle_sidebar" | "sidebar_opacity" | "open_project"
-        | "go_to_file" | "open_search" | "open_inbox" | "open_notes" | "find_in_project"
-        | "find" | "new_terminal" | "new_terminal_tab" | "toggle_terminal"
+        | "go_to_file" | "open_search" | "open_inbox" | "open_notes" | "open_kanban"
+        | "find_in_project" | "find" | "new_terminal" | "new_terminal_tab" | "toggle_terminal"
         | "open_model_picker" | "open_settings" | "check_for_updates" => {
             let _ = app.emit(id, ());
         }
@@ -139,6 +140,7 @@ fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         .accelerator("CmdOrCtrl+K")
         .build(app)?;
     let open_inbox = MenuItemBuilder::with_id("open_inbox", tr("Inbox")).build(app)?;
+    let open_kanban = MenuItemBuilder::with_id("open_kanban", tr("Kanban")).build(app)?;
     let open_notes = MenuItemBuilder::with_id("open_notes", tr("Notes")).build(app)?;
     let new_tab = MenuItemBuilder::with_id("new_tab", tr("New Tab"))
         .accelerator("CmdOrCtrl+T")
@@ -241,6 +243,7 @@ fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         .item(&toggle_sidebar)
         .item(&open_inbox)
         .item(&open_notes)
+        .item(&open_kanban)
         .item(&toggle_terminal)
         .item(&open_model_picker)
         .separator()

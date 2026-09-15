@@ -7167,6 +7167,7 @@ export default function App({
       listen("open_search", () => actions.current.onOpenSearch()),
       listen("open_inbox", () => actions.current.onOpenInbox()),
       listen("open_notes", () => actions.current.onOpenNotes()),
+      listen("open_kanban", () => actions.current.onOpenKanban()),
       listen("open_settings", () => actions.current.openSettings()),
       listen("check_for_updates", () => {
         void runUpdateFlow(true);
@@ -7404,6 +7405,7 @@ export default function App({
                   onFindInProject={onFindInProject}
                   onSearch={onOpenSearch}
                   onOpenInbox={onOpenInbox}
+                  onOpenKanban={onOpenKanban}
                   onOpenNotes={notesEnabled ? onOpenNotes : undefined}
                   onZoomIn={() => {
                     const next = saveUiScale(zoomInUiScale(loadUiScale()));
