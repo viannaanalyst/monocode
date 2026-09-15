@@ -206,7 +206,7 @@ export function CwdPicker({
     >
       <button
         type="button"
-        title={cwd}
+        data-no-tooltip
         aria-label={t("Project {label}", { label })}
         aria-expanded={open}
         aria-haspopup="menu"
@@ -295,7 +295,8 @@ export function CwdPicker({
                     ref={active === index ? activeRef : undefined}
                     type="button"
                     role="menuitem"
-                    title={item.path}
+                    data-no-tooltip
+                    aria-label={item.path}
                     onMouseDown={(e) => e.stopPropagation()}
                     onMouseEnter={() => {
                       setMoreOpen(false);

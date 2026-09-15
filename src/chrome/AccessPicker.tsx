@@ -101,9 +101,7 @@ export function AccessPicker({
     <div ref={root} className="relative">
       <button
         type="button"
-        title={`${t(RUNTIME_MODE_HINT[value])}${
-          busy ? ` ${t("Changes apply to the next turn.")}` : ""
-        }`}
+        data-no-tooltip
         aria-label={t(RUNTIME_MODE_LABEL[value])}
         aria-expanded={open}
         aria-haspopup="listbox"

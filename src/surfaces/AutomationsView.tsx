@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { CwdPicker } from "../chrome/CwdPicker";
+import { Dropdown } from "../chrome/Dropdown";
 import { AccessPicker } from "../chrome/AccessPicker";
 import { HarnessIcon } from "../chrome/HarnessIcon";
 import { ModelPicker } from "../chrome/ModelPicker";
@@ -154,17 +155,15 @@ export function AutomationEditor({
         <AccessPicker value={runtimeMode} onChange={setRuntimeMode} />
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <select
+        <Dropdown
           value={scheduleKind}
-          onChange={(event) => setScheduleKind(event.target.value as ScheduleKind)}
-          className="h-7 rounded-md border border-content/10 bg-background-base/70 px-2 text-sm text-content"
-        >
-          {SCHEDULE_OPTIONS.map((option) => (
-            <option key={option.kind} value={option.kind}>
-              {t(option.label)}
-            </option>
-          ))}
-        </select>
+          ariaLabel={t("Schedule")}
+          options={SCHEDULE_OPTIONS.map((option) => ({
+            value: option.kind,
+            label: t(option.label),
+          }))}
+          onChange={(next) => setScheduleKind(next as ScheduleKind)}
+        />
         {scheduleKind === "hourly" ? (
           <input
             type="number"
@@ -177,18 +176,15 @@ export function AutomationEditor({
           />
         ) : null}
         {scheduleKind === "weekly" ? (
-          <select
-            value={weekday}
-            onChange={(event) => setWeekday(Number(event.target.value))}
-            className="h-7 rounded-md border border-content/10 bg-background-base/70 px-2 text-sm text-content"
-            aria-label={t("Weekday")}
-          >
-            {WEEKDAYS.map((label, index) => (
-              <option key={label} value={index}>
-                {t(label)}
-              </option>
-            ))}
-          </select>
+          <Dropdown
+            value={String(weekday)}
+            ariaLabel={t("Weekday")}
+            options={WEEKDAYS.map((label, index) => ({
+              value: String(index),
+              label: t(label),
+            }))}
+            onChange={(next) => setWeekday(Number(next))}
+          />
         ) : null}
         {scheduleKind !== "hourly" ? (
           <>
@@ -213,19 +209,19 @@ export function AutomationEditor({
           </>
         ) : null}
       </div>
-      <select
+      <Dropdown
         value={failurePolicy}
-        onChange={(event) =>
-          setFailurePolicy(event.target.value as Automation["failurePolicy"])
+        ariaLabel={t("Failure policy")}
+        options={[
+          { value: "pause_after_1", label: t("Pause after 1 failure") },
+          { value: "pause_after_3", label: t("Pause after 3 failures") },
+          { value: "pause_after_5", label: t("Pause after 5 failures") },
+          { value: "keep_running", label: t("Keep running") },
+        ]}
+        onChange={(next) =>
+          setFailurePolicy(next as Automation["failurePolicy"])
         }
-        className="h-7 w-fit rounded-md border border-content/10 bg-background-base/70 px-2 text-sm text-content"
-        aria-label={t("Failure policy")}
-      >
-        <option value="pause_after_1">{t("Pause after 1 failure")}</option>
-        <option value="pause_after_3">{t("Pause after 3 failures")}</option>
-        <option value="pause_after_5">{t("Pause after 5 failures")}</option>
-        <option value="keep_running">{t("Keep running")}</option>
-      </select>
+      />
       <div className="flex items-center gap-2">
         <button
           type="submit"

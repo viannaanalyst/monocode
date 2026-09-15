@@ -111,7 +111,7 @@ it("offers all other rail projects in rail order in one move menu", async () => 
   const items = [
     ...menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'),
   ];
-  expect(items.map((item) => item.title)).toEqual([
+  expect(items.map((item) => item.getAttribute("aria-label"))).toEqual([
     "/work/Seventh",
     "/work/Fourth",
     "/work/Third",
@@ -142,7 +142,7 @@ async function chooseProject() {
   await act(async () => button!.click());
   const item = [
     ...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'),
-  ].find((element) => element.title === "/work/portognjeeen");
+  ].find((element) => element.getAttribute("aria-label") === "/work/portognjeeen");
   expect(item).toBeDefined();
   await act(async () => item!.click());
 }
@@ -472,7 +472,7 @@ it("clears a failed move error when the saved project is selected again", async 
   await act(async () => projectButton()!.click());
   const original = [
     ...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'),
-  ].find((item) => item.title === "/work/Edefyn");
+  ].find((item) => item.getAttribute("aria-label") === "/work/Edefyn");
   expect(original).toBeDefined();
   await act(async () => original!.click());
 
