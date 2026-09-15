@@ -1,4 +1,5 @@
 import { Check, ChevronDown, ChevronRight, RotateCcw, Zap } from "./icons";
+import { modelBrandColor } from "../lib/modelBrand";
 import {
   useEffect,
   useId,
@@ -219,6 +220,52 @@ function recentMenuModels(current: AgentModel): AgentModel[] {
 
 const SLIDER_INSET = 10;
 
+/**
+ * Swaps the effort label with a short out/in slide, so a change reads as a
+ * move up or down the scale rather than a silent text replacement.
+ */
+function SwappingLabel({ text, index }: { text: string; index: number }) {
+  const [shown, setShown] = useState(text);
+  const [outgoing, setOutgoing] = useState<string | null>(null);
+  const direction = useRef<1 | -1>(1);
+  const lastIndex = useRef(index);
+
+  useEffect(() => {
+    if (text === shown) return;
+    direction.current = index >= lastIndex.current ? 1 : -1;
+    lastIndex.current = index;
+    setOutgoing(shown);
+    setShown(text);
+    const timer = window.setTimeout(() => setOutgoing(null), 170);
+    return () => window.clearTimeout(timer);
+  }, [index, shown, text]);
+
+  return (
+    <span className="relative inline-block">
+      {outgoing != null ? (
+        <span
+          aria-hidden="true"
+          className="effort-label-out absolute inset-0"
+          style={{
+            ["--effort-swap-y" as string]: `calc(${-8 * direction.current}px)`,
+          }}
+        >
+          {outgoing}
+        </span>
+      ) : null}
+      <span
+        key={shown}
+        className="effort-label-in inline-block"
+        style={{
+          ["--effort-swap-y" as string]: `${8 * direction.current}px`,
+        }}
+      >
+        {shown}
+      </span>
+    </span>
+  );
+}
+
 function effortStop(ratio: number): string {
   return `calc(${SLIDER_INSET}px + ${ratio} * (100% - ${SLIDER_INSET * 2}px))`;
 }
@@ -229,6 +276,7 @@ function EffortSlider({
   label,
   valueText,
   fast = false,
+  color = "var(--color-accent)",
   onChange,
 }: {
   options: ModelSettingChoice[];
@@ -236,6 +284,7 @@ function EffortSlider({
   label: string;
   valueText: string;
   fast?: boolean;
+  color?: string;
   onChange: (value: string) => void;
 }) {
   const track = useRef<HTMLDivElement>(null);
@@ -301,10 +350,14 @@ function EffortSlider({
       }}
       className="relative mt-1 h-[30px] w-full cursor-pointer touch-none outline-none"
     >
-      <div className="absolute inset-x-0 top-1/2 h-[22px] -translate-y-1/2 rounded-full bg-content/12" />
       <div
-        className="absolute top-1/2 left-0 h-[22px] -translate-y-1/2 overflow-hidden rounded-full bg-accent"
+        className="absolute inset-x-0 top-1/2 h-[22px] -translate-y-1/2 rounded-full"
+        style={{ background: `color-mix(in srgb, ${color} 14%, transparent)` }}
+      />
+      <div
+        className="absolute top-1/2 left-0 h-[22px] -translate-y-1/2 overflow-hidden rounded-full"
         style={{
+          backgroundColor: color,
           width:
             ratio >= 1
               ? "100%"
@@ -312,20 +365,28 @@ function EffortSlider({
         }}
       >
         {fast
-          ? FAST_SPARKS.map((spark, index) => (
+          ? FAST_BOLTS.map((bolt, index) => (
               <span
                 key={index}
                 aria-hidden="true"
-                className="effort-fast-spark"
+                className="effort-fast-bolt"
                 style={{
-                  left: spark.left,
-                  top: spark.top,
-                  width: spark.size,
-                  height: spark.size,
-                  ["--effort-delay" as string]: spark.delay,
-                  ["--effort-twinkle" as string]: spark.duration,
+                  left: bolt.left,
+                  top: bolt.top,
+                  width: bolt.size,
+                  height: bolt.size,
+                  ["--effort-delay" as string]: bolt.delay,
+                  ["--effort-twinkle" as string]: bolt.duration,
                 }}
-              />
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className="block size-full"
+                >
+                  <path d="M13 2 4.5 13.5H11l-1 8.5 9.5-12H13z" />
+                </svg>
+              </span>
             ))
           : null}
       </div>
@@ -334,9 +395,12 @@ function EffortSlider({
           key={option.value}
           aria-hidden="true"
           className={`pointer-events-none absolute top-1/2 size-1 -translate-x-1/2 -translate-y-1/2 rounded-full ${
-            index <= selected ? "bg-white/70" : "bg-content/30"
-          }`}
-          style={{ left: effortStop(index / max) }}
+            index <= selected ? "" : "bg-content/30"
+          } ${index === selected && !fast ? "effort-dot-live" : ""}`}
+          style={{
+            left: effortStop(index / max),
+            ...(index <= selected ? { backgroundColor: color } : {}),
+          }}
         />
       ))}
       <span
@@ -348,16 +412,11 @@ function EffortSlider({
   );
 }
 
-const FAST_SPARKS = [
-  { left: "8%", top: "38%", size: 3, delay: "0s", duration: "1.7s" },
-  { left: "18%", top: "62%", size: 2, delay: "0.25s", duration: "2.1s" },
-  { left: "27%", top: "28%", size: 2.5, delay: "0.5s", duration: "1.5s" },
-  { left: "38%", top: "58%", size: 3.5, delay: "0.1s", duration: "1.9s" },
-  { left: "48%", top: "32%", size: 2, delay: "0.7s", duration: "1.6s" },
-  { left: "57%", top: "68%", size: 2.5, delay: "0.35s", duration: "2s" },
-  { left: "68%", top: "40%", size: 3, delay: "0.9s", duration: "1.8s" },
-  { left: "78%", top: "55%", size: 2, delay: "0.15s", duration: "1.4s" },
-  { left: "88%", top: "30%", size: 2.5, delay: "0.55s", duration: "2.2s" },
+const FAST_BOLTS = [
+  { left: "9%", top: "24%", size: 10, delay: "0s", duration: "1.7s" },
+  { left: "31%", top: "48%", size: 8, delay: "0.3s", duration: "2s" },
+  { left: "54%", top: "22%", size: 11, delay: "0.6s", duration: "1.6s" },
+  { left: "76%", top: "46%", size: 9, delay: "0.15s", duration: "1.9s" },
 ];
 
 export function ModelPicker({
@@ -417,6 +476,9 @@ export function ModelPicker({
 
   const current = resolveModel(harness, model);
   currentRef.current = current;
+  const brand = modelBrandColor(
+    `${current.name} ${current.id} ${current.nativeId ?? ""}`,
+  );
   const settings = useMemo(() => {
     void catalogVersion;
     return pickerSettings(current);
@@ -943,11 +1005,21 @@ export function ModelPicker({
                     }}
                     className="min-w-0 flex-1 rounded-md px-1 py-0 text-center hover:bg-content/5"
                   >
-                    <span className="flex items-center justify-center gap-1 text-sm font-medium text-accent">
+                    <span
+                      className="flex items-center justify-center gap-1 text-sm font-medium"
+                      style={{ color: brand }}
+                    >
                       <span className="min-w-0 truncate">
-                        {effortSetting
-                          ? settingValueLabel(effortSetting, values)
-                          : current.name}
+                        {effortSetting ? (
+                          <SwappingLabel
+                            text={settingValueLabel(effortSetting, values)}
+                            index={effortOptions.findIndex(
+                              (option) => option.value === effortValue,
+                            )}
+                          />
+                        ) : (
+                          current.name
+                        )}
                       </span>
                       <ChevronRight
                         className="size-3.5 shrink-0"
@@ -985,6 +1057,7 @@ export function ModelPicker({
                       label={settingLabel(effortSetting)}
                       valueText={settingValueLabel(effortSetting, values)}
                       fast={fastOn}
+                      color={brand}
                       onChange={(value) => setSetting(effortSetting, value)}
                     />
                   </div>

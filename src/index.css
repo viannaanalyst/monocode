@@ -220,6 +220,64 @@ html.has-native-glass:not(.theme-light) #root {
   animation-duration: var(--effort-twinkle, 1.7s), 2.8s;
 }
 
+.effort-fast-bolt {
+  position: absolute;
+  color: #fff;
+  pointer-events: none;
+  animation-name: effort-fast-twinkle, effort-fast-drift;
+  animation-timing-function: ease-in-out, ease-in-out;
+  animation-iteration-count: infinite, infinite;
+  animation-delay: var(--effort-delay, 0s), var(--effort-delay, 0s);
+  animation-duration: var(--effort-twinkle, 1.7s), 2.8s;
+}
+
+/* The stop under the knob breathes so the current level reads as live. */
+.effort-dot-live {
+  animation: effort-dot-live 1.8s ease-in-out infinite;
+}
+
+@keyframes effort-dot-live {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.25);
+  }
+}
+
+.effort-label-in {
+  animation: effort-label-in 170ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.effort-label-out {
+  animation: effort-label-out 150ms cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+@keyframes effort-label-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--effort-swap-y, 6px));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes effort-label-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(var(--effort-swap-y, -6px));
+  }
+}
+
 @keyframes effort-fast-twinkle {
   0%,
   100% {
@@ -241,9 +299,16 @@ html.has-native-glass:not(.theme-light) #root {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .effort-fast-spark {
+  .effort-fast-spark,
+  .effort-fast-bolt {
     animation: none;
     opacity: 0.55;
+  }
+
+  .effort-dot-live,
+  .effort-label-in,
+  .effort-label-out {
+    animation: none;
   }
 }
 

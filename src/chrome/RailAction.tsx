@@ -9,6 +9,8 @@ type Props = {
   dot?: boolean;
   shortcut?: string;
   ariaLabel?: string;
+  /** Footer rows match the bottom status bar's height. */
+  dense?: boolean;
 };
 
 export function RailAction({
@@ -20,6 +22,7 @@ export function RailAction({
   dot = false,
   shortcut,
   ariaLabel,
+  dense = false,
 }: Props) {
   return (
     <button
@@ -28,7 +31,7 @@ export function RailAction({
       disabled={!onClick}
       data-no-tooltip
       aria-label={ariaLabel ?? label}
-      className={`relative flex w-full items-center gap-2 rounded-md px-2 h-8  text-left ${
+      className={`relative flex w-full items-center gap-2 rounded-md px-2 text-left ${dense ? "h-7" : "h-8"} ${
         active
           ? "bg-content/10 text-content"
           : "text-content/50 hover:bg-content/10 hover:text-content"

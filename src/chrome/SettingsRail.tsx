@@ -68,8 +68,8 @@ export function SettingsNav({ section, onSelect, onClose }: Props) {
           </div>
         ))}
       </div>
-      <div className="flex shrink-0 flex-col gap-px border-t border-content/10 p-2">
-        <RailAction label={t("Back")} icon={ArrowLeft} onClick={onClose} />
+      <div className="flex shrink-0 flex-col gap-px border-t border-content/10 px-2 py-0">
+        <RailAction label={t("Back")} icon={ArrowLeft} onClick={onClose} dense />
       </div>
     </>
   );

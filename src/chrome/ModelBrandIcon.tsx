@@ -14,6 +14,7 @@ import Qwen from "@lobehub/icons/es/Qwen/components/Color";
 import XAI from "@lobehub/icons/es/XAI/components/Mono";
 import Zhipu from "@lobehub/icons/es/Zhipu/components/Color";
 import type { AgentModel } from "../lib/models";
+import { modelVendor } from "../lib/modelBrand";
 import type { HarnessId } from "../lib/session";
 import { HarnessIcon } from "./HarnessIcon";
 
@@ -25,22 +26,23 @@ type LobeIcon = ComponentType<{ size?: number | string; className?: string }>;
  * heavy Avatar/Combine wrappers and their `@lobehub/ui` peer stay out of the
  * bundle.
  */
-const BRANDS: { test: RegExp; Icon: LobeIcon }[] = [
-  { test: /deepseek/, Icon: DeepSeek },
-  { test: /\b(gpt|chatgpt|codex|o1|o3|o4)\b/, Icon: OpenAIMono },
-  { test: /claude|sonnet|opus|haiku|fable|anthropic/, Icon: Claude },
-  { test: /gemini/, Icon: Gemini },
-  { test: /grok|xai/, Icon: XAI },
-  { test: /\bglm\b|zhipu|chatglm/, Icon: Zhipu },
-  { test: /kimi|moonshot/, Icon: Kimi },
-  { test: /qwen|alibaba/, Icon: Qwen },
-  { test: /minimax/, Icon: Minimax },
-  { test: /mistral|mixtral/, Icon: Mistral },
-  { test: /llama|\bmeta\b/, Icon: Meta },
-  { test: /perplexity|sonar/, Icon: Perplexity },
-  { test: /openrouter/, Icon: OpenRouter },
-  { test: /groq/, Icon: Groq },
-];
+const ICONS: Record<string, LobeIcon> = {
+  deepseek: DeepSeek,
+  openai: OpenAIMono,
+  claude: Claude,
+  gemini: Gemini,
+  xai: XAI,
+  zhipu: Zhipu,
+  kimi: Kimi,
+  qwen: Qwen,
+  minimax: Minimax,
+  mistral: Mistral,
+  meta: Meta,
+  perplexity: Perplexity,
+  openrouter: OpenRouter,
+  groq: Groq,
+};
+
 
 /** The model vendor's mark from free text, falling back to the harness icon. */
 export function ModelBrandMark({
@@ -52,14 +54,12 @@ export function ModelBrandMark({
   harness?: HarnessId;
   className?: string;
 }) {
-  const hay = text.toLowerCase();
-  const brand = BRANDS.find((entry) => entry.test.test(hay));
-  if (!brand) {
+  const Icon = ICONS[modelVendor(text)?.id ?? ""];
+  if (!Icon) {
     return harness ? (
       <HarnessIcon harness={harness} className={className} />
     ) : null;
   }
-  const Icon = brand.Icon;
   return (
     <span
       aria-hidden

@@ -572,13 +572,14 @@ export function ProjectRail({
             onOpenWhatsNew={onOpenWhatsNew}
             onDismissUpdate={onDismissUpdate}
           />
-          <div className="flex shrink-0 flex-col gap-px border-t border-content/10 p-2">
+          <div className="flex shrink-0 flex-col gap-px border-t border-content/10 px-2 py-0">
             <RailAction
               label={t("Settings")}
               icon={Settings}
               onClick={onOpenSettings}
               shortcut={`${MOD},`}
               ariaLabel={withShortcut("Settings", `${MOD},`)}
+              dense
             />
           </div>
         </>
