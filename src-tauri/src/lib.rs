@@ -1,5 +1,6 @@
 use tauri::Manager;
 
+mod automations;
 mod browser;
 mod chat_background;
 mod checkpoint;
@@ -258,6 +259,15 @@ pub fn run() {
             reminders::reminder_take_open,
             reminders::reminder_register_window,
             reminders::reminder_open,
+            automations::automation_list,
+            automations::automation_upsert,
+            automations::automation_delete,
+            automations::automation_set_enabled,
+            automations::automation_set_session,
+            automations::automation_runs,
+            automations::automation_take_due,
+            automations::automation_record_missed,
+            automations::automation_record_result,
             fs::list_dir,
             fs::list_project_files,
             fs::git_diff_stats,
@@ -290,6 +300,11 @@ pub fn run() {
             fs::git_github_work_item_thread,
             fs::git_github_work_item_comment,
             fs::git_github_pr_diff,
+            fs::git_github_pr_merge,
+            fs::git_github_pr_state,
+            fs::git_github_pr_edit,
+            fs::git_github_repo_meta,
+            fs::git_github_pr_review,
             inbox_media::fetch_inbox_media,
             gitlab::gitlab_status,
             gitlab::gitlab_set_config,

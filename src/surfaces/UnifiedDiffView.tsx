@@ -79,6 +79,12 @@ type Props = {
   onStageFile?: (id: string) => void;
   onDiscardFile?: (id: string) => void;
   onStageHunk?: (id: string, pos: number) => void;
+  /** When set, line comments go here instead of the chat. */
+  onLineComment?: (comment: {
+    filePath: string;
+    line: UnifiedLine;
+    body: string;
+  }) => void;
   /** Override the generic git wording for other review surfaces. */
   stageTitle?: string;
   discardTitle?: string;
@@ -98,6 +104,7 @@ export function UnifiedDiffView({
   onStageFile,
   onDiscardFile,
   onStageHunk,
+  onLineComment,
   stageTitle,
   discardTitle,
 }: Props) {
@@ -264,6 +271,7 @@ export function UnifiedDiffView({
               onStageFile={onStageFile}
               onDiscardFile={onDiscardFile}
               onStageHunk={onStageHunk}
+              onLineComment={onLineComment}
               stageTitle={stageTitle}
               discardTitle={discardTitle}
               bindRef={bindFileRef}
@@ -294,6 +302,7 @@ type FileSectionProps = {
   onStageFile?: (id: string) => void;
   onDiscardFile?: (id: string) => void;
   onStageHunk?: (id: string, pos: number) => void;
+  onLineComment?: Props["onLineComment"];
   stageTitle?: string;
   discardTitle?: string;
   bindRef: (path: string, node: HTMLElement | null) => void;
@@ -313,6 +322,7 @@ const FileSection = memo(function FileSection({
   onStageFile,
   onDiscardFile,
   onStageHunk,
+  onLineComment,
   stageTitle,
   discardTitle,
   bindRef,
@@ -442,6 +452,7 @@ const FileSection = memo(function FileSection({
             onReveal(file.id, foldId, total, direction);
           }}
           onStageHunk={onStageHunk}
+          onLineComment={onLineComment}
         />
       ) : null}
     </section>
@@ -468,6 +479,7 @@ function equalFileSectionProps(
     previous.onStageFile === next.onStageFile &&
     previous.onDiscardFile === next.onDiscardFile &&
     previous.onStageHunk === next.onStageHunk &&
+    previous.onLineComment === next.onLineComment &&
     previous.stageTitle === next.stageTitle &&
     previous.discardTitle === next.discardTitle &&
     previous.bindRef === next.bindRef
@@ -503,6 +515,7 @@ function FileBody({
   scrollerRef,
   onReveal,
   onStageHunk,
+  onLineComment,
 }: {
   file: UnifiedDiffFileModel;
   reveals: Record<string, FoldReveal>;
@@ -511,6 +524,7 @@ function FileBody({
   scrollerRef: React.RefObject<HTMLDivElement | null>;
   onReveal: (foldId: string, direction: "up" | "down" | "all") => void;
   onStageHunk?: (id: string, pos: number) => void;
+  onLineComment?: Props["onLineComment"];
 }) {
   if (file.binary) return <EmptyBody>{t("Binary file changed")}</EmptyBody>;
   if (file.tooLarge) return <EmptyBody>{t("Diff is too large to display")}</EmptyBody>;
@@ -529,6 +543,7 @@ function FileBody({
       scrollerRef={scrollerRef}
       onReveal={onReveal}
       onStageHunk={onStageHunk}
+      onLineComment={onLineComment}
     />
   );
 }
@@ -544,6 +559,7 @@ function VirtualRows({
   scrollerRef,
   onReveal,
   onStageHunk,
+  onLineComment,
 }: {
   fileId: string;
   filePath: string;
@@ -555,6 +571,7 @@ function VirtualRows({
   scrollerRef: React.RefObject<HTMLDivElement | null>;
   onReveal: (foldId: string, direction: "up" | "down" | "all") => void;
   onStageHunk?: (id: string, pos: number) => void;
+  onLineComment?: Props["onLineComment"];
 }) {
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const codeRef = useRef<HTMLDivElement | null>(null);
@@ -795,6 +812,17 @@ function VirtualRows({
           path={filePath}
           target={commentTarget}
           onDismiss={() => setCommentTarget(null)}
+          {...(onLineComment
+            ? {
+                submitLabel: t("Add to review"),
+                onSubmit: (body: string) =>
+                  onLineComment({
+                    filePath,
+                    line: commentTarget.line,
+                    body,
+                  }),
+              }
+            : {})}
         />
       ) : null}
     </>

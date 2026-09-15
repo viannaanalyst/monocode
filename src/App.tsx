@@ -58,6 +58,7 @@ import { ImportSessionDialog } from "./chrome/ImportSessionDialog";
 import { useProjectBranches } from "./hooks/useProjectBranches";
 import { useGitFileStatuses } from "./hooks/useGitFileStatuses";
 import { useInboxActivity } from "./hooks/useInboxUnseen";
+import { useAutomations } from "./hooks/useAutomations";
 import { useDragResize } from "./hooks/useDragResize";
 import {
   defaultRightPanelWidth,
@@ -312,6 +313,11 @@ import {
   dequeueQueuedMessage,
   queuedMessageForSubmit,
 } from "./lib/messageQueue";
+import {
+  setAutomationSession,
+  upsertAutomation,
+  type Automation,
+} from "./lib/automationStore";
 import { dropContextWindow } from "./lib/contextUsage";
 import {
   deleteSession,
@@ -406,6 +412,8 @@ import { InboxView } from "./surfaces/InboxView";
 import type { InboxSessionPortal } from "./surfaces/InboxDiscussionPanel";
 import { inboxAskKey, inboxAskPrompt } from "./lib/inboxAsk";
 import { NotesView } from "./surfaces/NotesView";
+import { KanbanView } from "./surfaces/KanbanView";
+import { AutomationsView } from "./surfaces/AutomationsView";
 import {
   githubWorkItemThread,
   inboxComposerCard,
@@ -483,6 +491,17 @@ import {
   setQuitWorkspace,
   type ResumedWorkspace,
 } from "./lib/appLifecycle";
+
+const AUTOMATION_RUN_TIMEOUT_MS = 30 * 60_000;
+
+function parseModelSettings(raw: string): Record<string, string> {
+  try {
+    const parsed = JSON.parse(raw) as Record<string, string>;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
 
 function withPlanStatus(
   session: Session,
@@ -864,6 +883,9 @@ export default function App({
     useState<InboxSessionPortal | null>(null);
   const openingInboxSessions = useRef(new Map<string, Promise<string>>());
   const [notesViewOpen, setNotesViewOpen] = useState(false);
+  const [kanbanViewOpen, setKanbanViewOpen] = useState(false);
+  const [automationsViewOpen, setAutomationsViewOpen] = useState(false);
+  const [newAutomationId, setNewAutomationId] = useState<string | null>(null);
   const [inspectedWorkerId, setInspectedWorkerId] = useState<string | null>(
     null,
   );
@@ -931,6 +953,8 @@ export default function App({
 
   const sessionsRef = useRef(sessions);
   sessionsRef.current = sessions;
+  const historyRef = useRef(history);
+  historyRef.current = history;
   const linkedSessionUpdatesRef = useRef<
     ReadonlyMap<string, LinkedSessionUpdate>
   >(new Map());
@@ -954,6 +978,10 @@ export default function App({
   inboxViewOpenRef.current = inboxViewOpen;
   const notesViewOpenRef = useRef(notesViewOpen);
   notesViewOpenRef.current = notesViewOpen;
+  const kanbanViewOpenRef = useRef(kanbanViewOpen);
+  kanbanViewOpenRef.current = kanbanViewOpen;
+  const automationsViewOpenRef = useRef(automationsViewOpen);
+  automationsViewOpenRef.current = automationsViewOpen;
   const settingsOpenRef = useRef(settingsOpen);
   settingsOpenRef.current = settingsOpen;
   const sessionNavigationIdsRef = useRef<readonly string[]>([]);
@@ -1314,7 +1342,9 @@ export default function App({
 
   const activeSessionId = inboxViewOpen
     ? inboxAskPortal?.sessionId
-    : active?.id;
+    : kanbanViewOpen || automationsViewOpen
+      ? undefined
+      : active?.id;
   const activeSessionIdRef = useRef(activeSessionId);
   activeSessionIdRef.current = activeSessionId;
 
@@ -1831,6 +1861,8 @@ export default function App({
     setSearchViewOpen(false);
     setInboxViewOpen(false);
     setNotesViewOpen(false);
+    setKanbanViewOpen(false);
+    setAutomationsViewOpen(false);
     const cwd = active?.cwd ?? sessionDefaults?.cwd ?? projectCwd;
     const session = newAvailableDefaultSession(cwd, sessionDefaults?.runtimeMode);
     const tab = newTab(session.id);
@@ -1852,6 +1884,8 @@ export default function App({
       const start = (description?: string) => {
         setInboxViewOpen(false);
         setNotesViewOpen(false);
+        setKanbanViewOpen(false);
+        setAutomationsViewOpen(false);
         setSidebarTab("sessions");
         const cwd =
           item.projectPath || active?.cwd || sessionDefaults?.cwd || projectCwd;
@@ -1907,6 +1941,8 @@ export default function App({
       setSearchViewOpen(false);
       setInboxViewOpen(false);
       setNotesViewOpen(false);
+      setKanbanViewOpen(false);
+      setAutomationsViewOpen(false);
       setSidebarTab("sessions");
       const cwd =
         (card.sourceCwd && looksLikeProject(card.sourceCwd)
@@ -3723,6 +3759,8 @@ export default function App({
       setSearchViewOpen(false);
       setInboxViewOpen(false);
       setNotesViewOpen(false);
+      setKanbanViewOpen(false);
+      setAutomationsViewOpen(false);
       setSettingsOpen(false);
       setFilePickerOpen(false);
       setSidebarTab("sessions");
@@ -4137,6 +4175,8 @@ export default function App({
             searchViewOpenRef.current ||
             inboxViewOpenRef.current ||
             notesViewOpenRef.current ||
+            kanbanViewOpenRef.current ||
+            automationsViewOpenRef.current ||
             settingsOpenRef.current ||
             filePickerOpenRef.current ||
             whatsNewVersionRef.current,
@@ -4335,6 +4375,8 @@ export default function App({
       setSearchViewOpen(false);
       setInboxViewOpen(false);
       setNotesViewOpen(false);
+      setKanbanViewOpen(false);
+      setAutomationsViewOpen(false);
       const normalized = normalizeProjectPath(path);
       if (!looksLikeProject(normalized)) return;
 
@@ -4400,6 +4442,8 @@ export default function App({
       setSearchViewOpen(false);
       setInboxViewOpen(false);
       setNotesViewOpen(false);
+      setKanbanViewOpen(false);
+      setAutomationsViewOpen(false);
       const seed = active ?? sessionsRef.current[0];
       const session = newSession(
         seed?.harness ?? "claude",
@@ -6521,6 +6565,8 @@ export default function App({
       setSearchViewOpen(false);
       setInboxViewOpen(false);
       setNotesViewOpen(false);
+      setKanbanViewOpen(false);
+      setAutomationsViewOpen(false);
       onOpenApprovalSession(sessionId);
     },
     [onOpenApprovalSession],
@@ -6618,6 +6664,8 @@ export default function App({
     setSearchViewOpen(false);
     setInboxViewOpen(false);
     setNotesViewOpen(false);
+    setKanbanViewOpen(false);
+    setAutomationsViewOpen(false);
     setFilePickerOpen(true);
   }, []);
 
@@ -6625,6 +6673,8 @@ export default function App({
     setSearchViewOpen(false);
     setInboxViewOpen(false);
     setNotesViewOpen(false);
+    setKanbanViewOpen(false);
+    setAutomationsViewOpen(false);
     showRightDock("explorer");
     setFilesSearchOpen(true);
     setSearchFocusToken((token) => token + 1);
@@ -6635,6 +6685,8 @@ export default function App({
     setSettingsOpen(false);
     setInboxViewOpen(false);
     setNotesViewOpen(false);
+    setKanbanViewOpen(false);
+    setAutomationsViewOpen(false);
     setSearchViewOpen(true);
     setSearchViewFocusToken((token) => token + 1);
   }, []);
@@ -6648,6 +6700,8 @@ export default function App({
     setSettingsOpen(false);
     setSearchViewOpen(false);
     setNotesViewOpen(false);
+    setKanbanViewOpen(false);
+    setAutomationsViewOpen(false);
     setInboxTarget(null);
     setInboxViewOpen(true);
   }, []);
@@ -6657,6 +6711,8 @@ export default function App({
     setSettingsOpen(false);
     setSearchViewOpen(false);
     setNotesViewOpen(false);
+    setKanbanViewOpen(false);
+    setAutomationsViewOpen(false);
     setInboxTarget(item);
     setInboxViewOpen(true);
   }, []);
@@ -6682,6 +6738,8 @@ export default function App({
     setSettingsOpen(false);
     setSearchViewOpen(false);
     setInboxViewOpen(false);
+    setKanbanViewOpen(false);
+    setAutomationsViewOpen(false);
     setNotesViewOpen(true);
   }, []);
 
@@ -6689,12 +6747,132 @@ export default function App({
     setNotesViewOpen(false);
   }, []);
 
+  const onOpenKanban = useCallback(() => {
+    setFilePickerOpen(false);
+    setSettingsOpen(false);
+    setSearchViewOpen(false);
+    setInboxViewOpen(false);
+    setNotesViewOpen(false);
+    setAutomationsViewOpen(false);
+    setKanbanViewOpen(true);
+  }, []);
+
+  const onLeaveKanban = useCallback(() => {
+    setKanbanViewOpen(false);
+    setAutomationsViewOpen(false);
+  }, []);
+
+  const onOpenKanbanSession = useCallback(
+    (sessionId: string) => {
+      setKanbanViewOpen(false);
+      setAutomationsViewOpen(false);
+      setSidebarTab("sessions");
+      void onSelectHistorySession(sessionId);
+    },
+    [onSelectHistorySession],
+  );
+
+  const onOpenAutomations = useCallback(() => {
+    setFilePickerOpen(false);
+    setSettingsOpen(false);
+    setSearchViewOpen(false);
+    setInboxViewOpen(false);
+    setNotesViewOpen(false);
+    setKanbanViewOpen(false);
+    setAutomationsViewOpen(true);
+  }, []);
+
+  const onLeaveAutomations = useCallback(() => {
+    setAutomationsViewOpen(false);
+  }, []);
+
+  const onOpenAutomationSession = useCallback(
+    (sessionId: string) => {
+      setAutomationsViewOpen(false);
+      setSidebarTab("sessions");
+      void onSelectHistorySession(sessionId);
+    },
+    [onSelectHistorySession],
+  );
+
+  const reportAutomationError = useCallback((error: unknown) => {
+    void message(
+      t("Could not update this automation.\n\n{detail}", {
+        detail: String(error),
+      }),
+      { title: t("MonoCode"), kind: "error" },
+    );
+  }, []);
+
+  const dispatchAutomationRun = useCallback(
+    async (
+      automation: Automation,
+    ): Promise<"completed" | "failed" | "cancelled" | "skipped" | "timed_out"> => {
+      let session = automation.sessionId
+        ? sessionsRef.current.find((entry) => entry.id === automation.sessionId)
+        : undefined;
+      if (!session && automation.sessionId) {
+        const known = historyRef.current.find(
+          (entry) => entry.id === automation.sessionId,
+        );
+        if (known?.archived) {
+          await onArchiveHistorySession(automation.sessionId, false);
+        }
+        session = (await ensureOpenSession(automation.sessionId)) ?? undefined;
+      }
+      if (!session) {
+        const fresh = newSession(
+          automation.harness as HarnessId,
+          automation.cwd,
+          automation.model,
+          automation.runtimeMode as RuntimeMode,
+          parseModelSettings(automation.modelSettings),
+        );
+        setSessions((current) => [...current, fresh]);
+        sessionsRef.current = [...sessionsRef.current, fresh];
+        await setAutomationSession(automation.id, fresh.id);
+        session = fresh;
+      }
+      const current =
+        sessionsRef.current.find((entry) => entry.id === session?.id) ?? session;
+      if (!current) return "skipped";
+      if (
+        current.busy ||
+        (current.queuedMessages?.length ?? 0) > 0 ||
+        isPreparingHandoff(current) ||
+        current.pendingSwitch
+      ) {
+        return "skipped";
+      }
+      return new Promise((resolve) => {
+        // `onSubmit` can return early without settling (orchestration guard,
+        // removal race). The timeout keeps the automation from stalling
+        // forever in `activeRuns`.
+        const timer = window.setTimeout(
+          () => resolve("timed_out"),
+          AUTOMATION_RUN_TIMEOUT_MS,
+        );
+        onSubmit(current.id, automation.prompt, [], {
+          onSettled: (outcome) => {
+            window.clearTimeout(timer);
+            resolve(outcome.status);
+          },
+        });
+      });
+    },
+    [ensureOpenSession, onArchiveHistorySession, onSubmit],
+  );
+
+  const automations = useAutomations({ dispatch: dispatchAutomationRun });
+
   const openSettings = useCallback(
     (section?: SettingsSectionId, anchor?: SettingsAnchor) => {
       setFilePickerOpen(false);
       setSearchViewOpen(false);
       setInboxViewOpen(false);
       setNotesViewOpen(false);
+      setKanbanViewOpen(false);
+      setAutomationsViewOpen(false);
       if (section) {
         setSettingsSection(section);
         saveSettingsSection(section);
@@ -6746,14 +6924,32 @@ export default function App({
       setNotesViewOpen(false);
       return;
     }
+    if (kanbanViewOpen) {
+      setKanbanViewOpen(false);
+      return;
+    }
+    if (automationsViewOpen) {
+      setAutomationsViewOpen(false);
+      return;
+    }
     onVisitBack();
-  }, [onVisitBack, searchViewOpen, settingsOpen, inboxViewOpen, notesViewOpen]);
+  }, [
+    onVisitBack,
+    searchViewOpen,
+    settingsOpen,
+    inboxViewOpen,
+    notesViewOpen,
+    kanbanViewOpen,
+    automationsViewOpen,
+  ]);
 
   const onRailForward = useCallback(() => {
     setSearchViewOpen(false);
     setSettingsOpen(false);
     setInboxViewOpen(false);
     setNotesViewOpen(false);
+    setKanbanViewOpen(false);
+    setAutomationsViewOpen(false);
     onVisitForward();
   }, [onVisitForward]);
 
@@ -6843,6 +7039,8 @@ export default function App({
     onFindInProject,
     onOpenSearch,
     onOpenInbox,
+    onOpenKanban,
+    onOpenAutomations,
     onOpenNotes,
     pickProject,
     onNewTerminal,
@@ -6871,6 +7069,8 @@ export default function App({
     onFindInProject,
     onOpenSearch,
     onOpenInbox,
+    onOpenKanban,
+    onOpenAutomations,
     onOpenNotes,
     pickProject,
     onNewTerminal,
@@ -6938,6 +7138,8 @@ export default function App({
             searchViewOpenRef.current ||
             inboxViewOpenRef.current ||
             notesViewOpenRef.current ||
+            kanbanViewOpenRef.current ||
+            automationsViewOpenRef.current ||
             settingsOpenRef.current ||
             filePickerOpenRef.current ||
             Boolean(whatsNewVersionRef.current);
@@ -7013,6 +7215,8 @@ export default function App({
         !searchViewOpenRef.current &&
         !inboxViewOpenRef.current &&
         !notesViewOpenRef.current &&
+        !kanbanViewOpenRef.current &&
+        !automationsViewOpenRef.current &&
         handleEditorFindKey(e)
       ) {
         e.stopPropagation();
@@ -7110,6 +7314,8 @@ export default function App({
       listen("open_search", () => actions.current.onOpenSearch()),
       listen("open_inbox", () => actions.current.onOpenInbox()),
       listen("open_notes", () => actions.current.onOpenNotes()),
+      listen("open_kanban", () => actions.current.onOpenKanban()),
+      listen("open_automations", () => actions.current.onOpenAutomations()),
       listen("open_settings", () => actions.current.openSettings()),
       listen("check_for_updates", () => {
         void runUpdateFlow(true);
@@ -7250,7 +7456,9 @@ export default function App({
               searchViewOpen ||
               settingsOpen ||
               inboxViewOpen ||
-              notesViewOpen
+              notesViewOpen ||
+              kanbanViewOpen ||
+              automationsViewOpen
             }
             canGoForward={tabVisitNav.canForward}
             onGoBack={onRailBack}
@@ -7280,10 +7488,18 @@ export default function App({
             onSearch={onOpenSearch}
             onOpenInbox={onOpenInbox}
             onOpenInboxItem={onOpenLinkedWorkItem}
+            onOpenKanban={onOpenKanban}
+            onOpenAutomations={onOpenAutomations}
             onOpenNotes={notesEnabled ? onOpenNotes : undefined}
             onGoToFile={onGoToFile}
             searchActive={searchViewOpen}
             inboxActive={inboxViewOpen}
+            kanbanActive={kanbanViewOpen}
+            automationsActive={automationsViewOpen}
+            automationsPaused={automations.automations.some(
+              (automation) =>
+                !automation.enabled && automation.pausedReason === "failures",
+            )}
             notesActive={notesViewOpen}
             notesEnabled={notesEnabled}
             projectRailOpen={projectRailOpen}
@@ -7303,18 +7519,30 @@ export default function App({
           <div className="body-glass flex min-h-0 min-w-0 flex-1 flex-col">
             <div
               className={
-                searchViewOpen || settingsOpen || inboxViewOpen || notesViewOpen
+                searchViewOpen ||
+                settingsOpen ||
+                inboxViewOpen ||
+                notesViewOpen ||
+                kanbanViewOpen ||
+                automationsViewOpen
                   ? "hidden"
                   : "flex min-h-0 min-w-0 flex-1 flex-col"
               }
               aria-hidden={
-                searchViewOpen || settingsOpen || inboxViewOpen || notesViewOpen
+                searchViewOpen ||
+                settingsOpen ||
+                inboxViewOpen ||
+                notesViewOpen ||
+                kanbanViewOpen ||
+                automationsViewOpen
               }
               inert={
                 searchViewOpen ||
                 settingsOpen ||
                 inboxViewOpen ||
                 notesViewOpen ||
+                kanbanViewOpen ||
+                automationsViewOpen ||
                 undefined
               }
             >
@@ -7335,6 +7563,8 @@ export default function App({
                   onFindInProject={onFindInProject}
                   onSearch={onOpenSearch}
                   onOpenInbox={onOpenInbox}
+                  onOpenKanban={onOpenKanban}
+                  onOpenAutomations={onOpenAutomations}
                   onOpenNotes={notesEnabled ? onOpenNotes : undefined}
                   onZoomIn={() => {
                     const next = saveUiScale(zoomInUiScale(loadUiScale()));
@@ -7737,6 +7967,49 @@ export default function App({
                 onOpenIntegrations={onOpenInboxIntegrations}
               />
             ) : null}
+            {kanbanViewOpen ? (
+              <KanbanView
+                cwd={sidebarCwd}
+                rows={sidebarHistory}
+                busyIds={busySessionIds}
+                approvalIds={approvalSessionIds}
+                unseenIds={unseenFinishedIds}
+                besideRail={projectRailOpen}
+                onClose={onLeaveKanban}
+                onToggleSidebar={onToggleSidebar}
+                onOpenSession={onOpenKanbanSession}
+                onArchiveSession={onArchiveHistorySession}
+              />
+            ) : null}
+            {automationsViewOpen ? (
+              <AutomationsView
+                automations={automations.automations}
+                runs={automations.runs}
+                now={Date.now()}
+                cwd={sidebarCwd}
+                besideRail={projectRailOpen}
+                busyId={automations.busyId}
+                onClose={onLeaveAutomations}
+                onToggleSidebar={onToggleSidebar}
+                onCreate={() => setNewAutomationId(crypto.randomUUID())}
+                creatingId={newAutomationId}
+                onCancelCreate={() => setNewAutomationId(null)}
+                onSave={(input) =>
+                  void upsertAutomation(input).catch(reportAutomationError)
+                }
+                onRunNow={(automation) =>
+                  void automations.runNow(automation).catch(reportAutomationError)
+                }
+                onToggle={(automation) =>
+                  void automations.toggle(automation).catch(reportAutomationError)
+                }
+                onDelete={(automation) =>
+                  void automations.remove(automation).catch(reportAutomationError)
+                }
+                onLoadRuns={(id) => void automations.loadRuns(id)}
+                onOpenSession={onOpenAutomationSession}
+              />
+            ) : null}
             {notesViewOpen ? (
               <NotesView
                 besideRail={projectRailOpen}
@@ -7767,6 +8040,8 @@ export default function App({
             {searchViewOpen ||
             inboxViewOpen ||
             notesViewOpen ||
+            kanbanViewOpen ||
+            automationsViewOpen ||
             settingsOpen ? null : (
               <UsageFooter
                 providers={usageProviders}

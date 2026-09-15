@@ -822,17 +822,21 @@ pub async fn git_pr_create(
     .map_err(|e| e.to_string())?
 }
 
-#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct GitHubLabel {
+    #[serde(default)]
     pub name: String,
+    #[serde(default)]
     pub color: String,
 }
 
-#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct GitHubAssignee {
+    #[serde(default)]
     pub login: String,
+    #[serde(default)]
     pub avatar_url: String,
 }
 
@@ -952,6 +956,14 @@ pub struct GitHubWorkItemDetails {
     pub base_ref_name: String,
     pub head_ref_name: String,
     pub review_decision: String,
+    pub id: String,
+    pub state: String,
+    pub draft: bool,
+    pub mergeable: String,
+    pub merge_state_status: String,
+    pub labels: Vec<GitHubLabel>,
+    pub assignees: Vec<GitHubAssignee>,
+    pub review_requests: Vec<String>,
 }
 
 /// Issue or pull request body for the inbox detail pane.
@@ -1071,6 +1083,99 @@ pub async fn git_github_pr_diff(
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+/// Merge a pull request with an explicit method, optionally deleting its branch.
+#[tauri::command]
+pub async fn git_github_pr_merge(
+    cwd: String,
+    number: i64,
+    method: String,
+    delete_branch: bool,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        git_github_pr_merge_for(&expand_home(&cwd), number, &method, delete_branch)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[derive(Deserialize, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct GitHubPrEditInput {
+    #[serde(default)]
+    pub add_labels: Vec<String>,
+    #[serde(default)]
+    pub remove_labels: Vec<String>,
+    #[serde(default)]
+    pub add_assignees: Vec<String>,
+    #[serde(default)]
+    pub remove_assignees: Vec<String>,
+    #[serde(default)]
+    pub add_reviewers: Vec<String>,
+    #[serde(default)]
+    pub remove_reviewers: Vec<String>,
+}
+
+/// Close or reopen a pull request without merging it.
+#[tauri::command]
+pub async fn git_github_pr_state(cwd: String, number: i64, close: bool) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        git_github_pr_state_for(&expand_home(&cwd), number, close)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Add or remove labels, assignees, and reviewers on a pull request.
+#[tauri::command]
+pub async fn git_github_pr_edit(
+    cwd: String,
+    number: i64,
+    input: GitHubPrEditInput,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        git_github_pr_edit_for(&expand_home(&cwd), number, &input)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Submit one pending review: COMMENT, APPROVE, or REQUEST_CHANGES.
+#[tauri::command]
+pub async fn git_github_pr_review(
+    cwd: String,
+    number: i64,
+    pr_id: String,
+    event: String,
+    body: String,
+    comments: Vec<GitHubPrReviewCommentInput>,
+) -> Result<String, String> {
+    if number <= 0 {
+        return Err("Invalid pull request number".into());
+    }
+    tauri::async_runtime::spawn_blocking(move || {
+        git_github_pr_review_for(&expand_home(&cwd), &pr_id, &event, &body, &comments)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct GitHubRepoMeta {
+    pub viewer_login: String,
+    pub labels: Vec<GitHubLabel>,
+    pub assignees: Vec<String>,
+    pub reviewers: Vec<String>,
+}
+
+/// Labels, assignable users, collaborators, and the authenticated login for a repo.
+#[tauri::command]
+pub async fn git_github_repo_meta(cwd: String) -> Result<GitHubRepoMeta, String> {
+    tauri::async_runtime::spawn_blocking(move || git_github_repo_meta_for(&expand_home(&cwd)))
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 #[derive(Serialize, Clone, Debug, Default, PartialEq, Eq)]
@@ -2079,7 +2184,8 @@ fn git_github_work_item_details_for(
     }
     let number = number.to_string();
     let fields = if kind == "pr" {
-        "body,author,baseRefName,headRefName,reviewDecision"
+        "body,author,baseRefName,headRefName,reviewDecision,id,state,isDraft,\
+mergeable,mergeStateStatus,labels,assignees,reviewRequests"
     } else {
         "body,author"
     };
@@ -2095,6 +2201,16 @@ fn parse_github_work_item_details(json: &str) -> Result<GitHubWorkItemDetails, S
     }
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
+    struct ReviewRequest {
+        #[serde(default, rename = "__typename")]
+        kind: String,
+        #[serde(default)]
+        login: String,
+        #[serde(default)]
+        name: String,
+    }
+    #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase")]
     struct Row {
         #[serde(default)]
         body: String,
@@ -2106,6 +2222,22 @@ fn parse_github_work_item_details(json: &str) -> Result<GitHubWorkItemDetails, S
         head_ref_name: String,
         #[serde(default)]
         review_decision: Option<String>,
+        #[serde(default)]
+        id: String,
+        #[serde(default)]
+        state: String,
+        #[serde(default)]
+        is_draft: bool,
+        #[serde(default)]
+        mergeable: String,
+        #[serde(default)]
+        merge_state_status: String,
+        #[serde(default)]
+        labels: Vec<GitHubLabel>,
+        #[serde(default)]
+        assignees: Vec<GitHubAssignee>,
+        #[serde(default)]
+        review_requests: Vec<ReviewRequest>,
     }
     let row: Row = serde_json::from_str(json).map_err(|error| error.to_string())?;
     let author = row.author.map(|author| author.login).unwrap_or_default();
@@ -2117,7 +2249,43 @@ fn parse_github_work_item_details(json: &str) -> Result<GitHubWorkItemDetails, S
         base_ref_name: row.base_ref_name,
         head_ref_name: row.head_ref_name,
         review_decision: row.review_decision.unwrap_or_default(),
+        id: row.id,
+        state: row.state,
+        draft: row.is_draft,
+        mergeable: row.mergeable,
+        merge_state_status: row.merge_state_status,
+        labels: row.labels,
+        assignees: row.assignees,
+        review_requests: row
+            .review_requests
+            .into_iter()
+            .map(|request| {
+                if request.kind == "Team" && request.login.is_empty() {
+                    request.name
+                } else {
+                    request.login
+                }
+            })
+            .filter(|login| !login.is_empty())
+            .collect(),
     })
+}
+
+fn parse_github_labels(json: &str) -> Result<Vec<GitHubLabel>, String> {
+    #[derive(Deserialize)]
+    struct Row {
+        name: String,
+        #[serde(default)]
+        color: String,
+    }
+    let rows: Vec<Row> = serde_json::from_str(json).map_err(|error| error.to_string())?;
+    Ok(rows
+        .into_iter()
+        .map(|row| GitHubLabel {
+            name: row.name,
+            color: row.color,
+        })
+        .collect())
 }
 
 const GITHUB_ISSUE_THREAD_QUERY: &str = r#"
@@ -2221,6 +2389,127 @@ mutation InboxReviewReply($threadId: ID!, $body: String!) {
   }
 }
 "#;
+
+const GITHUB_REVIEW_SUBMIT_MUTATION: &str = r#"
+mutation InboxSubmitReview(
+  $pullRequestId: ID!
+  $event: PullRequestReviewEvent!
+  $body: String
+  $comments: [DraftPullRequestReviewComment!]
+) {
+  addPullRequestReview(input: {
+    pullRequestId: $pullRequestId
+    event: $event
+    body: $body
+    comments: $comments
+  }) {
+    pullRequestReview { url state }
+  }
+}
+"#;
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct GitHubPrReviewCommentInput {
+    pub path: String,
+    pub line: i64,
+    pub side: String,
+    pub body: String,
+}
+
+fn pr_review_payload(
+    pr_id: &str,
+    event: &str,
+    body: &str,
+    comments: &[GitHubPrReviewCommentInput],
+) -> Result<String, String> {
+    if !valid_github_node_id(pr_id) {
+        return Err("Invalid pull request id".into());
+    }
+    let event = match event.trim().to_lowercase().as_str() {
+        "comment" => "COMMENT",
+        "approve" => "APPROVE",
+        "request-changes" => "REQUEST_CHANGES",
+        _ => return Err("Unknown review event".into()),
+    };
+    let body = body.trim();
+    let mut rows = Vec::with_capacity(comments.len());
+    for comment in comments {
+        let path = comment.path.trim();
+        let text = comment.body.trim();
+        if path.is_empty() || text.is_empty() || comment.line <= 0 {
+            return Err("Review comments need a path, a line, and a body".into());
+        }
+        let side = if comment.side.trim().eq_ignore_ascii_case("left") {
+            "LEFT"
+        } else {
+            "RIGHT"
+        };
+        rows.push(serde_json::json!({
+            "path": path,
+            "line": comment.line,
+            "side": side,
+            "body": text,
+        }));
+    }
+    if event == "REQUEST_CHANGES" && body.is_empty() {
+        return Err("Request changes needs a review body".into());
+    }
+    if event != "APPROVE" && body.is_empty() && rows.is_empty() {
+        return Err("Add a review body or at least one line comment".into());
+    }
+    let payload = serde_json::json!({
+        "query": GITHUB_REVIEW_SUBMIT_MUTATION,
+        "variables": {
+            "pullRequestId": pr_id.trim(),
+            "event": event,
+            "body": body,
+            "comments": rows,
+        },
+    });
+    serde_json::to_string(&payload).map_err(|error| error.to_string())
+}
+
+fn parse_github_review_url(json: &str) -> Result<String, String> {
+    let value: serde_json::Value = serde_json::from_str(json).map_err(|error| error.to_string())?;
+    if let Some(errors) = value.get("errors").and_then(|errors| errors.as_array()) {
+        let message = errors
+            .iter()
+            .find_map(|error| error.get("message").and_then(|message| message.as_str()))
+            .unwrap_or("GitHub rejected the review");
+        return Err(message.to_string());
+    }
+    value
+        .get("data")
+        .and_then(|data| data.get("addPullRequestReview"))
+        .and_then(|review| review.get("pullRequestReview"))
+        .and_then(|review| review.get("url"))
+        .and_then(|url| url.as_str())
+        .map(str::to_string)
+        .ok_or_else(|| "GitHub did not return a review URL".to_string())
+}
+
+fn git_github_pr_review_for(
+    root: &Path,
+    pr_id: &str,
+    event: &str,
+    body: &str,
+    comments: &[GitHubPrReviewCommentInput],
+) -> Result<String, String> {
+    let payload = pr_review_payload(pr_id, event, body, comments)?;
+    let stamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_nanos())
+        .unwrap_or(0);
+    let path = std::env::temp_dir().join(format!("monocode-review-{stamp}.json"));
+    std::fs::write(&path, payload).map_err(|error| error.to_string())?;
+    let result = gh_checked(
+        root,
+        &["api", "graphql", "--input", &path.to_string_lossy()],
+    );
+    let _ = std::fs::remove_file(&path);
+    parse_github_review_url(&result?)
+}
 
 fn git_github_work_item_thread_for(
     root: &Path,
@@ -3155,6 +3444,145 @@ fn gh_stdout(root: &Path, args: &[&str]) -> Option<String> {
 
 fn gh_checked(root: &Path, args: &[&str]) -> Result<String, String> {
     gh_run(root, args, false)
+}
+
+/// Build `gh pr merge` arguments. Rejects anything `gh` would not accept.
+fn pr_merge_args(number: i64, method: &str, delete_branch: bool) -> Result<Vec<String>, String> {
+    if number <= 0 {
+        return Err("Invalid pull request number".into());
+    }
+    let flag = match method.trim().to_lowercase().as_str() {
+        "squash" => "--squash",
+        "merge" => "--merge",
+        "rebase" => "--rebase",
+        _ => return Err("Unknown merge method".into()),
+    };
+    let mut args = vec![
+        "pr".to_string(),
+        "merge".to_string(),
+        number.to_string(),
+        flag.to_string(),
+    ];
+    if delete_branch {
+        args.push("--delete-branch".into());
+    }
+    Ok(args)
+}
+
+fn git_github_pr_merge_for(
+    root: &Path,
+    number: i64,
+    method: &str,
+    delete_branch: bool,
+) -> Result<(), String> {
+    let args = pr_merge_args(number, method, delete_branch)?;
+    let refs: Vec<&str> = args.iter().map(String::as_str).collect();
+    // `gh pr merge` prints nothing on stdout when it succeeds.
+    gh_run(root, &refs, true)?;
+    Ok(())
+}
+
+fn push_list_flag(args: &mut Vec<String>, flag: &str, values: &[String]) {
+    let cleaned: Vec<&str> = values
+        .iter()
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty())
+        .collect();
+    if cleaned.is_empty() {
+        return;
+    }
+    args.push(flag.to_string());
+    args.push(cleaned.join(","));
+}
+
+fn pr_edit_flags(input: &GitHubPrEditInput) -> Vec<String> {
+    let mut args = Vec::new();
+    push_list_flag(&mut args, "--add-label", &input.add_labels);
+    push_list_flag(&mut args, "--remove-label", &input.remove_labels);
+    push_list_flag(&mut args, "--add-assignee", &input.add_assignees);
+    push_list_flag(&mut args, "--remove-assignee", &input.remove_assignees);
+    push_list_flag(&mut args, "--add-reviewer", &input.add_reviewers);
+    push_list_flag(&mut args, "--remove-reviewer", &input.remove_reviewers);
+    args
+}
+
+fn pr_state_args(number: i64, close: bool) -> Result<Vec<String>, String> {
+    if number <= 0 {
+        return Err("Invalid pull request number".into());
+    }
+    Ok(vec![
+        "pr".to_string(),
+        if close { "close" } else { "reopen" }.to_string(),
+        number.to_string(),
+    ])
+}
+
+fn git_github_pr_state_for(root: &Path, number: i64, close: bool) -> Result<(), String> {
+    let args = pr_state_args(number, close)?;
+    let refs: Vec<&str> = args.iter().map(String::as_str).collect();
+    // close/reopen are silent on success, so empty output is fine.
+    gh_run(root, &refs, true)?;
+    Ok(())
+}
+
+fn git_github_pr_edit_for(
+    root: &Path,
+    number: i64,
+    input: &GitHubPrEditInput,
+) -> Result<(), String> {
+    if number <= 0 {
+        return Err("Invalid pull request number".into());
+    }
+    let mut args = vec!["pr".to_string(), "edit".to_string(), number.to_string()];
+    args.extend(pr_edit_flags(input));
+    if args.len() == 3 {
+        return Err("No pull request changes requested".into());
+    }
+    let refs: Vec<&str> = args.iter().map(String::as_str).collect();
+    // `gh pr edit` is silent on success, so empty output is fine.
+    gh_run(root, &refs, true)?;
+    Ok(())
+}
+
+fn gh_login_list(root: &Path, path: &str) -> Vec<String> {
+    gh_stdout(root, &["api", path, "--jq", ".[].login"])
+        .map(|text| {
+            text.lines()
+                .map(str::trim)
+                .filter(|line| !line.is_empty())
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn git_github_repo_meta_for(root: &Path) -> Result<GitHubRepoMeta, String> {
+    let repo = git_github_repo_for(root)?;
+    let (owner, name) = split_github_repo(&repo)?;
+    let viewer_login = gh_checked(root, &["api", "user", "--jq", ".login"])?
+        .trim()
+        .to_string();
+    let labels = gh_checked(
+        root,
+        &["label", "list", "--json", "name,color", "--limit", "100"],
+    )
+    .ok()
+    .and_then(|json| parse_github_labels(&json).ok())
+    .unwrap_or_default();
+    let assignees = gh_login_list(
+        root,
+        &format!("repos/{owner}/{name}/assignees?per_page=100"),
+    );
+    let reviewers = gh_login_list(
+        root,
+        &format!("repos/{owner}/{name}/collaborators?per_page=100"),
+    );
+    Ok(GitHubRepoMeta {
+        viewer_login,
+        labels,
+        assignees,
+        reviewers,
+    })
 }
 
 fn gh_run(root: &Path, args: &[&str], allow_empty: bool) -> Result<String, String> {
@@ -5644,6 +6072,54 @@ mod tests {
     }
 
     #[test]
+    fn pr_merge_args_builds_method_and_branch_flags() {
+        assert_eq!(
+            pr_merge_args(42, "squash", true).unwrap(),
+            vec!["pr", "merge", "42", "--squash", "--delete-branch"]
+        );
+        assert_eq!(
+            pr_merge_args(7, "merge", false).unwrap(),
+            vec!["pr", "merge", "7", "--merge"]
+        );
+        assert_eq!(
+            pr_merge_args(7, "rebase", true).unwrap(),
+            vec!["pr", "merge", "7", "--rebase", "--delete-branch"]
+        );
+        assert!(pr_merge_args(42, "fast-forward", false).is_err());
+        assert!(pr_merge_args(0, "squash", false).is_err());
+    }
+
+    #[test]
+    fn pr_edit_flags_join_values_and_skip_empty_lists() {
+        let input = GitHubPrEditInput {
+            add_labels: vec!["bug".into(), " ui ".into()],
+            remove_labels: vec!["".into()],
+            add_assignees: vec![],
+            remove_assignees: vec!["octocat".into()],
+            add_reviewers: vec!["alice".into(), "bob".into()],
+            remove_reviewers: vec![],
+        };
+        assert_eq!(
+            pr_edit_flags(&input),
+            vec![
+                "--add-label".to_string(),
+                "bug,ui".to_string(),
+                "--remove-assignee".to_string(),
+                "octocat".to_string(),
+                "--add-reviewer".to_string(),
+                "alice,bob".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn pr_state_args_choose_close_or_reopen() {
+        assert_eq!(pr_state_args(9, true).unwrap(), vec!["pr", "close", "9"]);
+        assert_eq!(pr_state_args(9, false).unwrap(), vec!["pr", "reopen", "9"]);
+        assert!(pr_state_args(0, true).is_err());
+    }
+
+    #[test]
     fn git_sync_counts_unpushed_commits() {
         let repo = tmp("git-ahead-repo");
         let origin = tmp("git-ahead-origin");
@@ -5908,6 +6384,46 @@ mod tests {
     }
 
     #[test]
+    fn parse_pr_details_reads_merge_gating_fields() {
+        let json = r#"{
+            "body": "hello",
+            "author": { "login": "octocat" },
+            "baseRefName": "main",
+            "headRefName": "feat/x",
+            "reviewDecision": "APPROVED",
+            "id": "PR_kwDOA",
+            "state": "OPEN",
+            "isDraft": false,
+            "mergeable": "MERGEABLE",
+            "mergeStateStatus": "CLEAN",
+            "labels": [{ "name": "bug", "color": "ff0000" }],
+            "assignees": [{ "login": "alice" }],
+            "reviewRequests": [
+                { "__typename": "User", "login": "bob" },
+                { "__typename": "Team", "name": "reviews" }
+            ]
+        }"#;
+        let parsed = parse_github_work_item_details(json).unwrap();
+        assert_eq!(parsed.id, "PR_kwDOA");
+        assert_eq!(parsed.state, "OPEN");
+        assert!(!parsed.draft);
+        assert_eq!(parsed.mergeable, "MERGEABLE");
+        assert_eq!(parsed.merge_state_status, "CLEAN");
+        assert_eq!(parsed.labels.len(), 1);
+        assert_eq!(parsed.assignees[0].login, "alice");
+        assert_eq!(parsed.review_requests, vec!["bob", "reviews"]);
+    }
+
+    #[test]
+    fn parse_issue_details_defaults_new_fields() {
+        let parsed = parse_github_work_item_details(r#"{"body": "hi"}"#).unwrap();
+        assert!(parsed.id.is_empty());
+        assert!(parsed.labels.is_empty());
+        assert!(parsed.review_requests.is_empty());
+        assert!(parsed.mergeable.is_empty());
+    }
+
+    #[test]
     fn split_github_repo_reads_owner_and_name() {
         assert_eq!(
             split_github_repo(" hardbeat920/monocode ").unwrap(),
@@ -6132,6 +6648,53 @@ mod tests {
         )
         .unwrap_err();
         assert!(error.contains("Could not resolve to a node"));
+    }
+
+    #[test]
+    fn pr_review_payload_builds_graphql_variables() {
+        let comments = vec![GitHubPrReviewCommentInput {
+            path: "src/app.ts".into(),
+            line: 12,
+            side: "left".into(),
+            body: "  needs a guard  ".into(),
+        }];
+        let payload =
+            pr_review_payload("PR_kwDOA", "request-changes", "  please fix  ", &comments).unwrap();
+        let json: serde_json::Value = serde_json::from_str(&payload).unwrap();
+        assert_eq!(json["variables"]["event"], "REQUEST_CHANGES");
+        assert_eq!(json["variables"]["body"], "please fix");
+        assert_eq!(json["variables"]["comments"][0]["path"], "src/app.ts");
+        assert_eq!(json["variables"]["comments"][0]["line"], 12);
+        assert_eq!(json["variables"]["comments"][0]["side"], "LEFT");
+        assert_eq!(json["variables"]["comments"][0]["body"], "needs a guard");
+        assert!(json["query"]
+            .as_str()
+            .unwrap()
+            .contains("addPullRequestReview"));
+    }
+
+    #[test]
+    fn pr_review_payload_rejects_bad_input() {
+        assert!(pr_review_payload("PR_x", "approve", "", &[]).is_ok());
+        assert!(pr_review_payload("", "approve", "", &[]).is_err());
+        assert!(pr_review_payload("PR_x", "bless", "", &[]).is_err());
+        assert!(pr_review_payload("PR_x", "request-changes", "", &[]).is_err());
+        let comments = vec![GitHubPrReviewCommentInput {
+            path: "a.ts".into(),
+            line: 1,
+            side: "right".into(),
+            body: "x".into(),
+        }];
+        assert!(pr_review_payload("PR_x", "request-changes", "", &comments).is_err());
+        assert!(pr_review_payload("PR_x", "request-changes", "why", &comments).is_ok());
+        assert!(pr_review_payload("PR_x", "comment", "", &comments).is_ok());
+        let bad = vec![GitHubPrReviewCommentInput {
+            path: "".into(),
+            line: 0,
+            side: "right".into(),
+            body: "x".into(),
+        }];
+        assert!(pr_review_payload("PR_x", "comment", "", &bad).is_err());
     }
 
     #[test]
