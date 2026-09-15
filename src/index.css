@@ -208,43 +208,233 @@ html.has-native-glass:not(.theme-light) #root {
   }
 }
 
-.effort-fast-spark {
-  position: absolute;
-  border-radius: 999px;
-  background: #fff;
-  pointer-events: none;
-  animation-name: effort-fast-twinkle, effort-fast-drift;
-  animation-timing-function: ease-in-out, ease-in-out;
-  animation-iteration-count: infinite, infinite;
-  animation-delay: var(--effort-delay, 0s), var(--effort-delay, 0s);
-  animation-duration: var(--effort-twinkle, 1.7s), 2.8s;
+/* ---------------------------------------------------------------
+   Effort bar — normal (combo) and fast (storm) effects
+   --------------------------------------------------------------- */
+
+/* Normal: the filled bar breathes and a light band crosses it. */
+.effort-fill-breathe {
+  animation: effort-breathe 3.6s ease-in-out infinite;
 }
 
+@keyframes effort-breathe {
+  0%,
+  100% {
+    filter: brightness(0.97);
+  }
+  50% {
+    filter: brightness(1.16);
+  }
+}
+
+.effort-normal-shine {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 60px;
+  margin-left: -60px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.22),
+    transparent
+  );
+  animation: effort-shimmer 3.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes effort-shimmer {
+  0% {
+    transform: translateX(0);
+  }
+  55%,
+  100% {
+    transform: translateX(320px);
+  }
+}
+
+/* Normal: the reached stops pulse in sequence. */
+.effort-dot-wave {
+  animation: effort-dot-wave 2.6s ease-in-out infinite;
+  animation-delay: var(--dot-delay, 0s);
+}
+
+@keyframes effort-dot-wave {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+  40% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.5);
+  }
+}
+
+/* Fast: an energy surge sweeps the bar. */
+.effort-storm-surge {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 70px;
+  margin-left: -70px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.55),
+    transparent
+  );
+  animation: effort-surge 2.2s cubic-bezier(0.3, 0, 0.2, 1) infinite;
+}
+
+@keyframes effort-surge {
+  0%,
+  30% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  40% {
+    opacity: 0.9;
+  }
+  75% {
+    transform: translateX(340px);
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Fast: a white flash lifts on each strike. */
+.effort-storm-flash {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    60px 18px at 40% 50%,
+    rgba(255, 255, 255, 0.5),
+    transparent 70%
+  );
+  opacity: 0;
+  animation: effort-flash 2s ease-out infinite;
+}
+
+@keyframes effort-flash {
+  0%,
+  84%,
+  100% {
+    opacity: 0;
+  }
+  86% {
+    opacity: 0.85;
+  }
+  95% {
+    opacity: 0;
+  }
+}
+
+/* Fast: a current runs along the bar. */
+.effort-storm-arc {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.effort-storm-arc polyline {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.9));
+  stroke-dasharray: 26 320;
+  animation: effort-arc-travel 1.6s linear infinite;
+}
+
+@keyframes effort-arc-travel {
+  0% {
+    stroke-dashoffset: 340;
+    opacity: 0.95;
+  }
+  70% {
+    opacity: 0.6;
+  }
+  100% {
+    stroke-dashoffset: -40;
+    opacity: 0.95;
+  }
+}
+
+/* Fast: bolts strike where the sparks fly off. */
 .effort-fast-bolt {
   position: absolute;
   color: #fff;
   pointer-events: none;
-  animation-name: effort-fast-twinkle, effort-fast-drift;
-  animation-timing-function: ease-in-out, ease-in-out;
-  animation-iteration-count: infinite, infinite;
-  animation-delay: var(--effort-delay, 0s), var(--effort-delay, 0s);
-  animation-duration: var(--effort-twinkle, 1.7s), 2.8s;
+  opacity: 0;
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.85));
+  animation: effort-bolt-strike var(--effort-twinkle, 2.2s) ease-out infinite;
+  animation-delay: var(--effort-delay, 0s);
 }
 
-/* The stop under the knob breathes so the current level reads as live. */
-.effort-dot-live {
-  animation: effort-dot-live 1.8s ease-in-out infinite;
-}
-
-@keyframes effort-dot-live {
+@keyframes effort-bolt-strike {
   0%,
+  84%,
   100% {
-    opacity: 0.5;
-    transform: translate(-50%, -50%) scale(0.8);
+    opacity: 0;
+    transform: scale(0.6);
   }
-  50% {
+  86% {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1.25);
+    transform: scale(1.15);
+  }
+  92% {
+    opacity: 0.15;
+    transform: scale(1);
+  }
+}
+
+.effort-fast-spark {
+  position: absolute;
+  width: 2.5px;
+  height: 2.5px;
+  border-radius: 999px;
+  background: #fff;
+  pointer-events: none;
+  opacity: 0;
+  animation: effort-spark-fly 1.5s ease-out infinite;
+  animation-delay: var(--spark-delay, 0s);
+}
+
+@keyframes effort-spark-fly {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.6);
+  }
+  18% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--spark-x, 12px), var(--spark-y, -10px))
+      scale(0.2);
+  }
+}
+
+/* Fast: the knob throws a pulse on each surge. */
+.effort-storm-knob {
+  animation: effort-knob-pulse 2.2s ease-out infinite;
+}
+
+@keyframes effort-knob-pulse {
+  0%,
+  55%,
+  100% {
+    box-shadow:
+      0 1px 4px rgba(0, 0, 0, 0.45),
+      0 0 0 0 rgba(255, 255, 255, 0.45);
+  }
+  70% {
+    box-shadow:
+      0 1px 4px rgba(0, 0, 0, 0.45),
+      0 0 0 9px rgba(255, 255, 255, 0);
   }
 }
 
@@ -278,39 +468,26 @@ html.has-native-glass:not(.theme-light) #root {
   }
 }
 
-@keyframes effort-fast-twinkle {
-  0%,
-  100% {
-    opacity: 0.18;
-  }
-  50% {
-    opacity: 0.95;
-  }
-}
-
-@keyframes effort-fast-drift {
-  0%,
-  100% {
-    translate: 0 0;
-  }
-  50% {
-    translate: 7px -3px;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .effort-fast-spark,
-  .effort-fast-bolt {
-    animation: none;
-    opacity: 0.55;
-  }
-
-  .effort-dot-live,
+  .effort-fill-breathe,
+  .effort-normal-shine,
+  .effort-dot-wave,
+  .effort-storm-surge,
+  .effort-storm-flash,
+  .effort-storm-arc polyline,
+  .effort-fast-bolt,
+  .effort-storm-knob,
   .effort-label-in,
   .effort-label-out {
     animation: none;
   }
+
+  .effort-fast-bolt,
+  .effort-fast-spark {
+    opacity: 0.55;
+  }
 }
+
 
 .workspace-tab:not([data-reordering])
   > button:not([aria-selected="true"]):hover,

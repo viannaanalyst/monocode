@@ -355,7 +355,9 @@ function EffortSlider({
         style={{ background: `color-mix(in srgb, ${color} 14%, transparent)` }}
       />
       <div
-        className="absolute top-1/2 left-0 h-[22px] -translate-y-1/2 overflow-hidden rounded-full"
+        className={`absolute top-1/2 left-0 h-[22px] -translate-y-1/2 overflow-hidden rounded-full ${
+          fast ? "effort-storm" : "effort-fill-breathe"
+        }`}
         style={{
           backgroundColor: color,
           width:
@@ -364,8 +366,19 @@ function EffortSlider({
               : `calc(${effortStop(ratio)} + 10px)`,
         }}
       >
-        {fast
-          ? FAST_BOLTS.map((bolt, index) => (
+        {fast ? (
+          <>
+            <span aria-hidden="true" className="effort-storm-surge" />
+            <span aria-hidden="true" className="effort-storm-flash" />
+            <svg
+              aria-hidden="true"
+              className="effort-storm-arc"
+              viewBox="0 0 300 22"
+              preserveAspectRatio="none"
+            >
+              <polyline points="0,11 22,7 44,15 66,6 88,14 110,8 132,16 154,7 176,15 198,9 220,16 242,8 264,14 286,10 300,12" />
+            </svg>
+            {FAST_BOLTS.map((bolt, index) => (
               <span
                 key={index}
                 aria-hidden="true"
@@ -387,8 +400,25 @@ function EffortSlider({
                   <path d="M13 2 4.5 13.5H11l-1 8.5 9.5-12H13z" />
                 </svg>
               </span>
-            ))
-          : null}
+            ))}
+            {FAST_SPARKS.map((spark, index) => (
+              <span
+                key={index}
+                aria-hidden="true"
+                className="effort-fast-spark"
+                style={{
+                  left: spark.left,
+                  top: spark.top,
+                  ["--spark-x" as string]: spark.dx,
+                  ["--spark-y" as string]: spark.dy,
+                  ["--spark-delay" as string]: spark.delay,
+                }}
+              />
+            ))}
+          </>
+        ) : (
+          <span aria-hidden="true" className="effort-normal-shine" />
+        )}
       </div>
       {options.map((option, index) => (
         <span
@@ -396,16 +426,23 @@ function EffortSlider({
           aria-hidden="true"
           className={`pointer-events-none absolute top-1/2 size-1 -translate-x-1/2 -translate-y-1/2 rounded-full ${
             index <= selected ? "" : "bg-content/30"
-          } ${index === selected && !fast ? "effort-dot-live" : ""}`}
+          } ${index <= selected && !fast ? "effort-dot-wave" : ""}`}
           style={{
             left: effortStop(index / max),
-            ...(index <= selected ? { backgroundColor: color } : {}),
+            ...(index <= selected
+              ? {
+                  backgroundColor: color,
+                  ["--dot-delay" as string]: `${index * 0.14}s`,
+                }
+              : {}),
           }}
         />
       ))}
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute top-1/2 size-5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-[0_1px_4px_rgba(0,0,0,0.45)]"
+        className={`pointer-events-none absolute top-1/2 size-5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-[0_1px_4px_rgba(0,0,0,0.45)] ${
+          fast ? "effort-storm-knob" : ""
+        }`}
         style={{ left: effortStop(ratio) }}
       />
     </div>
@@ -413,10 +450,15 @@ function EffortSlider({
 }
 
 const FAST_BOLTS = [
-  { left: "9%", top: "24%", size: 10, delay: "0s", duration: "1.7s" },
-  { left: "31%", top: "48%", size: 8, delay: "0.3s", duration: "2s" },
-  { left: "54%", top: "22%", size: 11, delay: "0.6s", duration: "1.6s" },
-  { left: "76%", top: "46%", size: 9, delay: "0.15s", duration: "1.9s" },
+  { left: "10%", top: "18%", size: 10, delay: "1.1s", duration: "2.2s" },
+  { left: "38%", top: "44%", size: 9, delay: "0.9s", duration: "1.8s" },
+  { left: "62%", top: "16%", size: 11, delay: "1.35s", duration: "2.7s" },
+];
+
+const FAST_SPARKS = [
+  { left: "24%", top: "62%", dx: "15px", dy: "-11px", delay: "0.15s" },
+  { left: "47%", top: "22%", dx: "-13px", dy: "-9px", delay: "0.6s" },
+  { left: "66%", top: "60%", dx: "11px", dy: "-13px", delay: "1s" },
 ];
 
 export function ModelPicker({
