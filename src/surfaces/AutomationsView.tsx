@@ -1,12 +1,36 @@
 import { useState, type FormEvent } from "react";
 import { CwdPicker } from "../chrome/CwdPicker";
 import { AccessPicker } from "../chrome/AccessPicker";
+import { HarnessIcon } from "../chrome/HarnessIcon";
 import { ModelPicker } from "../chrome/ModelPicker";
+import { OverlayNav } from "../chrome/TitleBar";
+import { WindowControls } from "../chrome/WindowControls";
+import {
+  LayoutTwoColumn,
+  LoaderCircle,
+  Pause,
+  Pencil,
+  Play,
+  Plus,
+  Trash2,
+} from "../chrome/icons";
 import { t } from "../i18n";
 import { type HarnessId, type RuntimeMode } from "../lib/session";
 import { loadRecents } from "../lib/recents";
-import { nextRunAt, WEEKDAYS, type ScheduleKind } from "../lib/automationSchedule";
-import type { Automation } from "../lib/automationStore";
+import {
+  describeSchedule,
+  nextRunAt,
+  scheduleOf,
+  WEEKDAYS,
+  type ScheduleKind,
+} from "../lib/automationSchedule";
+import {
+  automationStatusLabel,
+  nextRunLabel,
+  runStatusLabel,
+} from "../lib/automations";
+import type { Automation, AutomationRun } from "../lib/automationStore";
+import { IS_MAC } from "../lib/platform";
 
 export function emptyAutomation(id: string, cwd: string): Automation {
   return {
@@ -219,5 +243,255 @@ export function AutomationEditor({
         </button>
       </div>
     </form>
+  );
+}
+
+type Props = {
+  automations: readonly Automation[];
+  runs: Record<string, AutomationRun[]>;
+  now: number;
+  cwd: string;
+  besideRail?: boolean;
+  busyId?: string | null;
+  onClose: () => void;
+  onToggleSidebar?: () => void;
+  onCreate: () => void;
+  onSave: (input: Automation) => void;
+  onRunNow: (automation: Automation) => void;
+  onToggle: (automation: Automation) => void;
+  onDelete: (automation: Automation) => void;
+  onLoadRuns: (id: string) => void;
+  onOpenSession: (sessionId: string) => void;
+  creatingId?: string | null;
+  onCancelCreate?: () => void;
+};
+
+export function AutomationsView({
+  automations,
+  runs,
+  now,
+  cwd,
+  besideRail = false,
+  busyId = null,
+  onClose,
+  onToggleSidebar,
+  onCreate,
+  onSave,
+  onRunNow,
+  onToggle,
+  onDelete,
+  onLoadRuns,
+  onOpenSession,
+  creatingId = null,
+  onCancelCreate,
+}: Props) {
+  const [editing, setEditing] = useState<Automation | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState<string | null>(null);
+
+  return (
+    <div
+      role="region"
+      aria-label={t("Automations")}
+      data-app-automations
+      className="flex min-h-0 min-w-0 flex-1 flex-col text-content"
+    >
+      <div
+        className="flex h-10 shrink-0 select-none items-center border-b border-content/10"
+        data-tauri-drag-region="deep"
+      >
+        {IS_MAC && !besideRail ? <div className="w-[78px] shrink-0" /> : null}
+        {besideRail ? null : (
+          <OverlayNav onBack={onClose} onToggleSidebar={onToggleSidebar} />
+        )}
+        <div className="flex min-w-0 flex-1 items-center gap-2 px-3 text-[13px]">
+          <LayoutTwoColumn className="size-3.5 shrink-0 text-content/45" strokeWidth={1.75} />
+          <span className="font-medium">{t("Automations")}</span>
+          <span className="text-content/40">
+            {t("{count} scheduled", { count: automations.length })}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={onCreate}
+          className="mr-3 inline-flex h-7 items-center gap-1.5 rounded-md bg-content px-2.5 text-[12px] font-medium text-background-base"
+        >
+          <Plus className="size-3.5" strokeWidth={1.75} />
+          {t("New automation")}
+        </button>
+        {IS_MAC ? null : <WindowControls />}
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-none px-3 py-3">
+        {creatingId ? (
+          <AutomationEditor
+            automation={emptyAutomation(creatingId, cwd)}
+            cwd={cwd}
+            onCancel={() => onCancelCreate?.()}
+            onSave={(next) => {
+              onSave(next);
+              onCancelCreate?.();
+            }}
+          />
+        ) : null}
+        {automations.length === 0 ? (
+          <p className="px-1 py-6 text-[13px] text-content/45">
+            {t("No automations yet")}
+          </p>
+        ) : (
+          <ul className="mx-auto flex w-full max-w-3xl flex-col gap-2">
+            {automations.map((automation) => {
+              const history = runs[automation.id] ?? [];
+              const active = busyId === automation.id;
+              return (
+                <li
+                  key={automation.id}
+                  className="rounded-lg border border-content/10 bg-content/[0.03] p-3"
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    <HarnessIcon
+                      harness={automation.harness as HarnessId}
+                      className="size-3.5 shrink-0"
+                    />
+                    <span className="min-w-0 flex-1 truncate text-[13px]">
+                      {automation.title}
+                    </span>
+                    <span
+                      className={`rounded px-1.5 py-0.5 text-[10px] ${
+                        automation.enabled
+                          ? "bg-emerald-500/15 text-emerald-300"
+                          : "bg-amber-500/15 text-amber-300"
+                      }`}
+                    >
+                      {t(automationStatusLabel(automation))}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[11px] text-content/50">
+                    {t(describeSchedule(scheduleOf(automation)))}
+                    {" · "}
+                    {t(nextRunLabel(automation, now))}
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    <button
+                      type="button"
+                      disabled={active}
+                      onClick={() => onRunNow(automation)}
+                      className="inline-flex h-6 items-center gap-1 rounded-md border border-content/15 px-2 text-[11px] text-content/75 disabled:opacity-40"
+                    >
+                      {active ? (
+                        <LoaderCircle className="size-3 animate-spin" strokeWidth={1.75} />
+                      ) : (
+                        <Play className="size-3" strokeWidth={1.75} />
+                      )}
+                      {t("Run now")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onToggle(automation)}
+                      className="inline-flex h-6 items-center gap-1 rounded-md border border-content/15 px-2 text-[11px] text-content/75"
+                    >
+                      <Pause className="size-3" strokeWidth={1.75} />
+                      {automation.enabled ? t("Pause") : t("Resume")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditing(automation)}
+                      className="inline-flex h-6 items-center gap-1 rounded-md border border-content/15 px-2 text-[11px] text-content/75"
+                    >
+                      <Pencil className="size-3" strokeWidth={1.75} />
+                      {t("Edit")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = expanded === automation.id ? null : automation.id;
+                        setExpanded(next);
+                        if (next) onLoadRuns(automation.id);
+                      }}
+                      className="inline-flex h-6 items-center rounded-md border border-content/15 px-2 text-[11px] text-content/75"
+                    >
+                      {t("History")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirming(automation.id)}
+                      className="ml-auto inline-flex h-6 items-center gap-1 rounded-md px-2 text-[11px] text-rose-300/90 hover:bg-rose-500/10"
+                    >
+                      <Trash2 className="size-3" strokeWidth={1.75} />
+                      {t("Delete")}
+                    </button>
+                  </div>
+                  {confirming === automation.id ? (
+                    <div className="mt-2 flex items-center gap-2 rounded-md bg-rose-500/10 px-2 py-1.5 text-[11px] text-rose-200">
+                      {t("Delete this automation? Its session is kept.")}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onDelete(automation);
+                          setConfirming(null);
+                        }}
+                        className="ml-auto rounded bg-rose-500/20 px-2 py-0.5"
+                      >
+                        {t("Delete")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirming(null)}
+                        className="rounded border border-content/15 px-2 py-0.5"
+                      >
+                        {t("Cancel")}
+                      </button>
+                    </div>
+                  ) : null}
+                  {expanded === automation.id ? (
+                    history.length === 0 ? (
+                      <p className="mt-2 text-[11px] text-content/40">{t("No runs yet")}</p>
+                    ) : (
+                      <ul className="mt-2 flex flex-col gap-1">
+                        {history.map((run) => (
+                          <li
+                            key={run.id}
+                            className="flex items-center gap-2 rounded bg-content/5 px-2 py-1 text-[11px] text-content/70"
+                          >
+                            <span className="tabular-nums">
+                              {new Date(run.scheduledFor).toLocaleString()}
+                            </span>
+                            <span>{t(runStatusLabel(run.status))}</span>
+                            {run.error ? (
+                              <span className="min-w-0 flex-1 truncate text-rose-300/90">
+                                {run.error}
+                              </span>
+                            ) : null}
+                            {automation.sessionId ? (
+                              <button
+                                type="button"
+                                onClick={() => onOpenSession(automation.sessionId as string)}
+                                className="ml-auto shrink-0 text-content/50 hover:text-content"
+                              >
+                                {t("Open session")}
+                              </button>
+                            ) : null}
+                          </li>
+                        ))}
+                      </ul>
+                    )
+                  ) : null}
+                  {editing?.id === automation.id ? (
+                    <AutomationEditor
+                      automation={editing}
+                      cwd={cwd}
+                      onCancel={() => setEditing(null)}
+                      onSave={(next) => {
+                        onSave(next);
+                        setEditing(null);
+                      }}
+                    />
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </div>
   );
 }
