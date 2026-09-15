@@ -64,6 +64,7 @@ import {
   subscribeChatBackgroundPath,
 } from "../lib/appearance";
 import type { SessionFolderTarget } from "../lib/sessionFolders";
+import type { SessionGoal } from "../lib/goal";
 import type { OpenFileFn } from "../lib/search";
 import { markLinkedSessionUpdateSeen } from "../lib/linkedSessionSeen";
 
@@ -87,6 +88,8 @@ type Props = {
     settings: Record<string, string>,
   ) => void;
   onRuntimeModeChange: (sessionId: string, mode: RuntimeMode) => void;
+  onGoalChange?: (sessionId: string, goal: SessionGoal | null) => void;
+  onGoalResolve?: (sessionId: string, action: "complete" | "keep") => void;
   onSubmit: (
     sessionId: string,
     text: string,
@@ -170,6 +173,8 @@ export const SessionPane = memo(function SessionPane({
   onModelChange,
   onModelSettingsChange,
   onRuntimeModeChange,
+  onGoalChange,
+  onGoalResolve,
   onSubmit,
   onStop,
   onCompactContext,
@@ -337,6 +342,7 @@ export const SessionPane = memo(function SessionPane({
       model={session.model}
       modelSettings={session.modelSettings}
       runtimeMode={session.runtimeMode}
+      goal={session.goal}
       cwd={session.cwd}
       executionCwd={workCwd}
       sessionId={session.id}
@@ -386,6 +392,8 @@ export const SessionPane = memo(function SessionPane({
         onModelSettingsChange(session.id, settings)
       }
       onRuntimeModeChange={(mode) => onRuntimeModeChange(session.id, mode)}
+      onGoalChange={(goal) => onGoalChange?.(session.id, goal)}
+      onGoalResolve={(action) => onGoalResolve?.(session.id, action)}
       onSubmit={(text, attachments, options) =>
         onSubmit(session.id, text, attachments, options)
       }

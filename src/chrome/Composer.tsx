@@ -137,6 +137,14 @@ import {
 import { resolveTabGroupLogo } from "../lib/tabGroups";
 import { useComposerSkills } from "./useComposerSkills";
 import { Popover } from "./Popover";
+import {
+  GoalChip,
+  GoalEditor,
+  GoalMenuRow,
+  DebugMenuRow,
+  DebugChip,
+} from "./ComposerModes";
+import type { SessionGoal } from "../lib/goal";
 import { consumePlanCommand, PLAN_COMMAND } from "../lib/plan";
 import { COMPACT_COMMAND, isCompactCommand } from "../lib/compact";
 import { insertAtCursor } from "../lib/transcribe";
@@ -202,6 +210,9 @@ type Props = {
     attachments: Attachment[],
     options?: ComposerTurnOptions,
   ) => void;
+  goal?: SessionGoal;
+  onGoalChange?: (goal: SessionGoal | null) => void;
+  onGoalResolve?: (action: "complete" | "keep") => void;
   onStop?: () => void;
   onCompactContext?: () => boolean;
   onPlaceInFolder?: (target: SessionFolderTarget) => void;
@@ -523,6 +534,9 @@ export function Composer({
   onQuestionReply,
   onQuestionInteraction,
   onSubmit,
+  goal,
+  onGoalChange,
+  onGoalResolve,
   onStop,
   onCompactContext,
   onPlaceInFolder,
@@ -557,6 +571,8 @@ export function Composer({
   const [plusOpen, setPlusOpen] = useState(false);
   const [plusWidth, setPlusWidth] = useState<number | undefined>(undefined);
   const [planSelected, setPlanSelected] = useState(false);
+  const [debugSelected, setDebugSelected] = useState(false);
+  const [goalEditorOpen, setGoalEditorOpen] = useState(false);
   const [orchestrationSelected, setOrchestrationSelected] = useState(false);
   const [slash, setSlash] = useState<SlashToken | null>(null);
   const [skillActive, setSkillActive] = useState(0);
@@ -1169,6 +1185,7 @@ export function Composer({
           : orchestrationSelected
             ? "orchestrate"
             : "default",
+      debug: debugSelected,
     });
     if (!ref.current) return;
     ref.current.value = "";
@@ -1593,6 +1610,14 @@ export function Composer({
                           })}
                     </span>
                   </button>
+                  <GoalMenuRow
+                    goal={goal}
+                    onEdit={() => {
+                      setPlusOpen(false);
+                      setGoalEditorOpen(true);
+                      ref.current?.focus();
+                    }}
+                  />
                   <button
                     type="button"
                     aria-pressed={planSelected}
@@ -1616,6 +1641,14 @@ export function Composer({
                       <Check className="size-3.5 shrink-0 text-accent" />
                     ) : null}
                   </button>
+                  <DebugMenuRow
+                    active={debugSelected}
+                    onToggle={() => {
+                      setDebugSelected((selected) => !selected);
+                      setPlusOpen(false);
+                      ref.current?.focus();
+                    }}
+                  />
                   {!hideTopBar && (
                     <button
                       type="button"
@@ -1647,6 +1680,27 @@ export function Composer({
                     </button>
                   )}
                 </Popover>
+              ) : null}
+              {goalEditorOpen ? (
+                <GoalEditor
+                  anchor={boxRef}
+                  width={plusWidth}
+                  goal={goal}
+                  onSave={(text) => {
+                    onGoalChange?.({
+                      text,
+                      createdAt: goal?.createdAt ?? Date.now(),
+                    });
+                    setGoalEditorOpen(false);
+                    ref.current?.focus();
+                  }}
+                  onClear={() => {
+                    onGoalChange?.(null);
+                    setGoalEditorOpen(false);
+                    ref.current?.focus();
+                  }}
+                  onClose={() => setGoalEditorOpen(false)}
+                />
               ) : null}
             </div>
             {orchestrationSelected && (
@@ -1681,6 +1735,15 @@ export function Composer({
                 Plan
                 <X className="size-3.5" />
               </button>
+            ) : null}
+            <GoalChip
+              goal={goal}
+              onEdit={() => setGoalEditorOpen(true)}
+              onClear={() => onGoalChange?.(null)}
+              onResolve={(action) => onGoalResolve?.(action)}
+            />
+            {debugSelected ? (
+              <DebugChip onDisable={() => setDebugSelected(false)} />
             ) : null}
             {harness !== "fx" ? (
               <div data-no-tooltip className="shrink-0">

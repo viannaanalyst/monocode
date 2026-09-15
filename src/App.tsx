@@ -307,6 +307,7 @@ import {
   type Session,
   type TurnIntent,
 } from "./lib/session";
+import type { SessionGoal } from "./lib/goal";
 
 import {
   canDispatchQueuedHead,
@@ -1567,6 +1568,35 @@ export default function App({
       })
       .catch(() => undefined);
   }, []);
+
+  const onGoalChange = useCallback(
+    (sessionId: string, goal: SessionGoal | null) => {
+      setSessions((prev) =>
+        prev.map((session) =>
+          session.id === sessionId
+            ? { ...session, goal: goal ?? undefined }
+            : session,
+        ),
+      );
+    },
+    [],
+  );
+
+  const onGoalResolve = useCallback(
+    (sessionId: string, action: "complete" | "keep") => {
+      setSessions((prev) =>
+        prev.map((session) => {
+          if (session.id !== sessionId || !session.goal) return session;
+          if (action === "complete") {
+            return { ...session, goal: undefined };
+          }
+          const { completedAt: _completedAt, ...goal } = session.goal;
+          return { ...session, goal };
+        }),
+      );
+    },
+    [],
+  );
 
   useEffect(() => {
     const liveIds = new Set(sessions.map((session) => session.id));
@@ -4872,6 +4902,7 @@ export default function App({
         handoffCard?: HandoffComposerCard;
         queuedMessageId?: string;
         intent?: TurnIntent;
+        debug?: boolean;
         planBlockId?: string;
         buildTarget?: PlanBuildTarget;
         managed?: boolean;
@@ -7390,6 +7421,8 @@ export default function App({
     onModelSettingsChange,
     onRuntimeModeChange,
     onSubmit,
+    onGoalChange,
+    onGoalResolve,
     onStop,
     onCompactContext,
     onPlaceSessionInFolder,

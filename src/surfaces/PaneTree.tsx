@@ -36,6 +36,7 @@ import {
 import { FilePane } from "./FilePane";
 import { SessionPane } from "./SessionPane";
 import type { SessionFolderTarget } from "../lib/sessionFolders";
+import type { SessionGoal } from "../lib/goal";
 
 type Shared = {
   visible: boolean;
@@ -65,6 +66,8 @@ type Shared = {
     settings: Record<string, string>,
   ) => void;
   onRuntimeModeChange: (sessionId: string, mode: RuntimeMode) => void;
+  onGoalChange?: (sessionId: string, goal: SessionGoal | null) => void;
+  onGoalResolve?: (sessionId: string, action: "complete" | "keep") => void;
   onSubmit: (
     sessionId: string,
     text: string,
@@ -172,6 +175,8 @@ function PaneTreeComponent({
   onModelChange,
   onModelSettingsChange,
   onRuntimeModeChange,
+  onGoalChange,
+  onGoalResolve,
   onSubmit,
   onStop,
   onCompactContext,
@@ -395,6 +400,8 @@ function PaneTreeComponent({
                 onModelChange={onModelChange}
                 onModelSettingsChange={onModelSettingsChange}
                 onRuntimeModeChange={onRuntimeModeChange}
+                onGoalChange={onGoalChange}
+                onGoalResolve={onGoalResolve}
                 onSubmit={onSubmit}
                 onStop={onStop}
                 onCompactContext={onCompactContext}

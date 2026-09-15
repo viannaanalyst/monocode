@@ -182,6 +182,7 @@ describe("orchestration composer and card", () => {
     );
     expect(submit).toHaveBeenCalledWith("Build settings", [], {
       intent: "orchestrate",
+      debug: false,
     });
     expect(
       document.querySelector('[aria-label="Turn off Orchestrator mode"]'),
@@ -588,7 +589,7 @@ describe("orchestration composer and card", () => {
       "lead",
       "Ask the UI worker to check keyboard navigation.",
       [],
-      { intent: "default" },
+      { intent: "default", debug: false },
     );
     for (const status of ["active", "paused", "finished", "stopped"] as const) {
       emptyRuns[0] = { ...emptyRuns[0], status };
