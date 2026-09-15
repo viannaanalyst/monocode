@@ -2355,14 +2355,28 @@ export default function App({
     openBrowserTab("about:blank");
   }, [openBrowserTab]);
 
+  // Links open in the right-dock browser: the pane tab chrome (a file tab with
+  // the pane's toolbar) is not what the surface is for.
+  const openBrowserInPanel = useCallback(
+    (url: string) => {
+      setPanelBrowser((current) =>
+        current
+          ? { ...current, path: url, browserTitle: undefined }
+          : newBrowserTab(active?.cwd ?? projectCwd, url),
+      );
+      showRightDock("browser");
+    },
+    [active?.cwd, projectCwd, showRightDock],
+  );
+
   useEffect(() => {
     const onOpen = (event: Event) => {
       const url = (event as CustomEvent<string>).detail;
-      if (typeof url === "string" && url) openBrowserTab(url);
+      if (typeof url === "string" && url) openBrowserInPanel(url);
     };
     window.addEventListener(OPEN_IN_BROWSER_EVENT, onOpen);
     return () => window.removeEventListener(OPEN_IN_BROWSER_EVENT, onOpen);
-  }, [openBrowserTab]);
+  }, [openBrowserInPanel]);
 
   const onBrowserTool = useCallback((card: BrowserCardMeta) => {
     const sessionId = activeSessionIdRef.current;
@@ -5465,7 +5479,7 @@ export default function App({
           const message =
             error instanceof Error
               ? error.message
-              : `${current.harness} adapter failed`;
+              : `${current.harness} adapter failed [diag: ${describeThrown(error)}]`;
           controlOutcome.error = message;
           if (!providerFailureSeen) {
             enqueueHarnessEvent(sessionId, {
@@ -8106,6 +8120,20 @@ export default function App({
     </TooltipLayer>
   );
 }
+/** Temporary: the fallback hides why a turn failed. Remove once diagnosed. */
+function describeThrown(error: unknown): string {
+  if (typeof error === "string") return `string: ${error}`;
+  if (error === null || error === undefined) return String(error);
+  if (typeof error === "object") {
+    try {
+      return `object: ${JSON.stringify(error)}`;
+    } catch {
+      return `object: ${Object.prototype.toString.call(error)}`;
+    }
+  }
+  return `${typeof error}: ${String(error)}`;
+}
+
 function conversationTitle(session: Session): string {
   const title = sessionDisplayTitle(session.title, session.harness);
   return title === "New session" ? "" : title;

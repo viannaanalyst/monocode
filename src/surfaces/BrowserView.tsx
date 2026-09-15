@@ -19,6 +19,11 @@ import {
   screenshotAttachment,
 } from "../lib/attachments";
 import { LAYER } from "../lib/layers";
+import {
+  overlayIntersects,
+  registerNativeOverlay,
+  subscribeNativeOverlays,
+} from "../lib/nativeOverlay";
 import { normalizeBrowserUrl, browserDataStoreId } from "../lib/browserUrl";
 import {
   browserEval,
@@ -113,6 +118,7 @@ export function BrowserView({ id, url, cwd, active, onUrlChange }: Props) {
   const [generation, setGeneration] = useState(0);
   const [nav, setNav] = useState<Nav>({ stack: [], index: -1 });
   const [menuOpen, setMenuOpen] = useState(false);
+  const [overlayCovered, setOverlayCovered] = useState(false);
   const menuBtn = useRef<HTMLDivElement>(null);
   currentRef.current = current;
 
@@ -154,7 +160,7 @@ export function BrowserView({ id, url, cwd, active, onUrlChange }: Props) {
   };
 
   useLayoutEffect(() => {
-    if (!active || !isTauri() || !showPage) {
+    if (!active || !isTauri() || !showPage || overlayCovered) {
       void webview.current?.hide().catch(() => undefined);
       return;
     }
@@ -296,7 +302,33 @@ export function BrowserView({ id, url, cwd, active, onUrlChange }: Props) {
       window.removeEventListener("resize", scheduleSync);
       observer.disconnect();
     };
-  }, [active, showPage, id, generation, label, cwd]);
+  }, [active, showPage, id, generation, label, cwd, overlayCovered]);
+
+  useEffect(() => {
+    let frame = 0;
+    const check = () => {
+      const box = host.current?.getBoundingClientRect();
+      setOverlayCovered(box ? overlayIntersects(box) : false);
+    };
+    const schedule = () => {
+      if (frame) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(check);
+    };
+    const unsubscribe = subscribeNativeOverlays(schedule);
+    window.addEventListener("resize", schedule);
+    window.addEventListener("scroll", schedule, true);
+    return () => {
+      unsubscribe();
+      window.removeEventListener("resize", schedule);
+      window.removeEventListener("scroll", schedule, true);
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!overlayCovered) return;
+    void webview.current?.hide().catch(() => undefined);
+  }, [overlayCovered]);
 
   useEffect(() => {
     return () => {
@@ -575,6 +607,12 @@ function BrowserActionsMenu({
       top: Math.max(8, box.top - height - 6),
     });
   }, [anchor]);
+
+  useEffect(() => {
+    const element = menuRef.current;
+    if (!element) return;
+    return registerNativeOverlay(element);
+  }, []);
 
   useEffect(() => {
     const onDown = (event: MouseEvent) => {

@@ -3,6 +3,7 @@ import { useEffect, useId, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useLockOverscroll } from "../hooks/useLockOverscroll";
 import { LAYER } from "../lib/layers";
+import { registerNativeOverlay } from "../lib/nativeOverlay";
 import { t } from "../i18n";
 
 
@@ -37,6 +38,7 @@ export function ModalPanel({
   children,
 }: Props) {
   const closeRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const lockOverscroll = useLockOverscroll<HTMLDivElement>();
   const uid = useId();
   const titleId = `${uid}-title`;
@@ -44,6 +46,12 @@ export function ModalPanel({
 
   useEffect(() => {
     closeRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    const element = panelRef.current;
+    if (!element) return;
+    return registerNativeOverlay(element);
   }, []);
 
   useEffect(() => {
@@ -62,6 +70,7 @@ export function ModalPanel({
       className={`absolute left-1/2 ${TOP[size]} ${WIDTH[size]} -translate-x-1/2`}
     >
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

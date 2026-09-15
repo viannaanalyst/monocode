@@ -10,6 +10,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { LAYER } from "../lib/layers";
+import { registerNativeOverlay } from "../lib/nativeOverlay";
 import {
   placePopover,
   type AnchorRect,
@@ -190,6 +191,12 @@ export function Popover({
   useEffect(() => {
     if (autoFocus) surface.current?.focus();
   }, [autoFocus]);
+
+  useEffect(() => {
+    const element = frame.current;
+    if (!element) return;
+    return registerNativeOverlay(element);
+  }, []);
 
   useEffect(() => {
     if (!onDismiss) return;
