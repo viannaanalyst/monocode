@@ -326,11 +326,6 @@ export function BrowserView({ id, url, cwd, active, onUrlChange }: Props) {
   }, []);
 
   useEffect(() => {
-    if (!overlayCovered) return;
-    void webview.current?.hide().catch(() => undefined);
-  }, [overlayCovered]);
-
-  useEffect(() => {
     return () => {
       const view = webview.current;
       webview.current = null;

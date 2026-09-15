@@ -117,9 +117,16 @@ export function ModalPanel({
 }
 
 export function Modal(props: Props) {
+  const backdropRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const element = backdropRef.current;
+    if (!element) return;
+    return registerNativeOverlay(element);
+  }, []);
   return createPortal(
     <div className="fixed inset-0" style={{ zIndex: LAYER.dialog }}>
       <div
+        ref={backdropRef}
         className="modal-backdrop absolute inset-0 bg-black/40"
         onMouseDown={props.onClose}
       />

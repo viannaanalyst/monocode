@@ -11,11 +11,19 @@ function notify(): void {
   for (const listener of listeners) listener();
 }
 
+/** Menus grow or flip after open; a size change can reach the webview. */
+const watcher =
+  typeof ResizeObserver === "undefined"
+    ? null
+    : new ResizeObserver(() => notify());
+
 export function registerNativeOverlay(element: HTMLElement): () => void {
   overlays.add(element);
+  watcher?.observe(element);
   notify();
   return () => {
     overlays.delete(element);
+    watcher?.unobserve(element);
     notify();
   };
 }
