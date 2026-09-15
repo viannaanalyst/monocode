@@ -57,6 +57,18 @@ export function useAutomations(callbacks: {
     }
   }, []);
 
+  const latestAutomation = useCallback(async (automation: Automation) => {
+    try {
+      const items = await listAutomations();
+      return items.find((item) => item.id === automation.id) ?? automation;
+    } catch {
+      return (
+        automationsRef.current.find((item) => item.id === automation.id) ??
+        automation
+      );
+    }
+  }, []);
+
   const tick = useCallback(async () => {
     const now = Date.now();
     for (const automation of automationsRef.current) {
@@ -84,17 +96,18 @@ export function useAutomations(callbacks: {
           ...latest,
           nextRunAt: next,
         });
+        const settled = await latestAutomation(automation);
         const timedOut = outcome === "timed_out";
         const status =
           outcome === "skipped" ? "skipped_busy" : timedOut ? "failed" : outcome;
         const applied =
           outcome === "skipped" || timedOut
             ? {
-                consecutiveFailures: latest.consecutiveFailures,
-                enabled: latest.enabled,
-                pausedReason: latest.pausedReason,
+                consecutiveFailures: settled.consecutiveFailures,
+                enabled: settled.enabled,
+                pausedReason: settled.pausedReason,
               }
-            : applyRunOutcome(latest, outcome);
+            : applyRunOutcome(settled, outcome);
         await recordAutomationResult({
           automationId: automation.id,
           runId: `${automation.id}:${slot}`,
@@ -106,10 +119,8 @@ export function useAutomations(callbacks: {
       } catch (err) {
         setError(String(err));
         if (claimed) {
-          const latest =
-            automationsRef.current.find((item) => item.id === automation.id) ??
-            automation;
-          const applied = applyRunOutcome(latest, "failed");
+          const settled = await latestAutomation(automation);
+          const applied = applyRunOutcome(settled, "failed");
           await recordAutomationResult({
             automationId: automation.id,
             runId: `${automation.id}:${slot}`,
@@ -124,7 +135,7 @@ export function useAutomations(callbacks: {
         setBusyId((current) => (current === automation.id ? null : current));
       }
     }
-  }, [refresh]);
+  }, [refresh, latestAutomation]);
 
   const runNow = useCallback(
     async (automation: Automation) => {
@@ -155,17 +166,18 @@ export function useAutomations(callbacks: {
           automationsRef.current.find((item) => item.id === automation.id) ??
           automation;
         const outcome = await callbacksRef.current.dispatch({ ...latest, nextRunAt: next });
+        const settled = await latestAutomation(automation);
         const timedOut = outcome === "timed_out";
         const status =
           outcome === "skipped" ? "skipped_busy" : timedOut ? "failed" : outcome;
         const applied =
           outcome === "skipped" || timedOut
             ? {
-                consecutiveFailures: latest.consecutiveFailures,
-                enabled: latest.enabled,
-                pausedReason: latest.pausedReason,
+                consecutiveFailures: settled.consecutiveFailures,
+                enabled: settled.enabled,
+                pausedReason: settled.pausedReason,
               }
-            : applyRunOutcome(latest, outcome);
+            : applyRunOutcome(settled, outcome);
         await recordAutomationResult({
           automationId: automation.id,
           runId: `${automation.id}:${slot}`,
@@ -176,10 +188,8 @@ export function useAutomations(callbacks: {
         await refresh();
       } catch (err) {
         setError(String(err));
-        const latest =
-          automationsRef.current.find((item) => item.id === automation.id) ??
-          automation;
-        const applied = applyRunOutcome(latest, "failed");
+        const settled = await latestAutomation(automation);
+        const applied = applyRunOutcome(settled, "failed");
         await recordAutomationResult({
           automationId: automation.id,
           runId: `${automation.id}:${slot}`,
@@ -194,7 +204,7 @@ export function useAutomations(callbacks: {
         setBusyId((current) => (current === automation.id ? null : current));
       }
     },
-    [refresh],
+    [refresh, latestAutomation],
   );
 
   const toggle = useCallback(
