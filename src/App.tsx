@@ -492,6 +492,8 @@ import {
   type ResumedWorkspace,
 } from "./lib/appLifecycle";
 
+const AUTOMATION_RUN_TIMEOUT_MS = 30 * 60_000;
+
 function parseModelSettings(raw: string): Record<string, string> {
   try {
     const parsed = JSON.parse(raw) as Record<string, string>;
@@ -1340,7 +1342,7 @@ export default function App({
 
   const activeSessionId = inboxViewOpen
     ? inboxAskPortal?.sessionId
-    : kanbanViewOpen
+    : kanbanViewOpen || automationsViewOpen
       ? undefined
       : active?.id;
   const activeSessionIdRef = useRef(activeSessionId);
@@ -6831,8 +6833,18 @@ export default function App({
       if (current.busy || (current.queuedMessages?.length ?? 0) > 0)
         return "skipped";
       return new Promise((resolve) => {
+        // `onSubmit` can return early without settling (orchestration guard,
+        // removal race). The timeout keeps the automation from stalling
+        // forever in `activeRuns`.
+        const timer = window.setTimeout(
+          () => resolve("failed"),
+          AUTOMATION_RUN_TIMEOUT_MS,
+        );
         onSubmit(current.id, automation.prompt, [], {
-          onSettled: (outcome) => resolve(outcome.status),
+          onSettled: (outcome) => {
+            window.clearTimeout(timer);
+            resolve(outcome.status);
+          },
         });
       });
     },
