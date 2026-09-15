@@ -1,9 +1,18 @@
-import { useMemo, useState } from "react";
+import {
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { OverlayNav } from "../chrome/TitleBar";
 import { WindowControls } from "../chrome/WindowControls";
 import { HarnessIcon } from "../chrome/HarnessIcon";
 import { LayoutTwoColumn, LoaderCircle, Pin } from "../chrome/icons";
 import { t } from "../i18n";
+import { setGrabbing, suppressTextSelection } from "../lib/drag";
+import { startDragGhost, type DragGhost } from "../lib/dragGhost";
+import { boardDropOutcome, kanbanColumnFromPoint } from "../lib/kanbanDrag";
 import { projectName } from "../lib/paths";
 import { IS_MAC } from "../lib/platform";
 import {
@@ -61,6 +70,82 @@ export function KanbanView({
   onArchiveSession,
 }: Props) {
   const [scope, setScope] = useState<BoardScope>(initialScope);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dropColumn, setDropColumn] = useState<BoardColumn | null>(null);
+  const skipClickUntil = useRef(0);
+
+  const onCardPointerDown = useCallback(
+    (session: SessionSummary, event: ReactPointerEvent<HTMLDivElement>) => {
+      if (event.button !== 0) return;
+      const handle = event.currentTarget;
+      const pointerId = event.pointerId;
+      const startX = event.clientX;
+      const startY = event.clientY;
+      let active = false;
+      let ghost: DragGhost | null = null;
+      let lastColumn: BoardColumn | null = null;
+      let lastX = startX;
+      let lastY = startY;
+      handle.setPointerCapture(pointerId);
+      const restoreSelection = suppressTextSelection();
+
+      const onMove = (moveEvent: PointerEvent) => {
+        lastX = moveEvent.clientX;
+        lastY = moveEvent.clientY;
+        if (!active) {
+          if (Math.hypot(lastX - startX, lastY - startY) < 5) return;
+          active = true;
+          setGrabbing(true);
+          setDraggingId(session.id);
+          ghost = startDragGhost(handle, lastX, lastY);
+        }
+        ghost?.move(lastX, lastY);
+        const column = kanbanColumnFromPoint(lastX, lastY);
+        if (column !== lastColumn) {
+          lastColumn = column;
+          setDropColumn(column);
+        }
+      };
+
+      const finish = (commit: boolean) => {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        window.removeEventListener("pointercancel", onUp);
+        window.removeEventListener("keydown", onKey);
+        restoreSelection();
+        setGrabbing(false);
+        setDraggingId(null);
+        setDropColumn(null);
+        ghost?.end();
+        ghost = null;
+        try {
+          handle.releasePointerCapture(pointerId);
+        } catch {
+          /* already released */
+        }
+        if (!active) return;
+        skipClickUntil.current = performance.now() + 400;
+        if (!commit) return;
+        const outcome = boardDropOutcome(!!session.archived, lastColumn);
+        if (outcome === "archive") onArchiveSession(session.id, true);
+        if (outcome === "unarchive") onArchiveSession(session.id, false);
+      };
+
+      const onUp = () => finish(true);
+      const onKey = (keyEvent: KeyboardEvent) => {
+        if (keyEvent.key !== "Escape") return;
+        keyEvent.preventDefault();
+        finish(false);
+      };
+
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+      window.addEventListener("pointercancel", onUp);
+      window.addEventListener("keydown", onKey);
+    },
+    [onArchiveSession],
+  );
+
   const board = useMemo(
     () =>
       classifySessionBoard({
@@ -149,7 +234,13 @@ export function KanbanView({
                       card={card}
                       showProject={scope === "all"}
                       now={now}
-                      onOpen={() => onOpenSession(card.session.id)}
+                      dragging={draggingId === card.session.id}
+                      dropTarget={dropColumn === card.column}
+                      onPointerDown={(event) => onCardPointerDown(card.session, event)}
+                      onOpen={() => {
+                        if (performance.now() < skipClickUntil.current) return;
+                        onOpenSession(card.session.id);
+                      }}
                       onArchive={() => onArchiveSession(card.session.id, true)}
                       onUnarchive={() => onArchiveSession(card.session.id, false)}
                     />
@@ -168,6 +259,9 @@ function KanbanCard({
   card,
   showProject,
   now,
+  dragging,
+  dropTarget,
+  onPointerDown,
   onOpen,
   onArchive,
   onUnarchive,
@@ -175,6 +269,9 @@ function KanbanCard({
   card: BoardCard;
   showProject: boolean;
   now: number;
+  dragging: boolean;
+  dropTarget: boolean;
+  onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
   onOpen: () => void;
   onArchive: () => void;
   onUnarchive: () => void;
@@ -183,7 +280,14 @@ function KanbanCard({
   return (
     <div
       data-kanban-card={session.id}
-      className="group relative rounded-md border border-content/10 bg-background-base/60 p-2"
+      onPointerDown={onPointerDown}
+      className={`group relative rounded-md border p-2 ${
+        dragging
+          ? "opacity-40"
+          : dropTarget
+            ? "border-accent/60 bg-accent/5"
+            : "border-content/10 bg-background-base/60"
+      }`}
     >
       <button
         type="button"
