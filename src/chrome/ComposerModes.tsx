@@ -157,6 +157,7 @@ export function GoalChip({
       <Crosshair className="size-3.5 shrink-0" />
       <button
         type="button"
+        data-no-tooltip
         title={t("Edit goal")}
         onMouseDown={(event) => event.preventDefault()}
         onClick={onEdit}
@@ -168,6 +169,7 @@ export function GoalChip({
         <>
           <button
             type="button"
+            data-no-tooltip
             aria-label={t("Complete goal")}
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => onResolve("complete")}
@@ -177,6 +179,7 @@ export function GoalChip({
           </button>
           <button
             type="button"
+            data-no-tooltip
             aria-label={t("Keep pursuing")}
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => onResolve("keep")}
@@ -188,6 +191,7 @@ export function GoalChip({
       ) : null}
       <button
         type="button"
+        data-no-tooltip
         aria-label={t("Clear goal")}
         onMouseDown={(event) => event.preventDefault()}
         onClick={onClear}
@@ -203,6 +207,7 @@ export function DebugChip({ onDisable }: { onDisable: () => void }): ReactElemen
   return (
     <button
       type="button"
+      data-no-tooltip
       aria-label={t("Turn off Debug mode")}
       onMouseDown={(event) => event.preventDefault()}
       onClick={onDisable}

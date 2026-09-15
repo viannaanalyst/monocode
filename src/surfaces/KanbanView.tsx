@@ -411,6 +411,7 @@ function KanbanCard({
         <button
           type="button"
           data-no-drag
+          data-no-tooltip
           aria-label={t("{name} menu", { name: session.title })}
           aria-haspopup="menu"
           onClick={onMenu}
@@ -421,6 +422,7 @@ function KanbanCard({
       </div>
       <button
         type="button"
+        data-no-tooltip
         onClick={onOpen}
         aria-label={t("Open {title}", { title: session.title })}
         className="mt-1.5 flex w-full min-w-0 flex-col gap-1.5 text-left"
