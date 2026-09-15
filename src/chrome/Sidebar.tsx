@@ -1212,7 +1212,7 @@ function SidebarComponent({
         {tab === "sessions" && cwd && cwd !== "~" ? (
           <div className="flex h-9 shrink-0 items-center gap-1 border-b border-content/10 px-2">
             <div className="relative flex h-7 min-w-0 flex-1 items-center">
-              <Search className="pointer-events-none absolute left-2 size-3 shrink-0 opacity-50" />
+              <Search className="pointer-events-none absolute left-2 size-3.5 shrink-0 opacity-50" />
               {sessionSearchInput}
             </div>
             <SessionsHeaderButton
@@ -1222,7 +1222,7 @@ function SidebarComponent({
               hasPopup
               onClick={onFilterButtonClick}
             >
-              <ListFilter className="size-3" strokeWidth={1.75} />
+              <ListFilter className="size-3.5" strokeWidth={1.75} />
             </SessionsHeaderButton>
           </div>
         ) : null}
@@ -1269,10 +1269,10 @@ function SidebarComponent({
                   {pinnedInTree.length > 0 ? (
                     <li className="mb-1.5">
                       <div className="overflow-hidden rounded-md bg-content/5">
-                        <div className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold text-content/50">
+                        <div className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-content/50">
                           <Pin className="size-3.5" strokeWidth={1.75} />
                           <span className="truncate">{t("Pinned")}</span>
-                          <span className="ml-auto shrink-0 text-[10px] tabular-nums text-content/40">
+                          <span className="ml-auto shrink-0 text-2xs tabular-nums text-content/40">
                             {pinnedInTree.length}
                           </span>
                         </div>
@@ -1314,10 +1314,10 @@ function SidebarComponent({
                             className="size-3.5 shrink-0 text-content/45"
                             strokeWidth={1.75}
                           />
-                          <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-content/80">
+                          <span className="min-w-0 flex-1 truncate text-sm text-content/80">
                             {group.name}
                           </span>
-                          <span className="shrink-0 text-[10px] tabular-nums text-content/40">
+                          <span className="shrink-0 text-2xs tabular-nums text-content/40">
                             {group.sessions.length}
                           </span>
                         </button>
@@ -1546,10 +1546,10 @@ function SidebarComponent({
                                       className="relative flex w-full items-center gap-1 rounded-md border border-transparent px-2.5 py-1.5 text-left text-content/45 hover:bg-content/10 hover:text-content"
                                     >
                                       <Plus
-                                        className="size-3 shrink-0"
+                                        className="size-3.5 shrink-0"
                                         strokeWidth={1.75}
                                       />
-                                      <span className="text-[13px] font-semibold leading-snug">
+                                      <span className="text-sm font-medium leading-snug">
                                         {t("New session")}
                                       </span>
                                     </button>
@@ -1900,7 +1900,7 @@ function SidebarProjectPicker({
             {label}
           </span>
           <ChevronDown
-            className={`size-3 shrink-0 text-content/45 transition-transform ${
+            className={`size-3.5 shrink-0 text-content/45 transition-transform ${
               open ? "rotate-180" : ""
             }`}
             strokeWidth={1.75}
@@ -1921,7 +1921,7 @@ function SidebarProjectPicker({
             className="flex flex-col overflow-hidden"
           >
             <label className="flex h-11 shrink-0 items-center gap-2.5 border-b border-content/10 px-3 text-content/45 focus-within:text-content/70">
-              <Search className="size-4 shrink-0" strokeWidth={1.75} />
+              <Search className="size-3.5 shrink-0" strokeWidth={1.75} />
               <span className="sr-only">{t("Search projects")}</span>
               <input
                 ref={searchRef}
@@ -1931,7 +1931,7 @@ function SidebarProjectPicker({
                   setActive(0);
                 }}
                 placeholder={t("Search projects...")}
-                className="min-w-0 flex-1 bg-transparent text-[13px] text-content outline-none placeholder:text-content/35"
+                className="min-w-0 flex-1 bg-transparent text-sm text-content outline-none placeholder:text-content/35"
               />
             </label>
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-none p-1.5">
@@ -1983,10 +1983,10 @@ function SidebarProjectPicker({
                           />
                         )}
                       </span>
-                      <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
+                      <span className="min-w-0 flex-1 truncate text-sm">
                         {itemLabel}
                       </span>
-                      <span className="max-w-44 shrink truncate font-mono text-[11px] text-content/40">
+                      <span className="max-w-44 shrink truncate font-mono text-xs text-content/40">
                         {prettyParent(item.path)}
                       </span>
                     </button>
@@ -2004,9 +2004,9 @@ function SidebarProjectPicker({
                     closePicker();
                     onOpenProject();
                   }}
-                  className="flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-[13px] text-content/75 hover:bg-content/8 hover:text-content"
+                  className="flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-sm text-content/75 hover:bg-content/8 hover:text-content"
                 >
-                  <Plus className="size-4 shrink-0" strokeWidth={1.75} />
+                  <Plus className="size-3.5 shrink-0" strokeWidth={1.75} />
                   <span>{t("New project")}</span>
                 </button>
               </div>
@@ -2118,14 +2118,14 @@ function WorkspaceTitleActions({
                   setMenuOpen(false);
                   onNew();
                 }}
-                className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-[13px] text-content hover:bg-content/10"
+                className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-content hover:bg-content/10"
               >
                 <Plus className="size-3.5 shrink-0" strokeWidth={1.75} />
                 {t("New tab in this project")}
               </button>
               {otherProjects.length > 0 ? (
                 <>
-                  <p className="px-2 pb-1 pt-2 text-[10px] uppercase tracking-widest text-content/45">
+                  <p className="px-2 pb-1 pt-2 text-2xs font-medium uppercase tracking-widest text-content/45">
                     {t("Another project")}
                   </p>
                   {otherProjects.slice(0, 8).map((item) => (
@@ -2140,10 +2140,10 @@ function WorkspaceTitleActions({
                       }}
                       className="flex w-full items-center justify-between gap-3 rounded-lg px-2 py-2 text-left text-content/80 hover:bg-content/10 hover:text-content"
                     >
-                      <span className="min-w-0 truncate text-[13px]">
+                      <span className="min-w-0 truncate text-sm">
                         {basename(item.path) || projectName(item.path)}
                       </span>
-                      <span className="max-w-28 shrink-0 truncate font-mono text-[11px] text-content/45">
+                      <span className="max-w-28 shrink-0 truncate font-mono text-xs text-content/45">
                         {prettyParent(item.path)}
                       </span>
                     </button>
@@ -2343,17 +2343,17 @@ function FolderRow({
           if (onRename) onRename();
           else onToggle();
         }}
-        className="relative min-w-0 flex-1 cursor-text truncate text-[13px] font-semibold leading-snug text-content"
+        className="relative min-w-0 flex-1 cursor-text truncate text-sm leading-snug text-content"
       >
         {folder.name}
       </span>
-      <span className="relative flex shrink-0 items-center gap-1 text-[11px] tabular-nums text-content/45">
+      <span className="relative flex shrink-0 items-center gap-1 text-2xs tabular-nums text-content/45">
         {!expanded && needsApproval ? (
-          <CircleAlert className="size-3 text-amber-400" strokeWidth={1.75} />
+          <CircleAlert className="size-3.5 text-amber-400" strokeWidth={1.75} />
         ) : !expanded && busy ? (
-          <TerminalSpinner className="inline-block w-3 select-none text-center text-[11px] leading-none text-accent" />
+          <TerminalSpinner className="inline-block w-3 select-none text-center text-xs leading-none text-accent" />
         ) : !expanded && done ? (
-          <Check className="size-3 text-emerald-400" strokeWidth={2.25} />
+          <Check className="size-3.5 text-emerald-400" strokeWidth={2.25} />
         ) : null}
         <span>{count}</span>
       </span>
@@ -2444,9 +2444,9 @@ function FolderRenameRow({
             finish(false);
           }
         }}
-        className="relative min-w-0 flex-1 rounded bg-content/10 px-2 py-0.5 text-[13px] font-semibold leading-snug text-content outline-none ring-1 ring-accent/40"
+        className="relative min-w-0 flex-1 rounded bg-content/10 px-2 py-0.5 text-sm leading-snug text-content outline-none ring-1 ring-accent/40"
       />
-      <span className="relative shrink-0 text-[11px] tabular-nums text-content/45">
+      <span className="relative shrink-0 text-2xs tabular-nums text-content/45">
         {memberCount}
       </span>
     </div>
@@ -2540,11 +2540,11 @@ function SessionCard({
         ? "text-emerald-400"
         : "text-content/45";
   const statusIcon = needsApproval ? (
-    <CircleAlert className="size-3" strokeWidth={1.75} />
+    <CircleAlert className="size-3.5" strokeWidth={1.75} />
   ) : busy ? (
-    <TerminalSpinner className="inline-block w-3 select-none text-center text-[11px] leading-none text-accent" />
+    <TerminalSpinner className="inline-block w-3 select-none text-center text-xs leading-none text-accent" />
   ) : done ? (
-    <Check className="size-3" strokeWidth={2.25} />
+    <Check className="size-3.5" strokeWidth={2.25} />
   ) : null;
 
   const linkedWorkItem = session.linkedWorkItem;
@@ -2587,12 +2587,12 @@ function SessionCard({
         event.stopPropagation();
         void openUrl(linkedWorkItem.url).catch(() => undefined);
       }}
-      className="flex shrink-0 cursor-pointer items-center gap-0.5 rounded px-0.5 text-[11px] tabular-nums text-accent hover:underline"
+      className="flex shrink-0 cursor-pointer items-center gap-0.5 rounded px-0.5 text-2xs tabular-nums text-accent hover:underline"
     >
       {linkedWorkItem.kind === "pr" ? (
-        <GitPullRequest className="size-3" strokeWidth={1.75} />
+        <GitPullRequest className="size-3.5" strokeWidth={1.75} />
       ) : (
-        <CircleDot className="size-3" strokeWidth={1.75} />
+        <CircleDot className="size-3.5" strokeWidth={1.75} />
       )}
       <span>#{linkedWorkItem.number}</span>
     </button>
@@ -2813,13 +2813,13 @@ function SessionCard({
         <span className="relative flex min-w-0 items-center gap-2">
           {session.pinned ? (
             <Pin
-              className="size-3 shrink-0 text-content/45"
+              className="size-3.5 shrink-0 text-content/45"
               strokeWidth={1.75}
             />
           ) : null}
           <ModelBrandIcon model={modelChoice} className="size-4 shrink-0" />
           <span
-            className="min-w-0 flex-1 truncate text-[13px] font-semibold leading-snug text-content"
+            className="min-w-0 flex-1 truncate text-sm leading-snug text-content"
           >
             {title}
           </span>
@@ -2845,7 +2845,7 @@ function SessionCard({
                 }}
                 className="pointer-events-none grid size-5 place-items-center rounded-md text-content/50 hover:bg-content/10 hover:text-content group-focus-within:pointer-events-auto group-hover:pointer-events-auto"
               >
-                <Archive className="size-3 shrink-0" strokeWidth={1.75} />
+                <Archive className="size-3.5 shrink-0" strokeWidth={1.75} />
               </button>
             ) : null}
           </span>
@@ -2939,7 +2939,7 @@ function SessionRenameRow({
         onChange={(e) => setValue(e.target.value)}
         onBlur={() => finish(true)}
         onKeyDown={onKeyDown}
-        className="w-full rounded bg-content/10 px-2 py-1 text-[13px] font-semibold leading-snug text-content outline-none ring-1 ring-accent/40"
+        className="w-full rounded bg-content/10 px-2 py-1 text-sm leading-snug text-content outline-none ring-1 ring-accent/40"
       />
     </div>
   );

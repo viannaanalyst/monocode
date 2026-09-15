@@ -23,7 +23,7 @@ export function RightPanelPicker({
             key={id}
             type="button"
             onClick={() => onPick(id)}
-            className="flex h-10 w-full cursor-pointer items-center gap-2.5 rounded-full bg-content/[0.07] px-3 text-[13px] text-content/85 hover:bg-content/[0.11] hover:text-content"
+            className="flex h-10 w-full cursor-pointer items-center gap-2.5 rounded-full bg-content/[0.07] px-3 text-sm font-medium text-content/85 hover:bg-content/[0.11] hover:text-content"
           >
             <Icon className="size-3.5 shrink-0" strokeWidth={1.75} />
             <span>{t(label)}</span>
@@ -60,7 +60,7 @@ export function RightPanelTypeMenu({
             key={id}
             type="button"
             onClick={() => onPick(id)}
-            className="flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 text-[13px] text-content/85 hover:bg-content/10 hover:text-content"
+            className="flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 text-sm text-content/85 hover:bg-content/10 hover:text-content"
           >
             <Icon className="size-3.5 shrink-0" strokeWidth={1.75} />
             <span>{t(label)}</span>

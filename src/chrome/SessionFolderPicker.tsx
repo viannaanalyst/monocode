@@ -89,7 +89,7 @@ export function SessionFolderPicker({ folders, onPick, onDismiss }: Props) {
               pick(rows[active]);
             }
           }}
-          className="min-w-0 flex-1 bg-transparent text-[13px] text-content outline-none placeholder:text-content/35"
+          className="min-w-0 flex-1 bg-transparent text-sm text-content outline-none placeholder:text-content/35"
         />
         <button
           type="button"
@@ -126,7 +126,7 @@ export function SessionFolderPicker({ folders, onPick, onDismiss }: Props) {
                 onMouseDown={(event) => event.preventDefault()}
                 onMouseEnter={() => setActive(index)}
                 onClick={() => pick(row)}
-                className={`flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-[13px] ${
+                className={`flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm ${
                   index === active
                     ? "bg-skill/15 text-content"
                     : "text-content/75 hover:bg-content/5 hover:text-content"
@@ -141,7 +141,7 @@ export function SessionFolderPicker({ folders, onPick, onDismiss }: Props) {
                   {folder ? label : `Create “${label}”`}
                 </span>
                 {folder ? (
-                  <span className="shrink-0 text-[11px] tabular-nums text-content/40">
+                  <span className="shrink-0 text-2xs tabular-nums text-content/40">
                     {folder.sessionIds.length}
                   </span>
                 ) : null}

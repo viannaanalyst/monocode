@@ -37,22 +37,22 @@ export function RailAction({
       {badge != null ? (
         <span
           aria-hidden
-          className="absolute left-1 top-1/2 grid min-w-4 -translate-y-1/2 place-items-center rounded-full bg-accent px-1 text-[10px] font-semibold leading-none text-white tabular-nums"
+          className="absolute left-1 top-1/2 grid min-w-4 -translate-y-1/2 place-items-center rounded-full bg-accent px-1 text-2xs font-medium leading-none text-white tabular-nums"
         >
           {badge > 99 ? "99+" : badge}
         </span>
       ) : null}
       <Icon
-        className={`size-4 shrink-0 opacity-70 ${badge != null ? "ml-4" : ""}`}
+        className={`size-3.5 shrink-0 opacity-70 ${badge != null ? "ml-4" : ""}`}
         strokeWidth={1.75}
       />
-      <span className="min-w-0 flex-1 truncate text-sm font-medium leading-tight">
+      <span className="min-w-0 flex-1 truncate text-sm leading-tight">
         {label}
       </span>
       {dot ? (
         <span aria-hidden className="size-2 shrink-0 rounded-full bg-accent" />
       ) : shortcut ? (
-        <span aria-hidden className="shrink-0 text-[11px] text-content/40">
+        <span aria-hidden className="shrink-0 text-xs text-content/40">
           {shortcut}
         </span>
       ) : null}
@@ -83,11 +83,11 @@ export function RailIconAction({
           : "text-content/50 hover:bg-content/10 hover:text-content"
       } disabled:cursor-default disabled:opacity-40`}
     >
-      <Icon className="size-4 shrink-0 opacity-80" strokeWidth={1.75} />
+      <Icon className="size-3.5 shrink-0 opacity-80" strokeWidth={1.75} />
       {badge != null ? (
         <span
           aria-hidden
-          className="absolute -right-0.5 -top-0.5 grid min-w-4 place-items-center rounded-full bg-accent px-1 text-[9px] font-semibold leading-4 text-white tabular-nums"
+          className="absolute -right-0.5 -top-0.5 grid min-w-4 place-items-center rounded-full bg-accent px-1 text-2xs font-medium leading-4 text-white tabular-nums"
         >
           {badge > 99 ? "99+" : badge}
         </span>
@@ -129,12 +129,12 @@ export function RailSearch({
           : "text-content/50 hover:bg-content/10 hover:text-content"
       } disabled:cursor-default disabled:opacity-40`}
     >
-      <Icon className="size-4 shrink-0 opacity-70" strokeWidth={1.75} />
-      <span className="min-w-0 flex-1 truncate text-sm font-medium leading-tight">
+      <Icon className="size-3.5 shrink-0 opacity-70" strokeWidth={1.75} />
+      <span className="min-w-0 flex-1 truncate text-sm leading-tight">
         {label}
       </span>
       {shortcut ? (
-        <span aria-hidden className="shrink-0 text-[11px] text-content/40">
+        <span aria-hidden className="shrink-0 text-xs text-content/40">
           {shortcut}
         </span>
       ) : null}

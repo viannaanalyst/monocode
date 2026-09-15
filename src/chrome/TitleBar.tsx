@@ -214,7 +214,7 @@ export function DevModeLabel() {
   return (
     <span
       title={t("Development build")}
-      className="mr-1 min-w-0 truncate rounded-md bg-skill/15 px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-skill"
+      className="mr-1 min-w-0 truncate rounded-md bg-skill/15 px-1.5 py-0.5 text-2xs font-medium tracking-wide text-skill"
     >
       Development
     </span>
@@ -448,7 +448,7 @@ function TitleBarComponent({
                   className="size-3.5 shrink-0"
                 />
               ) : null}
-              <span className="min-w-0 truncate text-[12.5px] text-content/75">
+              <span className="min-w-0 truncate text-sm text-content/75">
                 {tabCopy(activeTab).headline}
               </span>
             </>
@@ -457,7 +457,7 @@ function TitleBarComponent({
 
         {!IS_MAC && !IS_WIN ? (
           <div className="flex min-w-0 flex-1 items-center justify-center px-4">
-            <span className="pointer-events-none truncate text-[11.5px] font-medium text-content/40 select-none">
+            <span className="pointer-events-none truncate text-xs font-medium text-content/40 select-none">
               {systemTitle}
             </span>
           </div>

@@ -199,7 +199,7 @@ export function UsageFooter({
   return (
     <footer
       aria-label={ariaLabel}
-      className="flex h-7 shrink-0 items-center gap-3 overflow-x-auto border-t border-content/10 px-3 text-[11px] text-content/55"
+      className="flex h-7 shrink-0 items-center gap-3 overflow-x-auto border-t border-content/10 px-3 text-xs text-content/55"
     >
       {showUsage ? (
         <>
@@ -230,7 +230,7 @@ export function UsageFooter({
               onClick={() => void refresh(true)}
             >
               <RefreshCw
-                className={`size-3 ${refreshing ? "animate-spin" : ""}`}
+                className={`size-3.5 ${refreshing ? "animate-spin" : ""}`}
                 strokeWidth={1.75}
                 aria-hidden
               />
@@ -267,7 +267,7 @@ function CostChip({ cost }: { cost: SessionCost }) {
         onClick={() => setOpen((value) => !value)}
       >
         <CoinsDollar
-          className="size-3 shrink-0"
+          className="size-3.5 shrink-0"
           strokeWidth={1.75}
           aria-hidden
         />
@@ -285,7 +285,7 @@ function CostChip({ cost }: { cost: SessionCost }) {
           aria-label={t("Session cost")}
           className="min-w-[15rem] p-2"
         >
-          <div className="px-1 pb-1.5 text-[10px] uppercase tracking-wide text-content/40">
+          <div className="px-1 pb-1.5 text-2xs uppercase tracking-wide text-content/40">
             {t("Estimated session cost")}
           </div>
           {models.length > 0 ? (
@@ -293,7 +293,7 @@ function CostChip({ cost }: { cost: SessionCost }) {
               {models.map((model) => (
                 <div
                   key={model.model}
-                  className="flex items-center gap-3 px-1 text-[11px]"
+                  className="flex items-center gap-3 px-1 text-xs"
                 >
                   <span className="min-w-0 flex-1 truncate" title={model.model}>
                     {model.model}
@@ -310,7 +310,7 @@ function CostChip({ cost }: { cost: SessionCost }) {
               ))}
             </div>
           ) : null}
-          <div className="mt-1.5 flex items-center gap-3 border-t border-content/10 px-1 pt-1.5 text-[11px]">
+          <div className="mt-1.5 flex items-center gap-3 border-t border-content/10 px-1 pt-1.5 text-xs">
             <span className="flex-1">{t("Total")}</span>
             <span className="tabular-nums text-content/60">
               {formatTokens(cost.totalTokens)}
@@ -341,7 +341,7 @@ function SessionChip({ session }: { session: UsageFooterSession }) {
       className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap"
       title={HARNESS_TITLE[session.harness]}
     >
-      <HarnessIcon harness={session.harness} className="size-3 shrink-0" />
+      <HarnessIcon harness={session.harness} className="size-3.5 shrink-0" />
       <span>{HARNESS_LABEL[session.harness]}</span>
     </span>
   );
@@ -398,7 +398,7 @@ function RunningTerminalChip({
         }}
       >
         <TerminalLiveMark />
-        <span className="truncate font-mono text-[10px] tabular-nums">
+        <span className="truncate font-mono text-2xs tabular-nums">
           {label}
         </span>
       </button>
@@ -423,7 +423,7 @@ function RunningTerminalChip({
               onClick={() => toggle(terminal.id)}
             >
               <span className="min-w-0 flex-1 truncate">{terminal.process}</span>
-              <span className="max-w-[7rem] shrink-0 truncate text-[11px] text-content/40">
+              <span className="max-w-[7rem] shrink-0 truncate text-xs text-content/40">
                 {terminal.label}
               </span>
             </button>
@@ -472,7 +472,7 @@ function ProviderChip({
             : undefined)
       }
     >
-      <HarnessIcon harness={limits.provider} className="size-3 shrink-0" />
+      <HarnessIcon harness={limits.provider} className="size-3.5 shrink-0" />
       {loading ? (
         <span className="animate-pulse text-content/35">···</span>
       ) : disconnected ? (

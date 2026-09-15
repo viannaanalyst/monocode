@@ -157,7 +157,7 @@ export function ProjectSearch({
           aria-label={t("Back to files")}
           className="grid size-7 shrink-0 place-items-center rounded-md text-content/50 hover:bg-content/10 hover:text-content"
         >
-          <ChevronLeft className="size-4" strokeWidth={1.75} />
+          <ChevronLeft className="size-3.5" strokeWidth={1.75} />
         </button>
         <span className="min-w-0 flex-1 truncate text-[12px] text-content/55">{t("Search in files")}</span>
       </div>
@@ -201,7 +201,7 @@ export function ProjectSearch({
           placeholder={t("files to include")}
           aria-label={t("files to include")}
           spellCheck={false}
-          className="w-full rounded-md border border-content/10 bg-content/5 px-2 py-1.5 text-[11px] text-content outline-none placeholder:text-content/35"
+          className="w-full rounded-md border border-content/10 bg-content/5 px-2 py-1.5 text-xs text-content outline-none placeholder:text-content/35"
         />
         <input
           value={exclude}
@@ -209,14 +209,14 @@ export function ProjectSearch({
           placeholder={t("files to exclude")}
           aria-label={t("files to exclude")}
           spellCheck={false}
-          className="w-full rounded-md border border-content/10 bg-content/5 px-2 py-1.5 text-[11px] text-content outline-none placeholder:text-content/35"
+          className="w-full rounded-md border border-content/10 bg-content/5 px-2 py-1.5 text-xs text-content outline-none placeholder:text-content/35"
         />
       </div>
 
-      <div className="flex min-h-8 shrink-0 items-center gap-2 px-3 py-1.5 text-[11px] text-content/45">
+      <div className="flex min-h-8 shrink-0 items-center gap-2 px-3 py-1.5 text-xs text-content/45">
         {loading ? (
           <>
-            <LoaderCircle className="size-3 animate-spin" strokeWidth={1.75} />
+            <LoaderCircle className="size-3.5 animate-spin" strokeWidth={1.75} />
             <span>{t("Searching…")}</span>
           </>
         ) : error ? (
@@ -241,12 +241,12 @@ export function ProjectSearch({
               <span className="min-w-0 flex-1 truncate text-[12px] text-content">
                 {group.name}
               </span>
-              <span className="rounded-full bg-accent/20 px-1.5 py-0.5 text-[10px] tabular-nums text-accent">
+              <span className="rounded-full bg-accent/20 px-1.5 py-0.5 text-2xs font-medium tabular-nums text-accent">
                 {group.matches.length}
               </span>
             </div>
             <p
-              className="truncate px-2 pb-1 text-[10px] text-content/40"
+              className="truncate px-2 pb-1 text-2xs text-content/40"
               title={group.relative}
             >
               {group.relative}
@@ -259,10 +259,10 @@ export function ProjectSearch({
                     onClick={() => openMatch(match)}
                     className="flex w-full items-start gap-2 px-2 py-1 text-left hover:bg-content/5"
                   >
-                    <span className="w-7 shrink-0 pt-px text-right font-mono text-[11px] text-content/35 tabular-nums">
+                    <span className="w-7 shrink-0 pt-px text-right font-mono text-xs text-content/35 tabular-nums">
                       {match.line}
                     </span>
-                    <span className="min-w-0 flex-1 truncate font-mono text-[11px] leading-5 text-content/80">
+                    <span className="min-w-0 flex-1 truncate font-mono text-xs leading-5 text-content/80">
                       <MatchPreview
                         preview={match.preview.trimEnd()}
                         query={query.trim()}

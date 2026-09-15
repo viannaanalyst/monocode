@@ -215,7 +215,7 @@ export function ExplorerMenu({
             onPick(item.id);
           }
         }}
-        className={`flex ${item.description ? "py-1.5" : "h-7"} w-full items-center gap-3 rounded-lg px-2 text-left text-[13px] leading-none ${
+        className={`flex ${item.description ? "py-1.5" : "h-7"} w-full items-center gap-3 rounded-lg px-2 text-left text-sm leading-none ${
           item.disabled
             ? "text-content/30"
             : item.danger
@@ -230,7 +230,7 @@ export function ExplorerMenu({
         <span className="min-w-0 flex-1">
           <span className="block truncate">{item.label}</span>
           {item.description ? (
-            <span className="mt-1 block text-[11px] leading-snug text-content/50">
+            <span className="mt-1 block text-xs leading-snug text-content/50">
               {item.description}
             </span>
           ) : null}
@@ -243,7 +243,7 @@ export function ExplorerMenu({
         ) : item.checked ? (
           <Check className="size-3.5 shrink-0" strokeWidth={2.25} />
         ) : item.shortcut ? (
-          <span className="shrink-0 text-[11px] text-content/40">
+          <span className="shrink-0 text-xs text-content/40">
             {item.shortcut}
           </span>
         ) : null}

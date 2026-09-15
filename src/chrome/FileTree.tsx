@@ -705,7 +705,7 @@ export const FileTree = memo(function FileTree({
                 <ChevronRight className="size-3.5" strokeWidth={1.75} />
               )}
             </span>
-            <span className="min-w-0 truncate text-[11px] font-semibold tracking-[0.08em] text-content/50 uppercase">
+            <span className="min-w-0 truncate text-xs tracking-[0.08em] text-content/50 uppercase">
               {name}
             </span>
           </button>
@@ -824,7 +824,7 @@ function FileTreeDiffButton({
       <span className="relative">
         <GitCompare className="size-3.5" strokeWidth={1.75} />
         {files > 0 ? (
-          <span className="pointer-events-none absolute -top-1.5 -right-2 grid min-h-3.5 min-w-3.5 place-items-center rounded-full bg-accent px-0.5 text-[7px] font-semibold leading-none text-white tabular-nums">
+          <span className="pointer-events-none absolute -top-1.5 -right-2 grid min-h-3.5 min-w-3.5 place-items-center rounded-full bg-accent px-0.5 text-[7px] font-medium leading-none text-white tabular-nums">
             {badge}
           </span>
         ) : null}

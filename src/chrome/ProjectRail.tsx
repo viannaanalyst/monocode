@@ -552,7 +552,7 @@ export function ProjectRail({
             onOpenWhatsNew={onOpenWhatsNew}
             onDismissUpdate={onDismissUpdate}
           />
-          <div className="flex shrink-0 flex-col gap-px p-2">
+          <div className="flex shrink-0 flex-col gap-px border-t border-content/10 p-2">
             <RailAction
               label={t("Settings")}
               icon={Settings}
@@ -701,7 +701,7 @@ function LiveAgentsPreview({
           <span className="min-w-0 flex-1 truncate text-xs text-content/50">
             Working
           </span>
-          <span className="text-[11px] tabular-nums text-content/40">
+          <span className="text-2xs tabular-nums text-content/40">
             {agents.length}
           </span>
         </div>
@@ -730,12 +730,12 @@ function LiveAgentsPreview({
             type="button"
             aria-expanded={expanded}
             onClick={() => setExpanded((open) => !open)}
-            className="flex w-full items-center justify-center gap-1 px-2 py-1.5 text-[11px] text-content/50 hover:bg-content/8 hover:text-content"
+            className="flex w-full items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-content/50 hover:bg-content/8 hover:text-content"
           >
             {expanded ? (
-              <ChevronUp className="size-3" strokeWidth={1.75} />
+              <ChevronUp className="size-3.5" strokeWidth={1.75} />
             ) : (
-              <ChevronDown className="size-3" strokeWidth={1.75} />
+              <ChevronDown className="size-3.5" strokeWidth={1.75} />
             )}
             {expanded ? t("Show less") : t("{count} more", { count: extra })}
           </button>
@@ -804,17 +804,17 @@ function LiveAgentCard({
           active={live}
         />
         {live ? (
-          <p className="min-w-0 flex-1 truncate text-[13px] font-semibold leading-snug">
+          <p className="min-w-0 flex-1 truncate text-sm leading-snug">
             {agent.title}
           </p>
         ) : (
-          <span className="min-w-0 flex-1 truncate text-[13px] font-semibold leading-snug">
+          <span className="min-w-0 flex-1 truncate text-sm leading-snug">
             {agent.title}
           </span>
         )}
       </span>
       <span
-        className={`mt-1 flex min-w-0 items-center gap-1.5 pl-4 text-[11px] leading-tight ${
+        className={`mt-1 flex min-w-0 items-center gap-1.5 pl-4 text-xs leading-tight ${
           agent.needsApproval
             ? "text-amber-400"
             : agent.done
@@ -823,16 +823,16 @@ function LiveAgentCard({
         }`}
       >
         {agent.needsApproval ? (
-          <CircleAlert className="size-3 shrink-0" strokeWidth={1.75} />
+          <CircleAlert className="size-3.5 shrink-0" strokeWidth={1.75} />
         ) : agent.done ? (
-          <Check className="size-3 shrink-0" strokeWidth={2.25} />
+          <Check className="size-3.5 shrink-0" strokeWidth={2.25} />
         ) : (
-          <TerminalSpinner className="inline-block w-3 select-none text-center text-[11px] leading-none" />
+          <TerminalSpinner className="inline-block w-3 select-none text-center text-xs leading-none" />
         )}
         <span className="min-w-0 truncate">{activity}</span>
       </span>
-      <span className="mt-1 flex min-w-0 items-center gap-1.5 pl-4 text-[11px] leading-tight text-content/45">
-        <HarnessIcon harness={agent.harness} className="size-3 shrink-0" />
+      <span className="mt-1 flex min-w-0 items-center gap-1.5 pl-4 text-xs leading-tight text-content/45">
+        <HarnessIcon harness={agent.harness} className="size-3.5 shrink-0" />
         <span className="min-w-0 flex-1 truncate">{project}</span>
         {elapsed ? (
           <span className="shrink-0 tabular-nums">{elapsed}</span>
@@ -924,7 +924,7 @@ function ProjectSection({
         ) : null}
       </div>
       {items.length === 0 && emptyLabel ? (
-        <p className="px-4 pb-1 text-[11px] leading-tight text-content/40">
+        <p className="px-4 pb-1 text-xs leading-tight text-content/40">
           {emptyLabel}
         </p>
       ) : null}
@@ -966,7 +966,7 @@ function ProjectSection({
 }
 
 const nameClassName =
-  "min-w-0 flex-1 truncate text-sm font-medium leading-tight";
+  "min-w-0 flex-1 truncate text-sm leading-tight";
 
 function ProjectCard({
   item,
@@ -1122,9 +1122,9 @@ function ProjectCard({
               className="hidden size-4 place-items-center rounded-sm text-content/50 hover:bg-content/8 hover:text-content group-hover:grid"
             >
               {isExpanded ? (
-                <ChevronDown className="size-3" strokeWidth={1.75} />
+                <ChevronDown className="size-3.5" strokeWidth={1.75} />
               ) : (
-                <ChevronRight className="size-3" strokeWidth={1.75} />
+                <ChevronRight className="size-3.5" strokeWidth={1.75} />
               )}
             </span>
           ) : null}
@@ -1155,7 +1155,7 @@ function ProjectCard({
         }}
         className="absolute right-1 top-1/2 hidden size-6 -translate-y-1/2 place-items-center rounded-md text-content/55 hover:bg-content/8 hover:text-content group-hover:grid"
       >
-        <MoreHorizontal className="size-4" strokeWidth={1.75} />
+        <MoreHorizontal className="size-3.5" strokeWidth={1.75} />
       </button>
       {onNewInProject ? (
         <button
@@ -1332,7 +1332,7 @@ function ProjectDiffStat({
   if (additions <= 0 && deletions <= 0) return null;
 
   return (
-    <span className="flex shrink-0 items-center gap-1 font-mono text-[11px] font-semibold tabular-nums">
+    <span className="flex shrink-0 items-center gap-1 font-mono text-2xs font-medium tabular-nums">
       {additions > 0 ? (
         <span className="text-emerald-400">+{additions}</span>
       ) : null}

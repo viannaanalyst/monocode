@@ -66,11 +66,11 @@ export function SessionHoverCard({
       }}
     >
       <div className="flex items-baseline gap-2">
-        <p className="min-w-0 flex-1 text-[13px] font-semibold leading-snug text-content">
+        <p className="min-w-0 flex-1 text-sm font-medium leading-snug text-content">
           {title}
         </p>
         {time ? (
-          <span className="shrink-0 text-[11px] tabular-nums text-content/45">
+          <span className="shrink-0 text-xs tabular-nums text-content/45">
             {time}
           </span>
         ) : null}

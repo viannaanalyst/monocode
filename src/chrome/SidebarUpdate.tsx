@@ -135,16 +135,16 @@ export function SidebarUpdate({
     >
       <span className="grid size-[18px] shrink-0 place-items-center">
         {busy ? (
-          <Loader className="size-4 animate-spin opacity-70" aria-hidden />
+          <Loader className="size-3.5 animate-spin opacity-70" aria-hidden />
         ) : (
-          <ArrowDownCircle className="size-4 text-accent" aria-hidden />
+          <ArrowDownCircle className="size-3.5 text-accent" aria-hidden />
         )}
       </span>
       <span className="min-w-0 flex-1 flex items-center">
         <span className="block truncate text-[12px] font-medium leading-tight">
           {label}
         </span>
-        <span className="ml-auto block text-[11px] text-content/40">
+        <span className="ml-auto block text-xs text-content/40">
           v{snapshot.currentVersion}
         </span>
       </span>
