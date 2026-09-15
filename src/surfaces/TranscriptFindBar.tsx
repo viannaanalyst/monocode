@@ -52,7 +52,7 @@ export function TranscriptFindBar({
       />
       <span
         aria-live="polite"
-        className="min-w-8 shrink-0 text-center font-sans text-[11px] tabular-nums text-content/45"
+        className="min-w-8 shrink-0 text-center font-sans text-xs tabular-nums text-content/45"
       >
         {label}
       </span>

@@ -150,7 +150,7 @@ export function BookmarksListButton({
         title={t("Bookmarks")}
         aria-label={t("Bookmarks")}
         onClick={open}
-        className="absolute left-3 top-2 z-30 inline-flex h-7 items-center gap-1 rounded-lg border border-content/12 bg-background-base/95 px-2 font-sans text-[11px] text-content/60 shadow-md backdrop-blur-xl hover:text-content"
+        className="absolute left-3 top-2 z-30 inline-flex h-7 items-center gap-1 rounded-lg border border-content/12 bg-background-base/95 px-2 font-sans text-xs text-content/60 shadow-md backdrop-blur-xl hover:text-content"
         data-no-tooltip
       >
         <Bookmark className="size-3.5" strokeWidth={1.75} />

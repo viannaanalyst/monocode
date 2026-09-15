@@ -77,8 +77,8 @@ export function ContextMeter({
           onDismiss={onCompact ? () => setOpen(false) : undefined}
           className={`w-max px-2.5 py-1.5 ${actionsOpen ? "" : "pointer-events-none"}`}
         >
-          <div className="text-[12px] leading-4 text-content">{headline}</div>
-          <div className="text-[11px] leading-4 text-content/50">{detail}</div>
+          <div className="text-sm leading-4 text-content">{headline}</div>
+          <div className="text-xs leading-4 text-content/50">{detail}</div>
           {actionsOpen ? (
             <button
               type="button"
@@ -92,7 +92,7 @@ export function ContextMeter({
                 setOpen(false);
                 onCompact?.();
               }}
-              className="mt-1.5 w-full rounded-md bg-content/10 px-2 py-1 text-[11px] text-content hover:bg-content/15 disabled:cursor-not-allowed disabled:opacity-40"
+              className="mt-1.5 w-full rounded-md bg-content/10 px-2 py-1 text-xs text-content hover:bg-content/15 disabled:cursor-not-allowed disabled:opacity-40"
             >{t("Compact now")}</button>
           ) : null}
         </Popover>

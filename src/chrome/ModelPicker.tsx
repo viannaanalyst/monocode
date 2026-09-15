@@ -806,14 +806,14 @@ export function ModelPicker({
         }`}
       >
         <ModelBrandIcon model={current} className="size-4 shrink-0" />
-        <span className="whitespace-nowrap text-[11px]">{triggerLabel}</span>
+        <span className="whitespace-nowrap text-sm">{triggerLabel}</span>
         {triggerEffort ? (
-          <span className="shrink-0 text-[11px] text-content/45">
+          <span className="shrink-0 text-xs text-content/45">
             {triggerEffort}
           </span>
         ) : null}
         <ChevronDown
-          className={`size-3 shrink-0 text-content/50 ${open ? "rotate-180" : ""}`}
+          className={`size-3.5 shrink-0 text-content/50 ${open ? "rotate-180" : ""}`}
           strokeWidth={1.75}
         />
       </button>
@@ -845,11 +845,11 @@ export function ModelPicker({
           >
             {panel === "models" ? (
               <div className="pb-1">
-                <div className="px-2.5 pt-1.5 pb-1 text-[12px] text-content/45">
+                <div className="px-2.5 pt-1.5 pb-1 text-xs text-content/45">
                   {t("Select model")}
                 </div>
                 {providerGroups.length === 0 ? (
-                  <p className="px-2.5 py-2 text-[12px] text-content/45">
+                  <p className="px-2.5 py-2 text-xs text-content/45">
                     {t("No models found")}
                   </p>
                 ) : (
@@ -876,7 +876,7 @@ export function ModelPicker({
                         onMouseDown={(event) => event.preventDefault()}
                         onMouseEnter={() => openProviderModels(index)}
                         onClick={() => openProviderModels(index)}
-                        className={`flex h-9 w-full items-center gap-2 rounded-lg px-2 text-left text-[13px] ${
+                        className={`flex h-9 w-full items-center gap-2 rounded-lg px-2 text-left text-sm ${
                           highlighted
                             ? "bg-content/10 text-content"
                             : "text-content hover:bg-content/5"
@@ -943,7 +943,7 @@ export function ModelPicker({
                     }}
                     className="min-w-0 flex-1 rounded-md px-1 py-0 text-center hover:bg-content/5"
                   >
-                    <span className="flex items-center justify-center gap-1 text-[13px] font-medium text-accent">
+                    <span className="flex items-center justify-center gap-1 text-sm font-medium text-accent">
                       <span className="min-w-0 truncate">
                         {effortSetting
                           ? settingValueLabel(effortSetting, values)
@@ -955,7 +955,7 @@ export function ModelPicker({
                       />
                     </span>
                     {effortSetting ? (
-                      <span className="block truncate text-[12px] leading-tight text-content/45">
+                      <span className="block truncate text-xs leading-tight text-content/45">
                         {current.name}
                       </span>
                     ) : null}
@@ -1022,7 +1022,7 @@ export function ModelPicker({
                           showEntrySubmenu(entry);
                         }
                       }}
-                      className={`flex h-9 w-full items-center gap-2 rounded-lg px-2 text-left text-[13px] ${
+                      className={`flex h-9 w-full items-center gap-2 rounded-lg px-2 text-left text-sm ${
                         highlighted
                           ? "bg-content/10 text-content"
                           : "text-content hover:bg-content/5"
@@ -1091,7 +1091,7 @@ export function ModelPicker({
                     onMouseDown={(event) => event.preventDefault()}
                     onMouseEnter={() => setActiveSetting(index)}
                     onClick={() => pickSetting(submenu.setting, option.value)}
-                    className={`flex h-8 w-full items-center gap-2 rounded-lg px-2 text-left text-[13px] ${
+                    className={`flex h-8 w-full items-center gap-2 rounded-lg px-2 text-left text-sm ${
                       highlighted
                         ? "bg-content/10 text-content"
                         : "text-content hover:bg-content/5"
@@ -1147,7 +1147,7 @@ export function ModelPicker({
                     onMouseDown={(event) => event.preventDefault()}
                     onMouseEnter={() => setActiveModelOption(index)}
                     onClick={() => pickModel(item)}
-                    className={`flex h-9 w-full items-center gap-2 rounded-lg px-2 text-left text-[13px] disabled:cursor-not-allowed ${
+                    className={`flex h-9 w-full items-center gap-2 rounded-lg px-2 text-left text-sm disabled:cursor-not-allowed ${
                       disabled
                         ? "text-content/30"
                         : highlighted
@@ -1219,10 +1219,10 @@ export function ModelPicker({
                   className="size-4 shrink-0"
                 />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13px] leading-4">
+                  <span className="block truncate text-sm leading-4">
                     {item.name}
                   </span>
-                  <span className="block truncate text-[11px] leading-4 text-content/45">
+                  <span className="block truncate text-xs leading-4 text-content/45">
                     {HARNESS_TITLE[item.harness]}
                   </span>
                 </span>

@@ -235,12 +235,12 @@ export function CwdPicker({
         {children ?? (
           <>
             <ProjectLogoIcon path={projectLogoPath} fallbackStrokeWidth={1.5} />
-            <span className="truncate font-mono text-[12px]">{label}</span>
+            <span className="truncate font-mono text-sm">{label}</span>
           </>
         )}
         {chevron ? (
           <ChevronDown
-            className={`size-3 shrink-0 text-content/50 ${
+            className={`size-3.5 shrink-0 text-content/50 ${
               open ? "rotate-180" : ""
             }`}
             strokeWidth={1.75}
@@ -266,12 +266,12 @@ export function CwdPicker({
           >
             {inProject ? (
               <>
-                <p className="px-2.5 pb-1 pt-2 text-[10px] uppercase tracking-widest text-content/50">{t("Current project")}</p>
+                <p className="px-2.5 pb-1 pt-2 text-2xs uppercase tracking-widest text-content/50">{t("Current project")}</p>
                 <div className="px-2.5 py-1.5 text-content/50">
-                  <p className="truncate text-[13px] text-content">
+                  <p className="truncate text-sm text-content">
                     {renderProjectLabel?.(cwd) ?? basename(cwd)}
                   </p>
-                  <p className="truncate font-mono text-[11px]">
+                  <p className="truncate font-mono text-xs">
                     {prettyParent(cwd)}
                   </p>
                 </div>
@@ -279,13 +279,13 @@ export function CwdPicker({
             ) : null}
             {previewRecents.length > 0 || mode === "move" ? (
               <>
-                <p className="px-2.5 pb-1 pt-2 text-[10px] uppercase tracking-widest text-content/50">
+                <p className="px-2.5 pb-1 pt-2 text-2xs uppercase tracking-widest text-content/50">
                   {mode === "move"
                     ? t("Move to project")
                     : t("Recent projects")}
                 </p>
                 {mode === "move" && previewRecents.length === 0 ? (
-                  <p className="px-2.5 py-2 text-[13px] text-content/50">
+                  <p className="px-2.5 py-2 text-sm text-content/50">
                     {t("No other projects")}
                   </p>
                 ) : null}
@@ -308,10 +308,10 @@ export function CwdPicker({
                         : "text-content/80 hover:bg-content/5"
                     }`}
                   >
-                    <span className="min-w-0 truncate text-[13px]">
+                    <span className="min-w-0 truncate text-sm">
                       {renderProjectLabel?.(item.path) ?? basename(item.path)}
                     </span>
-                    <span className="max-w-28 shrink-0 truncate font-mono text-[11px] text-content/45">
+                    <span className="max-w-28 shrink-0 truncate font-mono text-xs text-content/45">
                       {prettyParent(item.path)}
                     </span>
                   </button>
@@ -341,7 +341,7 @@ export function CwdPicker({
                     : "text-content/80 hover:bg-content/5"
                 }`}
               >
-                <span className="text-[13px]">{t("More Projects")}</span>
+                <span className="text-sm">{t("More Projects")}</span>
                 <ChevronRight
                   className="size-3.5 shrink-0"
                   strokeWidth={1.75}
@@ -366,8 +366,8 @@ export function CwdPicker({
                     : "text-content/80 hover:bg-content/5"
                 }`}
               >
-                <span className="text-[13px]">{t("New terminal")}</span>
-                <span className="shrink-0 font-mono text-[11px] text-content/45">
+                <span className="text-sm">{t("New terminal")}</span>
+                <span className="shrink-0 font-mono text-xs text-content/45">
                   {MOD}`
                 </span>
               </button>
@@ -400,10 +400,10 @@ export function CwdPicker({
               onClick={() => pick({ kind: "recent", path: item.path })}
               className="flex w-full items-center justify-between gap-3 px-2.5 py-2 text-left text-content/80 hover:bg-content/5 hover:text-content"
             >
-              <span className="min-w-0 truncate text-[13px]">
+              <span className="min-w-0 truncate text-sm">
                 {renderProjectLabel?.(item.path) ?? basename(item.path)}
               </span>
-              <span className="max-w-28 shrink-0 truncate font-mono text-[11px] text-content/45">
+              <span className="max-w-28 shrink-0 truncate font-mono text-xs text-content/45">
                 {prettyParent(item.path)}
               </span>
             </button>

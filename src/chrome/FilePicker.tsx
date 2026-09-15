@@ -182,7 +182,7 @@ export function FilePicker({
               autoComplete="off"
               autoCorrect="off"
               autoCapitalize="off"
-              className="min-w-0 flex-1 bg-transparent text-[13px] text-content outline-none placeholder:text-content/40"
+              className="min-w-0 flex-1 bg-transparent text-sm text-content outline-none placeholder:text-content/40"
               onChange={(e) => {
                 setQuery(e.target.value);
                 setActive(0);
@@ -317,7 +317,7 @@ function FileList({
               />
             </span>
             {dir ? (
-              <span className="min-w-0 max-w-[45%] truncate font-mono text-[11px] text-content/40">
+              <span className="min-w-0 max-w-[45%] truncate font-mono text-xs text-content/40">
                 <MatchText
                   text={dir}
                   positions={file.positions.filter((pos) => pos < slash)}

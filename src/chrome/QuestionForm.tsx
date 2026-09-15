@@ -108,17 +108,17 @@ export function QuestionForm({ prompt, onReply, onInteraction }: Props) {
             className="size-3.5 shrink-0 text-content/45"
             strokeWidth={1.75}
           />
-          <span className="min-w-0 flex-1 truncate text-[11px] text-content/50">
+          <span className="min-w-0 flex-1 truncate text-xs text-content/50">
             {title}
           </span>
           {total > 1 ? (
-            <span className="shrink-0 text-[11px] text-content/40">
+            <span className="shrink-0 text-xs text-content/40">
               {index + 1} of {total}
             </span>
           ) : null}
           <button
             type="button"
-            className="h-6 shrink-0 rounded-md px-1.5 text-[11px] text-content/55 hover:bg-content/10 hover:text-content"
+            className="h-6 shrink-0 rounded-md px-1.5 text-sm font-medium text-content/55 hover:bg-content/10 hover:text-content"
             onClick={skipCurrent}
           >
             Skip
@@ -164,7 +164,7 @@ export function QuestionForm({ prompt, onReply, onInteraction }: Props) {
         <div className="mt-2.5 flex items-center justify-end gap-2">
           {prompt.autoResolveAt != null ? (
             <span
-              className="mr-auto text-[11px] text-content/40"
+              className="mr-auto text-xs text-content/40"
               title={t("Interact to keep this question open.")}
             >
               {prompt.autoResolveAt - now > 60_000
@@ -175,7 +175,7 @@ export function QuestionForm({ prompt, onReply, onInteraction }: Props) {
           <button
             type="submit"
             disabled={!ready}
-            className="h-6 rounded-md bg-content px-2.5 text-[11px] font-medium text-background-base hover:bg-content/80 disabled:opacity-40"
+            className="h-6 rounded-md bg-content px-2.5 text-sm font-medium text-background-base hover:bg-content/80 disabled:opacity-40"
           >
             Continue
           </button>
@@ -204,18 +204,18 @@ function QuestionFields({
 
   return (
     <fieldset className="min-w-0" aria-label={question.header || question.prompt}>
-      <p className="text-[13px] font-medium leading-snug text-content">
+      <p className="text-sm font-medium leading-snug text-content">
         {question.prompt}
       </p>
       {question.multiSelect ? (
-        <p className="mt-0.5 text-[11px] text-content/40">{t("Select all that apply")}</p>
+        <p className="mt-0.5 text-xs text-content/40">{t("Select all that apply")}</p>
       ) : null}
       {options.length === 0 && question.allowCustom ? (
         <input
           value={custom}
           onChange={(event) => onCustom(event.target.value)}
           placeholder={t("Type your answer")}
-          className="mt-1.5 w-full rounded-md border border-content/15 bg-transparent px-2 py-1 text-[12px] text-content outline-none placeholder:text-content/35 focus:border-content/30"
+          className="mt-1.5 w-full rounded-md border border-content/15 bg-transparent px-2 py-1 text-sm text-content outline-none placeholder:text-content/35 focus:border-content/30"
         />
       ) : (
         <div className="mt-1.5 flex max-h-52 flex-col gap-1 overflow-y-auto" role="group">
@@ -246,15 +246,15 @@ function QuestionFields({
                     }`}
                   >
                     {active ? (
-                      <Check className="size-2.5" strokeWidth={2.5} />
+                      <Check className="size-3" strokeWidth={2.5} />
                     ) : null}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[12px] leading-snug text-content">
+                    <span className="block text-sm leading-snug text-content">
                       {option.label}
                     </span>
                     {option.description ? (
-                      <span className="mt-0.5 block text-[11px] leading-snug text-content/50">
+                      <span className="mt-0.5 block text-xs leading-snug text-content/50">
                         {option.description}
                       </span>
                     ) : null}
@@ -265,7 +265,7 @@ function QuestionFields({
                     value={custom}
                     onChange={(event) => onCustom(event.target.value)}
                     placeholder={t("Type your answer")}
-                    className="mt-1 w-full rounded-md border border-content/15 bg-transparent px-2 py-1 text-[12px] text-content outline-none placeholder:text-content/35 focus:border-content/30"
+                    className="mt-1 w-full rounded-md border border-content/15 bg-transparent px-2 py-1 text-sm text-content outline-none placeholder:text-content/35 focus:border-content/30"
                     onClick={(event) => event.stopPropagation()}
                     onFocus={() => {
                       if (!customSelected) onSelect(customId);

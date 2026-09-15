@@ -285,7 +285,7 @@ export function BranchPicker({
           }
         >
           <GitBranch className="size-3.5 shrink-0" strokeWidth={1.5} />
-          <span className="relative truncate font-mono text-[12px]">
+          <span className="relative truncate font-mono text-sm">
             {awaitingBranch ? (
               <>
                 {/*
@@ -302,7 +302,7 @@ export function BranchPicker({
             )}
           </span>
           <ChevronDown
-            className="size-3 shrink-0 text-content/40"
+            className="size-3.5 shrink-0 text-content/40"
             strokeWidth={1.75}
           />
         </button>
@@ -358,7 +358,7 @@ export function BranchPicker({
                 autoCorrect="off"
                 autoCapitalize="off"
                 disabled={busy}
-                className="min-w-0 flex-1 bg-transparent text-[12px] text-content outline-none placeholder:text-content/40 disabled:opacity-60"
+                className="min-w-0 flex-1 bg-transparent text-sm text-content outline-none placeholder:text-content/40 disabled:opacity-60"
                 onChange={(e) => {
                   setQuery(e.target.value);
                   setActive(0);
@@ -376,7 +376,7 @@ export function BranchPicker({
               onPick={pick}
             />
             {error ? (
-              <p className="max-h-16 shrink-0 overflow-y-auto whitespace-pre-wrap border-t border-content/10 px-2.5 py-2 text-[11px] leading-4 text-red-400/90">
+              <p className="max-h-16 shrink-0 overflow-y-auto whitespace-pre-wrap border-t border-content/10 px-2.5 py-2 text-xs leading-4 text-red-400/90">
                 {error}
               </p>
             ) : null}
@@ -457,7 +457,7 @@ function BranchList({
             {row.kind === "create" ? (
               <>
                 <Plus className="size-3.5 shrink-0" strokeWidth={1.75} />
-                <span className="min-w-0 truncate text-[12px]">
+                <span className="min-w-0 truncate text-sm">
                   Create and checkout {row.name}
                 </span>
               </>
@@ -471,11 +471,11 @@ function BranchList({
                     strokeWidth={1.75}
                   />
                 )}
-                <span className="min-w-0 flex-1 truncate font-mono text-[12px]">
+                <span className="min-w-0 flex-1 truncate font-mono text-sm">
                   {row.branch.name}
                 </span>
                 {row.branch.remote ? (
-                  <span className="shrink-0 text-[10px] text-content/40">
+                  <span className="shrink-0 text-2xs text-content/40">
                     {row.branch.remote}
                   </span>
                 ) : null}

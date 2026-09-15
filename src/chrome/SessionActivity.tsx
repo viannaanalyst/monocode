@@ -44,7 +44,7 @@ export function SessionActivity({ session }: { session: Session }) {
           <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-content/8 text-content/55">
             <Terminal className="size-4" strokeWidth={1.75} />
           </span>
-          <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-content/80">
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-content/80">
             {summary}
           </span>
           <CountBadge
@@ -72,7 +72,7 @@ export function SessionActivity({ session }: { session: Session }) {
               {activity.commands.map((command, index) => (
                 <li
                   key={`${index}-${command}`}
-                  className="flex items-start gap-2 px-1 text-[11px]"
+                  className="flex items-start gap-2 px-1 text-xs"
                 >
                   <span className="min-w-0 flex-1 break-all font-mono text-content/70">
                     {command}
@@ -103,7 +103,7 @@ function CountBadge({
 }) {
   if (count <= 0) return null;
   return (
-    <span className="shrink-0 rounded-md bg-content/8 px-1.5 py-0.5 text-[10px] font-medium text-content/55">
+    <span className="shrink-0 rounded-md bg-content/8 px-1.5 py-0.5 text-2xs font-medium text-content/55">
       {t(count === 1 ? singular : plural, { count })}
     </span>
   );
@@ -111,7 +111,7 @@ function CountBadge({
 
 function Tag({ label }: { label: string }) {
   return (
-    <span className="mt-0.5 shrink-0 rounded bg-content/10 px-1 py-px text-[9px] uppercase tracking-wide text-content/45">
+    <span className="mt-0.5 shrink-0 rounded bg-content/10 px-1 py-px text-2xs uppercase tracking-wide text-content/45">
       {label}
     </span>
   );

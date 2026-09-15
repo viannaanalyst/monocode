@@ -42,7 +42,7 @@ export function UserLinkPreview({ link }: { link: UserLink }) {
         });
       }}
     >
-      <span className="mr-1 inline-flex size-4 items-center justify-center overflow-hidden rounded bg-background-base/50 align-[-0.125em] text-[9px] font-semibold uppercase text-content/55">
+      <span className="mr-1 inline-flex size-4 items-center justify-center overflow-hidden rounded bg-background-base/50 align-[-0.125em] text-2xs font-semibold uppercase text-content/55">
         {favicon ? (
           <img
             src={favicon}

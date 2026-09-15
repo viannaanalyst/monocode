@@ -605,7 +605,7 @@ function AgentTranscriptComponent({
     <div
       ref={setScroller}
       data-no-tooltip
-      className="agent-transcript relative h-full overflow-y-auto overscroll-none [overflow-anchor:none] font-mono text-[13px] leading-5"
+      className="agent-transcript relative h-full overflow-y-auto overscroll-none [overflow-anchor:none] font-mono text-sm"
     >
       <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col gap-1 pb-1">
         {firstVisibleTurn > 0 ? (
@@ -894,7 +894,7 @@ function AgentTranscriptComponent({
             <button
               type="button"
               onClick={() => setRewindTurnId(null)}
-              className="h-8 rounded-md px-3 text-[13px] text-content/70 hover:bg-content/8 hover:text-content"
+              className="h-8 rounded-md px-3 text-sm text-content/70 hover:bg-content/8 hover:text-content"
             >
               {t("Cancel")}
             </button>
@@ -902,7 +902,7 @@ function AgentTranscriptComponent({
               type="button"
               disabled={rewinding}
               onClick={() => void confirmRewind()}
-              className="h-8 rounded-md bg-content px-3 text-[13px] text-background-base hover:bg-content/90 disabled:opacity-40"
+              className="h-8 rounded-md bg-content px-3 text-sm text-background-base hover:bg-content/90 disabled:opacity-40"
             >
               {rewinding ? t("Reverting…") : t("Rewind")}
             </button>
@@ -1128,9 +1128,9 @@ function TurnMetricsBadge({
           align="start"
           className="pointer-events-none w-max px-2.5 py-1.5"
         >
-          <div className="text-[12px] leading-4 text-content">{headline}</div>
+          <div className="text-sm leading-4 text-content">{headline}</div>
           {detail ? (
-            <div className="text-[11px] leading-4 text-content/50">
+            <div className="text-xs leading-4 text-content/50">
               {detail}
             </div>
           ) : null}
@@ -2687,16 +2687,16 @@ function BrowserActionCard({ card }: { card: BrowserCardMeta }) {
           {title}
         </span>
         <span
-          className={`text-[11px] ${card.ok ? "text-content/40" : "text-red-400/80"}`}
+          className={`text-xs ${card.ok ? "text-content/40" : "text-red-400/80"}`}
         >
           {card.ok ? t("Done") : t("Failed")}
         </span>
       </div>
       {card.url ? (
-        <p className="truncate px-3 pb-1 text-[11px] text-content/45">{card.url}</p>
+        <p className="truncate px-3 pb-1 text-xs text-content/45">{card.url}</p>
       ) : null}
       {card.summary && card.summary !== card.url ? (
-        <p className="truncate px-3 pb-2 text-[11px] text-content/45">{card.summary}</p>
+        <p className="truncate px-3 pb-2 text-xs text-content/45">{card.summary}</p>
       ) : null}
       {card.screenshot ? (
         <img
@@ -2891,7 +2891,7 @@ function ToolCallSummary({
   if (!action || !target) {
     return (
       <span
-        className={`min-w-0 flex-1 truncate font-mono text-[13px] ${
+        className={`min-w-0 flex-1 truncate font-mono text-sm ${
           failed ? "text-red-400" : chip ? "text-content/65" : "text-content/80"
         }`}
       >
@@ -2927,7 +2927,7 @@ function ToolCallSummary({
       : "text-content/85";
 
   return (
-    <span className="flex min-w-0 flex-1 items-center gap-1.5 font-mono text-[13px]">
+    <span className="flex min-w-0 flex-1 items-center gap-1.5 font-mono text-sm">
       <span className={`shrink-0 font-sans text-sm ${actionTone}`}>
         {action}
       </span>
@@ -3017,14 +3017,14 @@ function ApprovalControls({
     <div className="mt-1.5 flex gap-2">
       <button
         type="button"
-        className="rounded-md bg-content px-2.5 py-0.5 text-[11px] hover:bg-content/80     text-background-base"
+        className="rounded-md bg-content px-2.5 py-0.5 text-sm font-medium hover:bg-content/80     text-background-base"
         onClick={() => onApproval?.(approval.requestId, "allow")}
       >
         {t("Allow")}
       </button>
       <button
         type="button"
-        className="rounded-md bg-content/10 px-2.5 py-0.5 text-[11px] text-content/70 hover:bg-content/20"
+        className="rounded-md bg-content/10 px-2.5 py-0.5 text-sm font-medium text-content/70 hover:bg-content/20"
         onClick={() => onApproval?.(approval.requestId, "deny")}
       >
         {t("Deny")}
@@ -3059,7 +3059,7 @@ function HandoffDivider({ block }: { block: Block }) {
         >
           {preparing ? (
             <>
-              <TerminalSpinner className="inline-block w-3.5 shrink-0 select-none text-center text-[11px] leading-none text-content/45" />
+              <TerminalSpinner className="inline-block w-3.5 shrink-0 select-none text-center text-xs leading-none text-content/45" />
               <Shimmer duration={1.4}>{label}</Shimmer>
             </>
           ) : (
@@ -3131,7 +3131,7 @@ function InterjectionDivider({ block }: { block: Block }) {
         >
           <span>{label}</span>
           {severityText ? (
-            <span className={`text-[11px] ${severityClass}`}>
+            <span className={`text-xs ${severityClass}`}>
               {severityText}
             </span>
           ) : null}
@@ -3142,7 +3142,7 @@ function InterjectionDivider({ block }: { block: Block }) {
         <div className="mt-2 px-2">
           <pre
             ref={textRef}
-            className={`min-w-0 whitespace-pre-wrap break-words font-sans text-[12.5px] leading-5 text-content/70 ${expanded ? "" : "line-clamp-2"}`}
+            className={`min-w-0 whitespace-pre-wrap break-words font-sans text-xs leading-5 text-content/70 ${expanded ? "" : "line-clamp-2"}`}
           >
             {block.text}
           </pre>

@@ -126,12 +126,12 @@ export function AccessPicker({
           strokeWidth={1.75}
         />
         <span
-          className={`min-w-0 truncate text-[11px] ${fullAccessClass(value)}`}
+          className={`min-w-0 truncate text-sm ${fullAccessClass(value)}`}
         >
           {t(RUNTIME_MODE_LABEL[value])}
         </span>
         <ChevronDown
-          className={`size-3 shrink-0 text-content/50 ${open ? "rotate-180" : ""}`}
+          className={`size-3.5 shrink-0 text-content/50 ${open ? "rotate-180" : ""}`}
           strokeWidth={1.75}
         />
       </button>
@@ -176,12 +176,12 @@ export function AccessPicker({
                 />
                 <span className="min-w-0">
                   <span
-                    className={`block text-[13px] font-medium leading-5 ${fullAccessClass(mode)}`}
+                    className={`block text-sm font-medium leading-5 ${fullAccessClass(mode)}`}
                   >
                     {t(RUNTIME_MODE_LABEL[mode])}
                   </span>
                   <span
-                    className={`mt-0.5 block text-[11px] leading-4 ${
+                    className={`mt-0.5 block text-xs leading-4 ${
                       mode === "full-access" ? "text-orange-400/70" : "text-content/50"
                     }`}
                   >
@@ -192,7 +192,7 @@ export function AccessPicker({
             );
           })}
           {busy ? (
-            <p className="px-2 py-1.5 text-[11px] leading-4 text-content/50">
+            <p className="px-2 py-1.5 text-xs leading-4 text-content/50">
               Access changes apply to the next turn. Stop and resend to apply
               them now.
             </p>

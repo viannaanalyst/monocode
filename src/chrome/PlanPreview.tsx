@@ -47,12 +47,12 @@ export function PlanPreview({
       <div className="flex items-start gap-2.5 px-3 py-2.5">
         {streaming ? (
           <CircleDashed
-            className="mt-0.5 size-4 shrink-0 text-content/40"
+            className="mt-0.5 size-3.5 shrink-0 text-content/40"
             strokeWidth={1.75}
           />
         ) : (
           <AiIdea
-            className="mt-0.5 size-4 shrink-0 text-content/40"
+            className="mt-0.5 size-3.5 shrink-0 text-content/40"
             strokeWidth={1.75}
           />
         )}
@@ -60,7 +60,7 @@ export function PlanPreview({
           {onOpen ? (
             <button
               type="button"
-              className="block w-full truncate text-left font-sans text-[13px] font-medium text-content/90 hover:text-yellow-100"
+              className="block w-full truncate text-left font-sans text-sm font-semibold text-content/90 hover:text-yellow-100"
               title={title}
               onClick={onOpen}
             >
@@ -68,14 +68,14 @@ export function PlanPreview({
             </button>
           ) : (
             <span
-              className="block truncate font-sans text-[13px] font-medium text-content/90"
+              className="block truncate font-sans text-sm font-semibold text-content/90"
               title={title}
             >
               {title}
             </span>
           )}
           {summary ? (
-            <p className="mt-0.5 line-clamp-3 font-sans text-[12px] leading-4.5 text-content/50">
+            <p className="mt-0.5 line-clamp-3 font-sans text-xs leading-4.5 text-content/50">
               {summary}
             </p>
           ) : null}
@@ -86,10 +86,10 @@ export function PlanPreview({
                   type="button"
                   title={t("Open in pane")}
                   aria-label={t("Open plan in pane")}
-                  className="flex h-6 shrink-0 items-center gap-1 rounded-md bg-content/8 px-2 font-sans text-[11px] text-content/70 hover:bg-content/12 hover:text-content"
+                  className="flex h-6 shrink-0 items-center gap-1 rounded-md bg-content/8 px-2 font-sans text-xs text-content/70 hover:bg-content/12 hover:text-content"
                   onClick={onOpen}
                 >
-                  <PanelRight className="size-3" strokeWidth={1.75} />
+                  <PanelRight className="size-3.5" strokeWidth={1.75} />
                   Open
                 </button>
               ) : null}
@@ -99,12 +99,12 @@ export function PlanPreview({
                     type="button"
                     title={t("Build this plan")}
                     disabled={buildDisabled}
-                    className={`flex h-6 shrink-0 items-center gap-1 bg-content px-2 font-sans text-[11px] text-background-base hover:bg-content/90 disabled:cursor-not-allowed disabled:opacity-40 ${
+                    className={`flex h-6 shrink-0 items-center gap-1 bg-content px-2 font-sans text-xs text-background-base hover:bg-content/90 disabled:cursor-not-allowed disabled:opacity-40 ${
                       harness ? "rounded-l-md" : "rounded-md"
                     }`}
                     onClick={() => onBuild()}
                   >
-                    <Play className="size-3" strokeWidth={1.75} />
+                    <Play className="size-3.5" strokeWidth={1.75} />
                     {buildLabel}
                   </button>
                   {harness ? (

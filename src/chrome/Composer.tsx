@@ -424,7 +424,7 @@ function TurnStatsReadout({ stats }: { stats?: SessionTurnStats | null }) {
   return (
     <span
       data-no-tooltip
-      className="flex shrink-0 items-center gap-1.5 text-[11px] tabular-nums text-content/40"
+      className="flex shrink-0 items-center gap-1.5 text-xs tabular-nums text-content/40"
     >
       {cache ? <span>{t("Cache {percent}", { percent: cache })}</span> : null}
       {cache && speed ? <span className="text-content/20">·</span> : null}
@@ -445,11 +445,11 @@ function ExecutionTargetChip() {
         aria-expanded={open}
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => setOpen((value) => !value)}
-        className="flex h-6 items-center gap-1.5 rounded-full px-1.5 text-[12px] text-content/60 hover:bg-content/10 hover:text-content"
+        className="flex h-6 items-center gap-1.5 rounded-full px-1.5 text-sm text-content/60 hover:bg-content/10 hover:text-content"
       >
         <Laptop className="size-3.5 shrink-0" strokeWidth={1.5} />
         <span className="truncate">{t("This Mac")}</span>
-        <ChevronDown className="size-3 shrink-0 text-content/50" strokeWidth={1.75} />
+        <ChevronDown className="size-3.5 shrink-0 text-content/50" strokeWidth={1.75} />
       </button>
       {open ? (
         <Popover
@@ -461,14 +461,14 @@ function ExecutionTargetChip() {
           aria-label={t("Run on")}
           className="p-1"
         >
-          <p className="px-2 pb-1 pt-1 text-[10px] uppercase tracking-wide text-content/40">
+          <p className="px-2 pb-1 pt-1 text-2xs uppercase tracking-wide text-content/40">
             {t("Run on")}
           </p>
           <button
             type="button"
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => setOpen(false)}
-            className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-[12px] text-content hover:bg-content/10"
+            className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-content hover:bg-content/10"
           >
             <Laptop className="size-3.5 shrink-0" strokeWidth={1.5} />
             <span className="flex-1">{t("This Mac")}</span>
@@ -1568,7 +1568,7 @@ export function Composer({
                   data-composer-plus
                   className="p-1.5"
                 >
-                  <p className="px-2 pb-1 pt-0.5 text-[10px] font-medium uppercase tracking-wide text-content/40">
+                  <p className="px-2 pb-1 pt-0.5 text-2xs font-medium uppercase tracking-wide text-content/40">
                     {t("Add")}
                   </p>
                   <button
@@ -1581,11 +1581,11 @@ export function Composer({
                     }}
                     className="flex w-full items-start gap-2.5 rounded-lg px-2 py-2 text-left text-content hover:bg-content/10 disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    <FilePlus className="size-4 shrink-0 text-content/70" />
-                    <span className="min-w-0 truncate text-[13px]">
+                    <FilePlus className="size-3.5 shrink-0 text-content/70" />
+                    <span className="min-w-0 truncate text-sm">
                       {t("Files and folders")}
                     </span>
-                    <span className="min-w-0 flex-1 truncate text-[12px] text-content/40">
+                    <span className="min-w-0 flex-1 truncate text-xs text-content/40">
                       {attachmentsSupported
                         ? t("Attach files or images")
                         : t("{name} does not support attachments", {
@@ -1605,11 +1605,11 @@ export function Composer({
                     }}
                     className="flex w-full items-start gap-2.5 rounded-lg px-2 py-2 text-left text-content hover:bg-content/10"
                   >
-                    <AiIdea className="size-4 shrink-0 text-yellow-300/80" />
-                    <span className="min-w-0 truncate text-[13px]">
+                    <AiIdea className="size-3.5 shrink-0 text-yellow-300/80" />
+                    <span className="min-w-0 truncate text-sm">
                       {t("Plan mode")}
                     </span>
-                    <span className="min-w-0 flex-1 truncate text-[12px] text-content/40">
+                    <span className="min-w-0 flex-1 truncate text-xs text-content/40">
                       {t("Turn plan mode on")}
                     </span>
                     {planSelected ? (
@@ -1629,15 +1629,15 @@ export function Composer({
                       }}
                       className="flex w-full items-start gap-2.5 rounded-lg px-2 py-2 text-left text-content hover:bg-content/10"
                     >
-                      <Share className="mt-0.5 size-4 shrink-0 text-fuchsia-300/65" />
+                      <Share className="mt-0.5 size-3.5 shrink-0 text-fuchsia-300/65" />
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-1.5">
-                          <span className="text-[13px]">Orchestrator</span>
-                          <span className="rounded-full bg-fuchsia-300/10 px-1.5 py-0.5 text-[9px] font-medium leading-none tracking-wide text-fuchsia-200/55 mb-px">
+                          <span className="text-sm">Orchestrator</span>
+                          <span className="rounded-full bg-fuchsia-300/10 px-1.5 py-0.5 text-2xs font-medium leading-none tracking-wide text-fuchsia-200/55 mb-px">
                             v1
                           </span>
                         </span>
-                        <span className="block truncate whitespace-nowrap text-[11px] leading-4 text-content/45">
+                        <span className="block truncate whitespace-nowrap text-xs leading-4 text-content/45">
                           Plan and coordinate agent work
                         </span>
                       </span>
@@ -1659,11 +1659,11 @@ export function Composer({
                   setOrchestrationSelected(false);
                   ref.current?.focus();
                 }}
-                className="flex h-6.5 shrink-0 items-center gap-1 rounded-md bg-fuchsia-400/10 px-1.5 text-[11px] text-fuchsia-200/80 hover:bg-fuchsia-400/15"
+                className="flex h-6.5 shrink-0 items-center gap-1 rounded-md bg-fuchsia-400/10 px-1.5 text-sm text-fuchsia-200/80 hover:bg-fuchsia-400/15"
               >
                 <Share className="size-3.5" />
                 Orchestrator
-                <X className="size-3" />
+                <X className="size-3.5" />
               </button>
             )}
             {planSelected ? (
@@ -1675,11 +1675,11 @@ export function Composer({
                   setPlanSelected(false);
                   ref.current?.focus();
                 }}
-                className="flex h-6.5 shrink-0 items-center gap-1 rounded-full px-1.5 text-[11px] text-yellow-200/90 hover:bg-content/10"
+                className="flex h-6.5 shrink-0 items-center gap-1 rounded-full px-1.5 text-sm text-yellow-200/90 hover:bg-content/10"
               >
                 <AiIdea className="size-3.5" />
                 Plan
-                <X className="size-3" />
+                <X className="size-3.5" />
               </button>
             ) : null}
             {harness !== "fx" ? (
@@ -1738,7 +1738,7 @@ export function Composer({
                       }}
                       className="grid size-4.5 place-items-center rounded-full bg-content text-background-base transition-colors hover:bg-content/85"
                     >
-                      <SquareStop className="size-2.5" />
+                      <SquareStop className="size-3" />
                     </button>
                   </div>
                 ) : (
@@ -1825,7 +1825,7 @@ export function Composer({
           </div>
         )}
         {voiceError ? (
-          <p className="px-3 pb-1 text-[11px] text-red-400">{voiceError}</p>
+          <p className="px-3 pb-1 text-xs text-red-400">{voiceError}</p>
         ) : null}
         {runnerLive && runnerEnabled ? (
           <ComposerRunner
@@ -1953,7 +1953,7 @@ export function ComposerAction({
         onClick={onStop}
         className="grid size-6.5 place-items-center rounded-full bg-white text-black hover:bg-white/90"
       >
-        <Square className="size-2.5 fill-current" strokeWidth={0} />
+        <Square className="size-3 fill-current" strokeWidth={0} />
       </button>
     );
   }

@@ -333,13 +333,13 @@ export function SecondOpinionButton({
             className="p-1 font-sans"
           >
             <div className="px-1.5 pb-2 pt-1.5">
-              <p className="text-[11px] leading-3 text-content/50 text-balance">
+              <p className="text-xs leading-3 text-content/50 text-balance">
                 {description}
               </p>
             </div>
             <div className="mx-1 mb-1 h-px bg-content/10" />
             {targets.length === 0 ? (
-              <div className="px-2.5 py-2 text-[12px] leading-4 text-content/50">
+              <div className="px-2.5 py-2 text-xs leading-4 text-content/50">
                 {disabledTitle}
               </div>
             ) : (
@@ -367,7 +367,7 @@ export function SecondOpinionButton({
                       if (!available && probed) return;
                       pickPreferred(harness);
                     }}
-                    className={`flex h-8 w-full items-center gap-2 rounded-lg px-2 text-left text-[13px] leading-none ${
+                    className={`flex h-8 w-full items-center gap-2 rounded-lg px-2 text-left text-sm leading-none ${
                       !available && probed
                         ? "text-content/30"
                         : highlighted
@@ -422,7 +422,7 @@ export function SecondOpinionButton({
                       setModelActive(index);
                     }}
                     onClick={() => pick(activeHarness, model.id)}
-                    className={`flex h-8 w-full items-center gap-2 rounded-lg px-2 text-left text-[13px] leading-none ${
+                    className={`flex h-8 w-full items-center gap-2 rounded-lg px-2 text-left text-sm leading-none ${
                       highlighted
                         ? "bg-content/10 text-content"
                         : "text-content hover:bg-content/5"
@@ -433,7 +433,7 @@ export function SecondOpinionButton({
                     </span>
                     {model.id === preferred ? (
                       <Check
-                        className="size-3 shrink-0 text-content/45"
+                        className="size-3.5 shrink-0 text-content/45"
                         strokeWidth={2}
                       />
                     ) : null}
