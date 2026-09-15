@@ -68,9 +68,11 @@ export function useAutomations(callbacks: {
       if (plan.missed.length > 0) await refresh();
       if (plan.due == null) continue;
       activeRuns.current.add(automation.id);
+      let claimed = false;
+      const slot = plan.due;
       try {
-        const next = nextRunAt(scheduleOf(automation), plan.due);
-        const claimed = await takeDueAutomation(automation.id, plan.due, next, now);
+        const next = nextRunAt(scheduleOf(automation), slot);
+        claimed = await takeDueAutomation(automation.id, slot, next, now);
         if (!claimed) continue;
         await refresh();
         const outcome = await callbacksRef.current.dispatch({
@@ -87,7 +89,7 @@ export function useAutomations(callbacks: {
             : applyRunOutcome(automation, outcome);
         await recordAutomationResult({
           automationId: automation.id,
-          runId: `${automation.id}:${plan.due}`,
+          runId: `${automation.id}:${slot}`,
           status: outcome === "skipped" ? "skipped_busy" : outcome,
           error: null,
           ...applied,
@@ -95,6 +97,17 @@ export function useAutomations(callbacks: {
         await refresh();
       } catch (err) {
         setError(String(err));
+        if (claimed) {
+          const applied = applyRunOutcome(automation, "failed");
+          await recordAutomationResult({
+            automationId: automation.id,
+            runId: `${automation.id}:${slot}`,
+            status: "failed",
+            error: String(err),
+            ...applied,
+          }).catch(() => undefined);
+          await refresh().catch(() => undefined);
+        }
       } finally {
         activeRuns.current.delete(automation.id);
       }
@@ -107,7 +120,13 @@ export function useAutomations(callbacks: {
       const now = Date.now();
       const slot = automation.nextRunAt;
       const next = nextSchedule(scheduleOf(automation), slot);
-      const claimed = await takeDueAutomation(automation.id, slot, next, now);
+      let claimed = false;
+      try {
+        claimed = await takeDueAutomation(automation.id, slot, next, now);
+      } catch (err) {
+        setError(String(err));
+        return;
+      }
       if (!claimed) {
         await refresh();
         return;
@@ -132,6 +151,17 @@ export function useAutomations(callbacks: {
           ...applied,
         });
         await refresh();
+      } catch (err) {
+        setError(String(err));
+        const applied = applyRunOutcome(automation, "failed");
+        await recordAutomationResult({
+          automationId: automation.id,
+          runId: `${automation.id}:${slot}`,
+          status: "failed",
+          error: String(err),
+          ...applied,
+        }).catch(() => undefined);
+        await refresh().catch(() => undefined);
       } finally {
         activeRuns.current.delete(automation.id);
       }
@@ -141,21 +171,30 @@ export function useAutomations(callbacks: {
 
   const toggle = useCallback(
     async (automation: Automation) => {
-      await setAutomationEnabled(automation.id, !automation.enabled);
-      await refresh();
+      try {
+        await setAutomationEnabled(automation.id, !automation.enabled);
+        await refresh();
+      } catch (err) {
+        setError(String(err));
+      }
     },
     [refresh],
   );
 
   const remove = useCallback(
     async (automation: Automation) => {
-      await deleteAutomation(automation.id);
-      await refresh();
+      try {
+        await deleteAutomation(automation.id);
+        await refresh();
+      } catch (err) {
+        setError(String(err));
+      }
     },
     [refresh],
   );
 
   useEffect(() => {
+    let disposed = false;
     void refresh();
     const interval = window.setInterval(() => {
       void tick();
@@ -164,13 +203,19 @@ export function useAutomations(callbacks: {
     void listen(AUTOMATIONS_CHANGED, () => {
       void refresh();
       void tick();
-    }).then((unlisten) => subscriptions.push(unlisten));
+    }).then((unlisten) => {
+      if (disposed) unlisten();
+      else subscriptions.push(unlisten);
+    });
     const onFocus = () => {
+      if (document.hidden) return;
       void refresh().then(() => tick());
     };
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onFocus);
     return () => {
+      disposed = true;
+      revision.current += 1;
       window.clearInterval(interval);
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onFocus);
