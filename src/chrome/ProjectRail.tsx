@@ -15,7 +15,9 @@ import {
   Pin,
   PinOff,
   Plus,
+  Search,
   Settings,
+  StickyNote,
   Trash2,
 } from "./icons";
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
@@ -75,7 +77,7 @@ import { ProjectBackgroundDialog } from "./ProjectBackgroundDialog";
 import { ProjectMascot } from "./ProjectMascot";
 import { RailAction } from "./RailAction";
 import { RemoveProjectDialog } from "./RemoveProjectDialog";
-import { DevModeSlot, TabVisitNav } from "./TitleBar";
+import { DevModeSlot, IconButton, TabVisitNav } from "./TitleBar";
 import { SidebarUpdateFooter } from "./SidebarUpdate";
 import type { InstalledUpdate } from "../lib/updateNotice";
 import { SettingsNav } from "./SettingsRail";
@@ -186,6 +188,7 @@ export function ProjectRail({
   onGoBack,
   onGoForward,
   searchActive = false,
+  onSearch,
   onOpenInbox,
   inboxActive = false,
   onOpenKanban,
@@ -194,6 +197,7 @@ export function ProjectRail({
   automationsActive = false,
   automationsPaused = false,
   notesActive = false,
+  onOpenNotes,
   sessions = [],
   onSelectSession,
   busySessionIds,
@@ -433,13 +437,21 @@ export function ProjectRail({
             />
       </div>
 
-      {cwd && cwd !== "~" ? (
-        <div className="flex shrink-0 items-center px-3 pb-1 pt-2.5">
-          <span className="min-w-0 truncate font-display text-display text-content">
-            {resolveTabGroupLabel(projectKey(cwd), groupLabels, basename(cwd))}
-          </span>
-        </div>
-      ) : null}
+      <div className="flex shrink-0 select-none items-center gap-1 px-3 pb-4 pt-3">
+        <span className="min-w-0 flex-1 truncate font-display text-display text-content">
+          MonoCode
+        </span>
+        {onSearch ? (
+          <IconButton label={t("Search")} active={searchActive} onClick={onSearch}>
+            <Search className="size-3.5" strokeWidth={1.75} />
+          </IconButton>
+        ) : null}
+        {onOpenNotes ? (
+          <IconButton label={t("Notes")} active={notesActive} onClick={onOpenNotes}>
+            <StickyNote className="size-3.5" strokeWidth={1.75} />
+          </IconButton>
+        ) : null}
+      </div>
 
       {settingsOpen ? (
         <SettingsNav

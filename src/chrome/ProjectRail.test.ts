@@ -35,4 +35,31 @@ describe("ProjectRail board entry", () => {
     );
     expect(markup.indexOf("Automations")).toBeGreaterThan(markup.indexOf("Kanban"));
   });
+
+  it("always titles the rail MonoCode and wires search and notes", () => {
+    const bare = renderToStaticMarkup(
+      createElement(ProjectRail, {
+        cwd: "/tmp/web",
+        recents: [],
+        onSelectProject: () => {},
+        onOpenProject: () => {},
+      }),
+    );
+    expect(bare).toContain(">MonoCode</span>");
+    expect(bare).not.toContain('aria-label="Search"');
+    expect(bare).not.toContain('aria-label="Notes"');
+
+    const wired = renderToStaticMarkup(
+      createElement(ProjectRail, {
+        cwd: "/tmp/web",
+        recents: [],
+        onSelectProject: () => {},
+        onOpenProject: () => {},
+        onSearch: () => {},
+        onOpenNotes: () => {},
+      }),
+    );
+    expect(wired).toContain('aria-label="Search"');
+    expect(wired).toContain('aria-label="Notes"');
+  });
 });
