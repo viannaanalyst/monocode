@@ -356,7 +356,7 @@ export function AutomationsView({
                       {automation.title}
                     </span>
                     <span
-                      className={`rounded px-1.5 py-0.5 text-2xs ${
+                      className={`rounded px-1.5 py-0.5 text-2xs font-medium ${
                         automation.enabled
                           ? "bg-emerald-500/15 text-emerald-300"
                           : "bg-amber-500/15 text-amber-300"

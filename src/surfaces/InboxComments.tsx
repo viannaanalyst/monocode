@@ -93,7 +93,7 @@ export function InboxComments({
   return (
     <section className="flex flex-col gap-3 border-t border-content/10 pt-5">
       <div className="flex items-center gap-2 text-[12px] text-content/50">
-        <h2 className="text-content/70">{label}</h2>
+        <h2 className="font-semibold text-content/70">{label}</h2>
         {thread.truncated ? (
           <span>
             {t("Latest comments · more on {provider}", { provider: moreOn })}

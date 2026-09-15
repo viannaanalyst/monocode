@@ -97,7 +97,7 @@ export function InboxMiniCard({ card, onDismiss }: Props) {
 function InboxMiniLabel({ label }: { label: GithubLabel }) {
   const color = labelColor(label.color);
   return (
-    <span className="inline-flex min-w-0 max-w-20 items-center gap-1 rounded bg-content/8 px-1.5 py-px text-2xs text-content/50">
+    <span className="inline-flex min-w-0 max-w-20 items-center gap-1 rounded bg-content/8 px-1.5 py-px text-2xs font-medium text-content/50">
       {color ? (
         <span
           aria-hidden

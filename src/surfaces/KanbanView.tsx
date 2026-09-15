@@ -329,7 +329,7 @@ function KanbanCard({
         </span>
         {needsYouReason ? (
           <span
-            className={`inline-flex w-fit items-center rounded px-1.5 py-0.5 text-2xs ${
+            className={`inline-flex w-fit items-center rounded px-1.5 py-0.5 text-2xs font-medium ${
               needsYouReason === "waiting"
                 ? "bg-amber-500/15 text-amber-300"
                 : "bg-emerald-500/15 text-emerald-300"
