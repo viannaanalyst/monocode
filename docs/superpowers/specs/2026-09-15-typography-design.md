@@ -112,6 +112,6 @@ Each wave is a task in the implementation plan and touches only its area:
 ## Testing and verification
 
 - The existing suite stays green after each wave (`npm run check:web`), since most component tests assert markup text, not classes; any test that asserted a migrated class is updated in its wave.
-- The guard test is added last and must pass with an empty allowlist.
+- The guard test is added last and must pass (only the documented mascot exception remains).
 - Manual verification per wave: rail legibility at 14px, settings rows with 600/12 hierarchy, badges at 10px, Cal Sans only on surface titles, JetBrains Mono in code/diff/terminal, and the new footer divider.
 - Final manual pass: switch the app to pt-BR and check no layout clipping from the size shifts (long labels in the rail, settings selects, composer chips).
