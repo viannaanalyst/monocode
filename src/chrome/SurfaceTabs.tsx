@@ -478,7 +478,7 @@ export function SurfaceTabs({
                 active ? "opacity-100" : "opacity-0 group-hover:opacity-100"
               }`}
             >
-              <X className="size-3" strokeWidth={1.75} />
+              <X className="size-3.5" strokeWidth={1.75} />
             </button>
             )}
           </div>
