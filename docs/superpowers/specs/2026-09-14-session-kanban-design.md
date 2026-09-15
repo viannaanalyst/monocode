@@ -56,7 +56,7 @@ Follow the existing surface pattern (Inbox/Notes):
 
 ### UI (`src/surfaces/KanbanView.tsx`, new)
 
-- Header: title, scope toggle `Projeto atual / Todos`, and the error line when an archive call fails.
+- Header: title, scope toggle `Projeto atual / Todos`, and the column counts.
 - Four columns, horizontally scrollable, each with a title, count, and a status dot; empty columns show a short hint.
 - Card: title, project name (all-projects mode only), `repo/branch` label, harness icon, relative update time, and a status badge (`Aguardando você` / `Terminou` / spinner while working / pinned mark). Cards do not show diff stats: `additions`/`deletions` are always `0` from the store.
 - Click a card to open the session and close the board, following the Inbox's related-session behavior (`onOpenInboxSession`: close the surface, then select the session).
@@ -67,11 +67,11 @@ Follow the existing surface pattern (Inbox/Notes):
 
 - Mirror the session-card drag in `src/chrome/Sidebar.tsx`: `startDragGhost` on pointer move past a small threshold, hit-test with `document.elementFromPoint` against `[data-kanban-column]`, and suppress the click after a drop. Escape cancels.
 - Dropping on Archived archives; dropping from Archived on any other column unarchives. Drops elsewhere are no-ops.
-- Archive/unarchive failures set an error line at the top of the board; card state stays unchanged until the existing callback updates `history`.
+- Archive/unarchive failures keep their existing behavior: `onArchiveHistorySession` already surfaces failures with the app's native dialog, and the card stays unchanged until `history` updates. The board adds no second error surface.
 
 ## Testing and verification
 
 - Vitest for `sessionBoard.ts`: precedence (archived beats busy, busy beats needs-you), both needs-you reasons, scope filter for current project vs all, sorting (pinned then recency), and exclusion of `inboxAsk`/orchestration workers.
 - Static markup test for `KanbanView`: column titles and counts, status badges, empty-column hints, and all-projects cards showing the project name.
-- Manual verification: open the board from the rail and menu, watch columns update while an agent works and finishes unfocused, click a card to open the session, archive by drag and unarchive by dragging back, confirm archived rows persist across restarts, and check the error line by simulating a failing archive.
+- Manual verification: open the board from the rail and menu, watch columns update while an agent works and finishes unfocused, click a card to open the session, archive by drag and unarchive by dragging back, and confirm archived rows persist across restarts.
 - Run `npm run check:web` before considering the phase done.

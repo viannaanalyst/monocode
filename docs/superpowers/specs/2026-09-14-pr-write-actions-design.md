@@ -31,7 +31,7 @@ All commands live in `src-tauri/src/fs.rs` and are registered in `src-tauri/src/
 - `git_github_pr_edit(cwd, number, add/remove labels, assignees, reviewers)` → `gh pr edit` flags for labels and assignees, `gh api` for reviewers.
 - `git_github_repo_meta(cwd)` → cached per repo: available labels (`gh label list`), assignable users (`gh api repos/{owner}/{repo}/assignees`), collaborators for reviewers (`gh api repos/{owner}/{repo}/collaborators`), and the authenticated `viewerLogin`.
 
-The existing `git_github_work_item_details` query is extended with: `id`, `state`, `isDraft`, `mergeable`, `mergeStateStatus`, `reviewDecision`, `viewerPermission`, `author.login`, `labels`, `assignees`, and `reviewRequests`. These fields drive enable/disable gating with reasons.
+The existing `git_github_work_item_details` query is extended with: `id`, `state`, `isDraft`, `mergeable`, `mergeStateStatus`, `reviewDecision`, `author.login`, `labels`, `assignees`, and `reviewRequests`. These fields drive enable/disable gating with reasons. Viewer permission is not queried; see Permissions below.
 
 ## Frontend
 
@@ -42,13 +42,13 @@ The existing `git_github_work_item_details` query is extended with: `id`, `state
   - Approve and Request changes submit the pending review (they open the submit dialog when there are draft comments).
   - Close/Reopen in an overflow menu.
   - Label, assignee, and reviewer chips become editable: click opens a searchable multi-select popover with optimistic update and rollback on error.
-- Diff (Code tab): hovering a line shows a `+` affordance; click opens an inline composer. Submitted-to-draft comments render as cards under the line, and a review bar shows "N comments · Submit review" with a discard action. Reuses the visual pattern from `src/surfaces/DiffCommentComposer.tsx`, but publishes to GitHub instead of sending to chat.
+- Diff (Code tab): the existing per-line comment affordance is kept; commenting on a line adds to the pending review instead of sending to chat. Draft comments are listed in a pending-review bar with file:line, body, edit/remove, and commented lines are marked in the gutter. Inline card insertion in the virtualized diff is deferred.
 
 ## Permissions and error handling
 
-- `viewerPermission = READ` hides all write actions.
+- Write actions are shown to any authenticated `gh` user. Missing-permission failures come back from `gh` and are surfaced as errors; no viewer-permission field is queried.
 - Merge disabled (with tooltip reason) when the PR is closed, draft, conflicting, or `mergeStateStatus` is `BLOCKED`/`UNKNOWN`.
-- Approve disabled on the viewer's own PR; Request changes requires a body.
+- Approve disabled on the viewer's own PR (PR author equals the `viewerLogin` from repo meta); Request changes requires a body.
 - `gh` failures go through the existing `classifyInboxError`, with explicit mapping for branch protection/required checks, merge conflicts, missing permission, self-approve, already merged, and head SHA changed.
 
 ## State and refresh
