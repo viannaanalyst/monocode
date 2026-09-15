@@ -98,9 +98,9 @@ export function PrMetadataEditor({
           onClick={(event) => startEdit(field, event.currentTarget)}
           title={t(label)}
           aria-label={t(label)}
-          className="inline-flex min-w-0 items-center gap-1.5 rounded-md border border-dashed border-content/20 px-1.5 py-0.5 text-[11px] text-content/70 hover:bg-content/5 disabled:opacity-40"
+          className="inline-flex min-w-0 items-center gap-1.5 rounded-md border border-dashed border-content/20 px-1.5 py-0.5 text-xs font-medium text-content/70 hover:bg-content/5 disabled:opacity-40"
         >
-          <Pencil className="size-3 shrink-0" strokeWidth={1.75} />
+          <Pencil className="size-3.5 shrink-0" strokeWidth={1.75} />
           <span className="max-w-52 truncate">
             {values.length > 0 ? values.join(", ") : t(field === "labels" ? "No labels" : "None")}
           </span>
@@ -117,13 +117,13 @@ export function PrMetadataEditor({
           className="p-2"
         >
           <div className="mb-1.5 flex items-center gap-1.5 rounded-md bg-content/5 px-2">
-            <Search className="size-3 shrink-0 text-content/40" />
+            <Search className="size-3.5 shrink-0 text-content/40" />
             <input
               autoFocus
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder={t("Filter…")}
-              className="h-7 w-full bg-transparent text-[12px] text-content outline-none placeholder:text-content/35"
+              className="h-7 w-full bg-transparent text-sm text-content outline-none placeholder:text-content/35"
             />
           </div>
           <div className="max-h-56 overflow-y-auto">
@@ -140,7 +140,7 @@ export function PrMetadataEditor({
                         : [...values, option],
                     )
                   }
-                  className="flex h-7 w-full items-center gap-2 rounded px-2 text-left text-[12px] text-content/85 hover:bg-content/10"
+                  className="flex h-7 w-full items-center gap-2 rounded px-2 text-left text-sm text-content/85 hover:bg-content/10"
                 >
                   <span className="grid size-3.5 shrink-0 place-items-center">
                     {selected ? <Check className="size-3" strokeWidth={2} /> : null}
@@ -153,7 +153,7 @@ export function PrMetadataEditor({
           <button
             type="button"
             onClick={apply}
-            className="mt-1.5 h-7 w-full rounded-md bg-content text-[12px] font-medium text-background-base"
+            className="mt-1.5 h-7 w-full rounded-md bg-content text-sm font-medium text-background-base"
           >
             {t("Apply")}
           </button>

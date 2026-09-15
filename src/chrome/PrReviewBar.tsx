@@ -54,7 +54,7 @@ export function PrReviewBar({
           type="button"
           disabled={busy != null}
           onClick={onDiscard}
-          className="text-[11px] text-content/50 hover:text-content disabled:opacity-40"
+          className="text-xs font-medium text-content/50 hover:text-content disabled:opacity-40"
         >
           {t("Discard review")}
         </button>
@@ -62,7 +62,7 @@ export function PrReviewBar({
           type="button"
           disabled={busy != null || (event !== "approve" && !canSubmitReview(draft, event, body))}
           onClick={() => setOpen((value) => !value)}
-          className="inline-flex h-7 items-center gap-1.5 rounded-md bg-content px-2.5 text-[12px] font-medium text-background-base disabled:opacity-40"
+          className="inline-flex h-7 items-center gap-1.5 rounded-md bg-content px-2.5 text-sm font-medium text-background-base disabled:opacity-40"
         >
           {t("Submit review")}
         </button>
@@ -75,7 +75,7 @@ export function PrReviewBar({
               className="flex flex-col gap-1 rounded bg-content/5 px-2 py-1.5"
             >
               <div className="flex items-start gap-2">
-                <span className="shrink-0 font-mono text-[11px] text-content/50">
+                <span className="shrink-0 font-mono text-xs text-content/50">
                   {comment.path}:{comment.line}
                 </span>
                 <span className="min-w-0 flex-1 truncate text-[12px] text-content/80">
@@ -88,7 +88,7 @@ export function PrReviewBar({
                     setEditingId(comment.id);
                     setEditingBody(comment.body);
                   }}
-                  className="shrink-0 text-[11px] text-content/50 hover:text-content"
+                  className="shrink-0 text-xs font-medium text-content/50 hover:text-content"
                 >
                   {t("Edit")}
                 </button>
@@ -98,7 +98,7 @@ export function PrReviewBar({
                   onClick={() => onRemove(comment.id)}
                   className="shrink-0 text-content/50 hover:text-content"
                 >
-                  <Trash2 className="size-3" strokeWidth={1.75} />
+                  <Trash2 className="size-3.5" strokeWidth={1.75} />
                 </button>
               </div>
               {editingId === comment.id ? (
@@ -108,7 +108,7 @@ export function PrReviewBar({
                     rows={2}
                     value={editingBody}
                     onChange={(input) => setEditingBody(input.target.value)}
-                    className="min-h-12 w-full resize-y rounded-md border border-content/10 bg-background-base/70 px-2 py-1.5 text-[12px] leading-4 text-content outline-none focus:border-content/20"
+                    className="min-h-12 w-full resize-y rounded-md border border-content/10 bg-background-base/70 px-2 py-1.5 text-sm leading-4 text-content outline-none focus:border-content/20"
                   />
                   <button
                     type="button"
@@ -117,14 +117,14 @@ export function PrReviewBar({
                       onEdit(comment.id, editingBody.trim());
                       setEditingId(null);
                     }}
-                    className="inline-flex h-7 shrink-0 items-center rounded-md bg-content px-2 text-[11px] font-medium text-background-base disabled:opacity-40"
+                    className="inline-flex h-7 shrink-0 items-center rounded-md bg-content px-2 text-sm font-medium text-background-base disabled:opacity-40"
                   >
                     {t("Save")}
                   </button>
                   <button
                     type="button"
                     onClick={() => setEditingId(null)}
-                    className="inline-flex h-7 shrink-0 items-center rounded-md border border-content/15 px-2 text-[11px] text-content/70"
+                    className="inline-flex h-7 shrink-0 items-center rounded-md border border-content/15 px-2 text-sm font-medium text-content/70"
                   >
                     {t("Cancel")}
                   </button>
@@ -134,7 +134,7 @@ export function PrReviewBar({
           ))}
         </ul>
       ) : (
-        <p className="mt-2 text-[11px] text-content/45">{t("No pending comments")}</p>
+        <p className="mt-2 text-xs text-content/45">{t("No pending comments")}</p>
       )}
       {open ? (
         <div className="mt-2 flex flex-col gap-2">
@@ -143,7 +143,7 @@ export function PrReviewBar({
             value={body}
             onChange={(input) => setBody(input.target.value)}
             placeholder={t("Review summary (optional for approve)")}
-            className="w-full resize-y rounded-md border border-content/10 bg-background-base/70 px-2.5 py-2 text-[13px] leading-5 text-content outline-none placeholder:text-content/35"
+            className="w-full resize-y rounded-md border border-content/10 bg-background-base/70 px-2.5 py-2 text-sm leading-5 text-content outline-none placeholder:text-content/35"
           />
           <div className="flex items-center gap-1.5">
             {(["comment", "approve", "request-changes"] as PrReviewEvent[]).map((option) => (
@@ -152,7 +152,7 @@ export function PrReviewBar({
                 type="button"
                 aria-pressed={event === option}
                 onClick={() => setEvent(option)}
-                className={`rounded-md px-2 py-1 text-[11px] ${
+                className={`rounded-md px-2 py-1 text-xs ${
                   event === option
                     ? "bg-content/15 text-content"
                     : "text-content/50 hover:text-content/80"
@@ -169,14 +169,14 @@ export function PrReviewBar({
               type="button"
               disabled={busy != null || !canSubmitReview(draft, event, body)}
               onClick={() => onSubmit(event, body.trim())}
-              className="ml-auto inline-flex h-7 items-center rounded-md bg-content px-2.5 text-[12px] font-medium text-background-base disabled:opacity-40"
+              className="ml-auto inline-flex h-7 items-center rounded-md bg-content px-2.5 text-sm font-medium text-background-base disabled:opacity-40"
             >
               {t("Publish review")}
             </button>
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="inline-flex h-7 items-center rounded-md border border-content/15 px-2 text-[11px] text-content/70"
+              className="inline-flex h-7 items-center rounded-md border border-content/15 px-2 text-sm font-medium text-content/70"
             >
               {t("Cancel")}
             </button>

@@ -606,7 +606,7 @@ function BrowserActionsMenu({
       className="fixed min-w-44 overflow-hidden rounded-md border border-content/15 bg-background-base py-1 text-[12px] shadow-xl"
     >
       <MenuItem disabled={!enabled} onClick={onCopy}>
-        <Copy className="mr-2 inline size-3" strokeWidth={1.75} />
+        <Copy className="mr-2 inline size-3.5" strokeWidth={1.75} />
         {t("Copy URL")}
       </MenuItem>
       <MenuItem disabled={!enabled} onClick={onHardReload}>

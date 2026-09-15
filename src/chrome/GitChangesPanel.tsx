@@ -144,8 +144,8 @@ export function GitChangesPanel({
       <header className="flex h-9 shrink-0 items-center gap-2 border-b border-content/10 px-3">
         <span className="text-[12px] font-medium text-content">{t("Changes")}</span>
         {index?.branch ? (
-          <span className="ml-auto flex min-w-0 items-center gap-1 text-[11px] text-content/50">
-            <GitBranch className="size-3 shrink-0" strokeWidth={1.75} />
+          <span className="ml-auto flex min-w-0 items-center gap-1 text-xs text-content/50">
+            <GitBranch className="size-3.5 shrink-0" strokeWidth={1.75} />
             <span className="min-w-0 truncate">{index.branch}</span>
             {index.ahead > 0 ? (
               <span className="shrink-0 tabular-nums text-content/40">
@@ -501,7 +501,7 @@ function ChangedFiles({
                 void commit(false);
               }
             }}
-            className="max-h-40 w-full resize-none overflow-y-auto rounded-md bg-content/10 py-1 pr-8 pl-2 text-[13px] leading-5 text-content outline-none placeholder:text-content/35 disabled:opacity-40"
+            className="max-h-40 w-full resize-none overflow-y-auto rounded-md bg-content/10 py-1 pr-8 pl-2 text-sm leading-5 text-content outline-none placeholder:text-content/35 disabled:opacity-40"
           />
           <button
             type="button"
@@ -514,7 +514,7 @@ function ChangedFiles({
             {busy === "generate" ? (
               <Loader className="size-3.5 animate-spin" strokeWidth={1.75} />
             ) : (
-              <WandSparkles className="size-3" strokeWidth={1} />
+              <WandSparkles className="size-3.5" strokeWidth={1} />
             )}
           </button>
         </div>
@@ -523,7 +523,7 @@ function ChangedFiles({
             type="button"
             disabled={!canCommit}
             onClick={() => void commit(false)}
-            className="flex h-7 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-l-md bg-content text-[12px] font-medium text-background-base disabled:opacity-40"
+            className="flex h-7 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-l-md bg-content text-sm font-medium text-background-base disabled:opacity-40"
           >
             <Check className="size-3.5" strokeWidth={2} />
             Commit
@@ -545,13 +545,13 @@ function ChangedFiles({
                 type="button"
                 disabled={!canCommitPush}
                 onClick={() => void commit(true)}
-                className="flex h-7 w-full items-center px-3 text-left text-[12px] text-content hover:bg-content/10 disabled:opacity-40"
+                className="flex h-7 w-full items-center px-3 text-left text-sm text-content hover:bg-content/10 disabled:opacity-40"
               >{t("Commit & Push")}</button>
               <button
                 type="button"
                 disabled={!canCommitPushPr}
                 onClick={() => void commit(true, true)}
-                className="flex h-7 w-full items-center px-3 text-left text-[12px] text-content hover:bg-content/10 disabled:opacity-40"
+                className="flex h-7 w-full items-center px-3 text-left text-sm text-content hover:bg-content/10 disabled:opacity-40"
               >{t("Commit, Push & Create PR")}</button>
             </div>
           ) : null}
@@ -791,7 +791,7 @@ function GitSyncActions({
     ? `View PR #${pr.number}: ${pr.title}`
     : "View pull request";
   const btn =
-    "flex h-7 w-full min-w-0 items-center justify-center gap-1.5 rounded-md px-2 text-[12px] font-medium disabled:opacity-40";
+    "flex h-7 w-full min-w-0 items-center justify-center gap-1.5 rounded-md px-2 text-sm font-medium disabled:opacity-40";
   const secondary = `${btn} bg-content/10 text-content hover:bg-content/15`;
   const showCreatePr = !hasOpenPr && !onDefault;
   const showViewPr = hasOpenPr;
@@ -917,10 +917,10 @@ function FileSection({
               strokeWidth={1.75}
             />
           )}
-          <span className="min-w-0 truncate text-[10px] font-semibold tracking-[0.04em] text-content/55 uppercase">
+          <span className="min-w-0 truncate text-xs font-semibold tracking-[0.04em] text-content/55 uppercase">
             {title}
           </span>
-          <span className="ml-1 grid h-4 min-w-4 shrink-0 place-items-center rounded-full bg-accent/80 px-1 text-[8px] text-white">
+          <span className="ml-1 grid h-4 min-w-4 shrink-0 place-items-center rounded-full bg-accent/80 px-1 text-2xs font-medium text-white">
             {count}
           </span>
         </button>
@@ -1073,7 +1073,7 @@ function ChangeDirRow({
           )}
         </span>
         <FileTypeIcon name={dir.name} isDir isOpen={open} size={16} />
-        <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
+        <span className="min-w-0 flex-1 truncate text-sm font-medium">
           {dir.name}
         </span>
         <span
@@ -1202,9 +1202,9 @@ function ChangeRow({
           {tree ? <span className="size-4 shrink-0" /> : null}
           <FileTypeIcon name={name} isDir={false} size={16} />
           <span className="min-w-0 flex-1 truncate">
-            <span className="text-[13px] font-medium">{name}</span>
+            <span className="text-sm font-medium">{name}</span>
             {dir ? (
-              <span className="ml-1.5 text-[11px] text-content/40">{dir}</span>
+              <span className="ml-1.5 text-xs text-content/40">{dir}</span>
             ) : null}
           </span>
         </button>
@@ -1241,7 +1241,7 @@ function ChangeRow({
           )}
         </div>
         <span
-          className={`w-3.5 shrink-0 text-right font-mono text-[11px] font-semibold ${statusColor(file.status)}`}
+          className={`w-3.5 shrink-0 text-right font-mono text-xs font-semibold ${statusColor(file.status)}`}
         >
           {statusLetter(file.status)}
         </span>

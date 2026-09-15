@@ -58,7 +58,7 @@ export function GitHistoryGraph({
           expanded ? "h-7" : "h-full"
         }`}
       >
-        <span className="text-[10px] font-semibold tracking-[0.04em] text-content/55 uppercase">
+        <span className="text-xs font-semibold tracking-[0.04em] text-content/55 uppercase">
           Graph
         </span>
         {expanded ? (
@@ -163,14 +163,14 @@ function HistoryRow({
         </svg>
         <span className="ml-1 flex min-w-0 flex-1 items-center overflow-hidden">
           <span
-            className={`min-w-0 truncate text-[12px] leading-[22px] ${
+            className={`min-w-0 truncate text-sm leading-[22px] ${
               row.kind === "HEAD" ? "font-semibold" : ""
             }`}
           >
             {commit.subject || commit.shortSha}
           </span>
           {commit.author ? (
-            <span className="ml-2 min-w-0 shrink truncate text-[12px] leading-[22px] text-content/45">
+            <span className="ml-2 min-w-0 shrink truncate text-xs leading-[22px] text-content/45">
               {commit.author}
             </span>
           ) : null}
@@ -185,7 +185,7 @@ function RefPill({ refInfo }: { refInfo: GraphRef }) {
   const local = refInfo.kind === "local";
   return (
     <span
-      className={`ml-1 flex h-3.5 min-w-0 max-w-[6.5rem] shrink-0 self-center items-center gap-0.5 truncate rounded-full px-1.5 text-[10px] leading-none ${
+      className={`ml-1 flex h-3.5 min-w-0 max-w-[6.5rem] shrink-0 self-center items-center gap-0.5 truncate rounded-full px-1.5 text-2xs font-medium leading-none ${
         refInfo.color ? "" : "bg-content/10 text-content/55"
       }`}
       style={
@@ -198,7 +198,7 @@ function RefPill({ refInfo }: { refInfo: GraphRef }) {
       }
     >
       {local ? (
-        <GitBranch className="size-2.5 shrink-0" strokeWidth={2} />
+        <GitBranch className="size-3.5 shrink-0" strokeWidth={2} />
       ) : null}
       <span className="min-w-0 truncate">{refInfo.name}</span>
     </span>

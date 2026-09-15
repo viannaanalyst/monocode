@@ -261,7 +261,7 @@ export function ImageLightbox({ src, alt, onClose, onAnnotate }: Props) {
             type="button"
             data-no-tooltip
             onClick={() => setTool("pen")}
-            className={`h-6 rounded-full px-2 text-[11px] ${
+            className={`h-6 rounded-full px-2 text-xs ${
               tool === "pen"
                 ? "bg-white/20 text-white"
                 : "text-white/60 hover:text-white"
@@ -273,7 +273,7 @@ export function ImageLightbox({ src, alt, onClose, onAnnotate }: Props) {
             type="button"
             data-no-tooltip
             onClick={() => setTool("highlight")}
-            className={`h-6 rounded-full px-2 text-[11px] ${
+            className={`h-6 rounded-full px-2 text-xs ${
               tool === "highlight"
                 ? "bg-white/20 text-white"
                 : "text-white/60 hover:text-white"
@@ -296,7 +296,7 @@ export function ImageLightbox({ src, alt, onClose, onAnnotate }: Props) {
             data-no-tooltip
             disabled={count === 0}
             onClick={clear}
-            className="h-6 rounded-full px-2 text-[11px] text-white/70 hover:bg-white/10 hover:text-white disabled:opacity-30"
+            className="h-6 rounded-full px-2 text-xs text-white/70 hover:bg-white/10 hover:text-white disabled:opacity-30"
           >
             {t("Clear")}
           </button>
@@ -304,7 +304,7 @@ export function ImageLightbox({ src, alt, onClose, onAnnotate }: Props) {
             type="button"
             data-no-tooltip
             onClick={addToChat}
-            className="h-6 rounded-full bg-white px-2.5 text-[11px] font-medium text-black hover:bg-white/90"
+            className="h-6 rounded-full bg-white px-2.5 text-xs font-medium text-black hover:bg-white/90"
           >
             {t("Add to chat")}
           </button>

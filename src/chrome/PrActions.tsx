@@ -11,9 +11,9 @@ import { t } from "../i18n";
 export type PrMergeMethod = "squash" | "merge" | "rebase";
 
 const ACTION_FILLED =
-  "inline-flex h-7 items-center gap-1.5 rounded-md bg-content px-2.5 text-[12px] font-medium text-background-base disabled:cursor-default disabled:opacity-40";
+  "inline-flex h-7 items-center gap-1.5 rounded-md bg-content px-2.5 text-sm font-medium text-background-base disabled:cursor-default disabled:opacity-40";
 const ACTION_OUTLINE =
-  "inline-flex h-7 items-center gap-1.5 rounded-md border border-content/15 px-2.5 text-[12px] text-content/80 hover:bg-content/5 disabled:cursor-default disabled:opacity-40";
+  "inline-flex h-7 items-center gap-1.5 rounded-md border border-content/15 px-2.5 text-sm font-medium text-content/80 hover:bg-content/5 disabled:cursor-default disabled:opacity-40";
 
 const METHOD_LABELS: Record<PrMergeMethod, string> = {
   squash: "Squash and merge",
@@ -79,12 +79,12 @@ export function PrActions({
                   setMenuOpen(false);
                   onMerge(method, deleteBranch);
                 }}
-                className="flex h-7 w-full items-center px-3 text-left text-[12px] text-content hover:bg-content/10"
+                className="flex h-7 w-full items-center px-3 text-left text-sm text-content hover:bg-content/10"
               >
                 {t(METHOD_LABELS[method])}
               </button>
             ))}
-            <label className="flex h-7 cursor-pointer items-center gap-2 border-t border-content/10 px-3 text-[12px] text-content/80">
+            <label className="flex h-7 cursor-pointer items-center gap-2 border-t border-content/10 px-3 text-sm text-content/80">
               <input
                 type="checkbox"
                 checked={deleteBranch}

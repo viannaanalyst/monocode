@@ -156,7 +156,7 @@ export function ToolDiffPreview({
             }
           }}
         >
-          <div className="flex items-center gap-2 border-b border-content/8 px-2.5 py-1.5 font-sans text-[11px] text-content/50">
+          <div className="flex items-center gap-2 border-b border-content/8 px-2.5 py-1.5 font-sans text-xs text-content/50">
             <span className="min-w-0 flex-1">{description}</span>
             <button
               type="button"
@@ -164,7 +164,7 @@ export function ToolDiffPreview({
               className="shrink-0 rounded p-0.5 hover:bg-content/8 hover:text-content"
               onClick={() => dismiss(true)}
             >
-              <X className="size-3" />
+              <X className="size-3.5" />
             </button>
           </div>
           <FilePreview

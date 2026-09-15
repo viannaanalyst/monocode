@@ -298,7 +298,7 @@ function PlanSurface({
   if (!block || !plan) {
     return (
       <div className="grid h-full place-items-center p-6 text-center">
-        <p className="text-[13px] text-content/70">{t("This plan is no longer in the session.")}</p>
+        <p className="text-xs text-content/70">{t("This plan is no longer in the session.")}</p>
       </div>
     );
   }
@@ -335,11 +335,11 @@ function PlanSurface({
               type="button"
               disabled={buildDisabled}
               onClick={() => onBuildPlan(plan.sessionId, block.id)}
-              className={`flex h-6 items-center gap-1.5 bg-content px-2.5 font-sans text-[11px] font-medium text-background-base hover:bg-content/90 disabled:cursor-not-allowed disabled:opacity-40 ${
+              className={`flex h-6 items-center gap-1.5 bg-content px-2.5 font-sans text-xs font-medium text-background-base hover:bg-content/90 disabled:cursor-not-allowed disabled:opacity-40 ${
                 session ? "rounded-l-md" : "rounded-md"
               }`}
             >
-              <Play className="size-3" />
+              <Play className="size-3.5" />
               {buildLabel}
             </button>
             {session ? (
@@ -367,7 +367,7 @@ function PlanSurface({
             onChange={(event) =>
               onUpdatePlan(plan.sessionId, block.id, event.currentTarget.value)
             }
-            className="h-full w-full resize-none overflow-auto bg-transparent px-5 pb-5 pt-14 font-mono text-[13px] leading-6 text-content outline-none disabled:opacity-70"
+            className="h-full w-full resize-none overflow-auto bg-transparent px-5 pb-5 pt-14 font-mono text-sm leading-6 text-content outline-none disabled:opacity-70"
           />
         }
       />

@@ -140,21 +140,21 @@ export function BrowserAgentBridge({ cwd, onEnsurePane, onTool }: Props) {
       className="pointer-events-auto fixed right-3 top-3 w-[min(360px,calc(100vw-24px))] rounded-xl border border-content/20 bg-content/10 p-3 shadow-xl backdrop-blur-xl"
       role="alertdialog"
     >
-      <p className="text-[13px] font-semibold text-content">
+      <p className="text-sm font-semibold text-content">
         {t("Browser tool needs approval")}
       </p>
-      <p className="mt-1 text-[12px] text-content/70">{summary}</p>
+      <p className="mt-1 text-sm text-content/70">{summary}</p>
       <div className="mt-3 flex justify-end gap-2">
         <button
           type="button"
-          className="rounded-md px-2.5 py-1 text-[12px] text-content/70 hover:bg-content/10"
+          className="rounded-md px-2.5 py-1 text-sm font-medium text-content/70 hover:bg-content/10"
           onClick={() => void resolvePending(false)}
         >
           {t("Deny")}
         </button>
         <button
           type="button"
-          className="rounded-md bg-content px-2.5 py-1 text-[12px] font-medium text-background-base"
+          className="rounded-md bg-content px-2.5 py-1 text-sm font-medium text-background-base"
           onClick={() => void resolvePending(true)}
         >
           {t("Allow")}

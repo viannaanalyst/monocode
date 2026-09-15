@@ -170,7 +170,7 @@ function ImageView({
           }
         />
       </div>
-      <footer className="flex h-8 shrink-0 items-center gap-3 border-t border-content/10 px-3 text-[11px] text-content/50">
+      <footer className="flex h-8 shrink-0 items-center gap-3 border-t border-content/10 px-3 text-xs text-content/50">
         <span className="tabular-nums">
           {natural ? `${natural.w} × ${natural.h}` : "—"}
         </span>
@@ -183,7 +183,7 @@ function ImageView({
             setZoom((value) => clampZoom((value === "fit" ? 1 : value) / 1.5))
           }
         >
-          <Minus className="size-3" strokeWidth={1.75} />
+          <Minus className="size-3.5" strokeWidth={1.75} />
         </ZoomButton>
         <button
           type="button"
@@ -199,7 +199,7 @@ function ImageView({
             setZoom((value) => clampZoom((value === "fit" ? 1 : value) * 1.5))
           }
         >
-          <Plus className="size-3" strokeWidth={1.75} />
+          <Plus className="size-3.5" strokeWidth={1.75} />
         </ZoomButton>
       </footer>
     </div>
@@ -247,20 +247,20 @@ function FileCard({
     <div className="grid h-full place-items-center p-6">
       <div className="max-w-md text-center">
         {icon}
-        <p className="text-[13px] text-content">{title}</p>
+        <p className="text-xs text-content">{title}</p>
         <p className="mt-1 text-[12px] leading-5 text-content/50">{detail}</p>
-        <p className="mt-1 truncate font-mono text-[11px] text-content/35">
+        <p className="mt-1 truncate font-mono text-xs text-content/35">
           {displayPath(path, cwd)}
         </p>
         <div className="mt-4 flex items-center justify-center gap-2">
           {onRetry ? (
             <CardButton onClick={onRetry}>
-              <RotateCcw className="size-3" strokeWidth={1.75} />
+              <RotateCcw className="size-3.5" strokeWidth={1.75} />
               Retry
             </CardButton>
           ) : null}
           <CardButton onClick={() => void revealPath(path).catch(() => {})}>
-            <Folder className="size-3" strokeWidth={1.75} />
+            <Folder className="size-3.5" strokeWidth={1.75} />
             Reveal
           </CardButton>
           <CardButton onClick={() => void copyText(path).catch(() => {})}>{t("Copy path")}</CardButton>

@@ -140,7 +140,7 @@ export function SessionReview({
             <FileDiff className="size-4" strokeWidth={1.75} />
           </span>
           <div className="min-w-0 flex-1">
-            <div className="truncate text-[12px] font-medium text-content/80">
+            <div className="truncate text-sm font-semibold text-content/80">
               {t(
                 files.length === 1
                   ? "Changed {count} file"
@@ -148,7 +148,7 @@ export function SessionReview({
                 { count: files.length },
               )}
             </div>
-            <div className="flex items-center gap-1.5 font-mono text-[11px] font-semibold -mt-0.5">
+            <div className="flex items-center gap-1.5 font-mono text-2xs font-medium tabular-nums -mt-0.5">
               <span className="text-emerald-400">+{totals.additions}</span>
               <span className="text-red-400">-{totals.deletions}</span>
             </div>
@@ -159,7 +159,7 @@ export function SessionReview({
               title={t("Undo only the last response")}
               disabled={disabled}
               onClick={() => run("undo-turn")}
-              className="h-7 rounded-md px-2.5 text-[11px] text-content/50 hover:bg-content/8 hover:text-content disabled:opacity-35"
+              className="h-7 rounded-md px-2.5 text-xs text-content/50 hover:bg-content/8 hover:text-content disabled:opacity-35"
             >
               {acting === "undo-turn"
                 ? t("Undoing…")
@@ -180,7 +180,7 @@ export function SessionReview({
               }
               disabled={disabled || !canUndoAll}
               onClick={() => run("undo")}
-              className="h-7 rounded-md px-2.5 text-[11px] text-content/50 hover:bg-content/8 hover:text-content disabled:opacity-35"
+              className="h-7 rounded-md px-2.5 text-xs text-content/50 hover:bg-content/8 hover:text-content disabled:opacity-35"
             >
               {t("Undo")}
             </button>
@@ -189,7 +189,7 @@ export function SessionReview({
               title={t("Keep all session changes and dismiss this card")}
               disabled={disabled}
               onClick={() => run("keep")}
-              className="h-7 rounded-md px-2.5 text-[11px] text-content/50 hover:bg-content/8 hover:text-content disabled:opacity-35"
+              className="h-7 rounded-md px-2.5 text-xs text-content/50 hover:bg-content/8 hover:text-content disabled:opacity-35"
             >
               {t("Keep")}
             </button>
@@ -197,7 +197,7 @@ export function SessionReview({
               type="button"
               title={t("Review changes")}
               onClick={() => onOpenDiff(undefined, { sessionId, cwd })}
-              className="h-7 rounded-md border border-content/12 bg-content/8 px-2.5 text-[11px] font-medium text-content/75 hover:bg-content/12 hover:text-content"
+              className="h-7 rounded-md border border-content/12 bg-content/8 px-2.5 text-xs font-medium text-content/75 hover:bg-content/12 hover:text-content"
             >
               {t("Review")}
             </button>
@@ -224,7 +224,7 @@ export function SessionReview({
             type="button"
             aria-expanded={expanded}
             onClick={() => setExpanded((open) => !open)}
-            className="flex h-8 w-full items-center gap-1.5 border-t border-content/10 px-3 text-left text-[11px] text-content/45 hover:bg-content/5 hover:text-content/70"
+            className="flex h-8 w-full items-center gap-1.5 border-t border-content/10 px-3 text-left text-xs text-content/45 hover:bg-content/5 hover:text-content/70"
           >
             {expanded ? (
               <ChevronDown className="size-3.5" strokeWidth={1.75} />
@@ -282,13 +282,13 @@ function FileRow({
 function DiffCounts({ file }: { file: CheckpointFile }) {
   if (!file.exact) {
     return (
-      <span className="shrink-0 text-[11px] font-medium text-amber-300/80">
+      <span className="shrink-0 text-2xs font-medium text-amber-300/80">
         {t("Mixed changes")}
       </span>
     );
   }
   return (
-    <span className="flex shrink-0 gap-2 font-mono text-[11px] font-semibold">
+    <span className="flex shrink-0 gap-2 font-mono text-2xs font-medium tabular-nums">
       <span className="text-emerald-400">+{file.additions}</span>
       <span className="text-red-400">-{file.deletions}</span>
     </span>

@@ -188,7 +188,7 @@ export function UnifiedDiffView({
 
   if (files.length === 0) {
     return (
-      <p className="px-4 py-6 text-[13px] text-content/45">{t("No file changes")}</p>
+      <p className="px-4 py-6 text-sm text-content/45">{t("No file changes")}</p>
     );
   }
 
@@ -408,7 +408,7 @@ const FileSection = memo(function FileSection({
           />
           <FileTypeIcon name={name} isDir={false} size={16} />
           <span
-            className="min-w-0 flex-1 truncate font-mono text-[12px] text-content/85"
+            className="min-w-0 flex-1 truncate font-mono text-sm font-medium text-content/85"
             title={file.label}
           >
             {file.label}
@@ -433,7 +433,7 @@ const FileSection = memo(function FileSection({
             onClick={() => onStageFile(file.id)}
             className="grid size-4 place-items-center rounded-[3px] bg-content text-background-base hover:opacity-80 disabled:opacity-40"
           >
-            <Check className="size-2.5" strokeWidth={2.5} />
+            <Check className="size-3.5" strokeWidth={2.5} />
           </button>
         ) : null}
       </header>
@@ -908,7 +908,7 @@ function FoldBar({
         onClick={() => onReveal("up")}
         className="grid size-5 place-items-center rounded text-content/40 hover:bg-content/10 hover:text-content"
       >
-        <ChevronUp className="size-3" strokeWidth={2} />
+        <ChevronUp className="size-3.5" strokeWidth={2} />
       </button>
       <button
         type="button"
@@ -917,12 +917,12 @@ function FoldBar({
         onClick={() => onReveal("down")}
         className="grid size-5 place-items-center rounded text-content/40 hover:bg-content/10 hover:text-content"
       >
-        <ChevronDown className="size-3" strokeWidth={2} />
+        <ChevronDown className="size-3.5" strokeWidth={2} />
       </button>
       <button
         type="button"
         onClick={() => onReveal("all")}
-        className="min-w-0 flex-1 py-1 text-left font-mono text-[11px] text-content/45 hover:text-content/70"
+        className="min-w-0 flex-1 py-1 text-left font-mono text-xs text-content/45 hover:text-content/70"
       >
         {hidden} unmodified {hidden === 1 ? "line" : "lines"}
       </button>
@@ -954,7 +954,7 @@ const DiffLineRow = memo(function DiffLineRow({
         style={{ height: UNIFIED_HUNK_PX }}
       >
         {lane === "code" ? (
-          <span className="px-3 font-mono text-[11px] leading-none text-content/40">
+          <span className="px-3 font-mono text-xs leading-none text-content/40">
             {line.text}
           </span>
         ) : null}
@@ -988,7 +988,7 @@ const DiffLineRow = memo(function DiffLineRow({
           />
         ) : null}
         <span
-          className={`relative block w-full pr-2 text-right font-mono text-[11px] leading-none tabular-nums ${gutterText}`}
+          className={`relative block w-full pr-2 text-right font-mono text-xs leading-none tabular-nums ${gutterText}`}
         >
           {number ?? ""}
         </span>
@@ -1006,7 +1006,7 @@ const DiffLineRow = memo(function DiffLineRow({
                 : "pointer-events-none opacity-0"
             }`}
           >
-            <MessageSquarePlus className="size-2.5" strokeWidth={2} />
+            <MessageSquarePlus className="size-3.5" strokeWidth={2} />
           </button>
         ) : null}
         {onStage ? (
@@ -1015,7 +1015,7 @@ const DiffLineRow = memo(function DiffLineRow({
             title={t("Stage hunk")}
             aria-label={t("Stage hunk")}
             onClick={onStage}
-            className={`absolute top-0.5 left-full z-10 ml-0.5 grid size-4 place-items-center rounded-[3px] bg-white text-[11px] font-bold text-black ${
+            className={`absolute top-0.5 left-full z-10 ml-0.5 grid size-4 place-items-center rounded-[3px] bg-white text-xs font-semibold text-black ${
               hovered ? "opacity-100" : "pointer-events-none opacity-0"
             }`}
           >
@@ -1074,7 +1074,7 @@ function DiffCounts({
 }) {
   if (additions <= 0 && deletions <= 0) return null;
   return (
-    <span className="flex shrink-0 items-center gap-1.5 font-mono text-[11px] font-semibold tabular-nums">
+    <span className="flex shrink-0 items-center gap-1.5 font-mono text-2xs font-medium tabular-nums">
       {additions > 0 ? (
         <span className="text-emerald-400">+{additions}</span>
       ) : null}
