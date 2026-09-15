@@ -6803,17 +6803,13 @@ export default function App({
         ? sessionsRef.current.find((entry) => entry.id === automation.sessionId)
         : undefined;
       if (!session && automation.sessionId) {
-        session = (await ensureOpenSession(automation.sessionId)) ?? undefined;
-        if (!session) {
-          const archivedRow = historyRef.current.find(
-            (entry) => entry.id === automation.sessionId,
-          );
-          if (archivedRow?.archived) {
-            await onArchiveHistorySession(automation.sessionId, false);
-            session =
-              (await ensureOpenSession(automation.sessionId)) ?? undefined;
-          }
+        const known = historyRef.current.find(
+          (entry) => entry.id === automation.sessionId,
+        );
+        if (known?.archived) {
+          await onArchiveHistorySession(automation.sessionId, false);
         }
+        session = (await ensureOpenSession(automation.sessionId)) ?? undefined;
       }
       if (!session) {
         const fresh = newSession(
@@ -6824,6 +6820,7 @@ export default function App({
           parseModelSettings(automation.modelSettings),
         );
         setSessions((current) => [...current, fresh]);
+        sessionsRef.current = [...sessionsRef.current, fresh];
         await setAutomationSession(automation.id, fresh.id);
         session = fresh;
       }
