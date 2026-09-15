@@ -2873,16 +2873,25 @@ function ProvidersPage() {
     getModelSnapshot,
     getModelSnapshot,
   );
-  useSyncExternalStore(
+  const availabilityVersion = useSyncExternalStore(
     subscribeHarnessAvailability,
     getHarnessAvailabilitySnapshot,
     getHarnessAvailabilitySnapshot,
   );
+  const providerOrder = useSyncExternalStore(
+    subscribeProviderOrder,
+    getProviderOrderSnapshot,
+    getProviderOrderSnapshot,
+  );
   const [choice, setChoice] = useState(loadLastModelChoice);
   const [defaultModels, setDefaultModels] = useState(loadDefaultModels);
-  const effectiveChoice = hasProbedHarnessAvailability()
-    ? defaultSessionChoice(isHarnessAvailable)
-    : choice;
+  const effectiveChoice = useMemo(() => {
+    void availabilityVersion;
+    void providerOrder;
+    return hasProbedHarnessAvailability()
+      ? defaultSessionChoice(isHarnessAvailable)
+      : choice;
+  }, [choice, availabilityVersion, providerOrder]);
 
   useEffect(() => {
     setChoice(loadLastModelChoice());
@@ -3018,6 +3027,7 @@ function ProviderRow({
         <div className="mt-0.5 flex shrink-0 flex-col items-center gap-0.5">
           <button
             type="button"
+            tabIndex={-1}
             aria-label={t("Reorder {name}", { name: HARNESS_TITLE[harness] })}
             onPointerDown={onGripPointerDown}
             className="grid size-5 cursor-grab place-items-center rounded text-content/35 hover:bg-content/10 hover:text-content active:cursor-grabbing"

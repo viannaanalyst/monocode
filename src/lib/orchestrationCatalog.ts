@@ -1,16 +1,16 @@
-import { HARNESSES } from "./session";
 import { modelsFor } from "./models";
 import {
   isHarnessAvailable,
   probeHarnessAvailability,
 } from "./harness/availability";
+import { orderedHarnesses } from "./providerOrder";
 import { refreshHarnessCatalogs } from "./harness/registry";
 import { validateOrchestrationSettings } from "./orchestrationPlan";
 
 /** Discover worker choices only when the user sends an orchestration request. */
 export async function discoverOrchestrationSettings() {
   await probeHarnessAvailability();
-  const installed = HARNESSES.filter(isHarnessAvailable);
+  const installed = orderedHarnesses(isHarnessAvailable);
   await refreshHarnessCatalogs(installed);
   return validateOrchestrationSettings({
     maxWorkers: 2,

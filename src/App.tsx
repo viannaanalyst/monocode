@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { orchestrator, type ControlOutcome } from "./lib/orchestration";
 import { modelsFor } from "./lib/models";
+import { orderedHarnesses } from "./lib/providerOrder";
 import { isHarnessAvailable } from "./lib/harness/availability";
 import {
   completeOrchestrationProposal,
@@ -286,7 +287,6 @@ import {
 } from "./lib/workspaceTabGroups";
 import { runSessionRemoval } from "./lib/sessionRemoval";
 import {
-  HARNESSES,
   HARNESS_LABEL,
   HARNESS_TITLE,
   canReplaceSessionTitle,
@@ -6192,7 +6192,7 @@ export default function App({
       session: (id) => sessionsRef.current.find((session) => session.id === id),
       sessions: () => sessionsRef.current,
       choices: () =>
-        HARNESSES.filter(isHarnessAvailable).map((harness) => ({
+        orderedHarnesses(isHarnessAvailable).map((harness) => ({
           harness,
           models: modelsFor(harness).map(({ id, name }) => ({ id, name })),
         })),
