@@ -264,6 +264,7 @@ git commit -m "Add the provider order store."
 
 **Files:**
 - Modify: `src/chrome/ModelPicker.tsx:436-439` (picker provider groups)
+- Modify: `src/chrome/SecondOpinionButton.tsx:147-157` (target list memo)
 - Modify: `src/lib/secondOpinion.ts:91-97` (`secondOpinionTargets`)
 - Modify: `src/lib/models.ts:770-777` (`defaultSessionChoice` fallback)
 - Modify: `src/lib/models.test.ts` (new fallback case)
@@ -353,7 +354,15 @@ Add to `src/chrome/ModelPicker.test.ts` after the existing grouping test:
     const providers = [
       ...(list?.querySelectorAll<HTMLButtonElement>("[data-provider-harness]") ?? []),
     ].map((el) => el.getAttribute("data-provider-harness"));
-    expect(providers).toEqual(["opencode", "grok", "claude"]);
+    expect(providers).toEqual([
+      "opencode",
+      "grok",
+      "claude",
+      "cursor",
+      "pi",
+      "omp",
+      "fx",
+    ]);
   });
 ```
 
@@ -407,6 +416,46 @@ with the import:
 
 ```ts
 import { orderedHarnesses } from "./providerOrder";
+```
+
+In `src/chrome/SecondOpinionButton.tsx`, subscribe to the order so the menu recomputes when it changes (the target list is memoized):
+
+```tsx
+  const providerOrder = useSyncExternalStore(
+    subscribeProviderOrder,
+    getProviderOrderSnapshot,
+    getProviderOrderSnapshot,
+  );
+```
+
+```tsx
+  const targets = useMemo(() => {
+    void availabilityVersion;
+    void visibilityVersion;
+    void providerOrder;
+    return secondOpinionTargets(from, {
+      installed: isHarnessAvailable,
+      visible: isPickerProviderVisible,
+      probed,
+      includeCurrent,
+    });
+  }, [
+    from,
+    includeCurrent,
+    probed,
+    availabilityVersion,
+    visibilityVersion,
+    providerOrder,
+  ]);
+```
+
+with the import:
+
+```tsx
+import {
+  getProviderOrderSnapshot,
+  subscribeProviderOrder,
+} from "../lib/providerOrder";
 ```
 
 In `src/lib/models.ts`, change only the fallback line of `defaultSessionChoice`:
