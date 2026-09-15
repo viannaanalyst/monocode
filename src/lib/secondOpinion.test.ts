@@ -181,6 +181,7 @@ describe("buildSecondOpinionPrompt", () => {
     expect(prompt).toContain("Updated the usage chip.");
     expect(prompt).toContain("- src/chrome/UsageFooter.tsx");
     expect(prompt).toContain("Do not redo the task from scratch");
+    expect(prompt).toContain("Respond in the user's language.");
   });
 
   it("still builds a prompt when the turn left no summary or edits", () => {

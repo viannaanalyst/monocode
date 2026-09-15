@@ -1,6 +1,7 @@
 import { isEditTool } from "./harness/preview";
 import { limitSection } from "./jsonText";
 import { displayPath } from "./paths";
+import { responseLanguageDirective } from "./promptLanguage";
 import {
   HARNESS_TITLE,
   type Block,
@@ -358,8 +359,9 @@ export function wrapHandoffPrompt(
       ? `\n\nAfter the switch, before this message, the user also sent:\n\n${earlier.join("\n\n")}`
       : "";
   const lead = `You are continuing an existing conversation handed off from ${fromTitle}. This is not a new session. Do not say you have no prior context.\n\n${request}${earlierBlock}`;
+  const directive = responseLanguageDirective();
   if (!body) {
-    return `${lead}\n\nContinue from a ${fromTitle} session. Do not invent prior work.`;
+    return `${lead}\n\nContinue from a ${fromTitle} session. Do not invent prior work.\n\n${directive}`;
   }
   return `${lead}
 
@@ -367,7 +369,9 @@ Prior conversation from ${fromTitle} — this is the thread you are joining, not
 
 <handoff>
 ${body}
-</handoff>`;
+</handoff>
+
+${directive}`;
 }
 
 function appendHandoffBlock(

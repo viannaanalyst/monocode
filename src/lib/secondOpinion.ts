@@ -1,6 +1,7 @@
 import { isEditTool } from "./harness/preview";
 import { limitSection } from "./jsonText";
 import { displayPath } from "./paths";
+import { responseLanguageDirective } from "./promptLanguage";
 import {
   HARNESSES,
   HARNESS_TITLE,
@@ -133,6 +134,8 @@ export function buildSecondOpinionPrompt(input: {
   } else {
     sections.push("## Files it edited\n(none recorded on this turn)");
   }
+
+  sections.push(responseLanguageDirective());
 
   return limitSection(sections.join("\n\n"), PROMPT_LIMIT);
 }

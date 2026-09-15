@@ -28,9 +28,8 @@ afterEach(() => {
 });
 
 describe("TranscriptSelectionMenu", () => {
-  it("offers the selected text to both chat and notes", () => {
+  it("offers the selected text to chat and nothing else", () => {
     const onAddToChat = vi.fn();
-    const onAddToNotes = vi.fn();
     const onDismiss = vi.fn();
     act(() =>
       root.render(
@@ -40,7 +39,6 @@ describe("TranscriptSelectionMenu", () => {
             rect: new DOMRect(10, 20, 100, 20),
           },
           onAddToChat,
-          onAddToNotes,
           onDismiss,
         }),
       ),
@@ -50,15 +48,14 @@ describe("TranscriptSelectionMenu", () => {
       '[role="toolbar"][aria-label="Selected text actions"]',
     );
     expect(toolbar?.textContent).toContain("Add to chat");
-    expect(toolbar?.textContent).toContain("Add to notes");
+    expect(toolbar?.textContent).not.toContain("notes");
 
-    const notes = Array.from(toolbar?.querySelectorAll("button") ?? []).find(
-      (button) => button.textContent?.includes("Add to notes"),
+    const add = Array.from(toolbar?.querySelectorAll("button") ?? []).find(
+      (button) => button.textContent?.includes("Add to chat"),
     );
-    act(() => notes?.click());
+    act(() => add?.click());
 
-    expect(onAddToNotes).toHaveBeenCalledWith("A useful link");
-    expect(onAddToChat).not.toHaveBeenCalled();
+    expect(onAddToChat).toHaveBeenCalledWith("A useful link");
     expect(onDismiss).toHaveBeenCalledOnce();
   });
 });

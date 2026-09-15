@@ -153,7 +153,6 @@ type Props = {
   onApproval?: (requestId: number, decision: ApprovalDecision) => void;
   onAddToChat?: (text: string) => void;
   onSaveNote?: (text: string) => void;
-  onSaveSelectionNote?: (text: string) => void;
   onOpenFile?: OpenFileFn;
   onOpenDiff?: (path: string) => void;
   onOpenPlan?: (blockId: string) => void;
@@ -185,7 +184,6 @@ function AgentTranscriptComponent({
   onApproval,
   onAddToChat,
   onSaveNote,
-  onSaveSelectionNote,
   onOpenFile: onOpenFileProp,
   onOpenDiff,
   onOpenPlan,
@@ -239,7 +237,7 @@ function AgentTranscriptComponent({
   const [anchorTurn, setAnchorTurn] = useState(!!busy);
   const { selection, dismissSelection } = useTranscriptSelection(
     scrollerEl,
-    onAddToChat !== undefined || onSaveSelectionNote !== undefined,
+    onAddToChat !== undefined,
   );
   const transcriptLayout = useTranscriptLayout();
   const promptAnchor = useTranscriptAnchor();
@@ -876,11 +874,10 @@ function AgentTranscriptComponent({
           );
         })}
       </div>
-      {onAddToChat || onSaveSelectionNote ? (
+      {onAddToChat ? (
         <TranscriptSelectionMenu
           selection={selection}
           onAddToChat={onAddToChat}
-          onAddToNotes={onSaveSelectionNote}
           onDismiss={dismissSelection}
         />
       ) : null}

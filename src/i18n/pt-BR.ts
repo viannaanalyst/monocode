@@ -421,7 +421,6 @@ export const PT_BR: Record<string, string> = {
   Rewind: "Voltar",
   "Reverting…": "Voltando…",
   "Add to chat": "Adicionar ao chat",
-  "Add to notes": "Adicionar às notas",
   "Add note tag": "Adicionar tag à nota",
   "Add tag…": "Adicionar tag…",
   "Remove #{tag}": "Remover #{tag}",

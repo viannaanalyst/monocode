@@ -1,4 +1,4 @@
-import { FilePlusCorner, MessageSquarePlus } from "../chrome/icons";
+import { MessageSquarePlus } from "../chrome/icons";
 import { useEffect, useRef, type ReactNode } from "react";
 import { Popover } from "../chrome/Popover";
 import { type TranscriptSelection } from "../lib/transcriptSelection";
@@ -8,14 +8,12 @@ import { t } from "../i18n";
 type Props = {
   selection: TranscriptSelection | null;
   onAddToChat?: (text: string) => void;
-  onAddToNotes?: (text: string) => void;
   onDismiss: () => void;
 };
 
 export function TranscriptSelectionMenu({
   selection,
   onAddToChat,
-  onAddToNotes,
   onDismiss,
 }: Props) {
   const onDismissRef = useRef(onDismiss);
@@ -57,19 +55,6 @@ export function TranscriptSelectionMenu({
             onDismiss={onDismiss}
           >
             <MessageSquarePlus
-              aria-hidden="true"
-              className="size-3.5"
-              strokeWidth={1.75}
-            />
-          </SelectionAction>
-        ) : null}
-        {onAddToNotes ? (
-          <SelectionAction
-            label={t("Add to notes")}
-            onSelect={() => onAddToNotes(selection.text)}
-            onDismiss={onDismiss}
-          >
-            <FilePlusCorner
               aria-hidden="true"
               className="size-3.5"
               strokeWidth={1.75}

@@ -459,8 +459,8 @@ import {
   summaryFromSession,
 } from "./lib/sessionHistory";
 import {
-  CONTINUE_PROMPT,
   canAutoContinue,
+  continuePrompt,
   inFlightRefs,
   inFlightSnapshotKey,
   shouldWriteInFlightSnapshot,
@@ -5413,7 +5413,7 @@ export default function App({
                   ? wrapHandoffPrompt(
                       wrap.text,
                       wrap.from,
-                      turnPrompt.trim() || CONTINUE_PROMPT,
+                      turnPrompt.trim() || continuePrompt(),
                       earlier,
                     )
                   : turnPrompt,
@@ -5826,7 +5826,7 @@ export default function App({
             : entry,
         ),
       );
-      onSubmit(sessionId, CONTINUE_PROMPT, [], {
+      onSubmit(sessionId, continuePrompt(), [], {
         followUpBehavior: "steer",
       });
     },
@@ -5959,7 +5959,7 @@ export default function App({
         ) {
           continue;
         }
-        onSubmit(id, CONTINUE_PROMPT);
+        onSubmit(id, continuePrompt());
       }
     }, 0);
     return () => window.clearTimeout(timer);

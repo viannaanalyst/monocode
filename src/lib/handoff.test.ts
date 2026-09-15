@@ -354,6 +354,7 @@ describe("wrapHandoffPrompt", () => {
     expect(prompt).toContain("not a new session");
     expect(prompt).toContain("do the sidebar");
     expect(prompt).toContain("Cursor");
+    expect(prompt).toContain("Respond in the user's language.");
     expect(prompt.indexOf("do the sidebar")).toBeLessThan(
       prompt.indexOf("Session so far"),
     );

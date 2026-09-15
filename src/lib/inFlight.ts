@@ -1,4 +1,5 @@
 import { leafIds, newTab, type WorkspaceTab } from "./layout";
+import { withResponseLanguage } from "./promptLanguage";
 import type { ProjectTerminalDock } from "./projectTerminal";
 import { sessionNeedsInput, type Session } from "./session";
 import { stopStreaming } from "./harness/apply";
@@ -8,6 +9,11 @@ export const INTERRUPT_MESSAGE =
   "Turn interrupted when MonoCode quit.";
 
 export const CONTINUE_PROMPT = "Continue from where you left off.";
+
+/** Automatic continuation in the language the user expects. */
+export function continuePrompt(): string {
+  return withResponseLanguage(CONTINUE_PROMPT);
+}
 
 export type InFlightRef = {
   sessionId: string;

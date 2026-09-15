@@ -781,14 +781,11 @@ function LiveAgentCard({
       ? t("Done")
       : agent.activity;
   const live = !agent.needsApproval && !agent.done;
-  const title = [agent.title, project, activity, elapsed]
-    .filter(Boolean)
-    .join("\n");
 
   return (
     <button
       type="button"
-      title={title}
+      data-no-tooltip
       aria-label={[agent.title, project, activity, elapsed]
         .filter(Boolean)
         .join(", ")}
