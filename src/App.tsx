@@ -956,6 +956,8 @@ export default function App({
   inboxViewOpenRef.current = inboxViewOpen;
   const notesViewOpenRef = useRef(notesViewOpen);
   notesViewOpenRef.current = notesViewOpen;
+  const kanbanViewOpenRef = useRef(kanbanViewOpen);
+  kanbanViewOpenRef.current = kanbanViewOpen;
   const settingsOpenRef = useRef(settingsOpen);
   settingsOpenRef.current = settingsOpen;
   const sessionNavigationIdsRef = useRef<readonly string[]>([]);
@@ -1833,6 +1835,7 @@ export default function App({
     setSearchViewOpen(false);
     setInboxViewOpen(false);
     setNotesViewOpen(false);
+    setKanbanViewOpen(false);
     const cwd = active?.cwd ?? sessionDefaults?.cwd ?? projectCwd;
     const session = newAvailableDefaultSession(cwd, sessionDefaults?.runtimeMode);
     const tab = newTab(session.id);
@@ -1854,6 +1857,7 @@ export default function App({
       const start = (description?: string) => {
         setInboxViewOpen(false);
         setNotesViewOpen(false);
+        setKanbanViewOpen(false);
         setSidebarTab("sessions");
         const cwd =
           item.projectPath || active?.cwd || sessionDefaults?.cwd || projectCwd;
@@ -1909,6 +1913,7 @@ export default function App({
       setSearchViewOpen(false);
       setInboxViewOpen(false);
       setNotesViewOpen(false);
+      setKanbanViewOpen(false);
       setSidebarTab("sessions");
       const cwd =
         (card.sourceCwd && looksLikeProject(card.sourceCwd)
@@ -3725,6 +3730,7 @@ export default function App({
       setSearchViewOpen(false);
       setInboxViewOpen(false);
       setNotesViewOpen(false);
+      setKanbanViewOpen(false);
       setSettingsOpen(false);
       setFilePickerOpen(false);
       setSidebarTab("sessions");
@@ -4139,6 +4145,7 @@ export default function App({
             searchViewOpenRef.current ||
             inboxViewOpenRef.current ||
             notesViewOpenRef.current ||
+            kanbanViewOpenRef.current ||
             settingsOpenRef.current ||
             filePickerOpenRef.current ||
             whatsNewVersionRef.current,
@@ -4337,6 +4344,7 @@ export default function App({
       setSearchViewOpen(false);
       setInboxViewOpen(false);
       setNotesViewOpen(false);
+      setKanbanViewOpen(false);
       const normalized = normalizeProjectPath(path);
       if (!looksLikeProject(normalized)) return;
 
@@ -4402,6 +4410,7 @@ export default function App({
       setSearchViewOpen(false);
       setInboxViewOpen(false);
       setNotesViewOpen(false);
+      setKanbanViewOpen(false);
       const seed = active ?? sessionsRef.current[0];
       const session = newSession(
         seed?.harness ?? "claude",
@@ -6523,6 +6532,7 @@ export default function App({
       setSearchViewOpen(false);
       setInboxViewOpen(false);
       setNotesViewOpen(false);
+      setKanbanViewOpen(false);
       onOpenApprovalSession(sessionId);
     },
     [onOpenApprovalSession],
@@ -6983,6 +6993,7 @@ export default function App({
             searchViewOpenRef.current ||
             inboxViewOpenRef.current ||
             notesViewOpenRef.current ||
+            kanbanViewOpenRef.current ||
             settingsOpenRef.current ||
             filePickerOpenRef.current ||
             Boolean(whatsNewVersionRef.current);
@@ -7058,6 +7069,7 @@ export default function App({
         !searchViewOpenRef.current &&
         !inboxViewOpenRef.current &&
         !notesViewOpenRef.current &&
+        !kanbanViewOpenRef.current &&
         handleEditorFindKey(e)
       ) {
         e.stopPropagation();
@@ -7838,6 +7850,7 @@ export default function App({
             {searchViewOpen ||
             inboxViewOpen ||
             notesViewOpen ||
+            kanbanViewOpen ||
             settingsOpen ? null : (
               <UsageFooter
                 providers={usageProviders}
