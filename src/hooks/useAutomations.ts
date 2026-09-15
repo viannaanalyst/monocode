@@ -141,7 +141,7 @@ export function useAutomations(callbacks: {
         claimed = await takeDueAutomation(automation.id, slot, next, now);
       } catch (err) {
         setError(String(err));
-        return;
+        throw err;
       }
       if (!claimed) {
         await refresh();
@@ -188,6 +188,7 @@ export function useAutomations(callbacks: {
           ...applied,
         }).catch(() => undefined);
         await refresh().catch(() => undefined);
+        throw err;
       } finally {
         activeRuns.current.delete(automation.id);
         setBusyId((current) => (current === automation.id ? null : current));
@@ -203,6 +204,7 @@ export function useAutomations(callbacks: {
         await refresh();
       } catch (err) {
         setError(String(err));
+        throw err;
       }
     },
     [refresh],
@@ -215,6 +217,7 @@ export function useAutomations(callbacks: {
         await refresh();
       } catch (err) {
         setError(String(err));
+        throw err;
       }
     },
     [refresh],
