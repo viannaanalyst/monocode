@@ -424,7 +424,7 @@ export function SettingsView({
         data-tauri-drag-region="deep"
       >
         {IS_MAC && !besideRail ? <div className="w-[78px] shrink-0" /> : null}
-        <div className="flex min-w-0 flex-1 items-center gap-2 px-3 text-[13px]">
+        <div className="flex min-w-0 flex-1 items-center gap-2 px-3 text-sm">
           <span className="shrink-0 text-content/45">{t("Settings")}</span>
           <span aria-hidden className="shrink-0 text-content/25">
             /
@@ -438,7 +438,7 @@ export function SettingsView({
             type="button"
             data-tauri-drag-region="false"
             onClick={appearance.restoreDefaults}
-            className="mr-2 flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-[12px] text-content/50 hover:bg-content/10 hover:text-content"
+            className="mr-2 flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-content/50 hover:bg-content/10 hover:text-content"
           >
             <RotateCcw className="size-3.5" strokeWidth={1.75} />
             {t("Restore defaults")}
@@ -862,7 +862,7 @@ function GeneralPage({
           }}
           spellCheck={false}
           placeholder="localhost"
-          className="h-16 w-56 resize-y rounded-md border border-content/10 bg-content/5 px-2 py-1.5 font-mono text-[11px] text-content outline-none"
+          className="h-16 w-56 resize-y rounded-md border border-content/10 bg-content/5 px-2 py-1.5 font-mono text-sm text-content outline-none"
         />
       </Row>
 
@@ -912,7 +912,7 @@ function InboxCard({
         />
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-baseline justify-between gap-3">
-            <h2 className="text-[13px] font-medium text-content">{title}</h2>
+            <h2 className="text-sm font-semibold text-content">{title}</h2>
             {status ? (
               <span className="shrink-0 text-[12px] text-content/50">
                 {status}
@@ -963,7 +963,7 @@ function InboxTextField({
         aria-label={label}
         autoComplete={autoComplete}
         spellCheck={false}
-        className={`min-w-0 w-full bg-transparent text-[12px] text-content outline-none placeholder:text-content/35 ${
+        className={`min-w-0 w-full bg-transparent text-sm text-content outline-none placeholder:text-content/35 ${
           mono ? "font-mono" : ""
         }`}
       />
@@ -1624,7 +1624,7 @@ function LinearSettings() {
       ) : null}
       {connected && teams.length > 0 ? (
         <div className="border-t border-content/10 pt-3">
-          <div className="text-[13px] font-medium text-content">
+          <div className="text-sm font-semibold text-content">
             {t("Linear Teams")}
           </div>
           <p className="mt-1 text-pretty text-[12px] leading-relaxed text-content/45">
@@ -1638,7 +1638,7 @@ function LinearSettings() {
                   key={team.id}
                   type="button"
                   onClick={() => toggleTeam(team.id)}
-                  className="flex h-7 items-center gap-2 rounded-md px-2 text-left text-[13px] text-content hover:bg-content/5"
+                  className="flex h-7 items-center gap-2 rounded-md px-2 text-left text-sm text-content hover:bg-content/5"
                 >
                   <span className="min-w-0 flex-1 truncate">
                     {team.name}
@@ -2284,7 +2284,7 @@ function CodeFontPreview() {
 
   return (
     <div className="border-b border-content/5 py-4 last:border-b-0">
-      <div className="text-[13px] font-medium text-content">
+      <div className="text-sm font-semibold text-content">
         {t("Code preview")}
       </div>
       <p className="mt-1 text-[12px] leading-relaxed text-content/45">
@@ -2434,10 +2434,10 @@ function FontPicker({
         aria-expanded={open}
         aria-haspopup="listbox"
         onClick={() => setOpen((prev) => !prev)}
-        className="flex w-full items-center justify-between gap-2 rounded-md border border-content/10 bg-content/5 px-2 py-1 text-left text-[12px] text-content outline-none hover:border-content/20"
+        className="flex w-full items-center justify-between gap-2 rounded-md border border-content/10 bg-content/5 px-2 py-1 text-left text-sm text-content outline-none hover:border-content/20"
       >
         <span
-          className="grid size-6 shrink-0 place-items-center rounded bg-content/10 text-[11px] text-content/70"
+          className="grid size-6 shrink-0 place-items-center rounded bg-content/10 text-xs text-content/70"
           style={value ? { fontFamily: `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}", sans-serif` } : undefined}
           aria-hidden
         >
@@ -2484,12 +2484,12 @@ function FontPicker({
                 aria-label={t("Search fonts")}
                 spellCheck={false}
                 autoComplete="off"
-                className="min-w-0 flex-1 bg-transparent text-[12px] text-content outline-none placeholder:text-content/35"
+                className="min-w-0 flex-1 bg-transparent text-sm text-content outline-none placeholder:text-content/35"
               />
             </label>
           </div>
           {monospaceFilter ? (
-            <label className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-[12px] text-content/60 hover:text-content">
+            <label className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-sm text-content/60 hover:text-content">
               <input
                 type="checkbox"
                 checked={monoOnly}
@@ -2577,7 +2577,7 @@ function FontPickerOption({
       onMouseDown={(e) => e.preventDefault()}
       onMouseEnter={onEnter}
       onClick={onPick}
-      className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[12px] ${
+      className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm ${
         highlighted || selected
           ? "bg-content/10 text-content"
           : "text-content hover:bg-content/5"
@@ -2594,7 +2594,7 @@ function FontPickerOption({
         {name}
       </span>
       {badge ? (
-        <span className="shrink-0 rounded bg-content/10 px-1 py-0.5 text-[10px] text-content/50">
+        <span className="shrink-0 rounded bg-content/10 px-1 py-0.5 text-2xs font-medium text-content/50">
           {badge}
         </span>
       ) : null}
@@ -2624,7 +2624,7 @@ function ChatBackgroundCard({
     <div className="border-b border-content/5 py-4 last:border-b-0">
       <div className="flex items-start gap-6">
         <div className="min-w-0 flex-1">
-          <div className="text-[13px] font-medium text-content">
+          <div className="text-sm font-semibold text-content">
             {t("Chat background")}
           </div>
           <p className="mt-1 text-[12px] leading-relaxed text-content/45">
@@ -2663,7 +2663,7 @@ function ChatBackgroundCard({
               className="size-full object-cover"
               style={{ opacity: appearance.chatBackgroundEmptyOpacity }}
             />
-            <span className="pointer-events-none absolute bottom-2 left-2 text-[11px] text-content/40">
+            <span className="pointer-events-none absolute bottom-2 left-2 text-xs text-content/40">
               {t("Preview at {percent}%", { percent: emptyVisibility })}
             </span>
           </div>
@@ -2679,7 +2679,7 @@ function ChatBackgroundCard({
             ) : (
               <ImagePlus className="size-5" aria-hidden />
             )}
-            <span className="text-[12px]">{t("Choose an image")}</span>
+            <span className="text-sm font-medium">{t("Choose an image")}</span>
           </button>
         )}
         {hasImage ? (
@@ -2687,7 +2687,7 @@ function ChatBackgroundCard({
             <div className="flex items-center justify-between gap-4 px-3 py-2.5">
               <div className="min-w-0">
                 <div className="text-[12px] text-content">{t("Show on")}</div>
-                <p className="text-[11px] text-content/40">
+                <p className="text-xs text-content/40">
                   {t("Empty sessions only, or every conversation.")}
                 </p>
               </div>
@@ -2706,7 +2706,7 @@ function ChatBackgroundCard({
                 <div className="text-[12px] text-content">
                   {t("Empty sessions")}
                 </div>
-                <p className="text-[11px] text-content/40">
+                <p className="text-xs text-content/40">
                   {t("Visibility while the conversation is still empty.")}
                 </p>
               </div>
@@ -2724,7 +2724,7 @@ function ChatBackgroundCard({
                 <div className="text-[12px] text-content">
                   {t("Working sessions")}
                 </div>
-                <p className="text-[11px] text-content/40">
+                <p className="text-xs text-content/40">
                   {t("Keep it subtle so long conversations stay readable.")}
                 </p>
               </div>
@@ -2768,13 +2768,13 @@ function KeybindingsPage() {
             aria-label={t("Filter keybindings")}
             spellCheck={false}
             autoComplete="off"
-            className="min-w-0 flex-1 bg-transparent text-[12px] text-content outline-none placeholder:text-content/35"
+            className="min-w-0 flex-1 bg-transparent text-sm text-content outline-none placeholder:text-content/35"
           />
         </label>
       </div>
 
       <div className="overflow-hidden rounded-lg border border-content/10">
-        <div className="flex items-center border-b border-content/10 bg-content/5 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-content/40">
+        <div className="flex items-center border-b border-content/10 bg-content/5 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-content/40">
           <span className="min-w-0 flex-1">{t("Command")}</span>
           <span className="w-40 shrink-0">{t("Keybinding")}</span>
           <span className="w-28 shrink-0">{t("When")}</span>
@@ -2787,13 +2787,13 @@ function KeybindingsPage() {
           rows.map((row) => (
             <div
               key={`${row.command}-${row.keys}`}
-              className="flex items-center border-b border-content/5 px-3 py-2 text-[12px] last:border-b-0"
+              className="flex items-center border-b border-content/5 px-3 py-2 text-sm last:border-b-0"
             >
               <span className="min-w-0 flex-1 truncate">{t(row.command)}</span>
-              <span className="w-40 shrink-0 font-mono text-[12px] text-content/80">
+              <span className="w-40 shrink-0 font-mono text-sm text-content/80">
                 {row.keys}
               </span>
-              <span className="w-28 shrink-0 font-mono text-[11px] text-content/40">
+              <span className="w-28 shrink-0 font-mono text-xs text-content/40">
                 {t(row.when)}
               </span>
             </div>
@@ -3041,7 +3041,7 @@ function ProviderRow({
             onClick={() => onMove(-1)}
             className="grid size-5 place-items-center rounded text-content/35 hover:bg-content/10 hover:text-content disabled:opacity-30"
           >
-            <ChevronUp className="size-3" strokeWidth={2} />
+            <ChevronUp className="size-3.5" strokeWidth={2} />
           </button>
           <button
             type="button"
@@ -3050,17 +3050,17 @@ function ProviderRow({
             onClick={() => onMove(1)}
             className="grid size-5 place-items-center rounded text-content/35 hover:bg-content/10 hover:text-content disabled:opacity-30"
           >
-            <ChevronDown className="size-3" strokeWidth={2} />
+            <ChevronDown className="size-3.5" strokeWidth={2} />
           </button>
         </div>
         <HarnessIcon harness={harness} className="mt-0.5 size-4 shrink-0" />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-[13px] font-medium text-content">
+            <h2 className="text-sm font-semibold text-content">
               {HARNESS_TITLE[harness]}
             </h2>
             {isDefault ? (
-              <span className="rounded-full bg-content/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-content/60">
+              <span className="rounded-full bg-content/10 px-1.5 py-0.5 text-2xs font-medium uppercase tracking-wide text-content/60">
                 {t("Default")}
               </span>
             ) : null}
@@ -3150,7 +3150,7 @@ function ModelVisibilityList({
           type="button"
           onClick={() => setExpanded((value) => !value)}
           aria-expanded={expanded}
-          className="flex h-9 w-full items-center gap-2 px-3 text-left text-[12px] text-content/70 hover:bg-content/5 hover:text-content"
+          className="flex h-9 w-full items-center gap-2 px-3 text-left text-sm text-content/70 hover:bg-content/5 hover:text-content"
         >
           <span className="min-w-0 flex-1">
             {t("Choose which models appear")}
@@ -3173,20 +3173,20 @@ function ModelVisibilityList({
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder={t("Search models")}
                   aria-label={t("Search models")}
-                  className="min-w-0 flex-1 bg-transparent text-[12px] text-content outline-none placeholder:text-content/35"
+                  className="min-w-0 flex-1 bg-transparent text-sm text-content outline-none placeholder:text-content/35"
                 />
               </label>
               <button
                 type="button"
                 onClick={() => setHarnessModelsEnabled(harness, true)}
-                className="shrink-0 rounded-md px-2 py-1 text-[11px] text-content/55 hover:bg-content/8 hover:text-content"
+                className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-content/55 hover:bg-content/8 hover:text-content"
               >
                 {t("Select all")}
               </button>
               <button
                 type="button"
                 onClick={() => setHarnessModelsEnabled(harness, false)}
-                className="shrink-0 rounded-md px-2 py-1 text-[11px] text-content/55 hover:bg-content/8 hover:text-content"
+                className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-content/55 hover:bg-content/8 hover:text-content"
               >
                 {t("Clear all")}
               </button>
@@ -3207,7 +3207,7 @@ function ModelVisibilityList({
                         model={model}
                         className="size-3.5 shrink-0"
                       />
-                      <span className="min-w-0 truncate text-[12px] text-content/80">
+                      <span className="min-w-0 truncate text-sm text-content/80">
                         {model.name}
                       </span>
                     </span>
@@ -3335,7 +3335,7 @@ function VoicePage() {
         />
       </Row>
       <div className="border-b border-content/5 py-4">
-        <label className="block text-[13px] font-medium text-content">
+        <label className="block text-sm font-semibold text-content">
           {t("OpenAI API key")}
         </label>
         <p className="mt-1 text-[12px] leading-relaxed text-content/45">
@@ -3348,7 +3348,7 @@ function VoicePage() {
             aria-label={t("OpenAI API key")}
             placeholder={hasKey ? "••••••••" : "sk-…"}
             onChange={(event) => setKeyDraft(event.target.value)}
-            className="h-8 min-w-0 flex-1 rounded-md border border-content/10 bg-content/5 px-3 text-[13px] text-content outline-none"
+            className="h-8 min-w-0 flex-1 rounded-md border border-content/10 bg-content/5 px-3 text-sm text-content outline-none"
           />
           <SecondaryButton onClick={saveKey} disabled={busy || !keyDraft.trim()}>
             {t("Save")}
@@ -3361,7 +3361,7 @@ function VoicePage() {
         </div>
       </div>
       <div className="border-b border-content/5 py-4 last:border-b-0">
-        <label className="block text-[13px] font-medium text-content">
+        <label className="block text-sm font-semibold text-content">
           {t("Context prompt")}
         </label>
         <p className="mt-1 text-[12px] leading-relaxed text-content/45">
@@ -3373,7 +3373,7 @@ function VoicePage() {
           rows={5}
           onChange={(event) => setPrompt(event.target.value)}
           onBlur={() => saveVoicePrompt(prompt)}
-          className="mt-2 min-h-24 w-full resize-y rounded-md border border-content/10 bg-content/5 px-3 py-2 text-[13px] leading-relaxed text-content outline-none"
+          className="mt-2 min-h-24 w-full resize-y rounded-md border border-content/10 bg-content/5 px-3 py-2 text-sm leading-relaxed text-content outline-none"
         />
       </div>
       {status ? (
@@ -3437,7 +3437,7 @@ function ArchivePage({
   return (
     <div className="flex flex-col gap-4">
       <section className="rounded-xl border border-content/10 px-4 py-4">
-        <h2 className="text-[13px] font-medium text-content">
+        <h2 className="text-sm font-semibold text-content">
           {t("Archived projects")}
         </h2>
         {archivedProjects.length === 0 ? (
@@ -3454,10 +3454,10 @@ function ArchivePage({
                 className="flex min-w-0 flex-wrap items-center gap-2 py-1.5"
               >
                 <div className="min-w-0 flex-1 basis-48">
-                  <div className="truncate text-[13px]">
+                  <div className="truncate text-sm">
                     {archivedProjectLabel(project.path)}
                   </div>
-                  <div className="truncate text-[11px] text-content/40">
+                  <div className="truncate text-xs text-content/40">
                     {prettyCwd(project.path)}
                   </div>
                 </div>
@@ -3498,7 +3498,7 @@ function ArchivePage({
       </Row>
 
       <section className="rounded-xl border border-content/10 px-4 py-4">
-        <h2 className="text-[13px] font-medium text-content">
+        <h2 className="text-sm font-semibold text-content">
           {looksLikeProject(cwd)
             ? t("Archived in {project}", { project: projectName(cwd) })
             : t("Archived conversations")}
@@ -3525,11 +3525,11 @@ function ArchivePage({
                 <button
                   type="button"
                   onClick={() => onOpenSession(session.id)}
-                  className="min-w-0 flex-1 basis-40 truncate text-left text-[13px] hover:text-content"
+                  className="min-w-0 flex-1 basis-40 truncate text-left text-sm hover:text-content"
                 >
                   {sessionDisplayTitle(session.title, session.harness)}
                 </button>
-                <span className="shrink-0 text-[11px] text-content/35 tabular-nums">
+                <span className="shrink-0 text-xs text-content/35 tabular-nums">
                   {formatDate(session.updatedAt)}
                 </span>
                 <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -3634,7 +3634,7 @@ function ProjectPage({ cwd }: { cwd: string }) {
   return (
     <div className="flex flex-col gap-4">
       {data == null ? (
-        <p className="text-[13px] text-content/40">{t("Loading…")}</p>
+        <p className="text-sm text-content/40">{t("Loading…")}</p>
       ) : (
         <>
           <textarea
@@ -3647,14 +3647,14 @@ function ProjectPage({ cwd }: { cwd: string }) {
             placeholder={t(
               "# Project instructions\n\nRules every agent should follow in this project.",
             )}
-            className="h-80 w-full resize-y rounded-xl border border-content/10 bg-content/5 px-3 py-2.5 font-mono text-[12px] leading-relaxed text-content outline-none focus:border-content/25"
+            className="h-80 w-full resize-y rounded-xl border border-content/10 bg-content/5 px-3 py-2.5 font-mono text-sm leading-relaxed text-content outline-none focus:border-content/25"
           />
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
               onClick={() => void save()}
               disabled={saving || !dirty}
-              className="rounded-md bg-accent px-3 py-1.5 text-[12px] font-medium text-white hover:bg-accent/90 disabled:opacity-40"
+              className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent/90 disabled:opacity-40"
             >
               {saving ? t("Saving…") : t("Save")}
             </button>
@@ -3695,11 +3695,11 @@ function PageHeader({
 }) {
   return (
     <header className="pb-6">
-      <h1 className="text-[22px] font-semibold tracking-tight text-content">
+      <h1 className="font-display text-display text-content">
         {title}
       </h1>
       {description ? (
-        <p className="mt-1.5 max-w-lg text-pretty text-[13px] leading-relaxed text-content/45">
+        <p className="mt-1.5 max-w-lg text-pretty text-sm leading-relaxed text-content/45">
           {description}
         </p>
       ) : null}
@@ -3719,7 +3719,7 @@ function Heading({
   return (
     <h2
       id={id}
-      className={`pb-1 text-[15px] font-semibold text-content ${
+      className={`pb-1 text-sm font-semibold text-content ${
         first ? "" : "pt-8"
       }`}
     >
@@ -3740,9 +3740,9 @@ function Row({
   return (
     <div className="flex flex-wrap items-start gap-x-6 gap-y-3 border-b border-content/5 py-4 last:border-b-0">
       <div className="min-w-0 grow basis-72">
-        <div className="text-[13px] font-medium text-content">{label}</div>
+        <div className="text-sm font-semibold text-content">{label}</div>
         {description ? (
-          <p className="mt-1 text-[12px] leading-relaxed text-content/45">
+          <p className="mt-1 text-xs leading-relaxed text-content/45">
             {description}
           </p>
         ) : null}
@@ -3769,7 +3769,7 @@ function Segmented<T extends string>({
     <div
       role="radiogroup"
       aria-label={label}
-      className="inline-grid shrink-0 gap-0.5 rounded-md border border-content/10 p-0.5 text-[12px]"
+      className="inline-grid shrink-0 gap-0.5 rounded-md border border-content/10 p-0.5 text-sm"
       style={{
         gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))`,
       }}
@@ -3831,7 +3831,7 @@ function Slider({
         className="sidebar-opacity-slider min-w-0 flex-1 disabled:cursor-not-allowed"
         onChange={(event) => onChange(Number(event.target.value))}
       />
-      <span className="w-10 shrink-0 text-right text-[12px] text-content tabular-nums">
+      <span className="w-10 shrink-0 text-right text-sm text-content tabular-nums">
         {display}
       </span>
     </div>
@@ -3911,7 +3911,7 @@ function NotificationsBlocked() {
           onClick={() => {
             void openNotificationSettings().catch(() => {});
           }}
-          className="rounded-md border border-content/10 px-2 py-1 text-content/70 hover:bg-content/10 hover:text-content"
+          className="rounded-md border border-content/10 px-2 py-1 text-xs font-medium text-content/70 hover:bg-content/10 hover:text-content"
         >
           {t("Open System Settings")}
         </button>
@@ -4049,7 +4049,7 @@ function Select({
         aria-expanded={open}
         aria-haspopup="listbox"
         onClick={() => setOpen((prev) => !prev)}
-        className="flex w-full items-center justify-between gap-2 rounded-md border border-content/10 bg-content/5 px-2 py-1 text-left text-[12px] text-content outline-none hover:border-content/20"
+        className="flex w-full items-center justify-between gap-2 rounded-md border border-content/10 bg-content/5 px-2 py-1 text-left text-sm text-content outline-none hover:border-content/20"
       >
         <span className="min-w-0 flex-1 truncate">
           {selected ? selected.label : value}
@@ -4093,7 +4093,7 @@ function Select({
                 onMouseDown={(e) => e.preventDefault()}
                 onMouseEnter={() => setActive(index)}
                 onClick={() => pick(option.value)}
-                className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[12px] ${
+                className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm ${
                   highlighted || isSelected
                     ? "bg-content/10 text-content"
                     : "text-content hover:bg-content/5"
@@ -4128,7 +4128,7 @@ function SecondaryButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`flex shrink-0 items-center gap-1.5 rounded-md border border-content/10 px-2.5 py-1 text-[12px] ${
+      className={`flex shrink-0 items-center gap-1.5 rounded-md border border-content/10 px-2.5 py-1 text-sm font-medium ${
         danger
           ? "text-red-400 hover:border-red-400/40 hover:bg-red-400/10"
           : "text-content/70 hover:bg-content/10 hover:text-content"

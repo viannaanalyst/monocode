@@ -21,9 +21,9 @@ import { t } from "../i18n";
 import { Plus, X } from "./icons";
 
 const inputClass =
-  "min-w-0 rounded-md border border-content/10 bg-content/5 px-2 py-1.5 text-[12px] text-content outline-none placeholder:text-content/30 focus:border-content/30";
+  "min-w-0 rounded-md border border-content/10 bg-content/5 px-2 py-1.5 text-sm text-content outline-none placeholder:text-content/30 focus:border-content/30";
 const buttonClass =
-  "flex items-center justify-center gap-1.5 rounded-md border border-content/10 px-2.5 py-1 text-[12px] text-content/70 hover:bg-content/10 hover:text-content focus-visible:outline focus-visible:outline-accent";
+  "flex items-center justify-center gap-1.5 rounded-md border border-content/10 px-2.5 py-1 text-xs font-medium text-content/70 hover:bg-content/10 hover:text-content focus-visible:outline focus-visible:outline-accent";
 const iconButtonClass =
   "grid size-6 shrink-0 place-items-center rounded-md text-content/40 hover:bg-content/10 hover:text-content focus-visible:outline focus-visible:outline-accent";
 const CUSTOM_OPTION = "__custom__";
@@ -175,7 +175,7 @@ export function CustomModelEditor({
               key={setting.key}
               className="min-w-0 space-y-2 rounded-md border border-content/10 p-2.5"
             >
-              <legend className="px-1 text-[11px] text-content/40">
+              <legend className="px-1 text-xs text-content/40">
                 {t("Option {number}", { number: index + 1 })}
               </legend>
               <div className="flex flex-wrap items-center gap-2">
@@ -302,7 +302,7 @@ export function CustomModelEditor({
                           })
                         }
                       />
-                      <label className="flex items-center gap-1.5 text-[11px] text-content/50">
+                      <label className="flex items-center gap-1.5 text-xs text-content/50">
                         <input
                           type="radio"
                           className="accent-accent"
@@ -341,7 +341,7 @@ export function CustomModelEditor({
                       })
                     }
                   >
-                    <Plus className="size-3" />
+                    <Plus className="size-3.5" />
                     {t("Add choice")}
                   </button>
                 </div>
@@ -363,7 +363,7 @@ export function CustomModelEditor({
                 className={buttonClass}
                 onClick={() => addSetting(settingToEditor(preset))}
               >
-                <Plus className="size-3" />
+                <Plus className="size-3.5" />
                 {t(preset.label)}
               </button>
             ))}
@@ -372,7 +372,7 @@ export function CustomModelEditor({
             className={buttonClass}
             onClick={() => addSetting(emptyEditorSetting())}
           >
-            <Plus className="size-3" />
+            <Plus className="size-3.5" />
             {t("Custom option")}
           </button>
         </div>

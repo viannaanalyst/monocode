@@ -233,7 +233,7 @@ export function SkillsPage({
                     aria-label={t("Filter skills")}
                     spellCheck={false}
                     autoComplete="off"
-                    className="min-w-0 flex-1 bg-transparent text-[12px] text-content outline-none placeholder:text-content/35"
+                    className="min-w-0 flex-1 bg-transparent text-sm text-content outline-none placeholder:text-content/35"
                   />
                 </label>
                 <button
@@ -255,7 +255,7 @@ export function SkillsPage({
                   aria-label={adding ? t("Close skill form") : t("Add skill")}
                   ref={addSkillButton}
                   disabled={busy}
-                  className="h-8 shrink-0 rounded-md border border-content/10 px-2.5 text-[12px] text-content/70 hover:bg-content/10 disabled:opacity-40"
+                  className="h-8 shrink-0 rounded-md border border-content/10 px-2.5 text-sm font-medium text-content/70 hover:bg-content/10 disabled:opacity-40"
                   onClick={() => {
                     setAdding((value) => !value);
                     setCreateError(null);
@@ -336,7 +336,7 @@ export function SkillsPage({
                             <div className="flex min-w-0 items-center gap-2">
                               <button
                                 type="button"
-                                className="min-w-0 truncate rounded text-left font-sans text-[13px] font-medium text-content hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                                className="min-w-0 truncate rounded text-left font-sans text-sm font-semibold text-content hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                                 title={t("Preview {name}", { name: skill.name })}
                                 ref={registerPreviewButton(`name:${skill.path}`)}
                                 aria-controls={previewOpen ? previewId : undefined}
@@ -345,7 +345,7 @@ export function SkillsPage({
                               >
                                 {skill.name}
                               </button>
-                              <span className="shrink-0 rounded-full bg-content/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-content/60">
+                              <span className="shrink-0 rounded-full bg-content/10 px-1.5 py-0.5 text-2xs font-medium uppercase tracking-wide text-content/60">
                                 {scopeLabel}
                               </span>
                             </div>
@@ -358,7 +358,7 @@ export function SkillsPage({
                               </p>
                             ) : null}
                             <p
-                              className="mt-0.5 truncate font-sans text-[11px] text-content/35"
+                              className="mt-0.5 truncate font-sans text-xs text-content/35"
                               title={skill.path}
                             >
                               {skill.source}
@@ -450,7 +450,7 @@ export function SkillsPage({
             className="flex min-h-0 min-w-0 flex-1 flex-col border-t border-content/10 @3xl/skills:max-w-[720px] @3xl/skills:border-t-0 @3xl/skills:border-l"
           >
             <header className="flex shrink-0 items-start gap-2 px-4 pt-4 pb-2">
-              <h2 className="min-w-0 flex-1 break-words text-[16px] font-semibold text-content">
+              <h2 className="min-w-0 flex-1 break-words text-sm font-semibold text-content">
                 {previewSkill.name}
               </h2>
               <button
@@ -465,7 +465,7 @@ export function SkillsPage({
               </button>
             </header>
             <div className="shrink-0 space-y-3 border-b border-content/10 px-4 pt-1 pb-3">
-              <p className="select-text break-all text-[11px] text-content/50">
+              <p className="select-text break-all text-xs text-content/50">
                 {previewSkill.path}
               </p>
               <div className="flex justify-end">

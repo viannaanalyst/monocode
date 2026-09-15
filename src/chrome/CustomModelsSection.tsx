@@ -25,7 +25,7 @@ import { CustomModelEditor } from "./CustomModelEditor";
 import { ChevronDown, Pencil, Plus, X } from "./icons";
 
 const buttonClass =
-  "flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] text-content/50 hover:bg-content/10 hover:text-content focus-visible:outline focus-visible:outline-accent";
+  "flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-content/50 hover:bg-content/10 hover:text-content focus-visible:outline focus-visible:outline-accent";
 
 export function CustomModelsSection({
   harness,
@@ -87,7 +87,7 @@ export function CustomModelsSection({
           <ChevronDown className={`size-3.5 ${expanded ? "" : "-rotate-90"}`} />
           {t("Custom models")}
           {entries.length ? (
-            <span className="rounded bg-content/10 px-1.5 text-[10px] tabular-nums">
+            <span className="rounded bg-content/10 px-1.5 text-2xs font-medium tabular-nums">
               {entries.length}
             </span>
           ) : null}
@@ -156,7 +156,7 @@ export function CustomModelsSection({
                 placeholder={
                   harness === "codex" ? "my-codex-model" : "my-claude-model"
                 }
-                className="min-w-0 flex-1 rounded-md border border-content/10 bg-content/5 px-2.5 py-1.5 font-mono text-[12px] text-content outline-none placeholder:text-content/30 focus:border-content/30"
+                className="min-w-0 flex-1 rounded-md border border-content/10 bg-content/5 px-2.5 py-1.5 font-mono text-sm text-content outline-none placeholder:text-content/30 focus:border-content/30"
                 onChange={(event) => {
                   setInput(event.target.value);
                   setError(null);
@@ -192,7 +192,7 @@ export function CustomModelsSection({
               aria-label={`Filter ${HARNESS_TITLE[harness]} custom models`}
               value={filter}
               placeholder={t("Filter custom models…")}
-              className="w-full rounded-md border border-content/10 bg-content/5 px-2.5 py-1.5 text-[12px] text-content outline-none placeholder:text-content/30 focus:border-content/30"
+              className="w-full rounded-md border border-content/10 bg-content/5 px-2.5 py-1.5 text-sm text-content outline-none placeholder:text-content/30 focus:border-content/30"
               onChange={(event) => setFilter(event.target.value)}
             />
           ) : null}
@@ -206,14 +206,14 @@ export function CustomModelsSection({
                 <div className="flex min-w-0 items-center gap-2">
                   <div className="min-w-0 flex-1">
                     <div
-                      className="truncate text-[12px] text-content/80"
+                      className="truncate text-sm text-content/80"
                       title={entry.name}
                     >
                       {entry.name}
                     </div>
                     {entry.name !== entry.slug ? (
                       <div
-                        className="mt-0.5 truncate font-mono text-[11px] text-content/40"
+                        className="mt-0.5 truncate font-mono text-xs text-content/40"
                         title={entry.slug}
                       >
                         {entry.slug}

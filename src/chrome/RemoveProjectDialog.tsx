@@ -56,7 +56,7 @@ export function RemoveProjectDialog({ name, path, onCancel, onConfirm }: Props) 
         className="absolute left-1/2 top-[22%] flex w-[min(420px,calc(100vw-24px))] -translate-x-1/2 flex-col gap-3 rounded-lg border border-content/10 bg-content/5 p-4 shadow-xl backdrop-blur-xl"
       >
         <div className="flex flex-col gap-1">
-          <h2 className="text-[13px] font-medium leading-tight text-content">
+          <h2 className="text-sm font-semibold text-content">
             {t("Delete “{name}”?", { name })}
           </h2>
           <p className="text-[12px] leading-snug text-content/55">
@@ -74,7 +74,7 @@ export function RemoveProjectDialog({ name, path, onCancel, onConfirm }: Props) 
               )}
             </p>
           ) : null}
-          <p className="truncate text-[11px] leading-tight text-content/40">
+          <p className="truncate text-xs leading-tight text-content/40">
             {prettyCwd(path)}
           </p>
         </div>
@@ -84,14 +84,14 @@ export function RemoveProjectDialog({ name, path, onCancel, onConfirm }: Props) 
             ref={cancelRef}
             type="button"
             onClick={onCancel}
-            className="rounded-md px-3 py-1.5 text-[12px] text-content/70 hover:bg-content/8 hover:text-content"
+            className="rounded-md px-3 py-1.5 text-sm font-medium text-content/70 hover:bg-content/8 hover:text-content"
           >
             {t("Cancel")}
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className="rounded-md bg-red-500/20 px-3 py-1.5 text-[12px] font-medium text-red-300 hover:bg-red-500/30"
+            className="rounded-md bg-red-500/20 px-3 py-1.5 text-sm font-medium text-red-300 hover:bg-red-500/30"
           >
             {t("Delete")}
           </button>

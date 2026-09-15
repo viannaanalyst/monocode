@@ -141,14 +141,14 @@ export function ProjectBackgroundDialog({ project, name, onClose }: Props) {
             type="button"
             onClick={() => void choose()}
             disabled={busy}
-            className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-md border border-content/10 px-2.5 py-1.5 text-[12px] text-content/70 hover:bg-content/10 hover:text-content disabled:opacity-40"
+            className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-md border border-content/10 px-2.5 py-1.5 text-sm font-medium text-content/70 hover:bg-content/10 hover:text-content disabled:opacity-40"
           >
             {busy ? (
               <Loader className="size-3.5 animate-spin" aria-hidden />
             ) : null}
             {path ? t("Change image") : t("Choose image")}
           </button>
-          <p className="mt-1.5 text-[11px] leading-relaxed text-content/45">
+          <p className="mt-1.5 text-xs leading-relaxed text-content/45">
             {path
               ? t("This image overrides the global background for this project.")
               : t(
@@ -164,7 +164,7 @@ export function ProjectBackgroundDialog({ project, name, onClose }: Props) {
           <div
             role="radiogroup"
             aria-label={t("Show project background on")}
-            className="grid w-44 grid-cols-2 gap-0.5 rounded-md border border-content/10 p-0.5 text-[12px]"
+            className="grid w-44 grid-cols-2 gap-0.5 rounded-md border border-content/10 p-0.5 text-sm"
           >
             {[
               { value: "empty" as const, label: t("Empty only") },
@@ -201,7 +201,7 @@ export function ProjectBackgroundDialog({ project, name, onClose }: Props) {
                 updateOpacity("empty", Number(event.target.value))
               }
             />
-            <span className="w-10 shrink-0 text-right text-[12px] tabular-nums text-content">
+            <span className="w-10 shrink-0 text-right text-sm tabular-nums text-content">
               {Math.round(emptyOpacity * 100)}%
             </span>
           </div>
@@ -220,7 +220,7 @@ export function ProjectBackgroundDialog({ project, name, onClose }: Props) {
                 updateOpacity("session", Number(event.target.value))
               }
             />
-            <span className="w-10 shrink-0 text-right text-[12px] tabular-nums text-content">
+            <span className="w-10 shrink-0 text-right text-sm tabular-nums text-content">
               {Math.round(sessionOpacity * 100)}%
             </span>
           </div>
@@ -231,7 +231,7 @@ export function ProjectBackgroundDialog({ project, name, onClose }: Props) {
             type="button"
             onClick={() => void removeImage()}
             disabled={busy}
-            className="w-full rounded-md border border-content/10 px-2.5 py-1.5 text-[12px] text-red-400 hover:border-red-400/40 hover:bg-red-400/10 disabled:opacity-40"
+            className="w-full rounded-md border border-content/10 px-2.5 py-1.5 text-sm font-medium text-red-400 hover:border-red-400/40 hover:bg-red-400/10 disabled:opacity-40"
           >{t("Remove background image")}</button>
         ) : null}
       </div>
@@ -248,7 +248,7 @@ function ProjectBackgroundRow({
 }) {
   return (
     <div className="flex items-center justify-between gap-4 border-t border-content/8 pt-4">
-      <span className="text-[13px] font-medium text-content">{label}</span>
+      <span className="text-sm font-semibold text-content">{label}</span>
       {children}
     </div>
   );

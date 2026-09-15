@@ -50,7 +50,7 @@ export function SettingsNav({ section, onSelect, onClose }: Props) {
       >
         {SETTINGS_NAV_GROUPS.map((group) => (
           <div key={group.label} className="pt-3 first:pt-2">
-            <p className="px-2 pb-1 text-[11px] font-medium text-content/35">
+            <p className="px-2 pb-1 text-xs font-medium text-content/35">
               {t(group.label)}
             </p>
             <div className="flex flex-col gap-px">
@@ -99,8 +99,8 @@ function NavRow({
           : "text-content/55 hover:bg-content/5 hover:text-content"
       }`}
     >
-      <Icon className="size-4 shrink-0 opacity-80" strokeWidth={1.75} />
-      <span className="min-w-0 flex-1 truncate text-[13px] leading-tight">
+      <Icon className="size-3.5 shrink-0 opacity-80" strokeWidth={1.75} />
+      <span className="min-w-0 flex-1 truncate text-sm leading-tight">
         {label}
       </span>
     </button>

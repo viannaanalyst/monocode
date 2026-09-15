@@ -127,7 +127,7 @@ function ToggleSetting({
       }`}
     >
       <Icon className="size-3.5 shrink-0" strokeWidth={1.75} />
-      <span className="text-[11px]">{t(setting.label)}</span>
+      <span className="text-xs">{t(setting.label)}</span>
     </button>
   );
 }
@@ -222,11 +222,11 @@ function SelectSetting({
         }`}
       >
         <Icon className="size-3.5 shrink-0" strokeWidth={1.75} />
-        <span className="min-w-0 truncate text-[11px]">
+        <span className="min-w-0 truncate text-xs">
           {t(current?.label ?? setting.label)}
         </span>
         <ChevronDown
-          className={`size-3 shrink-0 text-content/50 ${open ? "rotate-180" : ""}`}
+          className={`size-3.5 shrink-0 text-content/50 ${open ? "rotate-180" : ""}`}
           strokeWidth={1.75}
         />
       </button>
@@ -256,7 +256,7 @@ function SelectSetting({
                 onMouseDown={(e) => e.preventDefault()}
                 onMouseEnter={() => setActive(index)}
                 onClick={() => pick(option.value)}
-                className={`flex w-full items-center rounded-lg px-2 py-1.5 text-left text-[13px] ${
+                className={`flex w-full items-center rounded-lg px-2 py-1.5 text-left text-sm ${
                   highlighted || selected
                     ? "bg-content/10 text-content"
                     : "text-content hover:bg-content/5"
