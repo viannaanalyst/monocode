@@ -1,5 +1,6 @@
 use tauri::Manager;
 
+mod automations;
 mod browser;
 mod chat_background;
 mod checkpoint;
@@ -258,6 +259,15 @@ pub fn run() {
             reminders::reminder_take_open,
             reminders::reminder_register_window,
             reminders::reminder_open,
+            automations::automation_list,
+            automations::automation_upsert,
+            automations::automation_delete,
+            automations::automation_set_enabled,
+            automations::automation_set_session,
+            automations::automation_runs,
+            automations::automation_take_due,
+            automations::automation_record_missed,
+            automations::automation_record_result,
             fs::list_dir,
             fs::list_project_files,
             fs::git_diff_stats,

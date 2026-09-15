@@ -7,6 +7,7 @@ import {
   CircleAlert,
   FilePlusCorner,
   FolderOpen,
+  History,
   ImagePlus,
   Inbox,
   LayoutTwoColumn,
@@ -139,6 +140,9 @@ type Props = {
   inboxActive?: boolean;
   onOpenKanban?: () => void;
   kanbanActive?: boolean;
+  onOpenAutomations?: () => void;
+  automationsActive?: boolean;
+  automationsPaused?: boolean;
   notesEnabled?: boolean;
   onOpenNotes?: () => void;
   notesActive?: boolean;
@@ -186,6 +190,9 @@ export function ProjectRail({
   inboxActive = false,
   onOpenKanban,
   kanbanActive = false,
+  onOpenAutomations,
+  automationsActive = false,
+  automationsPaused = false,
   notesActive = false,
   sessions = [],
   onSelectSession,
@@ -449,6 +456,15 @@ export function ProjectRail({
                 icon={LayoutTwoColumn}
                 active={kanbanActive}
                 onClick={onOpenKanban}
+              />
+            ) : null}
+            {onOpenAutomations ? (
+              <RailAction
+                label={t("Automations")}
+                icon={History}
+                active={automationsActive}
+                dot={automationsPaused}
+                onClick={onOpenAutomations}
               />
             ) : null}
           </div>
