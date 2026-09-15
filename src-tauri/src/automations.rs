@@ -324,6 +324,102 @@ fn runs(conn: &Connection, automation_id: &str, limit: i64) -> Result<Vec<Automa
         .map_err(|error| error.to_string())
 }
 
+fn take_due(
+    conn: &mut Connection,
+    id: &str,
+    expected_next_run_at: i64,
+    next_run_at: i64,
+    now: i64,
+) -> Result<bool, String> {
+    validate_id(id, "automation")?;
+    let tx = conn.transaction().map_err(|error| error.to_string())?;
+    let updated = tx
+        .execute(
+            "UPDATE automations SET next_run_at = ?3, updated_at = ?4
+             WHERE id = ?1 AND enabled = 1 AND next_run_at = ?2",
+            params![id, expected_next_run_at, next_run_at, now],
+        )
+        .map_err(|error| error.to_string())?;
+    if updated == 0 {
+        return Ok(false);
+    }
+    let run_id = format!("{id}:{expected_next_run_at}");
+    tx.execute(
+        "INSERT OR IGNORE INTO automation_runs
+           (id, automation_id, scheduled_for, started_at, status)
+         VALUES (?1, ?2, ?3, ?4, 'running')",
+        params![run_id, id, expected_next_run_at, now],
+    )
+    .map_err(|error| error.to_string())?;
+    tx.commit().map_err(|error| error.to_string())?;
+    Ok(true)
+}
+
+fn record_missed(
+    conn: &mut Connection,
+    id: &str,
+    expected_next_run_at: i64,
+    next_run_at: i64,
+) -> Result<bool, String> {
+    validate_id(id, "automation")?;
+    let tx = conn.transaction().map_err(|error| error.to_string())?;
+    let updated = tx
+        .execute(
+            "UPDATE automations SET next_run_at = ?3, updated_at = ?4
+             WHERE id = ?1 AND next_run_at = ?2",
+            params![id, expected_next_run_at, next_run_at, now_millis()],
+        )
+        .map_err(|error| error.to_string())?;
+    if updated == 0 {
+        return Ok(false);
+    }
+    tx.execute(
+        "INSERT OR IGNORE INTO automation_runs
+           (id, automation_id, scheduled_for, status)
+         VALUES (?1, ?2, ?3, 'missed')",
+        params![format!("{id}:{expected_next_run_at}"), id, expected_next_run_at],
+    )
+    .map_err(|error| error.to_string())?;
+    tx.commit().map_err(|error| error.to_string())?;
+    Ok(true)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn record_result(
+    conn: &mut Connection,
+    id: &str,
+    run_id: &str,
+    status: &str,
+    error: Option<&str>,
+    consecutive_failures: i64,
+    enabled: bool,
+    paused_reason: Option<&str>,
+) -> Result<Automation, String> {
+    validate_id(id, "automation")?;
+    if !["completed", "failed", "cancelled", "skipped_busy"].contains(&status) {
+        return Err("Unknown run status.".into());
+    }
+    let now = now_millis();
+    let tx = conn.transaction().map_err(|error| error.to_string())?;
+    tx.execute(
+        "UPDATE automation_runs
+         SET status = ?3, error = ?4, finished_at = ?5
+         WHERE id = ?1 AND automation_id = ?2",
+        params![run_id, id, status, error, now],
+    )
+    .map_err(|error| error.to_string())?;
+    tx.execute(
+        "UPDATE automations
+         SET consecutive_failures = ?2, enabled = ?3, paused_reason = ?4,
+             updated_at = ?5
+         WHERE id = ?1",
+        params![id, consecutive_failures, enabled as i64, paused_reason, now],
+    )
+    .map_err(|error| error.to_string())?;
+    tx.commit().map_err(|error| error.to_string())?;
+    get(conn, id)?.ok_or_else(|| "Automation not found".into())
+}
+
 #[tauri::command(async)]
 pub fn automation_list(store: State<'_, SessionStore>) -> Result<Vec<Automation>, String> {
     let conn = store.lock_conn()?;
@@ -392,6 +488,69 @@ pub fn automation_runs(
 ) -> Result<Vec<AutomationRun>, String> {
     let conn = store.lock_conn()?;
     runs(&conn, &id, limit.unwrap_or(20))
+}
+
+#[tauri::command(async)]
+pub fn automation_take_due(
+    app: AppHandle,
+    store: State<'_, SessionStore>,
+    id: String,
+    expected_next_run_at: i64,
+    next_run_at: i64,
+    now: i64,
+) -> Result<bool, String> {
+    let mut conn = store.lock_conn()?;
+    let claimed = take_due(&mut conn, &id, expected_next_run_at, next_run_at, now)?;
+    drop(conn);
+    if claimed {
+        let _ = app.emit(CHANGED, ());
+    }
+    Ok(claimed)
+}
+
+#[tauri::command(async)]
+pub fn automation_record_missed(
+    app: AppHandle,
+    store: State<'_, SessionStore>,
+    id: String,
+    expected_next_run_at: i64,
+    next_run_at: i64,
+) -> Result<bool, String> {
+    let mut conn = store.lock_conn()?;
+    let recorded = record_missed(&mut conn, &id, expected_next_run_at, next_run_at)?;
+    drop(conn);
+    if recorded {
+        let _ = app.emit(CHANGED, ());
+    }
+    Ok(recorded)
+}
+
+#[tauri::command(async)]
+pub fn automation_record_result(
+    app: AppHandle,
+    store: State<'_, SessionStore>,
+    automation_id: String,
+    run_id: String,
+    status: String,
+    error: Option<String>,
+    consecutive_failures: i64,
+    enabled: bool,
+    paused_reason: Option<String>,
+) -> Result<Automation, String> {
+    let mut conn = store.lock_conn()?;
+    let automation = record_result(
+        &mut conn,
+        &automation_id,
+        &run_id,
+        &status,
+        error.as_deref(),
+        consecutive_failures,
+        enabled,
+        paused_reason.as_deref(),
+    )?;
+    drop(conn);
+    let _ = app.emit(CHANGED, ());
+    Ok(automation)
 }
 
 #[cfg(test)]
@@ -481,5 +640,87 @@ mod tests {
             .unwrap();
         assert_eq!(runs, 0);
         assert!(list(&conn).unwrap().is_empty());
+    }
+
+    #[test]
+    fn take_due_advances_only_for_the_expected_slot_and_records_one_run() {
+        let mut conn = memory();
+        upsert(&mut conn, &input("a1")).unwrap();
+        let slot = 1_700_000_000_000;
+        let next = 1_700_003_600_000;
+        assert!(take_due(&mut conn, "a1", slot, next, slot + 1000).unwrap());
+        assert!(!take_due(&mut conn, "a1", slot, next, slot + 2000).unwrap());
+        let stored = get(&conn, "a1").unwrap().unwrap();
+        assert_eq!(stored.next_run_at, next);
+        let history = runs(&conn, "a1", 10).unwrap();
+        assert_eq!(history.len(), 1);
+        assert_eq!(history[0].status, "running");
+        assert_eq!(history[0].scheduled_for, slot);
+        assert_eq!(history[0].id, format!("a1:{slot}"));
+    }
+
+    #[test]
+    fn take_due_skips_paused_automations() {
+        let mut conn = memory();
+        upsert(&mut conn, &input("a1")).unwrap();
+        set_enabled(&conn, "a1", false).unwrap();
+        let slot = 1_700_000_000_000;
+        assert!(!take_due(&mut conn, "a1", slot, slot + 1000, slot).unwrap());
+        let stored = get(&conn, "a1").unwrap().unwrap();
+        assert_eq!(stored.next_run_at, slot);
+    }
+
+    #[test]
+    fn record_missed_advances_and_marks_the_slot() {
+        let mut conn = memory();
+        upsert(&mut conn, &input("a1")).unwrap();
+        let slot = 1_700_000_000_000;
+        let next = 1_700_003_600_000;
+        assert!(record_missed(&mut conn, "a1", slot, next).unwrap());
+        assert!(!record_missed(&mut conn, "a1", slot, next).unwrap());
+        let stored = get(&conn, "a1").unwrap().unwrap();
+        assert_eq!(stored.next_run_at, next);
+        let history = runs(&conn, "a1", 10).unwrap();
+        assert_eq!(history[0].status, "missed");
+        assert_eq!(history[0].scheduled_for, slot);
+    }
+
+    #[test]
+    fn record_result_closes_the_run_and_applies_counters() {
+        let mut conn = memory();
+        upsert(&mut conn, &input("a1")).unwrap();
+        let slot = 1_700_000_000_000;
+        take_due(&mut conn, "a1", slot, slot + 60_000, slot).unwrap();
+        let run_id = format!("a1:{slot}");
+        let updated = record_result(
+            &mut conn,
+            "a1",
+            &run_id,
+            "failed",
+            Some("boom"),
+            2,
+            true,
+            None,
+        )
+        .unwrap();
+        assert_eq!(updated.consecutive_failures, 2);
+        assert!(updated.enabled);
+        let history = runs(&conn, "a1", 10).unwrap();
+        assert_eq!(history[0].status, "failed");
+        assert_eq!(history[0].error.as_deref(), Some("boom"));
+        assert!(history[0].finished_at.is_some());
+        let paused = record_result(
+            &mut conn,
+            "a1",
+            "a1:1",
+            "failed",
+            None,
+            3,
+            false,
+            Some("failures"),
+        )
+        .unwrap();
+        assert!(!paused.enabled);
+        assert_eq!(paused.paused_reason.as_deref(), Some("failures"));
     }
 }
