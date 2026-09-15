@@ -144,7 +144,7 @@ export function LinkedWorkItemUpdateNotice({
       />
       <div className="relative z-[1] flex items-center justify-between gap-0.5 border-b border-content/10 px-3 py-2">
         <div className="flex items-center gap-1.5">
-          <span className="size-2 shrink-0 rounded-full bg-accent" />
+          <span className="size-1.5 shrink-0 rounded-full bg-accent" />
           <KindIcon className="size-3.5 text-content/55" strokeWidth={1.75} />
           <span className="min-w-0 flex-1 truncate text-[12px] font-semibold">
             GitHub activity
@@ -170,14 +170,14 @@ export function LinkedWorkItemUpdateNotice({
           }}
           className="block w-full text-left"
         >
-          <span className="block text-[11px] text-content/50">
+          <span className="block text-xs text-content/50">
             {kindLabel} #{card.number} · {card.repo}
           </span>
-          <span className="mt-0.5 block truncate text-[13px] font-medium hover:underline">
+          <span className="mt-0.5 block truncate text-sm font-medium hover:underline">
             {card.title}
           </span>
         </button>
-        <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-content/55">
+        <div className="mt-1.5 flex items-center gap-1.5 text-xs text-content/55">
           <span>{linkedWorkItemUpdateSummary(card)}</span>
         </div>
       </div>
@@ -201,7 +201,7 @@ export function LinkedWorkItemUpdateNotice({
                 <ActivityIcon entry={entry} />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="flex min-w-0 items-center gap-1.5 text-[11px]">
+                <span className="flex min-w-0 items-center gap-1.5 text-xs">
                   <span className="font-medium text-content/70">
                     {entryKindLabel(entry)}
                   </span>
@@ -225,7 +225,7 @@ export function LinkedWorkItemUpdateNotice({
 
       {terminalState ? (
         <div className="relative z-[1] border-t border-content/10 px-3 py-2.5">
-          <div className="flex items-center gap-2 text-[11px]">
+          <div className="flex items-center gap-2 text-xs">
             <TerminalIcon
               className={
                 terminalState === "pr_merged"
@@ -243,7 +243,7 @@ export function LinkedWorkItemUpdateNotice({
               title="Archive session"
               disabled={Boolean(cleanupAction) || !onArchiveSession}
               onClick={() => void runCleanup("archive", onArchiveSession)}
-              className="inline-flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md bg-content/10 px-2 py-1 text-[11px] font-medium hover:bg-content/15 disabled:opacity-40"
+              className="inline-flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md bg-content/10 px-2 py-1 text-xs font-medium hover:bg-content/15 disabled:opacity-40"
             >
               {cleanupAction === "archive" ? (
                 <Loader className="size-3 shrink-0 animate-spin" />
@@ -259,7 +259,7 @@ export function LinkedWorkItemUpdateNotice({
               title="Delete session"
               disabled={Boolean(cleanupAction) || !onDeleteSession}
               onClick={() => void runCleanup("delete", onDeleteSession)}
-              className="inline-flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md px-2 py-1 text-[11px] text-red-300/90 hover:bg-red-500/15 disabled:opacity-40"
+              className="inline-flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md px-2 py-1 text-xs text-red-300/90 hover:bg-red-500/15 disabled:opacity-40"
             >
               {cleanupAction === "delete" ? (
                 <Loader className="size-3 shrink-0 animate-spin" />
@@ -274,7 +274,7 @@ export function LinkedWorkItemUpdateNotice({
         </div>
       ) : null}
 
-      <div className="relative z-[1] flex min-w-0 items-center gap-1.5 border-t border-content/10 px-3 py-2.5 text-[11px]">
+      <div className="relative z-[1] flex min-w-0 items-center gap-1.5 border-t border-content/10 px-3 py-2.5 text-xs">
         <button
           type="button"
           title={agentLabel}

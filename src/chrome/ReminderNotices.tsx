@@ -83,7 +83,7 @@ export function ReminderNotices({
           <span className="flex-1 text-[12px] font-semibold">
             {t("Due reminders")}
           </span>
-          <span role="status" className="text-[11px] text-content/50">
+          <span role="status" className="text-xs text-content/50">
             {reminders.length || ""}
           </span>
         </div>
@@ -102,18 +102,18 @@ export function ReminderNotices({
                 className="block w-full text-left"
                 onClick={() => onOpen(reminder)}
               >
-                <span className="block truncate text-[13px] font-medium hover:underline">
+                <span className="block truncate text-sm font-medium hover:underline">
                   {sessionDisplayTitle(reminder.title, reminder.harness)}
                 </span>
                 <span
-                  className="mt-1 block truncate text-[11px] text-content/50"
+                  className="mt-1 block truncate text-xs text-content/50"
                   title={formatReminderTime(reminder.dueAt)}
                 >
                   {projectName(reminder.cwd)} ·{" "}
                   {formatReminderTime(reminder.dueAt)}
                 </span>
               </button>
-              <div className="mt-2 flex items-center gap-1.5 text-[11px]">
+              <div className="mt-2 flex items-center gap-1.5 text-xs">
                 <button
                   className="rounded-md bg-content/10 px-2 py-1 hover:bg-content/15"
                   onClick={() => onOpen(reminder)}
@@ -147,7 +147,7 @@ export function ReminderNotices({
         </div>
         {!notifications && reminders.length ? (
           <button
-            className="w-full border-t border-content/10 px-3 py-2 text-left text-[11px] text-content/50 hover:text-content"
+            className="w-full border-t border-content/10 px-3 py-2 text-left text-xs text-content/50 hover:text-content"
             onClick={onOpenSettings}
           >
             {t("Desktop alerts are off. Enable in Settings.")}

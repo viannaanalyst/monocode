@@ -447,7 +447,7 @@ export const SessionPane = memo(function SessionPane({
             />
           ) : null}
           <span
-            className={`size-2 shrink-0 rounded-full ${focused ? "bg-accent" : "bg-transparent"}`}
+            className={`size-1.5 shrink-0 rounded-full ${focused ? "bg-accent" : "bg-transparent"}`}
           />
           <span
             className="min-w-0 flex-1 truncate text-xs text-content"

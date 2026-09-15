@@ -109,7 +109,7 @@ function AssignmentModel({
           setActive(selected ? choices.indexOf(selected) : 0);
           setOpen(!open);
         }}
-        className="flex h-7 max-w-full items-center gap-1.5 rounded-md bg-content/5 px-2 text-[11px] text-content/60 hover:bg-content/10 hover:text-content"
+        className="flex h-7 max-w-full items-center gap-1.5 rounded-md bg-content/5 px-2 text-xs text-content/60 hover:bg-content/10 hover:text-content"
       >
         <HarnessIcon harness={task.harness} className="size-3.5 shrink-0" />
         <span className="truncate">
@@ -143,7 +143,7 @@ function AssignmentModel({
                 setActive(0);
               }}
               onKeyDown={onSearchKey}
-              className="min-w-0 flex-1 bg-transparent text-[13px] text-content outline-none placeholder:text-content/40"
+              className="min-w-0 flex-1 bg-transparent text-sm text-content outline-none placeholder:text-content/40"
             />
           </label>
           <div
@@ -171,10 +171,10 @@ function AssignmentModel({
                   className="size-4 shrink-0"
                 />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13px] leading-tight text-content">
+                  <span className="block truncate text-sm leading-tight text-content">
                     {choice.name}
                   </span>
-                  <span className="mt-0.5 block truncate text-[11px] leading-tight text-content/45">
+                  <span className="mt-0.5 block truncate text-xs leading-tight text-content/45">
                     {HARNESS_TITLE[choice.harness]}
                   </span>
                 </span>
@@ -230,7 +230,7 @@ function WorkerHelp() {
           <div className="text-[12px] leading-4 text-content">
             How many workers run at once
           </div>
-          <div className="mt-1 text-[11px] leading-4 text-content/50">
+          <div className="mt-1 text-xs leading-4 text-content/50">
             The rest of the tasks wait their turn, and a task that depends on
             another waits for it either way. Every worker edits this same
             project folder, so a lower number means fewer changes landing in it
@@ -330,10 +330,10 @@ export function OrchestrationPreview({
     });
   };
   const secondary =
-    "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[11px] text-content/50 hover:bg-content/8 hover:text-content disabled:opacity-35";
+    "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs text-content/50 hover:bg-content/8 hover:text-content disabled:opacity-35";
   const field =
     "w-full rounded-md border border-content/12 bg-background-base/40 px-2 py-1.5 text-[12px] leading-5 text-content outline-none placeholder:text-content/35 focus:border-content/30";
-  const fieldLabel = "mb-1 block text-[11px] leading-tight text-content/45";
+  const fieldLabel = "mb-1 block text-xs leading-tight text-content/45";
   return (
     <div
       className="mb-2 overflow-hidden rounded-xl border border-content/10 bg-content/3 font-sans"
@@ -349,10 +349,10 @@ export function OrchestrationPreview({
           )}
         </span>
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[13px] font-medium leading-tight text-content/90">
+          <div className="truncate text-sm font-medium leading-tight text-content/90">
             {planning ? "Planning assignments…" : proposal.title}
           </div>
-          <div className="mt-1 flex items-center gap-1.5 text-[11px] leading-tight text-content/45">
+          <div className="mt-1 flex items-center gap-1.5 text-xs leading-tight text-content/45">
             <HarnessIcon
               harness={proposal.author.harness}
               className="size-3 shrink-0"
@@ -383,7 +383,7 @@ export function OrchestrationPreview({
           )}
           {!run && ["ready", "starting"].includes(proposal.status) && (
             <button
-              className="flex h-7 items-center gap-1.5 rounded-md bg-content px-2.5 text-[11px] font-medium text-background-base hover:bg-content/80 disabled:opacity-40"
+              className="flex h-7 items-center gap-1.5 rounded-md bg-content px-2.5 text-xs font-medium text-background-base hover:bg-content/80 disabled:opacity-40"
               disabled={!editable}
               onClick={() =>
                 void perform(() => actions!.confirm(proposal.leadId, block.id))
@@ -463,7 +463,7 @@ export function OrchestrationPreview({
                       />
                     ) : (
                       <span
-                        className="flex min-w-0 items-center gap-1.5 text-[11px] text-content/50"
+                        className="flex min-w-0 items-center gap-1.5 text-xs text-content/50"
                         title={HARNESS_TITLE[task.harness]}
                       >
                         <HarnessIcon
@@ -482,7 +482,7 @@ export function OrchestrationPreview({
                   </div>
                 </div>
                 {open && (
-                  <div className="space-y-2.5 px-3 pb-3 pl-8 text-[11px] leading-4 text-content/45">
+                  <div className="space-y-2.5 px-3 pb-3 pl-8 text-xs leading-4 text-content/45">
                     {editable ? (
                       <>
                         <label className="block">
@@ -535,7 +535,7 @@ export function OrchestrationPreview({
           type="button"
           aria-expanded={showAll}
           onClick={() => setShowAll(!showAll)}
-          className="flex h-8 w-full items-center gap-1.5 border-t border-content/10 px-3 text-left text-[11px] text-content/45 hover:bg-content/5 hover:text-content/70"
+          className="flex h-8 w-full items-center gap-1.5 border-t border-content/10 px-3 text-left text-xs text-content/45 hover:bg-content/5 hover:text-content/70"
         >
           {showAll ? (
             <ChevronDown className="size-3.5" />
@@ -553,7 +553,7 @@ export function OrchestrationPreview({
         </p>
       )}
       {!planning && (
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-content/10 px-3 py-2 text-[11px] text-content/45">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-content/10 px-3 py-2 text-xs text-content/45">
           <div className="flex items-center gap-1.5">
             {editable ? (
               <>
@@ -578,7 +578,7 @@ export function OrchestrationPreview({
                           },
                         })
                       }
-                      className={`grid size-5 place-items-center rounded-[5px] text-[11px] leading-none tabular-nums ${
+                      className={`grid size-5 place-items-center rounded-[5px] text-xs leading-none tabular-nums ${
                         proposal.settings.maxWorkers === number
                           ? "bg-content/15 font-medium text-content"
                           : "text-content/45 hover:bg-content/8 hover:text-content"

@@ -30,7 +30,7 @@ export function TaskListPreview({ items, explanation }: Props) {
             </span>
           </div>
           {explanation ? (
-            <p className="mt-0.5 line-clamp-2 font-sans text-[11.5px] leading-4 text-content/50">
+            <p className="mt-0.5 line-clamp-2 font-sans text-xs leading-4 text-content/50">
               {explanation}
             </p>
           ) : null}
@@ -44,7 +44,7 @@ export function TaskListPreview({ items, explanation }: Props) {
           >
             <TaskState status={item.status} />
             <span
-              className={`min-w-0 flex-1 font-sans text-[12.5px] leading-4.5 ${
+              className={`min-w-0 flex-1 font-sans text-xs leading-4.5 ${
                 item.status === "completed"
                   ? "text-content/40 line-through decoration-content/25"
                   : item.status === "cancelled"
@@ -70,7 +70,7 @@ function TaskState({ status }: { status: TaskListItemStatus }) {
         aria-label={t("Completed")}
         className="mt-px grid size-4 shrink-0 place-items-center rounded-full bg-emerald-400/20 text-emerald-300"
       >
-        <Check className="size-2.5" strokeWidth={2.5} />
+        <Check className="size-3.5" strokeWidth={2.5} />
       </span>
     );
   }
@@ -93,7 +93,7 @@ function TaskState({ status }: { status: TaskListItemStatus }) {
         aria-label={t("Cancelled")}
         className="mt-px grid size-4 shrink-0 place-items-center rounded-full bg-content/8 text-content/35"
       >
-        <Minus className="size-2.5" strokeWidth={2} />
+        <Minus className="size-3.5" strokeWidth={2} />
       </span>
     );
   }

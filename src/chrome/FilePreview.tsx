@@ -116,7 +116,7 @@ export function FilePreview({
           </span>
         )}
         {added > 0 || deleted > 0 ? (
-          <span className="shrink-0 font-mono text-[11px] font-semibold">
+          <span className="shrink-0 font-mono text-xs font-semibold">
             {added > 0 ? (
               <span className="text-emerald-400">+{added}</span>
             ) : null}
@@ -198,13 +198,13 @@ function PreviewLine({
       </span>
       {showGutter ? (
         <span
-          className={`w-3 shrink-0 text-center font-mono text-[10px] font-bold ${markColor}`}
+          className={`w-3 shrink-0 text-center font-mono text-[10px] font-semibold ${markColor}`}
         >
           {mark}
         </span>
       ) : null}
       <span
-        className={`min-w-0 flex-1 pr-2 font-mono text-[11px] leading-4.5 ${scrollable ? "whitespace-pre" : "truncate"}`}
+        className={`min-w-0 flex-1 pr-2 font-mono text-xs leading-4.5 ${scrollable ? "whitespace-pre" : "truncate"}`}
       >
         {highlight(line.text, line.kind === "context")}
       </span>

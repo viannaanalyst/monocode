@@ -177,7 +177,7 @@ export function TabGroupMenu({
         onChange={(e) => setName(e.target.value)}
         onBlur={commitName}
         aria-label={t("Group name")}
-        className="mb-2 w-full rounded-lg border border-content/10 bg-content/5 px-2.5 py-1.5 text-[13px] text-content outline-none ring-accent/40 focus:ring-1"
+        className="mb-2 w-full rounded-lg border border-content/10 bg-content/5 px-2.5 py-1.5 text-sm text-content outline-none ring-accent/40 focus:ring-1"
       />
 
       {logoProject ? (
@@ -210,7 +210,7 @@ export function TabGroupMenu({
             />
           </button>
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] text-content/50">{t("Project logo")}</p>
+            <p className="text-xs text-content/50">{t("Project logo")}</p>
             <p className="truncate text-[12px] text-content/70">
               {logoPath ? t("Shown in tabs and composer") : t("Optional — replaces folder icon")}
             </p>
@@ -254,7 +254,7 @@ export function TabGroupMenu({
       ) : null}
 
       <div className="mb-2 px-0.5">
-        <p className="mb-1 text-[11px] text-content/50">{t("Mascot")}</p>
+        <p className="mb-1 text-xs text-content/50">{t("Mascot")}</p>
         <div className="flex items-center justify-between gap-1">
           {PROJECT_MASCOTS.map((mascot) => (
             <MascotSwatch
@@ -360,7 +360,7 @@ function MenuRow({
       role="menuitem"
       onMouseDown={(e) => e.preventDefault()}
       onClick={onPick}
-      className={`flex h-8 w-full items-center gap-2.5 rounded-lg px-2 text-left text-[13px] leading-none ${
+      className={`flex h-8 w-full items-center gap-2.5 rounded-lg px-2 text-left text-sm leading-none ${
         item.danger
           ? "text-red-300/90 hover:bg-red-500/15"
           : "text-content hover:bg-content/5"
@@ -369,7 +369,7 @@ function MenuRow({
       <Icon className="size-3.5 shrink-0 text-content/55" strokeWidth={1.75} />
       <span className="min-w-0 flex-1 truncate leading-label">{item.label}</span>
       {item.shortcut ? (
-        <span className="shrink-0 text-[11px] text-content/40">
+        <span className="shrink-0 text-xs text-content/40">
           {item.shortcut}
         </span>
       ) : null}
