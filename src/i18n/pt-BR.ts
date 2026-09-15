@@ -1318,4 +1318,16 @@ export const PT_BR: Record<string, string> = {
   "You cannot approve your own pull request":
     "Você não pode aprovar seu próprio pull request",
   "No labels": "Sem rótulos",
+  Kanban: "Kanban",
+  "{count} sessions": "{count} sessões",
+  "Board scope": "Escopo do quadro",
+  "All projects": "Todos os projetos",
+  "Needs you": "Precisa de você",
+  Idle: "Ociosas",
+  "Waiting for you": "Aguardando você",
+  Finished: "Concluído",
+  "No sessions here": "Nenhuma sessão aqui",
+  "Open {title}": "Abrir {title}",
+  "Archive {title}": "Arquivar {title}",
+  "Unarchive {title}": "Desarquivar {title}",
 };
