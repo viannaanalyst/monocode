@@ -1178,7 +1178,7 @@ function ProjectCard({
       >
         <MoreHorizontal className="size-3.5" strokeWidth={1.75} />
       </button>
-      {onNewInProject && pinned ? (
+      {onNewInProject ? (
         <button
           type="button"
           data-no-drag
