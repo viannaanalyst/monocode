@@ -1370,6 +1370,12 @@ export const PT_BR: Record<string, string> = {
   "Daily at {time}": "Diariamente às {time}",
   "Weekdays at {time}": "Dias úteis às {time}",
   "Weekly on {weekday} at {time}": "Semanalmente na {weekday} às {time}",
+  "The run did not settle within 30 minutes.":
+    "A execução não foi concluída em 30 minutos.",
+  "Resume the automation before running it.":
+    "Retome a automação antes de executá-la.",
+  "Could not update this automation.\n\n{detail}":
+    "Não foi possível atualizar esta automação.\n\n{detail}",
   Sunday: "Domingo",
   Monday: "Segunda-feira",
   Tuesday: "Terça-feira",

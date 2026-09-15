@@ -6795,10 +6795,19 @@ export default function App({
     [onSelectHistorySession],
   );
 
+  const reportAutomationError = useCallback((error: unknown) => {
+    void message(
+      t("Could not update this automation.\n\n{detail}", {
+        detail: String(error),
+      }),
+      { title: t("MonoCode"), kind: "error" },
+    );
+  }, []);
+
   const dispatchAutomationRun = useCallback(
     async (
       automation: Automation,
-    ): Promise<"completed" | "failed" | "cancelled" | "skipped"> => {
+    ): Promise<"completed" | "failed" | "cancelled" | "skipped" | "timed_out"> => {
       let session = automation.sessionId
         ? sessionsRef.current.find((entry) => entry.id === automation.sessionId)
         : undefined;
@@ -6827,14 +6836,20 @@ export default function App({
       const current =
         sessionsRef.current.find((entry) => entry.id === session?.id) ?? session;
       if (!current) return "skipped";
-      if (current.busy || (current.queuedMessages?.length ?? 0) > 0)
+      if (
+        current.busy ||
+        (current.queuedMessages?.length ?? 0) > 0 ||
+        isPreparingHandoff(current) ||
+        current.pendingSwitch
+      ) {
         return "skipped";
+      }
       return new Promise((resolve) => {
         // `onSubmit` can return early without settling (orchestration guard,
         // removal race). The timeout keeps the automation from stalling
         // forever in `activeRuns`.
         const timer = window.setTimeout(
-          () => resolve("failed"),
+          () => resolve("timed_out"),
           AUTOMATION_RUN_TIMEOUT_MS,
         );
         onSubmit(current.id, automation.prompt, [], {
@@ -7973,15 +7988,24 @@ export default function App({
                 now={Date.now()}
                 cwd={sidebarCwd}
                 besideRail={projectRailOpen}
+                busyId={automations.busyId}
                 onClose={onLeaveAutomations}
                 onToggleSidebar={onToggleSidebar}
                 onCreate={() => setNewAutomationId(crypto.randomUUID())}
                 creatingId={newAutomationId}
                 onCancelCreate={() => setNewAutomationId(null)}
-                onSave={(input) => void upsertAutomation(input)}
-                onRunNow={(automation) => void automations.runNow(automation)}
-                onToggle={(automation) => void automations.toggle(automation)}
-                onDelete={(automation) => void automations.remove(automation)}
+                onSave={(input) =>
+                  void upsertAutomation(input).catch(reportAutomationError)
+                }
+                onRunNow={(automation) =>
+                  void automations.runNow(automation).catch(reportAutomationError)
+                }
+                onToggle={(automation) =>
+                  void automations.toggle(automation).catch(reportAutomationError)
+                }
+                onDelete={(automation) =>
+                  void automations.remove(automation).catch(reportAutomationError)
+                }
                 onLoadRuns={(id) => void automations.loadRuns(id)}
                 onOpenSession={onOpenAutomationSession}
               />

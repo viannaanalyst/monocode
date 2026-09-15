@@ -23,11 +23,12 @@ import {
 const TICK_MS = 30_000;
 
 export function useAutomations(callbacks: {
-  dispatch: (automation: Automation) => Promise<RunOutcome | "skipped">;
+  dispatch: (automation: Automation) => Promise<RunOutcome | "skipped" | "timed_out">;
 }) {
   const [automations, setAutomations] = useState<Automation[]>([]);
   const [runs, setRuns] = useState<Record<string, AutomationRun[]>>({});
   const [error, setError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
   const revision = useRef(0);
   const automationsRef = useRef(automations);
   automationsRef.current = automations;
@@ -68,6 +69,7 @@ export function useAutomations(callbacks: {
       if (plan.missed.length > 0) await refresh();
       if (plan.due == null) continue;
       activeRuns.current.add(automation.id);
+      setBusyId(automation.id);
       let claimed = false;
       const slot = plan.due;
       try {
@@ -75,30 +77,39 @@ export function useAutomations(callbacks: {
         claimed = await takeDueAutomation(automation.id, slot, next, now);
         if (!claimed) continue;
         await refresh();
+        const latest =
+          automationsRef.current.find((item) => item.id === automation.id) ??
+          automation;
         const outcome = await callbacksRef.current.dispatch({
-          ...automation,
+          ...latest,
           nextRunAt: next,
         });
+        const timedOut = outcome === "timed_out";
+        const status =
+          outcome === "skipped" ? "skipped_busy" : timedOut ? "failed" : outcome;
         const applied =
-          outcome === "skipped"
+          outcome === "skipped" || timedOut
             ? {
-                consecutiveFailures: automation.consecutiveFailures,
-                enabled: automation.enabled,
-                pausedReason: automation.pausedReason,
+                consecutiveFailures: latest.consecutiveFailures,
+                enabled: latest.enabled,
+                pausedReason: latest.pausedReason,
               }
-            : applyRunOutcome(automation, outcome);
+            : applyRunOutcome(latest, outcome);
         await recordAutomationResult({
           automationId: automation.id,
           runId: `${automation.id}:${slot}`,
-          status: outcome === "skipped" ? "skipped_busy" : outcome,
-          error: null,
+          status,
+          error: timedOut ? "The run did not settle within 30 minutes." : null,
           ...applied,
         });
         await refresh();
       } catch (err) {
         setError(String(err));
         if (claimed) {
-          const applied = applyRunOutcome(automation, "failed");
+          const latest =
+            automationsRef.current.find((item) => item.id === automation.id) ??
+            automation;
+          const applied = applyRunOutcome(latest, "failed");
           await recordAutomationResult({
             automationId: automation.id,
             runId: `${automation.id}:${slot}`,
@@ -110,12 +121,17 @@ export function useAutomations(callbacks: {
         }
       } finally {
         activeRuns.current.delete(automation.id);
+        setBusyId((current) => (current === automation.id ? null : current));
       }
     }
   }, [refresh]);
 
   const runNow = useCallback(
     async (automation: Automation) => {
+      if (!automation.enabled) {
+        setError("Resume the automation before running it.");
+        return;
+      }
       if (activeRuns.current.has(automation.id)) return;
       const now = Date.now();
       const slot = automation.nextRunAt;
@@ -132,28 +148,38 @@ export function useAutomations(callbacks: {
         return;
       }
       activeRuns.current.add(automation.id);
+      setBusyId(automation.id);
       try {
         await refresh();
-        const outcome = await callbacksRef.current.dispatch({ ...automation, nextRunAt: next });
+        const latest =
+          automationsRef.current.find((item) => item.id === automation.id) ??
+          automation;
+        const outcome = await callbacksRef.current.dispatch({ ...latest, nextRunAt: next });
+        const timedOut = outcome === "timed_out";
+        const status =
+          outcome === "skipped" ? "skipped_busy" : timedOut ? "failed" : outcome;
         const applied =
-          outcome === "skipped"
+          outcome === "skipped" || timedOut
             ? {
-                consecutiveFailures: automation.consecutiveFailures,
-                enabled: automation.enabled,
-                pausedReason: automation.pausedReason,
+                consecutiveFailures: latest.consecutiveFailures,
+                enabled: latest.enabled,
+                pausedReason: latest.pausedReason,
               }
-            : applyRunOutcome(automation, outcome);
+            : applyRunOutcome(latest, outcome);
         await recordAutomationResult({
           automationId: automation.id,
           runId: `${automation.id}:${slot}`,
-          status: outcome === "skipped" ? "skipped_busy" : outcome,
-          error: null,
+          status,
+          error: timedOut ? "The run did not settle within 30 minutes." : null,
           ...applied,
         });
         await refresh();
       } catch (err) {
         setError(String(err));
-        const applied = applyRunOutcome(automation, "failed");
+        const latest =
+          automationsRef.current.find((item) => item.id === automation.id) ??
+          automation;
+        const applied = applyRunOutcome(latest, "failed");
         await recordAutomationResult({
           automationId: automation.id,
           runId: `${automation.id}:${slot}`,
@@ -164,6 +190,7 @@ export function useAutomations(callbacks: {
         await refresh().catch(() => undefined);
       } finally {
         activeRuns.current.delete(automation.id);
+        setBusyId((current) => (current === automation.id ? null : current));
       }
     },
     [refresh],
@@ -223,5 +250,5 @@ export function useAutomations(callbacks: {
     };
   }, [refresh, tick]);
 
-  return { automations, runs, error, refresh, runNow, toggle, remove, loadRuns };
+  return { automations, runs, error, busyId, refresh, runNow, toggle, remove, loadRuns };
 }

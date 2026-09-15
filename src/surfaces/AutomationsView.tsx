@@ -383,7 +383,7 @@ export function AutomationsView({
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
                     <button
                       type="button"
-                      disabled={active}
+                      disabled={active || !automation.enabled}
                       onClick={() => onRunNow(automation)}
                       className="inline-flex h-6 items-center gap-1 rounded-md border border-content/15 px-2 text-[11px] text-content/75 disabled:opacity-40"
                     >
