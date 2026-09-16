@@ -6,7 +6,6 @@ import {
   formatResetDuration,
   formatUsagePercent,
   formatWindowLabel,
-  rateLimitWindowTooltip,
   type ProviderRateLimits,
   type RateLimitResetCredit,
   type RateLimitWindow,
@@ -75,9 +74,6 @@ export function UsageProviderChip({
     }
     return best;
   }, null);
-  const tooltip = windows
-    .map((entry) => rateLimitWindowTooltip(entry.window, now))
-    .join(" · ");
   const providerLabel = HARNESS_TITLE[limits.provider];
   const mascotProject = project ? projectName(project) : providerLabel;
   const appearanceKey = project ? projectKey(project) : mascotProject;
@@ -150,15 +146,6 @@ export function UsageProviderChip({
         aria-label={`${providerLabel} usage details`}
         aria-expanded={open}
         aria-haspopup="dialog"
-        title={
-          tooltip ||
-          limits.error ||
-          (disconnected
-            ? "Not connected"
-            : loading
-              ? "Loading usage…"
-              : "Usage details")
-        }
         onClick={() => setOpen((value) => !value)}
       >
         <HarnessIcon harness={limits.provider} className="size-3 shrink-0" />

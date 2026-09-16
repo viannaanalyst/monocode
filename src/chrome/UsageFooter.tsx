@@ -22,7 +22,6 @@ import {
   formatWindowLabel,
   idleRateLimits,
   RATE_LIMIT_POLL_MS,
-  rateLimitWindowTooltip,
   shouldFetchProvider,
   type ProviderRateLimits,
   type RateLimitProvider,
@@ -312,7 +311,7 @@ export function UsageFooter({
               onReconnect={reconnectCodex}
             />
           ) : null}
-          {wantOpencode ? <ProviderChip limits={opencode} now={now} /> : null}
+          {wantOpencode ? <ProviderChip limits={opencode} /> : null}
         </>
       ) : session ? (
         <SessionChip session={session} />
@@ -356,10 +355,6 @@ function CostChip({ cost }: { cost: SessionCost }) {
     (model) => model.tokens > 0 || model.cost > 0,
   );
   const showModelCost = models.some((model) => model.cost > 0);
-  const tooltip = [
-    `Estimated session cost · ${formatTokens(cost.totalTokens)} tokens`,
-    ...models.map((model) => `${model.model}: ${formatCost(model.cost)}`),
-  ].join("\n");
 
   return (
     <>
@@ -370,7 +365,6 @@ function CostChip({ cost }: { cost: SessionCost }) {
         aria-label={t("Session cost")}
         aria-haspopup="dialog"
         aria-expanded={open}
-        title={tooltip}
         onClick={() => setOpen((value) => !value)}
       >
         <CoinsDollar
@@ -625,13 +619,7 @@ function RunningTerminalChip({
   );
 }
 
-function ProviderChip({
-  limits,
-  now,
-}: {
-  limits: ProviderRateLimits;
-  now: number;
-}) {
+function ProviderChip({ limits }: { limits: ProviderRateLimits }) {
   const loading =
     limits.status === "idle" ||
     (limits.status === "fetching" &&
@@ -646,23 +634,8 @@ function ProviderChip({
   ].filter((entry): entry is { key: string; window: RateLimitWindow } => {
     return entry != null;
   });
-  const tooltip = windows
-    .map((entry) => rateLimitWindowTooltip(entry.window, now))
-    .join("\n");
-
   return (
-    <span
-      className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap"
-      title={
-        tooltip ||
-        limits.error ||
-        (disconnected
-          ? "Not connected"
-          : loading
-            ? "Loading usage…"
-            : undefined)
-      }
-    >
+    <span className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap">
       <HarnessIcon harness={limits.provider} className="size-3.5 shrink-0" />
       {loading ? (
         <span className="animate-pulse text-content/35">···</span>
