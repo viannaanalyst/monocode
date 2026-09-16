@@ -14,6 +14,7 @@ import {
   isProjectMuted,
   updateNotificationPreferences,
 } from "../lib/notificationPreferences";
+import { t } from "../i18n";
 
 type Props = {
   projectIds: readonly string[];
@@ -32,7 +33,10 @@ export function NotificationMuteControl({ projectIds, onChanged }: Props) {
     muted.length === 0
       ? null
       : projectIds.length > 1
-        ? `${muted.length} of ${projectIds.length} projects muted`
+        ? t("{muted} of {total} projects muted", {
+            muted: muted.length,
+            total: projectIds.length,
+          })
         : notificationMuteStatus(preferences[projectIds[0]]);
 
   const close = (restoreFocus = true) => {
@@ -47,7 +51,7 @@ export function NotificationMuteControl({ projectIds, onChanged }: Props) {
       close();
       onChanged?.();
     } catch {
-      setError("Could not save notification preferences. Please try again.");
+      setError(t("Could not save notification preferences. Please try again."));
     }
   };
 
@@ -64,23 +68,25 @@ export function NotificationMuteControl({ projectIds, onChanged }: Props) {
           className="rounded-md px-2 py-1.5 text-xs text-content/70 hover:bg-content/5 hover:text-content focus-visible:outline-2 focus-visible:outline-accent"
           onClick={() => change(undefined)}
         >
-          Resume notifications
+          {t("Resume notifications")}
         </button>
       ) : null}
       <SecondaryButton
         ref={trigger}
         type="button"
-        aria-label={
-          muted.length ? "Change mute duration" : "Mute notifications"
-        }
+        aria-label={t(
+          muted.length ? "Change mute duration" : "Mute notifications",
+        )}
         aria-haspopup={open === "custom" ? "dialog" : "menu"}
         aria-expanded={open !== null}
-        title="Mute pauses all project notifications without changing your category choices."
+        title={t(
+          "Mute pauses all project notifications without changing your category choices.",
+        )}
         disabled={!projectIds.length}
         onClick={() => setOpen(open ? null : "menu")}
       >
         <BellOff className="size-3.5" aria-hidden="true" />
-        {muted.length ? "Muted" : "Mute"}
+        {muted.length ? t("Muted") : t("Mute")}
         <ChevronDown className="size-3 text-content/40" aria-hidden="true" />
       </SecondaryButton>
       {error ? (
@@ -92,11 +98,11 @@ export function NotificationMuteControl({ projectIds, onChanged }: Props) {
         <ExplorerMenu
           x={trigger.current.getBoundingClientRect().right - 244}
           y={trigger.current.getBoundingClientRect().bottom + 4}
-          ariaLabel="Mute notifications"
+          ariaLabel={t("Mute notifications")}
           width={244}
           header={
             <p className="px-2 py-1.5 text-xs text-content/45">
-              Mute all notifications for
+              {t("Mute all notifications for")}
             </p>
           }
           items={notificationMuteActions()}
@@ -119,7 +125,7 @@ export function NotificationMuteControl({ projectIds, onChanged }: Props) {
           align="end"
           width={280}
           role="dialog"
-          aria-label="Mute project notifications"
+          aria-label={t("Mute project notifications")}
           onDismiss={(reason) => close(reason === "escape")}
           className="overflow-y-auto p-3"
         >
