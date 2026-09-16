@@ -33,21 +33,20 @@ describe("typography scale", () => {
   it("keeps retired sizes, weights, and icon sizes out of the source", () => {
     const offenders: string[] = [];
     for (const file of sourceFiles(SRC)) {
+      // Windows paths arrive with backslashes; the allowlist is slash-keyed.
+      const relative = file.slice(SRC.length).replaceAll("\\", "/");
       const source = readFileSync(file, "utf8");
       for (const line of source.split("\n")) {
         if (BANNED_TEXT.test(line)) {
-          offenders.push(`${file.slice(SRC.length)}: ${line.match(BANNED_TEXT)?.[0]}`);
+          offenders.push(`${relative}: ${line.match(BANNED_TEXT)?.[0]}`);
         }
         for (const banned of [...BANNED_WEIGHT, ...BANNED_ICON]) {
           if (line.includes(banned)) {
-            offenders.push(`${file.slice(SRC.length)}: ${banned}`);
+            offenders.push(`${relative}: ${banned}`);
           }
         }
-        if (
-          !SIZE_2_FILES.has(file.slice(SRC.length)) &&
-          BANNED_SIZE_2.test(line)
-        ) {
-          offenders.push(`${file.slice(SRC.length)}: size-2`);
+        if (!SIZE_2_FILES.has(relative) && BANNED_SIZE_2.test(line)) {
+          offenders.push(`${relative}: size-2`);
         }
       }
     }
