@@ -1,5 +1,9 @@
 import { Check, ChevronDown, ChevronRight, RotateCcw, Zap } from "./icons";
-import { modelBrandColor } from "../lib/modelBrand";
+import {
+  modelBrandColor,
+  modelBrandEnergy,
+  type ModelEnergy,
+} from "../lib/modelBrand";
 import {
   useEffect,
   useId,
@@ -277,6 +281,11 @@ function EffortSlider({
   valueText,
   fast = false,
   color = "var(--color-accent)",
+  energy = {
+    a: "var(--color-accent)",
+    b: "var(--color-accent)",
+    c: "var(--color-accent)",
+  },
   onChange,
 }: {
   options: ModelSettingChoice[];
@@ -285,6 +294,7 @@ function EffortSlider({
   valueText: string;
   fast?: boolean;
   color?: string;
+  energy?: ModelEnergy;
   onChange: (value: string) => void;
 }) {
   const track = useRef<HTMLDivElement>(null);
@@ -349,17 +359,21 @@ function EffortSlider({
         if (next) onChange(next.value);
       }}
       className="relative mt-1 h-[30px] w-full cursor-pointer touch-none outline-none"
+      style={{
+        ["--energy-a" as string]: energy.a,
+        ["--energy-b" as string]: energy.b,
+        ["--energy-c" as string]: energy.c,
+      }}
     >
       <div
         className="absolute inset-x-0 top-1/2 h-[22px] -translate-y-1/2 rounded-full"
         style={{ background: `color-mix(in srgb, ${color} 14%, transparent)` }}
       />
       <div
-        className={`absolute top-1/2 left-0 h-[22px] -translate-y-1/2 overflow-hidden rounded-full ${
-          fast ? "effort-storm" : "effort-fill-breathe"
+        className={`effort-energy absolute top-1/2 left-0 h-[22px] -translate-y-1/2 overflow-hidden rounded-full ${
+          fast ? "effort-energy-fast effort-storm" : ""
         }`}
         style={{
-          backgroundColor: color,
           width:
             ratio >= 1
               ? "100%"
@@ -417,7 +431,7 @@ function EffortSlider({
             ))}
           </>
         ) : (
-          <span aria-hidden="true" className="effort-normal-shine" />
+          <span aria-hidden="true" className="effort-energy-shimmer" />
         )}
       </div>
       {options.map((option, index) => (
@@ -426,22 +440,17 @@ function EffortSlider({
           aria-hidden="true"
           className={`pointer-events-none absolute top-1/2 size-1 -translate-x-1/2 -translate-y-1/2 rounded-full ${
             index <= selected ? "" : "bg-content/30"
-          } ${index <= selected && !fast ? "effort-dot-wave" : ""}`}
+          }`}
           style={{
             left: effortStop(index / max),
-            ...(index <= selected
-              ? {
-                  backgroundColor: color,
-                  ["--dot-delay" as string]: `${index * 0.14}s`,
-                }
-              : {}),
+            ...(index <= selected ? { backgroundColor: color } : {}),
           }}
         />
       ))}
       <span
         aria-hidden="true"
-        className={`pointer-events-none absolute top-1/2 size-5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-[0_1px_4px_rgba(0,0,0,0.45)] ${
-          fast ? "effort-storm-knob" : ""
+        className={`pointer-events-none absolute top-1/2 size-5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white ${
+          fast ? "effort-storm-knob" : "effort-thumb-glow"
         }`}
         style={{ left: effortStop(ratio) }}
       />
@@ -518,9 +527,9 @@ export function ModelPicker({
 
   const current = resolveModel(harness, model);
   currentRef.current = current;
-  const brand = modelBrandColor(
-    `${current.name} ${current.id} ${current.nativeId ?? ""}`,
-  );
+  const brandText = `${current.name} ${current.id} ${current.nativeId ?? ""}`;
+  const brand = modelBrandColor(brandText);
+  const energy = modelBrandEnergy(brandText);
   const settings = useMemo(() => {
     void catalogVersion;
     return pickerSettings(current);
@@ -1100,6 +1109,7 @@ export function ModelPicker({
                       valueText={settingValueLabel(effortSetting, values)}
                       fast={fastOn}
                       color={brand}
+                      energy={energy}
                       onChange={(value) => setSetting(effortSetting, value)}
                     />
                   </div>

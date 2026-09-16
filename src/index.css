@@ -212,22 +212,148 @@ html.has-native-glass:not(.theme-light) #root {
    Effort bar — normal (combo) and fast (storm) effects
    --------------------------------------------------------------- */
 
-/* Normal: the filled bar breathes and a light band crosses it. */
-.effort-fill-breathe {
-  animation: effort-breathe 3.6s ease-in-out infinite;
+/* ---------------------------------------------------------------
+   Effort bar — living energy fill (nebula) in the model's brand ramp
+   --------------------------------------------------------------- */
+
+.effort-energy {
+  background:
+    radial-gradient(
+      140% 200% at 6% 50%,
+      color-mix(in srgb, var(--energy-a, var(--color-accent)) 88%, transparent),
+      transparent 62%
+    ),
+    radial-gradient(
+      110% 220% at 32% 26%,
+      color-mix(in srgb, var(--energy-c, var(--color-accent)) 52%, transparent),
+      transparent 66%
+    ),
+    radial-gradient(
+      120% 240% at 58% 74%,
+      color-mix(in srgb, var(--energy-b, var(--color-accent)) 68%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      160% 260% at 88% 42%,
+      color-mix(in srgb, var(--energy-c, var(--color-accent)) 72%, transparent),
+      transparent 64%
+    ),
+    linear-gradient(
+      90deg,
+      var(--energy-a, var(--color-accent)) 0%,
+      var(--energy-b, var(--color-accent)) 55%,
+      var(--energy-c, var(--color-accent)) 100%
+    );
+  background-size:
+    220% 100%,
+    190% 100%,
+    210% 100%,
+    180% 100%,
+    100% 100%;
+  animation: effort-energy-drift 11s ease-in-out infinite alternate;
+  box-shadow:
+    inset 0 0 10px color-mix(in srgb, var(--energy-c, var(--color-accent)) 28%, transparent),
+    0 0 12px color-mix(in srgb, var(--energy-b, var(--color-accent)) 32%, transparent);
 }
 
-@keyframes effort-breathe {
-  0%,
+@keyframes effort-energy-drift {
+  0% {
+    background-position:
+      0% 50%,
+      40% 0%,
+      70% 0%,
+      20% 0%,
+      0 0;
+  }
   100% {
-    filter: brightness(0.97);
-  }
-  50% {
-    filter: brightness(1.16);
+    background-position:
+      70% 50%,
+      0% 0%,
+      20% 0%,
+      80% 0%,
+      0 0;
   }
 }
 
-.effort-normal-shine {
+/* Smoke-like texture drifting inside the fill. */
+.effort-energy::before {
+  content: "";
+  position: absolute;
+  inset: -40% -30%;
+  background:
+    radial-gradient(
+      28% 60% at 18% 60%,
+      color-mix(in srgb, var(--energy-c, var(--color-accent)) 58%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      22% 55% at 46% 35%,
+      color-mix(in srgb, var(--energy-a, var(--color-accent)) 52%, transparent),
+      transparent 72%
+    ),
+    radial-gradient(
+      26% 60% at 74% 62%,
+      color-mix(in srgb, var(--energy-c, var(--color-accent)) 44%, transparent),
+      transparent 74%
+    ),
+    radial-gradient(
+      18% 45% at 90% 38%,
+      color-mix(in srgb, var(--energy-b, var(--color-accent)) 44%, transparent),
+      transparent 76%
+    );
+  filter: blur(4px);
+  opacity: 0.85;
+  animation: effort-energy-smoke 14s ease-in-out infinite alternate;
+}
+
+@keyframes effort-energy-smoke {
+  0% {
+    transform: translate3d(-6%, 0, 0) scaleY(0.95);
+  }
+  100% {
+    transform: translate3d(6%, 0, 0) scaleY(1.06);
+  }
+}
+
+/* Faint luminous particles hanging in the energy. */
+.effort-energy::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 12% 40%, rgba(255, 255, 255, 0.9) 0.8px, transparent 1.6px),
+    radial-gradient(circle at 34% 62%, rgba(255, 255, 255, 0.75) 1px, transparent 2px),
+    radial-gradient(circle at 57% 32%, rgba(255, 255, 255, 0.7) 0.7px, transparent 1.5px),
+    radial-gradient(circle at 78% 58%, rgba(255, 255, 255, 0.8) 1px, transparent 1.9px);
+  background-size:
+    60px 100%,
+    80px 100%,
+    70px 100%,
+    90px 100%;
+  background-repeat: repeat-x;
+  opacity: 0.7;
+  animation: effort-energy-sparkle 10s linear infinite;
+}
+
+@keyframes effort-energy-sparkle {
+  0% {
+    background-position:
+      0 0,
+      0 0,
+      0 0,
+      0 0;
+  }
+  100% {
+    background-position:
+      -240px 0,
+      -320px 0,
+      -280px 0,
+      -360px 0;
+  }
+}
+
+/* Subtle light band crossing the fill. */
+.effort-energy-shimmer {
   position: absolute;
   top: 0;
   bottom: 0;
@@ -236,10 +362,10 @@ html.has-native-glass:not(.theme-light) #root {
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(255, 255, 255, 0.22),
+    rgba(255, 255, 255, 0.3),
     transparent
   );
-  animation: effort-shimmer 3.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  animation: effort-shimmer 4.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 @keyframes effort-shimmer {
@@ -252,22 +378,28 @@ html.has-native-glass:not(.theme-light) #root {
   }
 }
 
-/* Normal: the reached stops pulse in sequence. */
-.effort-dot-wave {
-  animation: effort-dot-wave 2.6s ease-in-out infinite;
-  animation-delay: var(--dot-delay, 0s);
+/* Fast mode turns the energy up a notch. */
+.effort-energy-fast {
+  animation-duration: 5.5s;
+  box-shadow:
+    inset 0 0 14px color-mix(in srgb, var(--energy-c, var(--color-accent)) 45%, transparent),
+    0 0 18px color-mix(in srgb, var(--energy-b, var(--color-accent)) 50%, transparent);
 }
 
-@keyframes effort-dot-wave {
-  0%,
-  100% {
-    opacity: 0.45;
-    transform: translate(-50%, -50%) scale(0.8);
-  }
-  40% {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1.5);
-  }
+.effort-energy-fast::before {
+  animation-duration: 7s;
+  opacity: 1;
+}
+
+.effort-energy-fast::after {
+  animation-duration: 4.5s;
+  opacity: 0.95;
+}
+
+.effort-thumb-glow {
+  box-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.45),
+    0 0 10px color-mix(in srgb, var(--energy-b, var(--color-accent)) 55%, transparent);
 }
 
 /* Fast: an energy surge sweeps the bar. */
@@ -485,9 +617,10 @@ html.has-native-glass:not(.theme-light) #root {
 
 @media (prefers-reduced-motion: reduce) {
   .dropdown-closing,
-  .effort-fill-breathe,
-  .effort-normal-shine,
-  .effort-dot-wave,
+  .effort-energy,
+  .effort-energy::before,
+  .effort-energy::after,
+  .effort-energy-shimmer,
   .effort-storm-surge,
   .effort-storm-flash,
   .effort-storm-arc polyline,
