@@ -475,7 +475,8 @@ export function ProjectRail({
     if (action === "mute:custom") {
       if (!readyNotificationProject) return false;
       setNotificationMenu({ ...projectMenu, project: readyNotificationProject });
-      return false;
+      setProjectMenu(null);
+      return;
     }
     if (action.startsWith("mute:") || action === "notifications-resume") {
       if (!readyNotificationProject) return false;
@@ -1476,7 +1477,6 @@ function ProjectCard({
           <span
             role="img"
             aria-label={muteStatus}
-            title={muteStatus}
             className="grid size-4 shrink-0 place-items-center text-amber-400"
           >
             <BellOff className="size-3.5" strokeWidth={1.75} aria-hidden="true" />

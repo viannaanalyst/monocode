@@ -79,7 +79,7 @@ it("shows persisted mute status on the project and in its reopened menu", async 
   })));
   const indicator = container.querySelector('[role="img"][aria-label="Muted until resumed"]');
   expect(indicator).not.toBeNull();
-  expect(indicator?.getAttribute("title")).toBe("Muted until resumed");
+  expect(indicator?.getAttribute("aria-label")).toBe("Muted until resumed");
   const project = container.querySelector('button[aria-current="true"]')!;
   expect(project.getAttribute("aria-label")).toContain("Muted until resumed");
   await act(async () => project.dispatchEvent(new KeyboardEvent("keydown", {
@@ -104,13 +104,13 @@ it("shows persisted mute status on the project and in its reopened menu", async 
     mutedUntil: until,
   }));
   const timedIndicator = container.querySelector('[role="img"][aria-label^="Muted until "]');
-  expect(timedIndicator?.getAttribute("title")).toBe(
+  expect(timedIndicator?.getAttribute("aria-label")).toBe(
     `Muted until ${new Date(2030, 0, 15, 16, 30).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}`,
   );
   await act(async () => project.dispatchEvent(new KeyboardEvent("keydown", {
     key: "ContextMenu", bubbles: true,
   })));
-  expect(button("Resume notifications").textContent).toContain(timedIndicator!.getAttribute("title"));
+  expect(button("Resume notifications").textContent).toContain(timedIndicator!.getAttribute("aria-label"));
   await act(async () => vi.advanceTimersByTimeAsync(1000));
   expect(container.querySelector('[role="img"][aria-label^="Muted until "]')).toBeNull();
   expect(button("Mute notifications").textContent).not.toContain("Muted until");
