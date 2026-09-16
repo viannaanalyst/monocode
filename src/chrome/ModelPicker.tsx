@@ -1024,6 +1024,7 @@ export function ModelPicker({
                     <button
                       type="button"
                       role="menuitemcheckbox"
+                      data-no-tooltip
                       aria-checked={fastOn}
                       aria-label={t("Fast")}
                       onMouseDown={(event) => event.preventDefault()}
@@ -1086,6 +1087,7 @@ export function ModelPicker({
                   {effortSetting ? (
                     <button
                       type="button"
+                      data-no-tooltip
                       aria-label={t("Reset effort")}
                       onMouseDown={(event) => event.preventDefault()}
                       onClick={() =>
