@@ -924,6 +924,12 @@ export default function App({
     useState<string | null>(null);
   const [notificationSettingsRequest, setNotificationSettingsRequest] =
     useState(0);
+  // Every route that closes Settings (rail back, other view openers, etc.)
+  // goes through this transition, so the requested project cannot outlive the
+  // surface and re-trigger the scroll/focus on a later manual visit.
+  useEffect(() => {
+    if (!settingsOpen) setNotificationSettingsProject(null);
+  }, [settingsOpen]);
   const [editorNavigation, setEditorNavigation] =
     useState<EditorNavigationTarget | null>(null);
   const editorNavigationToken = useRef(0);
@@ -6996,7 +7002,6 @@ export default function App({
 
   const onCloseSettings = useCallback(() => {
     setSettingsOpen(false);
-    setNotificationSettingsProject(null);
   }, []);
 
   const onSelectSettingsSection = useCallback((section: SettingsSectionId) => {
