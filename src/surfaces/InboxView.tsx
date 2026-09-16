@@ -863,10 +863,10 @@ export function InboxView({
           <button
             ref={connectButtonRef}
             type="button"
+            data-no-tooltip
             aria-label={t("Connect an inbox source")}
             aria-haspopup="menu"
             aria-expanded={connectMenuOpen}
-            title={t("Connect an inbox source")}
             onClick={() => setConnectMenuOpen((open) => !open)}
             className={`flex h-6 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-md px-2 text-[12px] leading-none ${
               connectMenuOpen
@@ -895,7 +895,7 @@ export function InboxView({
           </div>
           <button
             type="button"
-            title={t("Filter inbox")}
+            data-no-tooltip
             aria-label={t("Filter inbox")}
             aria-expanded={!!filterMenu}
             aria-haspopup="menu"
@@ -908,7 +908,7 @@ export function InboxView({
           </button>
           <button
             type="button"
-            title={t("Mark all as read")}
+            data-no-tooltip
             aria-label={t("Mark all as read")}
             disabled={!sourceHasUnseen}
             onClick={() => markInboxItemsSeen(sourceEntries)}
@@ -934,7 +934,7 @@ export function InboxView({
           {source === "notion" ? (
             <button
               type="button"
-              title={t("New Notion page")}
+              data-no-tooltip
               aria-label={t("New Notion page")}
               onClick={() => setNotionEditor({ mode: "create" })}
               className="grid size-6 shrink-0 place-items-center rounded-md text-content/45 hover:bg-content/10 hover:text-content"
@@ -1287,7 +1287,7 @@ function InboxCard({
   return (
     <button
       type="button"
-      title={item.title}
+      data-no-tooltip
       aria-current={active ? "true" : undefined}
       aria-label={`${status.label} ${kindLabel.toLowerCase()} ${inboxItemRef(
         item,
@@ -2060,7 +2060,6 @@ export function InboxDetail({
               ) : null}
             </div>
             <h1
-              title={item.title}
               className="line-clamp-2 text-sm font-semibold leading-tight text-content"
             >
               {item.title}
