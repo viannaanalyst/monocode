@@ -198,6 +198,7 @@ import { prettyCwd, projectKey, projectName } from "../lib/paths";
 import { IS_MAC, IS_WIN } from "../lib/platform";
 import {
   loadArchivedProjects,
+  loadRecents,
   looksLikeProject,
   subscribeArchivedProjects,
   type ArchivedProject,
@@ -334,6 +335,7 @@ import {
 } from "../lib/updater";
 
 import { SkillsPage } from "./SkillsPage";
+import { ProjectNotificationSettings } from "./ProjectNotificationSettings";
 
 export type SettingsAnchor =
   | "github"
@@ -361,6 +363,8 @@ type Props = {
   cwd: string;
   sessions: SessionSummary[];
   besideRail?: boolean;
+  notificationProjectPath?: string | null;
+  notificationSettingsRequest?: number;
   onClose: () => void;
   onOpenSession: (sessionId: string) => void;
   onArchiveSession: (sessionId: string, archived: boolean) => void;
@@ -376,6 +380,8 @@ export function SettingsView({
   cwd,
   sessions,
   besideRail = false,
+  notificationProjectPath = null,
+  notificationSettingsRequest = 0,
   onClose,
   onOpenSession,
   onArchiveSession,
@@ -480,7 +486,13 @@ export function SettingsView({
             {section === "providers" ? <ProvidersPage /> : null}
             {section === "project" ? <ProjectPage key={cwd} cwd={cwd} /> : null}
             {section === "voice" ? <VoicePage /> : null}
-            {section === "inbox" ? <InboxPage /> : null}
+            {section === "inbox" ? (
+              <InboxPage
+                cwd={cwd}
+                notificationProjectPath={notificationProjectPath}
+                notificationSettingsRequest={notificationSettingsRequest}
+              />
+            ) : null}
             {section === "archive" ? (
               <ArchivePage
                 cwd={cwd}
@@ -872,9 +884,24 @@ function GeneralPage({
   );
 }
 
-function InboxPage() {
+function InboxPage({
+  cwd,
+  notificationProjectPath = null,
+  notificationSettingsRequest = 0,
+}: {
+  cwd: string;
+  notificationProjectPath?: string | null;
+  notificationSettingsRequest?: number;
+}) {
+  const recents = useMemo(() => loadRecents(), []);
   return (
     <div className="flex flex-col gap-4">
+      <ProjectNotificationSettings
+        cwd={cwd}
+        recents={recents}
+        notificationProjectPath={notificationProjectPath}
+        notificationSettingsRequest={notificationSettingsRequest}
+      />
       <GithubSettings />
       <GitlabSettings />
       <LinearSettings />
@@ -1520,11 +1547,15 @@ function LinearSettings() {
 
   useEffect(() => {
     let cancelled = false;
-    void linearConnected().then((status) => {
-      if (cancelled) return;
-      setConnected(status.connected);
-      if (status.connected) void loadTeams();
-    });
+    void linearConnected()
+      .then((status) => {
+        if (cancelled) return;
+        setConnected(status.connected);
+        if (status.connected) void loadTeams();
+      })
+      .catch(() => {
+        if (!cancelled) setConnected(false);
+      });
     return () => {
       cancelled = true;
     };

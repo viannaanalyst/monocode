@@ -924,8 +924,6 @@ export default function App({
     useState<string | null>(null);
   const [notificationSettingsRequest, setNotificationSettingsRequest] =
     useState(0);
-  void notificationSettingsProject;
-  void notificationSettingsRequest;
   const [editorNavigation, setEditorNavigation] =
     useState<EditorNavigationTarget | null>(null);
   const editorNavigationToken = useRef(0);
@@ -8136,6 +8134,8 @@ export default function App({
                 cwd={sidebarCwd}
                 sessions={sidebarHistory}
                 besideRail
+                notificationProjectPath={notificationSettingsProject}
+                notificationSettingsRequest={notificationSettingsRequest}
                 onClose={onCloseSettings}
                 onOpenSession={onOpenArchivedSession}
                 onArchiveSession={onArchiveHistorySession}
