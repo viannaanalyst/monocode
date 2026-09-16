@@ -4,10 +4,19 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SettingsView } from "./SettingsView";
 
-vi.mock("@tauri-apps/api/core", () => ({
-  invoke: vi.fn(async () => undefined),
-  convertFileSrc: (path: string) => path,
-}));
+vi.mock("@tauri-apps/api/core", () => {
+  const statusCommands: Record<string, unknown> = {
+    linear_status: { connected: false },
+    gitlab_status: { connected: false, url: "https://gitlab.com" },
+    jira_status: { connected: false, site: "" },
+    clickup_status: { connected: false },
+    notion_status: { connected: false, databaseId: "" },
+  };
+  return {
+    invoke: vi.fn(async (command: string) => statusCommands[command]),
+    convertFileSrc: (path: string) => path,
+  };
+});
 vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: () => ({
     isMaximized: async () => false,

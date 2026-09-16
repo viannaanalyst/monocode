@@ -23,6 +23,10 @@ export function InboxNotificationsButton({
         aria-haspopup="menu"
         aria-expanded={menu != null}
         onClick={() => {
+          if (menu) {
+            setMenu(null);
+            return;
+          }
           const rect = trigger.current?.getBoundingClientRect();
           if (!rect) return;
           setMenu({ x: rect.right - 244, y: rect.bottom + 4 });

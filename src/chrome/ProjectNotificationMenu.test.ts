@@ -167,7 +167,7 @@ it("mutes a repository from its project context menu", async () => {
   expect(muted[0].disabled).toEqual(["issues"]);
   expect(
     document.querySelector(
-      '[role="dialog"][aria-label="Project notifications"]',
+      '[role="dialog"][aria-label="Mute project notifications"]',
     ),
   ).toBeNull();
   const project = container.querySelector<HTMLElement>(
@@ -231,4 +231,32 @@ it("opens project notification settings from a keyboard context menu", async () 
   );
   act(() => button("Notification settings…").click());
   expect(onOpenNotificationSettings).toHaveBeenCalledWith("/work/private");
+});
+
+it("restores focus to the options trigger after the custom picker closes", async () => {
+  rememberNotificationProjects([{
+    id: "local:/work/private", name: "person/private",
+    detail: "github.com", kind: "repository", paths: ["/work/private"],
+  }]);
+  await act(async () => root.render(createElement(ProjectRail, {
+    cwd: "/work/private", recents: [], onSelectProject: vi.fn(), onOpenProject: vi.fn(),
+  })));
+  const options = container.querySelector<HTMLButtonElement>(
+    'button[aria-label="Project options"]',
+  )!;
+  act(() => options.click());
+  act(() => button("Mute notifications").click());
+  act(() => button("Choose date and time").click());
+  expect(
+    document.querySelector(
+      '[role="dialog"][aria-label="Mute project notifications"]',
+    ),
+  ).not.toBeNull();
+  act(() => button("Cancel").click());
+  expect(
+    document.querySelector(
+      '[role="dialog"][aria-label="Mute project notifications"]',
+    ),
+  ).toBeNull();
+  expect(document.activeElement).toBe(options);
 });

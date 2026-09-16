@@ -6996,6 +6996,7 @@ export default function App({
 
   const onCloseSettings = useCallback(() => {
     setSettingsOpen(false);
+    setNotificationSettingsProject(null);
   }, []);
 
   const onSelectSettingsSection = useCallback((section: SettingsSectionId) => {

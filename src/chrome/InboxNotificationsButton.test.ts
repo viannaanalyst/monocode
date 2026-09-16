@@ -28,7 +28,7 @@ afterEach(() => {
 });
 
 describe("inbox notifications button", () => {
-  it("opens the inbox actions menu", async () => {
+  it("toggles the inbox actions menu", async () => {
     await act(async () =>
       root.render(
         createElement(InboxNotificationsButton, {
@@ -46,5 +46,11 @@ describe("inbox notifications button", () => {
     expect(
       document.querySelector('[role="menu"][aria-label="Inbox actions"]'),
     ).not.toBeNull();
+    expect(bell!.getAttribute("aria-expanded")).toBe("true");
+    await act(async () => bell!.click());
+    expect(
+      document.querySelector('[role="menu"][aria-label="Inbox actions"]'),
+    ).toBeNull();
+    expect(bell!.getAttribute("aria-expanded")).toBe("false");
   });
 });

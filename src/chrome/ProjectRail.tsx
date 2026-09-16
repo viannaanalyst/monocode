@@ -376,11 +376,13 @@ export function ProjectRail({
     return () => scrollParent.removeEventListener("scroll", onScroll, true);
   }, [projectMenu]);
 
-  const openProjectMenu = (path: string, x: number, y: number) => {
-    menuTrigger.current =
-      document.activeElement instanceof HTMLElement
-        ? document.activeElement
-        : null;
+  const openProjectMenu = (
+    path: string,
+    x: number,
+    y: number,
+    trigger: HTMLElement | null = null,
+  ) => {
+    menuTrigger.current = trigger;
     setNotificationMenu(null);
     setProjectMenu({
       x,
@@ -390,14 +392,21 @@ export function ProjectRail({
     });
   };
 
+  const closeNotificationMenu = () => {
+    setNotificationMenu(null);
+    menuTrigger.current?.focus();
+  };
+
   const onProjectContextMenu = (
     path: string,
     event: MouseEvent<HTMLElement>,
   ) => {
     event.preventDefault();
     event.stopPropagation();
-    event.currentTarget.querySelector<HTMLButtonElement>("button")?.focus();
-    openProjectMenu(path, event.clientX, event.clientY);
+    const trigger =
+      event.currentTarget.querySelector<HTMLButtonElement>("button");
+    trigger?.focus();
+    openProjectMenu(path, event.clientX, event.clientY, trigger);
   };
 
   const onProjectRename = (projectKey: string, label: string) => {
@@ -780,13 +789,13 @@ export function ProjectRail({
           width={280}
           role="dialog"
           aria-label={t("Mute project notifications")}
-          onDismiss={() => setNotificationMenu(null)}
+          onDismiss={closeNotificationMenu}
           className="overflow-y-auto p-3"
         >
           <NotificationMuteDatePicker
             projectIds={[notificationMenu.project.id]}
-            onCancel={() => setNotificationMenu(null)}
-            onChanged={() => setNotificationMenu(null)}
+            onCancel={closeNotificationMenu}
+            onChanged={closeNotificationMenu}
           />
         </Popover>
       ) : null}
@@ -1060,7 +1069,12 @@ function ProjectSection({
   onSelect: (path: string) => void;
   onTogglePin: (path: string) => void;
   onContextMenu: (path: string, event: MouseEvent<HTMLElement>) => void;
-  onOpenMenu: (path: string, x: number, y: number) => void;
+  onOpenMenu: (
+    path: string,
+    x: number,
+    y: number,
+    trigger?: HTMLElement | null,
+  ) => void;
   groupLabels: Record<string, string>;
   groupColors: Record<string, number>;
   groupCustomColors: Record<string, string>;
@@ -1324,7 +1338,12 @@ function ProjectCard({
   onSelect: (path: string) => void;
   onTogglePin: (path: string) => void;
   onContextMenu: (path: string, event: MouseEvent<HTMLElement>) => void;
-  onOpenMenu: (path: string, x: number, y: number) => void;
+  onOpenMenu: (
+    path: string,
+    x: number,
+    y: number,
+    trigger?: HTMLElement | null,
+  ) => void;
   groupLabels: Record<string, string>;
   groupColors: Record<string, number>;
   groupCustomColors: Record<string, string>;
@@ -1412,7 +1431,9 @@ function ProjectCard({
         event.preventDefault();
         event.stopPropagation();
         const rect = event.currentTarget.getBoundingClientRect();
-        onOpenMenu(item.path, rect.left, rect.bottom);
+        const trigger =
+          event.currentTarget.querySelector<HTMLButtonElement>("button");
+        onOpenMenu(item.path, rect.left, rect.bottom, trigger);
       }}
     >
       <button
@@ -1497,7 +1518,12 @@ function ProjectCard({
         onPointerDown={(event) => event.stopPropagation()}
         onClick={(event) => {
           event.stopPropagation();
-          onOpenMenu(item.path, event.clientX, event.clientY);
+          onOpenMenu(
+            item.path,
+            event.clientX,
+            event.clientY,
+            event.currentTarget,
+          );
         }}
         className="absolute right-1 top-1/2 hidden size-6 -translate-y-1/2 place-items-center rounded-md text-content/55 hover:bg-content/8 hover:text-content group-hover:grid"
       >

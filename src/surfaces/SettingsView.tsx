@@ -1547,15 +1547,11 @@ function LinearSettings() {
 
   useEffect(() => {
     let cancelled = false;
-    void linearConnected()
-      .then((status) => {
-        if (cancelled) return;
-        setConnected(status.connected);
-        if (status.connected) void loadTeams();
-      })
-      .catch(() => {
-        if (!cancelled) setConnected(false);
-      });
+    void linearConnected().then((status) => {
+      if (cancelled) return;
+      setConnected(status.connected);
+      if (status.connected) void loadTeams();
+    });
     return () => {
       cancelled = true;
     };
