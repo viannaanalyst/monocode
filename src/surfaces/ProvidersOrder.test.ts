@@ -23,14 +23,15 @@ afterEach(() => {
 });
 
 describe("ProvidersOrderList", () => {
-  it("renders providers in the saved order with grip and move controls", () => {
+  it("renders providers in the saved order with an animated-reorder grip", () => {
     const markup = renderToStaticMarkup(createElement(ProvidersOrderList));
     const pi = markup.indexOf(HARNESS_TITLE.pi);
     const claude = markup.indexOf(HARNESS_TITLE.claude);
     expect(pi).toBeGreaterThan(-1);
     expect(pi).toBeLessThan(claude);
-    expect(markup).toContain(`aria-label="Move ${HARNESS_TITLE.pi} down"`);
-    expect(markup).toContain(`aria-label="Move ${HARNESS_TITLE.pi} up"`);
     expect(markup).toContain(`aria-label="Reorder ${HARNESS_TITLE.pi}"`);
+    expect(markup).toContain("reorder-item");
+    expect(markup).not.toContain("Move ");
+    expect(markup).not.toContain('title="Reorder');
   });
 });

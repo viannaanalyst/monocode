@@ -44,10 +44,19 @@ const ICONS: Record<RuntimeMode, typeof Lock> = {
   "full-access": CircleAlert,
 };
 
-/** Full access reads as a warning, like Synara. */
-const FULL_ACCESS = "text-orange-400";
-const fullAccessClass = (mode: RuntimeMode) =>
-  mode === "full-access" ? FULL_ACCESS : "";
+/**
+ * One tone per access level, from a quiet read-only blue to the full-access
+ * warning orange, so the composer chip and the list read the same way.
+ */
+const MODE_TONE: Record<RuntimeMode, { label: string; hint: string }> = {
+  "read-only": { label: "text-sky-400", hint: "text-sky-400/70" },
+  supervised: { label: "text-emerald-400", hint: "text-emerald-400/70" },
+  "auto-accept-edits": { label: "", hint: "text-content/50" },
+  auto: { label: "", hint: "text-content/50" },
+  "full-access": { label: "text-orange-400", hint: "text-orange-400/70" },
+};
+
+const toneClass = (mode: RuntimeMode) => MODE_TONE[mode].label;
 
 export function AccessPicker({
   value,
@@ -120,12 +129,10 @@ export function AccessPicker({
         }`}
       >
         <Icon
-          className={`size-3.5 shrink-0 ${fullAccessClass(value)}`}
+          className={`size-3.5 shrink-0 ${toneClass(value)}`}
           strokeWidth={1.75}
         />
-        <span
-          className={`min-w-0 truncate text-sm ${fullAccessClass(value)}`}
-        >
+        <span className={`min-w-0 truncate text-sm ${toneClass(value)}`}>
           {t(RUNTIME_MODE_LABEL[value])}
         </span>
         <ChevronDown
@@ -168,20 +175,18 @@ export function AccessPicker({
               >
                 <ModeIcon
                   className={`mt-0.5 size-3.5 shrink-0 ${
-                    mode === "full-access" ? FULL_ACCESS : "text-content/70"
+                    toneClass(mode) || "text-content/70"
                   }`}
                   strokeWidth={1.75}
                 />
                 <span className="min-w-0">
                   <span
-                    className={`block text-sm font-medium leading-5 ${fullAccessClass(mode)}`}
+                    className={`block text-sm font-medium leading-5 ${toneClass(mode)}`}
                   >
                     {t(RUNTIME_MODE_LABEL[mode])}
                   </span>
                   <span
-                    className={`mt-0.5 block text-xs leading-4 ${
-                      mode === "full-access" ? "text-orange-400/70" : "text-content/50"
-                    }`}
+                    className={`mt-0.5 block text-xs leading-4 ${MODE_TONE[mode].hint}`}
                   >
                     {t(RUNTIME_MODE_HINT[mode])}
                   </span>
