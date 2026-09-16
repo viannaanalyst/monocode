@@ -13,6 +13,8 @@ export type LiveAgent = {
   cwd: string;
   title: string;
   harness: HarnessId;
+  /** Model id the session is running, so cards can show the working AI. */
+  model: string;
   activity: string;
   startedAt?: number;
   durationMs?: number;
@@ -58,6 +60,7 @@ function toLiveAgent(session: Session, unseenFinished: boolean): LiveAgent {
     cwd: session.cwd,
     title: sessionDisplayTitle(session.title, session.harness),
     harness: session.harness,
+    model: session.model,
     activity: done
       ? "Done"
       : pendingQuestion

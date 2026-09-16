@@ -10,7 +10,6 @@ import {
 import { OverlayNav } from "../chrome/TitleBar";
 import { WindowControls } from "../chrome/WindowControls";
 import { ExplorerMenu } from "../chrome/ExplorerMenu";
-import { HarnessIcon } from "../chrome/HarnessIcon";
 import {
   Archive,
   Check,
@@ -24,9 +23,10 @@ import { t } from "../i18n";
 import { setGrabbing, suppressTextSelection } from "../lib/drag";
 import { startDragGhost, type DragGhost } from "../lib/dragGhost";
 import { boardDropOutcome, kanbanColumnFromPoint } from "../lib/kanbanDrag";
+import { ModelBrandIcon } from "../chrome/ModelBrandIcon";
+import { resolveModel } from "../lib/models";
 import { projectName } from "../lib/paths";
 import { IS_MAC } from "../lib/platform";
-import { HARNESS_LABEL } from "../lib/session";
 import {
   classifySessionBoard,
   BOARD_COLUMNS,
@@ -389,6 +389,7 @@ function KanbanCard({
   onMenu: (event: ReactMouseEvent<HTMLButtonElement>) => void;
 }) {
   const { session } = card;
+  const model = resolveModel(session.harness, session.model);
   const meta = [
     showProject ? projectName(session.cwd) : null,
     session.repo,
@@ -442,8 +443,8 @@ function KanbanCard({
         ) : null}
       </button>
       <div className="mt-2 flex items-center gap-1.5 border-t border-dashed border-content/10 pt-2 text-[12px] text-content/45">
-        <HarnessIcon harness={session.harness} className="size-3.5 shrink-0" />
-        <span className="min-w-0 truncate">{HARNESS_LABEL[session.harness]}</span>
+        <ModelBrandIcon model={model} className="size-3.5 shrink-0" />
+        <span className="min-w-0 truncate">{model.name}</span>
         <span className="ml-auto shrink-0 tabular-nums">
           {formatCardTime(session.updatedAt, now)}
         </span>

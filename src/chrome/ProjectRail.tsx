@@ -65,7 +65,6 @@ import {
 } from "../lib/tabGroups";
 import { formatLiveElapsed, type LiveAgent } from "../lib/liveAgents";
 import type { SessionSummary } from "../lib/sessionStore";
-import { HarnessIcon } from "./HarnessIcon";
 import { ExplorerMenu, type ExplorerMenuItem } from "./ExplorerMenu";
 import { ModelBrandIcon } from "./ModelBrandIcon";
 import { resolveModel } from "../lib/models";
@@ -566,7 +565,6 @@ export function ProjectRail({
             agents={liveAgents}
             activeSessionId={activeSessionId}
             onSelect={onSelectAgent}
-            groupLabels={groupLabels}
             groupColors={groupColors}
             groupCustomColors={groupCustomColors}
             groupMascots={groupMascots}
@@ -679,7 +677,6 @@ function LiveAgentsPreview({
   agents,
   activeSessionId,
   onSelect,
-  groupLabels,
   groupColors,
   groupCustomColors,
   groupMascots,
@@ -687,7 +684,6 @@ function LiveAgentsPreview({
   agents: LiveAgent[];
   activeSessionId?: string;
   onSelect?: (sessionId: string) => void;
-  groupLabels: Record<string, string>;
   groupColors: Record<string, number>;
   groupCustomColors: Record<string, string>;
   groupMascots: Record<string, string>;
@@ -743,7 +739,6 @@ function LiveAgentsPreview({
               now={now}
               selected={agent.id === activeSessionId}
               onSelect={onSelect}
-              groupLabels={groupLabels}
               groupColors={groupColors}
               groupCustomColors={groupCustomColors}
               groupMascots={groupMascots}
@@ -775,7 +770,6 @@ function LiveAgentCard({
   now,
   selected,
   onSelect,
-  groupLabels,
   groupColors,
   groupCustomColors,
   groupMascots,
@@ -784,15 +778,14 @@ function LiveAgentCard({
   now: number;
   selected: boolean;
   onSelect?: (sessionId: string) => void;
-  groupLabels: Record<string, string>;
   groupColors: Record<string, number>;
   groupCustomColors: Record<string, string>;
   groupMascots: Record<string, string>;
 }) {
   const seed = projectName(agent.cwd);
   const key = projectKey(agent.cwd);
-  const project = resolveTabGroupLabel(key, groupLabels, seed);
   const color = resolveTabGroupColor(key, groupColors, groupCustomColors, seed);
+  const model = resolveModel(agent.harness, agent.model);
   const elapsed = agent.done
     ? agent.durationMs != null
       ? formatLiveElapsed(0, agent.durationMs)
@@ -811,7 +804,7 @@ function LiveAgentCard({
     <button
       type="button"
       data-no-tooltip
-      aria-label={[agent.title, project, activity, elapsed]
+      aria-label={[agent.title, model.name, activity, elapsed]
         .filter(Boolean)
         .join(", ")}
       aria-current={selected ? "true" : undefined}
@@ -857,8 +850,8 @@ function LiveAgentCard({
         <span className="min-w-0 truncate">{activity}</span>
       </span>
       <span className="mt-1 flex min-w-0 items-center gap-1.5 pl-4 text-xs leading-tight text-content/45">
-        <HarnessIcon harness={agent.harness} className="size-3.5 shrink-0" />
-        <span className="min-w-0 flex-1 truncate">{project}</span>
+        <ModelBrandIcon model={model} className="size-3.5 shrink-0" />
+        <span className="min-w-0 flex-1 truncate">{model.name}</span>
         {elapsed ? (
           <span className="shrink-0 tabular-nums">{elapsed}</span>
         ) : null}
