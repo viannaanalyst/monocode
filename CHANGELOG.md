@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Choosing any model in the composer plays the same solar welcome as Astra, tinted with that model's brand colors.
+
 ## [0.1.46] - 2026-09-14
 
 ### Added

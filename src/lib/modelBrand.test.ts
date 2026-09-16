@@ -17,6 +17,7 @@ describe("modelBrandColor", () => {
   });
 
   it("gives the OpenAI family codex blue and cursor/grok their ramps", () => {
+    expect(modelBrandColor("codex:gpt-6-astra")).toBe("#d8c9a2");
     expect(modelBrandColor("gpt-5")).toBe("#24A8FF");
     expect(modelBrandColor("codex-mini")).toBe("#24A8FF");
     expect(modelBrandColor("grok-4")).toBe("#DDEEFF");
@@ -25,6 +26,11 @@ describe("modelBrandColor", () => {
   });
 
   it("exposes the energy ramp per vendor and derives one otherwise", () => {
+    expect(modelBrandEnergy("codex:gpt-6-astra")).toEqual({
+      a: "#a89560",
+      b: "#d8c9a2",
+      c: "#f5f0e4",
+    });
     expect(modelBrandEnergy("DeepSeek V4.1 Flash")).toEqual({
       a: "#6D28D9",
       b: "#A855F7",

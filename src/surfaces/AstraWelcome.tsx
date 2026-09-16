@@ -1,4 +1,5 @@
 import { useEffect, type CSSProperties } from "react";
+import type { ModelEnergy } from "../lib/modelBrand";
 import "./AstraWelcome.css";
 
 const DURATION_MS = 7600;
@@ -28,7 +29,13 @@ const SPARKLES = Array.from(
 );
 
 /** A decorative layer confined to the session, with no input interception. */
-export function AstraWelcome({ onDone }: { onDone: () => void }) {
+export function AstraWelcome({
+  onDone,
+  energy,
+}: {
+  onDone: () => void;
+  energy: ModelEnergy;
+}) {
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     if (reducedMotion.matches) {
@@ -50,7 +57,14 @@ export function AstraWelcome({ onDone }: { onDone: () => void }) {
     <div
       className="astra-welcome"
       aria-hidden="true"
-      style={{ "--astra-duration": `${DURATION_MS}ms` } as CSSProperties}
+      style={
+        {
+          "--astra-duration": `${DURATION_MS}ms`,
+          "--astra-a": energy.a,
+          "--astra-b": energy.b,
+          "--astra-c": energy.c,
+        } as CSSProperties
+      }
     >
       <div className="astra-welcome-glow" />
       <div className="astra-solar-system">

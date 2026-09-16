@@ -48,8 +48,9 @@ import {
 import { createNote, noteTitle } from "../lib/notes";
 import { loadNotesEnabled, subscribeNotesEnabled } from "../lib/settings";
 import { resolveModel } from "../lib/models";
-import { isAstraModel } from "../lib/astraWelcome";
+import { modelWelcomeEnergy } from "../lib/astraWelcome";
 import { AstraWelcome } from "./AstraWelcome";
+import type { ModelEnergy } from "../lib/modelBrand";
 import { projectKey } from "../lib/paths";
 import {
   loadProjectChatBackgroundSettings,
@@ -265,10 +266,13 @@ export const SessionPane = memo(function SessionPane({
   const quoteRequestId = useRef(0);
   const [showJumpToBottom, setShowJumpToBottom] = useState(false);
   const astraWelcomeSequence = useRef(0);
-  const [astraWelcomeRun, setAstraWelcomeRun] = useState<number | null>(null);
-  const dismissAstraWelcome = useCallback(() => setAstraWelcomeRun(null), []);
+  const [astraWelcome, setAstraWelcome] = useState<{
+    run: number;
+    energy: ModelEnergy;
+  } | null>(null);
+  const dismissAstraWelcome = useCallback(() => setAstraWelcome(null), []);
   useEffect(() => {
-    if (!visible) setAstraWelcomeRun(null);
+    if (!visible) setAstraWelcome(null);
   }, [visible]);
   // Restore a saved run for this lead; its agents render on the sidebar card.
   useEffect(() => {
@@ -384,9 +388,10 @@ export const SessionPane = memo(function SessionPane({
         onModelChange(session.id, harness, model);
         const selected = resolveModel(harness, model);
         // A new key restarts the animation and its cleanup timer on every pick.
-        setAstraWelcomeRun(
-          isAstraModel(selected) ? ++astraWelcomeSequence.current : null,
-        );
+        setAstraWelcome({
+          run: ++astraWelcomeSequence.current,
+          energy: modelWelcomeEnergy(selected),
+        });
       }}
       onModelSettingsChange={(settings) =>
         onModelSettingsChange(session.id, settings)
@@ -430,8 +435,12 @@ export const SessionPane = memo(function SessionPane({
       className="chat-pane-background relative isolate flex h-full min-h-0 min-w-0 flex-1 flex-col"
       onMouseDown={() => onFocus(session.id)}
     >
-      {astraWelcomeRun !== null && visible ? (
-        <AstraWelcome key={astraWelcomeRun} onDone={dismissAstraWelcome} />
+      {astraWelcome !== null && visible ? (
+        <AstraWelcome
+          key={astraWelcome.run}
+          energy={astraWelcome.energy}
+          onDone={dismissAstraWelcome}
+        />
       ) : null}
       {inSplit ? (
         <div

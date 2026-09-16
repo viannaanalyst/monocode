@@ -1,5 +1,8 @@
 .astra-welcome {
-  --star-color: #d8c9a2;
+  --astra-a: #a89560;
+  --astra-b: #d8c9a2;
+  --astra-c: #f5f0e4;
+  --star-color: var(--astra-b);
   position: absolute;
   inset: 0;
   z-index: 40;
@@ -14,10 +17,22 @@
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse at 82% 12%, #d8c9a226, transparent 48%),
-    radial-gradient(ellipse at 100% 0%, #d8c9a212, transparent 65%),
-    radial-gradient(ellipse at 15% 75%, #d8c9a214, transparent 60%);
-  box-shadow: inset 0 0 45px #d8c9a208;
+    radial-gradient(
+      ellipse at 82% 12%,
+      color-mix(in srgb, var(--astra-b) 15%, transparent),
+      transparent 48%
+    ),
+    radial-gradient(
+      ellipse at 100% 0%,
+      color-mix(in srgb, var(--astra-b) 7%, transparent),
+      transparent 65%
+    ),
+    radial-gradient(
+      ellipse at 15% 75%,
+      color-mix(in srgb, var(--astra-b) 8%, transparent),
+      transparent 60%
+    );
+  box-shadow: inset 0 0 45px color-mix(in srgb, var(--astra-b) 3%, transparent);
   animation: astra-nebula-fade var(--astra-duration) ease-in-out both;
 }
 
@@ -38,13 +53,13 @@
   border-radius: 50%;
   background: radial-gradient(
     circle at 38% 35%,
-    #f5f0e4,
-    #d8c9a2 35%,
-    #a89560 75%
+    var(--astra-c),
+    var(--astra-b) 35%,
+    var(--astra-a) 75%
   );
   box-shadow:
-    0 0 16px #d8c9a290,
-    0 0 42px #d8c9a245;
+    0 0 16px color-mix(in srgb, var(--astra-b) 56%, transparent),
+    0 0 42px color-mix(in srgb, var(--astra-b) 27%, transparent);
 }
 
 .astra-solar-core::after {
@@ -52,7 +67,11 @@
   position: absolute;
   inset: -65%;
   border-radius: 50%;
-  background: radial-gradient(circle, #d8c9a21f, transparent 70%);
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--astra-b) 12%, transparent),
+    transparent 70%
+  );
 }
 
 .astra-solar-corona {
@@ -60,7 +79,7 @@
   inset: -90%;
   border-radius: 50%;
   background: repeating-conic-gradient(
-    #d8c9a238 0deg 2deg,
+    color-mix(in srgb, var(--astra-b) 22%, transparent) 0deg 2deg,
     transparent 2deg 15deg
   );
   mask-image: radial-gradient(
@@ -98,7 +117,7 @@
 .astra-solar-orbit > span {
   position: absolute;
   inset: 0;
-  border: 1px solid #d8c9a235;
+  border: 1px solid color-mix(in srgb, var(--astra-b) 21%, transparent);
   border-radius: 50%;
   animation: astra-orbit-turn var(--astra-duration) linear both;
 }
@@ -116,7 +135,7 @@
 }
 
 .astra-solar-orbit-outer > span {
-  border-color: #d8c9a230;
+  border-color: color-mix(in srgb, var(--astra-b) 19%, transparent);
   animation-direction: reverse;
 }
 
@@ -136,7 +155,7 @@
 
 .astra-sparkle-cross {
   border-radius: 0;
-  background: linear-gradient(transparent, #f5f0e4, transparent);
+  background: linear-gradient(transparent, var(--astra-c), transparent);
   clip-path: polygon(
     50% 0,
     61% 38%,
@@ -165,7 +184,7 @@
   border-radius: 100%;
   background: linear-gradient(
     to right,
-    #f5f0e4,
+    var(--astra-c),
     var(--star-color) 12%,
     transparent
   );
@@ -182,28 +201,28 @@
   width: 3px;
   height: 3px;
   border-radius: 50%;
-  background: #f5f0e4;
+  background: var(--astra-c);
   box-shadow: 0 0 6px 1px var(--star-color);
 }
 
 html.theme-light .astra-star {
   background: linear-gradient(
     to right,
-    #806c3b,
+    color-mix(in srgb, var(--astra-a) 82%, black),
     var(--star-color) 12%,
     transparent
   );
 }
 
 html.theme-light .astra-sparkle {
-  background: #806c3b;
-  box-shadow: 0 0 5px #a8956040;
+  background: color-mix(in srgb, var(--astra-a) 82%, black);
+  box-shadow: 0 0 5px color-mix(in srgb, var(--astra-a) 25%, transparent);
 }
 
 html.theme-light .astra-solar-core {
   box-shadow:
-    0 0 0 1px #a8956033,
-    0 0 24px #a8956050;
+    0 0 0 1px color-mix(in srgb, var(--astra-a) 20%, transparent),
+    0 0 24px color-mix(in srgb, var(--astra-a) 31%, transparent);
 }
 
 @keyframes astra-nebula-fade {

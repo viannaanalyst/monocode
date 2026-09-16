@@ -12,6 +12,12 @@ export type ModelVendor = {
 };
 
 export const MODEL_VENDORS: ModelVendor[] = [
+  {
+    id: "astra",
+    test: /(^|[^a-z0-9])astra([^a-z0-9]|$)/,
+    color: "#d8c9a2",
+    energy: ["#a89560", "#d8c9a2", "#f5f0e4"],
+  },
   { id: "deepseek", test: /deepseek/, color: "#A855F7", energy: ["#6D28D9", "#A855F7", "#E9D5FF"] },
   {
     id: "openai",
