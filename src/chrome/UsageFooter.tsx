@@ -199,7 +199,7 @@ export function UsageFooter({
   return (
     <footer
       aria-label={ariaLabel}
-      className="flex h-7 shrink-0 items-center gap-3 overflow-x-auto border-t border-content/10 px-3 text-xs text-content/55"
+      className="mb-1.5 flex h-[29px] shrink-0 items-center gap-3 overflow-x-auto border-t border-content/10 px-3 text-xs text-content/55"
     >
       {showUsage ? (
         <>
