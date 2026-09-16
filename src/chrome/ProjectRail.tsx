@@ -1,5 +1,6 @@
 import {
   Archive,
+  BellOff,
   Check,
   ChevronDown,
   ChevronRight,
@@ -43,7 +44,7 @@ import {
 } from "../lib/appearance";
 import { basename, revealPath, type GitDiffStats } from "../lib/fs";
 import { IS_MAC, IS_WIN, MOD } from "../lib/platform";
-import { projectKey, projectName } from "../lib/paths";
+import { pathKey, projectKey, projectName } from "../lib/paths";
 import {
   collectRailProjects,
   loadPinnedProjects,
@@ -96,6 +97,9 @@ import { TabGroupMenu, type TabGroupMenuExtraItem } from "./TabGroupMenu";
 import { TerminalSpinner } from "./TerminalSpinner";
 import type { SettingsSectionId } from "../lib/settings";
 import { t, withShortcut } from "../i18n";
+import { notificationMuteStatus } from "./notificationMuteActions";
+import { useProjectNotificationPreferences } from "../hooks/useProjectNotificationPreferences";
+import { useNotificationProjects } from "../hooks/useNotificationProjects";
 
 function revealLabel() {
   if (IS_MAC) return t("Reveal in Finder");
@@ -275,10 +279,17 @@ export function ProjectRail({
   const lockOverscroll = useLockOverscroll<HTMLDivElement>();
   const scrollRef = useRef<HTMLDivElement>(null);
   const groupLogos = useTabGroupLogos();
+  const notificationPreferences = useProjectNotificationPreferences();
   const allProjects = useMemo(
     () => collectRailProjects(recents, cwd),
     [cwd, recents],
   );
+  const notificationProjects = useNotificationProjects([...allProjects.keys()]);
+  const muteStatuses = new Map<string, string | null>();
+  for (const project of notificationProjects.projects) {
+    const status = notificationMuteStatus(notificationPreferences[project.id]);
+    for (const path of project.paths) muteStatuses.set(pathKey(path), status);
+  }
   const sections = useMemo(
     () => projectRailSections(recents, cwd, railOrder, pinnedPaths),
     [cwd, pinnedPaths, railOrder, recents],
@@ -530,6 +541,7 @@ export function ProjectRail({
                 groupCustomColors={groupCustomColors}
                 groupLogos={groupLogos}
                 groupMascots={groupMascots}
+                muteStatuses={muteStatuses}
                 sessions={sessions}
                 onSelectSession={onSelectSession}
                 busySessionIds={busySessionIds}
@@ -565,6 +577,7 @@ export function ProjectRail({
               groupCustomColors={groupCustomColors}
               groupLogos={groupLogos}
               groupMascots={groupMascots}
+              muteStatuses={muteStatuses}
               sessions={sessions}
               onSelectSession={onSelectSession}
               busySessionIds={busySessionIds}
@@ -898,6 +911,7 @@ function ProjectSection({
   groupCustomColors,
   groupLogos,
   groupMascots,
+  muteStatuses,
   sessions = [],
   onSelectSession,
   busySessionIds,
@@ -930,6 +944,7 @@ function ProjectSection({
   groupCustomColors: Record<string, string>;
   groupLogos: ReturnType<typeof useTabGroupLogos>;
   groupMascots: Record<string, string>;
+  muteStatuses: ReadonlyMap<string, string | null>;
   sessions?: SessionSummary[];
   onSelectSession?: (sessionId: string) => void;
   busySessionIds?: Set<string>;
@@ -989,6 +1004,7 @@ function ProjectSection({
             groupCustomColors={groupCustomColors}
             groupLogos={groupLogos}
             groupMascots={groupMascots}
+            muteStatus={muteStatuses.get(pathKey(item.path)) ?? undefined}
             sessions={sessions}
             onSelectSession={onSelectSession}
             busySessionIds={busySessionIds}
@@ -1163,6 +1179,7 @@ function ProjectCard({
   groupCustomColors,
   groupLogos,
   groupMascots,
+  muteStatus,
   sessions = [],
   onSelectSession,
   busySessionIds,
@@ -1191,6 +1208,7 @@ function ProjectCard({
   groupCustomColors: Record<string, string>;
   groupLogos: ReturnType<typeof useTabGroupLogos>;
   groupMascots: Record<string, string>;
+  muteStatus?: string;
   sessions?: SessionSummary[];
   onSelectSession?: (sessionId: string) => void;
   busySessionIds?: Set<string>;
@@ -1267,7 +1285,7 @@ function ProjectCard({
       <button
         type="button"
         data-no-tooltip
-        aria-label={cardAriaLabel}
+        aria-label={muteStatus ? `${cardAriaLabel}, ${muteStatus}` : cardAriaLabel}
         aria-current={selected ? "true" : undefined}
         className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left group-hover:pr-20"
       >
@@ -1322,6 +1340,15 @@ function ProjectCard({
         ) : (
           <span className={nameClassName}>{name}</span>
         )}
+        {muteStatus ? (
+          <span
+            role="img"
+            aria-label={muteStatus}
+            className="grid size-4 shrink-0 place-items-center text-amber-400"
+          >
+            <BellOff className="size-3.5" strokeWidth={1.75} aria-hidden="true" />
+          </span>
+        ) : null}
         {hasChanges ? (
           <span className="project-card-stats shrink-0 group-hover:hidden">
             <ProjectDiffStat additions={additions} deletions={deletions} />
