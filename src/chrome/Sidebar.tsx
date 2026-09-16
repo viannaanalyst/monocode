@@ -1710,6 +1710,7 @@ function SidebarComponent({
           notesActive={notesActive}
           sessions={sessions}
           onSelectSession={onSelectSession}
+          onPlaceSessionOnPane={onPlaceSessionOnPane}
           busySessionIds={busySessionIds}
           approvalSessionIds={approvalSessionIds}
           onRenameSession={onRenameSession}
