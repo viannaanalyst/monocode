@@ -341,7 +341,8 @@ export type SettingsAnchor =
   | "linear"
   | "jira"
   | "clickup"
-  | "notion";
+  | "notion"
+  | "project-notifications";
 
 const ANCHOR_IDS: Record<SettingsAnchor, string> = {
   github: "settings-github",
@@ -350,6 +351,7 @@ const ANCHOR_IDS: Record<SettingsAnchor, string> = {
   jira: "settings-jira",
   clickup: "settings-clickup",
   notion: "settings-notion",
+  "project-notifications": "settings-project-notifications",
 };
 
 type Props = {

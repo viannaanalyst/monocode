@@ -920,6 +920,12 @@ export default function App({
   const [settingsAnchor, setSettingsAnchor] = useState<SettingsAnchor | null>(
     null,
   );
+  const [notificationSettingsProject, setNotificationSettingsProject] =
+    useState<string | null>(null);
+  const [notificationSettingsRequest, setNotificationSettingsRequest] =
+    useState(0);
+  void notificationSettingsProject;
+  void notificationSettingsRequest;
   const [editorNavigation, setEditorNavigation] =
     useState<EditorNavigationTarget | null>(null);
   const editorNavigationToken = useRef(0);
@@ -6981,6 +6987,15 @@ export default function App({
     [openSettings],
   );
 
+  const onOpenNotificationSettings = useCallback(
+    (projectPath: string) => {
+      setNotificationSettingsProject(projectPath);
+      setNotificationSettingsRequest((value) => value + 1);
+      openSettings("inbox", "project-notifications");
+    },
+    [openSettings],
+  );
+
   const onCloseSettings = useCallback(() => {
     setSettingsOpen(false);
   }, []);
@@ -7580,6 +7595,7 @@ export default function App({
             onNewTerminal={onNewTerminal}
             onSearch={onOpenSearch}
             onOpenInbox={onOpenInbox}
+            onOpenNotificationSettings={onOpenNotificationSettings}
             onOpenInboxItem={onOpenLinkedWorkItem}
             onOpenKanban={onOpenKanban}
             onOpenAutomations={onOpenAutomations}

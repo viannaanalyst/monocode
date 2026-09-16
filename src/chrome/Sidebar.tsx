@@ -214,6 +214,7 @@ type Props = {
   onDeleteSessions?: (sessionIds: readonly string[]) => void;
   onExportSession?: (sessionId: string, format: SessionExportFormat) => void;
   onImportSession?: (cwd: string) => void;
+  onOpenNotificationSettings?: (projectPath: string) => void;
   onNewInProject?: (cwd: string) => void;
   onOpenFile: OpenFileFn;
   onOpenTerminal?: (cwd: string) => void;
@@ -303,6 +304,7 @@ function SidebarComponent({
   onDeleteSessions,
   onExportSession,
   onImportSession,
+  onOpenNotificationSettings,
   onNewInProject,
   onOpenFile,
   onOpenTerminal,
@@ -1725,6 +1727,7 @@ function SidebarComponent({
           onOpenProject={onOpenProject}
           onRemoveProject={onRemoveProject}
           onImportSession={onImportSession}
+          onOpenNotificationSettings={onOpenNotificationSettings}
           settingsOpen={settingsOpen}
           settingsSection={settingsSection}
           onOpenSettings={onOpenSettings}

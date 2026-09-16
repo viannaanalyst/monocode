@@ -97,7 +97,18 @@ import { TabGroupMenu, type TabGroupMenuExtraItem } from "./TabGroupMenu";
 import { TerminalSpinner } from "./TerminalSpinner";
 import type { SettingsSectionId } from "../lib/settings";
 import { t, withShortcut } from "../i18n";
-import { notificationMuteStatus } from "./notificationMuteActions";
+import {
+  notificationMuteActions,
+  notificationMuteDeadline,
+  notificationMuteStatus,
+} from "./notificationMuteActions";
+import { NotificationMuteDatePicker } from "./NotificationMuteDatePicker";
+import { Popover } from "./Popover";
+import { updateNotificationPreferences } from "../lib/notificationPreferences";
+import {
+  knownNotificationProject,
+  type NotificationProject,
+} from "../lib/notificationProjects";
 import { useProjectNotificationPreferences } from "../hooks/useProjectNotificationPreferences";
 import { useNotificationProjects } from "../hooks/useNotificationProjects";
 
@@ -111,6 +122,8 @@ function projectMenuExtraItems(
   pinned: boolean,
   canRemove: boolean,
   canImport: boolean,
+  notificationReady: boolean,
+  canConfigureNotifications: boolean,
 ): TabGroupMenuExtraItem[] {
   const items: TabGroupMenuExtraItem[] = [
     {
@@ -122,6 +135,14 @@ function projectMenuExtraItems(
       ? { id: "unpin", label: t("Unpin project"), icon: PinOff }
       : { id: "pin", label: t("Pin project"), icon: Pin },
     { id: "reveal", label: revealLabel(), icon: FolderOpen },
+    {
+      id: "notifications-mute",
+      label: t("Mute notifications"),
+      icon: BellOff,
+      sepBefore: true,
+      disabled: !notificationReady,
+      submenu: notificationMuteActions(),
+    },
     ...(canImport
       ? [
           {
@@ -132,6 +153,13 @@ function projectMenuExtraItems(
         ]
       : []),
   ];
+  if (canConfigureNotifications) {
+    items.push({
+      id: "notifications-settings",
+      label: t("Notification settings…"),
+      icon: Settings,
+    });
+  }
   if (canRemove) {
     items.push(
       { id: "archive", label: t("Archive"), icon: Archive, sepBefore: true },
@@ -184,6 +212,7 @@ type Props = {
   onOpenProject: () => void;
   onRemoveProject?: (path: string, options: { purgeData: boolean }) => void;
   onImportSession?: (cwd: string) => void;
+  onOpenNotificationSettings?: (projectPath: string) => void;
   liveAgents?: LiveAgent[];
   activeSessionId?: string;
   onSelectAgent?: (sessionId: string) => void;
@@ -234,6 +263,7 @@ export function ProjectRail({
   onOpenProject,
   onRemoveProject,
   onImportSession,
+  onOpenNotificationSettings,
   liveAgents = [],
   activeSessionId,
   onSelectAgent,
@@ -268,6 +298,16 @@ export function ProjectRail({
     path: string;
     projectKey: string;
   } | null>(null);
+  const [notificationMenu, setNotificationMenu] = useState<{
+    x: number;
+    y: number;
+    path: string;
+    project: NotificationProject;
+  } | null>(null);
+  const [notificationError, setNotificationError] = useState<string | null>(
+    null,
+  );
+  const menuTrigger = useRef<HTMLElement | null>(null);
   const [removing, setRemoving] = useState<{
     path: string;
     name: string;
@@ -280,6 +320,16 @@ export function ProjectRail({
   const scrollRef = useRef<HTMLDivElement>(null);
   const groupLogos = useTabGroupLogos();
   const notificationPreferences = useProjectNotificationPreferences();
+  const notificationPath = projectMenu?.path;
+  const readyNotificationProject = notificationPath
+    ? knownNotificationProject(notificationPath)
+    : undefined;
+  const menuMuteStatus = readyNotificationProject
+    ? notificationMuteStatus(notificationPreferences[readyNotificationProject.id])
+    : null;
+  useEffect(() => {
+    setNotificationError(null);
+  }, [notificationPath]);
   const allProjects = useMemo(
     () => collectRailProjects(recents, cwd),
     [cwd, recents],
@@ -327,6 +377,11 @@ export function ProjectRail({
   }, [projectMenu]);
 
   const openProjectMenu = (path: string, x: number, y: number) => {
+    menuTrigger.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    setNotificationMenu(null);
     setProjectMenu({
       x,
       y,
@@ -341,6 +396,7 @@ export function ProjectRail({
   ) => {
     event.preventDefault();
     event.stopPropagation();
+    event.currentTarget.querySelector<HTMLButtonElement>("button")?.focus();
     openProjectMenu(path, event.clientX, event.clientY);
   };
 
@@ -416,6 +472,32 @@ export function ProjectRail({
   const onProjectMenuPick = (action: string) => {
     if (!projectMenu) return;
     const { path, projectKey } = projectMenu;
+    if (action === "mute:custom") {
+      if (!readyNotificationProject) return false;
+      setNotificationMenu({ ...projectMenu, project: readyNotificationProject });
+      return false;
+    }
+    if (action.startsWith("mute:") || action === "notifications-resume") {
+      if (!readyNotificationProject) return false;
+      const mutedUntil = notificationMuteDeadline(action);
+      if (action !== "notifications-resume" && mutedUntil === undefined)
+        return false;
+      try {
+        updateNotificationPreferences([readyNotificationProject.id], {
+          mutedUntil,
+        });
+      } catch {
+        setNotificationError(
+          t("Could not save notification preferences. Please try again."),
+        );
+        return false;
+      }
+      return;
+    }
+    if (action === "notifications-settings") {
+      onOpenNotificationSettings?.(path);
+      return;
+    }
     if (action === "pin" || action === "unpin") onTogglePin(path);
     else if (action === "background") {
       setBackgroundProject({
@@ -656,17 +738,56 @@ export function ProjectRail({
           onMascotChange={onProjectMascotChange}
           onLogoChange={() => {}}
           onPick={() => {}}
-          onClose={() => setProjectMenu(null)}
+          onClose={() => {
+            setProjectMenu(null);
+            menuTrigger.current?.focus();
+          }}
           showActions={false}
+          leadingAction={
+            menuMuteStatus
+              ? {
+                  id: "notifications-resume",
+                  label: t("Resume notifications"),
+                  description: menuMuteStatus,
+                  icon: BellOff,
+                }
+              : undefined
+          }
           extraItems={projectMenuExtraItems(
             pinnedPaths.some((pinned) =>
               sameProjectPath(pinned, projectMenu.path),
             ),
             Boolean(onRemoveProject),
             Boolean(onImportSession),
+            Boolean(readyNotificationProject),
+            Boolean(onOpenNotificationSettings),
           )}
+          footer={
+            notificationError ? (
+              <p role="alert" className="px-2 py-1.5 text-xs text-red-400">
+                {notificationError}
+              </p>
+            ) : undefined
+          }
           onExtraPick={onProjectMenuPick}
         />
+      ) : null}
+      {notificationMenu ? (
+        <Popover
+          anchor={{ x: notificationMenu.x, y: notificationMenu.y }}
+          gap={0}
+          width={280}
+          role="dialog"
+          aria-label={t("Mute project notifications")}
+          onDismiss={() => setNotificationMenu(null)}
+          className="overflow-y-auto p-3"
+        >
+          <NotificationMuteDatePicker
+            projectIds={[notificationMenu.project.id]}
+            onCancel={() => setNotificationMenu(null)}
+            onChanged={() => setNotificationMenu(null)}
+          />
+        </Popover>
       ) : null}
       {removing ? (
         <RemoveProjectDialog
@@ -1281,6 +1402,17 @@ function ProjectCard({
         onSelect(item.path);
       }}
       onContextMenu={(event) => onContextMenu(item.path, event)}
+      onKeyDown={(event) => {
+        if (
+          event.key !== "ContextMenu" &&
+          !(event.shiftKey && event.key === "F10")
+        )
+          return;
+        event.preventDefault();
+        event.stopPropagation();
+        const rect = event.currentTarget.getBoundingClientRect();
+        onOpenMenu(item.path, rect.left, rect.bottom);
+      }}
     >
       <button
         type="button"
@@ -1344,6 +1476,7 @@ function ProjectCard({
           <span
             role="img"
             aria-label={muteStatus}
+            title={muteStatus}
             className="grid size-4 shrink-0 place-items-center text-amber-400"
           >
             <BellOff className="size-3.5" strokeWidth={1.75} aria-hidden="true" />
