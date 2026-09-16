@@ -58,6 +58,11 @@ describe("InboxDetail layout", () => {
     const scrollIndex = markup.indexOf("data-inbox-detail-scroll");
     const header = markup.slice(headerIndex, scrollIndex);
     const body = markup.slice(scrollIndex);
+    const identityIndex = header.indexOf("data-inbox-detail-identity");
+    const identityTag = header.slice(
+      identityIndex,
+      header.indexOf(">", identityIndex),
+    );
 
     expect(headerIndex).toBeGreaterThan(-1);
     expect(scrollIndex).toBeGreaterThan(headerIndex);
@@ -69,6 +74,8 @@ describe("InboxDetail layout", () => {
     expect(header).toContain("Open on GitHub");
     expect(header).toContain("Unassigned");
     expect(header).toContain("whitespace-nowrap");
+    expect(header).not.toContain("data-inbox-detail-fixed-header");
+    expect(identityTag).not.toContain("border-b");
     expect(header).not.toContain("local-project");
     expect(header).not.toContain("overflow-y-auto");
     expect(header).not.toContain("bg-background-base");
@@ -85,6 +92,21 @@ describe("InboxDetail layout", () => {
     expect(header).toContain('aria-label="Pull request sections"');
     expect(header).toContain("Summary");
     expect(header).toContain("Code");
+  });
+
+  it("does not show GitHub lifecycle actions for GitLab merge requests", () => {
+    const markup = renderDetail(
+      item({
+        kind: "pr",
+        provider: "gitlab",
+        repo: "acme/platform",
+        url: "https://gitlab.example.com/acme/platform/-/merge_requests/12",
+      }),
+    );
+
+    expect(markup).not.toContain('aria-label="Merge options"');
+    expect(markup).not.toContain("Convert to draft");
+    expect(markup).not.toContain("Close pull request");
   });
 
   it("offers full-file diffs only for GitHub pull requests", () => {

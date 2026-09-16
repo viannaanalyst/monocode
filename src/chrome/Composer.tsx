@@ -209,7 +209,7 @@ type Props = {
     text: string,
     attachments: Attachment[],
     options?: ComposerTurnOptions,
-  ) => void;
+  ) => boolean | void;
   goal?: SessionGoal;
   onGoalChange?: (goal: SessionGoal | null) => void;
   onGoalResolve?: (action: "complete" | "keep") => void;
@@ -315,7 +315,7 @@ function MessageQueue({
         data-message-queue-card
       >
         {paused ? (
-          <div className="flex h-7 items-center gap-2 border-b border-content/10 text-[12px]">
+          <div className="flex h-7 items-center gap-2 border-b border-stroke text-[12px]">
             <Pause className="size-3.5" />
             <span className="min-w-0 flex-1 truncate">{t("Queue paused because you interrupted")}</span>
             <button
@@ -337,7 +337,7 @@ function MessageQueue({
             <div
               key={message.id}
               className={`flex min-h-7 items-center gap-2 text-[12px] ${
-                index > 0 ? "border-t border-content/10" : ""
+                index > 0 ? "border-t border-stroke" : ""
               }`}
             >
               <ListEnd className="size-3.5 shrink-0" />
@@ -1178,7 +1178,7 @@ export function Composer({
       : composeInboxMessage(inboxCard, command.text);
     const files = attachments;
     if (!text && files.length === 0 && !noteCard && !handoffCard) return;
-    onSubmit(text, files, {
+    const accepted = onSubmit(text, files, {
       intent:
         planSelected || command.planning
           ? "plan"
@@ -1187,6 +1187,10 @@ export function Composer({
             : "default",
       debug: debugSelected,
     });
+    // The app can reject a turn before it is recorded (for example while an
+    // orchestration is paused). Keep the user's text, files and selected mode
+    // intact so resolving the blocker never destroys their work.
+    if (accepted === false) return;
     if (!ref.current) return;
     ref.current.value = "";
     ref.current.style.height = "auto";
@@ -1713,7 +1717,7 @@ export function Composer({
                   setOrchestrationSelected(false);
                   ref.current?.focus();
                 }}
-                className="flex h-6.5 shrink-0 items-center gap-1 rounded-md bg-fuchsia-400/10 px-1.5 text-sm text-fuchsia-200/80 hover:bg-fuchsia-400/15"
+                className="flex h-6.5 shrink-0 items-center gap-1 rounded-md bg-fuchsia-500/15 px-1.5 text-sm text-fuchsia-700 hover:bg-fuchsia-500/20 dark:bg-fuchsia-400/10 dark:text-fuchsia-200/90 dark:hover:bg-fuchsia-400/15"
               >
                 <Share className="size-3.5" />
                 Orchestrator
@@ -2029,7 +2033,7 @@ export function ComposerAction({
       aria-label={t("Send")}
       disabled={!hasValue}
       onClick={onSend}
-      className="composer-send grid size-6.5 place-items-center rounded-full bg-white text-black hover:bg-white/90 disabled:cursor-default disabled:bg-white/30 disabled:text-black/40 disabled:hover:bg-white/30"
+      className="composer-send primary-action grid size-6.5 place-items-center rounded-full bg-white text-black hover:bg-white/90 disabled:cursor-default disabled:bg-white/30 disabled:text-black/40 disabled:hover:bg-white/30"
     >
       <ArrowUpLong className="size-4" strokeWidth={1.75} />
     </button>

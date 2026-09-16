@@ -490,10 +490,16 @@ export function newEditorPane(file: FilePaneTab): EditorPane {
   };
 }
 
+export type OpenEditorTabOptions = {
+  /** Which side of the focused non-editor pane receives a new editor pane. */
+  split?: "left" | "right";
+};
+
 /** Focus an existing editor tab, or open it in the focused editor pane / a new split. */
 export function openEditorTab(
   tab: WorkspaceTab,
   file: FilePaneTab,
+  options: OpenEditorTabOptions = {},
 ): WorkspaceTab {
   if (file.terminal) return openTerminalTab(tab, file);
   tab = isolateTerminalPanes(tab);
@@ -540,7 +546,13 @@ export function openEditorTab(
   const editorPane = newEditorPane(file);
   return {
     ...tab,
-    layout: splitPane(tab.layout, tab.focusedId, "right", editorPane.id),
+    layout: splitPaneRelative(
+      tab.layout,
+      tab.focusedId,
+      "right",
+      editorPane.id,
+      options.split === "left",
+    ),
     focusedId: editorPane.id,
     diffFocused: false,
     editorPanes: [editorPane],
@@ -724,13 +736,25 @@ export function splitPane(
   dir: SplitDir,
   newSessionId: string,
 ): LayoutNode {
+  return splitPaneRelative(node, focusedId, dir, newSessionId, false);
+}
+
+function splitPaneRelative(
+  node: LayoutNode,
+  focusedId: string,
+  dir: SplitDir,
+  newSessionId: string,
+  before: boolean,
+): LayoutNode {
   if (node.type === "leaf") {
     if (node.id !== focusedId) return node;
     return {
       type: "split",
       id: crypto.randomUUID(),
       dir,
-      children: [node, leaf(newSessionId)],
+      children: before
+        ? [leaf(newSessionId), node]
+        : [node, leaf(newSessionId)],
       sizes: [0.5, 0.5],
     };
   }
@@ -741,10 +765,11 @@ export function splitPane(
 
   if (direct >= 0) {
     if (node.dir === dir) {
+      const insertAt = before ? direct : direct + 1;
       const children = [
-        ...node.children.slice(0, direct + 1),
+        ...node.children.slice(0, insertAt),
         leaf(newSessionId),
-        ...node.children.slice(direct + 1),
+        ...node.children.slice(insertAt),
       ];
       return { ...node, children, sizes: equalSizes(children.length) };
     }
@@ -756,7 +781,9 @@ export function splitPane(
               type: "split",
               id: crypto.randomUUID(),
               dir,
-              children: [child, leaf(newSessionId)],
+              children: before
+                ? [leaf(newSessionId), child]
+                : [child, leaf(newSessionId)],
               sizes: [0.5, 0.5],
             }
           : child,
@@ -767,7 +794,7 @@ export function splitPane(
   return {
     ...node,
     children: node.children.map((child) =>
-      splitPane(child, focusedId, dir, newSessionId),
+      splitPaneRelative(child, focusedId, dir, newSessionId, before),
     ),
   };
 }
@@ -1143,7 +1170,7 @@ function extractLeaf(
 function insertBeside(
   node: LayoutNode,
   targetId: string,
-  leaf: LayoutNode,
+  incoming: LayoutNode,
   place: PanePlace,
 ): LayoutNode {
   if (node.type === "leaf") return node;
@@ -1157,7 +1184,7 @@ function insertBeside(
     const sizes = [...node.sizes];
     const share = (sizes[index] ?? 0) / 2;
     sizes[index] = share;
-    children.splice(insertAt, 0, leaf);
+    children.splice(insertAt, 0, incoming);
     sizes.splice(insertAt, 0, share);
     return { ...node, children, sizes };
   }
@@ -1165,7 +1192,7 @@ function insertBeside(
   return {
     ...node,
     children: node.children.map((child) =>
-      insertBeside(child, targetId, leaf, place),
+      insertBeside(child, targetId, incoming, place),
     ),
   };
 }
@@ -1248,11 +1275,37 @@ export function placePane(
   if (!ids.includes(toId)) return node;
   if (ids.includes(sessionId)) return movePane(node, sessionId, toId, edge);
 
+  return placeLayout(node, leaf(sessionId), toId, edge);
+}
+
+/** Place an intact layout tree beside one pane in another layout. */
+export function placeLayout(
+  node: LayoutNode,
+  incoming: LayoutNode,
+  toId: string,
+  edge: PaneEdge,
+): LayoutNode {
+  if (!leafIds(node).includes(toId)) return node;
+
   const { dir, place } = edgeSplit(edge);
-  const incoming = leaf(sessionId);
   const targetAt = leafParent(node, toId);
   if (targetAt?.dir === dir) {
     return insertBeside(node, toId, incoming, place);
   }
   return wrapBeside(node, toId, incoming, dir, place);
+}
+
+/** Replace one pane with an intact layout tree. */
+export function replacePaneWithLayout(
+  node: LayoutNode,
+  targetId: string,
+  incoming: LayoutNode,
+): LayoutNode {
+  if (node.type === "leaf") return node.id === targetId ? incoming : node;
+  return {
+    ...node,
+    children: node.children.map((child) =>
+      replacePaneWithLayout(child, targetId, incoming),
+    ),
+  };
 }

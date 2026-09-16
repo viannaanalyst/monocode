@@ -204,7 +204,7 @@ export function SessionReview({
           </div>
         </div>
         <ul
-          className={`scrollbar-none border-t border-content/10 py-1 ${
+          className={`scrollbar-none border-t border-stroke py-1 ${
             expanded ? "max-h-64 overflow-y-auto" : ""
           }`}
         >

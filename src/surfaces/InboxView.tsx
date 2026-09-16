@@ -1597,6 +1597,7 @@ export function InboxDetail({
               : githubKind
                 ? githubWorkItemDetails(
                     item.projectPath,
+                    item.repo,
                     githubKind,
                     item.number,
                   )
@@ -1686,6 +1687,7 @@ export function InboxDetail({
               : githubKind
                 ? githubWorkItemThread(
                     item.projectPath,
+                    item.repo,
                     githubKind,
                     item.number,
                   )
@@ -1743,7 +1745,9 @@ export function InboxDetail({
     }
     const pending = gitlab
       ? gitlabMrDiff(item.repo, item.number)
-      : githubPrDiff(item.projectPath, item.number, { fullContext: fullFile });
+      : githubPrDiff(item.projectPath, item.repo, item.number, {
+          fullContext: fullFile,
+        });
     void pending
       .then((next) => {
         if (cancelled) return;
@@ -1843,6 +1847,7 @@ export function InboxDetail({
       if (!githubKind) throw new Error("Unknown inbox item");
       await githubWorkItemComment(
         item.projectPath,
+        item.repo,
         githubKind,
         item.number,
         body,
@@ -1853,6 +1858,7 @@ export function InboxDetail({
         setThread(
           await githubWorkItemThread(
             item.projectPath,
+            item.repo,
             githubKind,
             item.number,
             {
@@ -1876,6 +1882,7 @@ export function InboxDetail({
     invalidateGithubItem(item.projectPath, githubKind, item.number);
     const next = await githubWorkItemDetails(
       item.projectPath,
+      item.repo,
       githubKind,
       item.number,
     );

@@ -169,7 +169,7 @@ export function AccessPicker({
                 onClick={() => pick(mode)}
                 className={`flex w-full items-start gap-2.5 rounded-lg px-2 py-2 text-left ${
                   highlighted || selected
-                    ? "bg-content/10 text-content"
+                    ? "bg-selection text-content"
                     : "text-content hover:bg-content/5"
                 }`}
               >

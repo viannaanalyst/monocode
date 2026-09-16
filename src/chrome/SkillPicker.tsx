@@ -155,7 +155,7 @@ function SkillList({
             onMouseEnter={() => onRowEnter(index)}
             onClick={() => onPick(skill)}
             className={`flex w-full flex-col gap-0.5 rounded-md px-2 py-1.5 text-left ${
-              highlighted ? "bg-skill/15 text-content" : "text-content"
+              highlighted ? "bg-content/10 text-content" : "text-content"
             }`}
           >
             <span className="flex min-w-0 items-baseline gap-2">
@@ -314,7 +314,9 @@ function ScopeButton({
       disabled={disabled}
       onClick={onClick}
       className={`flex min-w-0 flex-1 flex-col rounded-md px-2 py-1.5 text-left ${
-        selected ? "bg-content/20 text-content" : "bg-content/10 text-content/70"
+        selected
+          ? "bg-selection-emphasis text-content"
+          : "bg-selection text-content/70"
       } disabled:opacity-40`}
     >
       <span className="text-[12px]">{label}</span>

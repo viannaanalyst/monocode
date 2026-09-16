@@ -289,6 +289,7 @@ import { runSessionRemoval } from "./lib/sessionRemoval";
 import {
   HARNESS_LABEL,
   HARNESS_TITLE,
+  type ModelTarget,
   canReplaceSessionTitle,
   formatSessionTitle,
   sessionNeedsInput,
@@ -350,14 +351,13 @@ import { useSessionReminders } from "./hooks/useSessionReminders";
 import { ReminderNotices } from "./chrome/ReminderNotices";
 import { nextUnseenFinishedSessions } from "./lib/sessionDone";
 import {
+  announceSessionFinished,
   loadNotificationsEnabled,
   NOTIFICATION_CLICK_EVENT,
-  notifySession,
   probeNotificationPermission,
   setWindowFocused,
 } from "./lib/notifications";
 import { useInputNotifications } from "./hooks/useInputNotifications";
-import { playCue } from "./lib/sounds";
 import { archiveFocusedSession } from "./lib/archiveShortcut";
 import {
   adjacentItemId,
@@ -3548,6 +3548,7 @@ export default function App({
 
       void githubWorkItemThread(
         session.cwd,
+        session.linkedWorkItem.repo,
         session.linkedWorkItem.kind,
         session.linkedWorkItem.number,
         { force: true },
@@ -5435,7 +5436,7 @@ export default function App({
                   cwd: workCwd,
                 });
           const mode = proposalDraft
-            ? orchestrationPlanningPrompt(prompt, proposalDraft.settings)
+            ? orchestrationPlanningPrompt(prompt, proposalDraft.settings, workCwd)
             : intent === "plan" && !rawCommand
               ? planTurnPrompt(prompt)
               : prompt;
@@ -5597,12 +5598,7 @@ export default function App({
               (s) => s.id === sessionId,
             );
             const visible = sessionId === activeSessionIdRef.current;
-            const sent = finished
-              ? notifySession(finished, "finished", visible)
-              : Promise.resolve(false);
-            void sent.then((ok) => {
-              if (!ok) playCue("turnFinished");
-            });
+            if (finished) void announceSessionFinished(finished, visible);
           }, 0);
           notifyReviewChanged(sessionId);
           notifyGitChanged();
@@ -5955,7 +5951,8 @@ export default function App({
   );
 
   const onSecondOpinion = useCallback(
-    (sourceId: string, harness: HarnessId, turn: Block[], model: string) => {
+    (sourceId: string, target: ModelTarget, turn: Block[]) => {
+      const { harness, model, modelSettings } = target;
       const source = sessionsRef.current.find(
         (session) => session.id === sourceId,
       );
@@ -5971,7 +5968,13 @@ export default function App({
         files,
       });
       const session = {
-        ...newSession(harness, cwd, model, source.runtimeMode),
+        ...newSession(
+          harness,
+          cwd,
+          model,
+          source.runtimeMode,
+          modelSettings,
+        ),
         title: formatSessionTitle(harness, SECOND_OPINION_TITLE),
       };
       openSessionBeside(sourceId, session, cwd);
@@ -5988,7 +5991,8 @@ export default function App({
   );
 
   const onHandoff = useCallback(
-    (sourceId: string, harness: HarnessId, turn: Block[], model: string) => {
+    (sourceId: string, target: ModelTarget, turn: Block[]) => {
+      const { harness, model, modelSettings } = target;
       const source = sessionsRef.current.find(
         (session) => session.id === sourceId,
       );
@@ -6000,7 +6004,13 @@ export default function App({
       const files = turnEditedFiles(sliced.blocks, cwd);
       const display = sessionDisplayTitle(source.title, source.harness);
       const session = {
-        ...newSession(harness, cwd, model, source.runtimeMode),
+        ...newSession(
+          harness,
+          cwd,
+          model,
+          source.runtimeMode,
+          modelSettings,
+        ),
         title: formatSessionTitle(
           harness,
           display === "New session" ? HANDOFF_TITLE : display,

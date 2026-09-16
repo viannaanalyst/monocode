@@ -91,7 +91,7 @@ export function InboxComments({
         ? t("GitLab") : "GitHub";
 
   return (
-    <section className="flex flex-col gap-3 border-t border-content/10 pt-5">
+    <section className="flex flex-col gap-3 border-t border-stroke pt-5">
       <div className="flex items-center gap-2 text-[12px] text-content/50">
         <h2 className="font-semibold text-content/70">{label}</h2>
         {thread.truncated ? (
@@ -178,7 +178,7 @@ export function InboxCommentForm({
   return (
     <form
       onSubmit={onFormSubmit}
-      className="flex flex-col gap-2 border-t border-content/10 pt-5"
+      className="flex flex-col gap-2 border-t border-stroke pt-5"
     >
       {replyTo ? (
         <div className="flex items-center gap-2 text-[12px] text-content/50">
@@ -269,7 +269,7 @@ function InboxComment({
       <header
         className={`flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-content/50 ${
           nested ? "" : "px-3 py-2"
-        } ${!nested && (hasBody || hasReplies) ? "border-b border-content/10" : ""}`}
+        } ${!nested && (hasBody || hasReplies) ? "border-b border-stroke" : ""}`}
       >
         <InboxCommentPerson
           name={comment.author || "ghost"}
@@ -347,12 +347,12 @@ function InboxComment({
         </div>
       ) : null}
       {hasReplies ? (
-        <div className="border-t border-content/10 px-3">
+        <div className="border-t border-stroke px-3">
           {comment.replies.map((reply, index) => (
             <div
               key={reply.id}
               className={`py-2.5 ${
-                index > 0 ? "border-t border-content/10" : ""
+                index > 0 ? "border-t border-stroke" : ""
               }`}
             >
               <InboxComment
