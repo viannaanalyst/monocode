@@ -36,6 +36,21 @@ describe("ProjectRail board entry", () => {
     expect(markup.indexOf("Automations")).toBeGreaterThan(markup.indexOf("Kanban"));
   });
 
+  it("offers new session on unpinned projects too", () => {
+    localStorage.clear();
+    const markup = renderToStaticMarkup(
+      createElement(ProjectRail, {
+        cwd: "/tmp/web",
+        recents: [{ path: "/tmp/other", openedAt: 1 }],
+        onSelectProject: () => {},
+        onOpenProject: () => {},
+        onNewInProject: () => {},
+      }),
+    );
+    expect(markup).toContain("other");
+    expect(markup).toContain('aria-label="New session"');
+  });
+
   it("always titles the rail MonoCode and wires search and notes", () => {
     const bare = renderToStaticMarkup(
       createElement(ProjectRail, {

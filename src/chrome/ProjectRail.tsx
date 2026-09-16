@@ -556,6 +556,10 @@ export function ProjectRail({
               onArchiveSession={onArchiveSession}
               onPinSession={onPinSession}
               onDeleteSession={onDeleteSession}
+              onSetReminders={onSetReminders}
+              onCancelReminders={onCancelReminders}
+              reminderSessionIds={reminderSessionIds}
+              onNewInProject={onNewInProject}
             />
           </div>
           <LiveAgentsPreview
