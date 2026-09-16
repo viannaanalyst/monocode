@@ -8074,6 +8074,7 @@ export default function App({
                 onOpenSession={onOpenInboxSession}
                 target={inboxTarget}
                 onOpenIntegrations={onOpenInboxIntegrations}
+                onOpenNotificationSettings={onOpenNotificationSettings}
               />
             ) : null}
             {kanbanViewOpen ? (

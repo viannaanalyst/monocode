@@ -36,6 +36,7 @@ import {
   INBOX_FILTER_MENU_WIDTH,
 } from "../chrome/InboxFiltersMenu";
 import { InboxConnectMenu } from "../chrome/InboxConnectMenu";
+import { InboxNotificationsButton } from "../chrome/InboxNotificationsButton";
 import { InboxProviderMark } from "../chrome/InboxProviderMark";
 import { ProjectLogoIcon } from "../chrome/ProjectLogoIcon";
 import { ProjectMascot } from "../chrome/ProjectMascot";
@@ -380,6 +381,8 @@ type Props = {
   target?: LinkedWorkItem | null;
   /** Opens Settings on the card where the given source is connected. */
   onOpenIntegrations: (source: ConnectableInboxSource) => void;
+  /** Opens Settings on the notification card for the given project path. */
+  onOpenNotificationSettings?: (projectPath: string) => void;
 };
 
 export function InboxView({
@@ -396,6 +399,7 @@ export function InboxView({
   onOpenSession,
   target = null,
   onOpenIntegrations,
+  onOpenNotificationSettings,
 }: Props) {
   const [discussionOpen, setDiscussionOpen] = useState(false);
   const listLock = useLockOverscroll<HTMLDivElement>();
@@ -906,6 +910,15 @@ export function InboxView({
           >
             <ListFilter className="size-3.5" strokeWidth={1.75} />
           </button>
+          <InboxNotificationsButton
+            projectPaths={[
+              ...new Set([
+                ...recents.map((project) => project.path),
+                ...items.map((entry) => entry.projectPath).filter(Boolean),
+              ]),
+            ]}
+            onOpenSettings={() => onOpenNotificationSettings?.(cwd)}
+          />
           <button
             type="button"
             data-no-tooltip
