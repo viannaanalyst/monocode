@@ -361,6 +361,7 @@ function CostChip({ cost }: { cost: SessionCost }) {
       <button
         ref={root}
         type="button"
+        data-no-tooltip
         className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap rounded px-1 -mx-1 tabular-nums hover:bg-content/10 hover:text-content"
         aria-label={t("Session cost")}
         aria-haspopup="dialog"

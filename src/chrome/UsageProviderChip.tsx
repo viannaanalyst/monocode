@@ -142,6 +142,7 @@ export function UsageProviderChip({
       <button
         ref={trigger}
         type="button"
+        data-no-tooltip
         className="-mx-1 inline-flex h-5 min-w-0 shrink-0 items-center gap-1.5 whitespace-nowrap rounded px-1 text-content/55 transition-[background-color,color,transform] duration-150 ease-out hover:bg-content/10 hover:text-content focus-visible:outline-2 focus-visible:outline-accent active:scale-[0.97]"
         aria-label={`${providerLabel} usage details`}
         aria-expanded={open}
