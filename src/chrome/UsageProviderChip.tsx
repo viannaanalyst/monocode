@@ -2,10 +2,8 @@ import { useEffect, useId, useRef, useState } from "react";
 import {
   clampUsedPercent,
   formatRateLimitWindowChipLabel,
-  formatResetCountdown,
   formatResetDuration,
   formatUsagePercent,
-  formatWindowLabel,
   type ProviderRateLimits,
   type RateLimitResetCredit,
   type RateLimitWindow,
@@ -24,6 +22,11 @@ import {
 import { HarnessIcon } from "./HarnessIcon";
 import { RefreshCw } from "./icons";
 import { Popover, type PopoverDismissReason } from "./Popover";
+import {
+  usageBarClass as barClass,
+  usageUpdatedLabel,
+  UsageWindowCard,
+} from "./UsageWindowCard";
 import {
   ProviderSignInPanel,
   type ProviderSignInState,
@@ -211,7 +214,7 @@ export function UsageProviderChip({
                     {providerLabel} usage
                   </h2>
                   <p className="mt-0.5 text-[10px] leading-4 text-content/40">
-                    {updatedLabel(limits, now)}
+                    {usageUpdatedLabel(limits, now)}
                   </p>
                 </div>
                 {limits.status === "fetching" ? (
@@ -284,63 +287,6 @@ function usageWindows(limits: ProviderRateLimits): UsageWindowEntry[] {
       : null,
     limits.weekly ? ({ key: "weekly", window: limits.weekly } as const) : null,
   ].filter((entry): entry is UsageWindowEntry => entry != null);
-}
-
-function UsageWindowCard({
-  kind,
-  window,
-  now,
-}: {
-  kind: UsageWindowEntry["key"];
-  window: RateLimitWindow;
-  now: number;
-}) {
-  const pct = clampUsedPercent(window.usedPercent);
-  const remaining = Math.max(0, Math.round(100 - pct));
-  const title =
-    kind === "session"
-      ? "5-hour limit"
-      : kind === "weekly"
-        ? "Weekly limit"
-        : `${formatWindowLabel(window.windowMinutes)} limit`;
-  return (
-    <section className="rounded-lg bg-content/[0.045] px-3 py-2.5 ring-1 ring-inset ring-content/[0.06]">
-      <div className="flex items-baseline justify-between gap-3">
-        <h3 className="text-xs font-medium text-content/65">{title}</h3>
-        <span className="shrink-0 text-xs font-medium tabular-nums">
-          {formatUsagePercent(pct)} used
-        </span>
-      </div>
-      <div
-        className="mt-2 h-1.5 overflow-hidden rounded-full bg-content/10"
-        role="progressbar"
-        aria-label={`${title} used`}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={Math.round(pct)}
-      >
-        <span
-          className={`block h-full rounded-full ${barClass(pct)}`}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <div className="mt-1.5 flex items-center justify-between gap-3 text-[10px] leading-4 text-content/40">
-        <span className="tabular-nums">{remaining}% remaining</span>
-        <span
-          className="truncate text-right tabular-nums"
-          title={
-            window.resetsAt == null
-              ? undefined
-              : new Date(window.resetsAt).toLocaleString()
-          }
-        >
-          {window.resetsAt == null
-            ? `${formatWindowLabel(window.windowMinutes)} window`
-            : formatResetCountdown(window.resetsAt - now)}
-        </span>
-      </div>
-    </section>
-  );
 }
 
 function BankedResets({
@@ -669,17 +615,6 @@ export function needsProviderLogin(limits: ProviderRateLimits): boolean {
   );
 }
 
-function updatedLabel(limits: ProviderRateLimits, now: number): string {
-  if (limits.updatedAt <= 0) return "Rate-limit details";
-  const elapsedMinutes = Math.max(
-    0,
-    Math.floor((now - limits.updatedAt) / 60_000),
-  );
-  if (elapsedMinutes === 0) return "Updated just now";
-  if (elapsedMinutes < 60) return `Updated ${elapsedMinutes}m ago`;
-  return `Updated ${Math.floor(elapsedMinutes / 60)}h ago`;
-}
-
 function resetOutcomeLabel(outcome: CodexRateLimitResetOutcome): string {
   if (outcome === "reset") return "Codex usage was reset.";
   if (outcome === "nothingToReset") return "There’s no active usage to reset.";
@@ -720,8 +655,3 @@ function MiniBar({ usedPct }: { usedPct: number }) {
   );
 }
 
-function barClass(pct: number): string {
-  if (pct >= 90) return "bg-red-400";
-  if (pct >= 80) return "bg-amber-400";
-  return "bg-content/45";
-}

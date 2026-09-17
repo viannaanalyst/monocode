@@ -33,6 +33,11 @@ import { loginHarness, supportsHarnessLogin } from "../lib/harness/auth";
 import { consumeCodexRateLimitResetCredit } from "../lib/rateLimitsFetch";
 import { UsageProviderChip } from "./UsageProviderChip";
 import {
+  usageUpdatedLabel,
+  UsageWindowCard,
+  type UsageWindowKind,
+} from "./UsageWindowCard";
+import {
   ProviderSignInPanel,
   type ProviderSignInState,
 } from "./ProviderSignInPanel";
@@ -311,7 +316,7 @@ export function UsageFooter({
               onReconnect={reconnectCodex}
             />
           ) : null}
-          {wantOpencode ? <ProviderChip limits={opencode} /> : null}
+          {wantOpencode ? <ProviderChip limits={opencode} now={now} /> : null}
         </>
       ) : session ? (
         <SessionChip session={session} />
@@ -620,7 +625,15 @@ function RunningTerminalChip({
   );
 }
 
-function ProviderChip({ limits }: { limits: ProviderRateLimits }) {
+function ProviderChip({
+  limits,
+  now,
+}: {
+  limits: ProviderRateLimits;
+  now: number;
+}) {
+  const trigger = useRef<HTMLButtonElement>(null);
+  const [open, setOpen] = useState(false);
   const loading =
     limits.status === "idle" ||
     (limits.status === "fetching" &&
@@ -632,11 +645,27 @@ function ProviderChip({ limits }: { limits: ProviderRateLimits }) {
     limits.session ? { key: "session", window: limits.session } : null,
     limits.weekly ? { key: "weekly", window: limits.weekly } : null,
     limits.monthly ? { key: "monthly", window: limits.monthly } : null,
-  ].filter((entry): entry is { key: string; window: RateLimitWindow } => {
-    return entry != null;
+  ].filter(
+    (entry): entry is { key: UsageWindowKind; window: RateLimitWindow } =>
+      entry != null,
+  );
+  const hasWindows = windows.length > 0;
+  const usageDetailsLabel = t("{provider} usage details", {
+    provider: HARNESS_TITLE[limits.provider],
   });
   return (
-    <span className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap">
+    <>
+      <button
+        ref={trigger}
+        type="button"
+        data-no-tooltip
+        aria-label={usageDetailsLabel}
+        aria-haspopup={hasWindows ? "dialog" : undefined}
+        aria-expanded={hasWindows ? open : undefined}
+        disabled={!hasWindows}
+        onClick={() => setOpen((value) => !value)}
+        className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap rounded px-1 -mx-1 text-content/55 hover:bg-content/10 hover:text-content disabled:cursor-default disabled:hover:bg-transparent disabled:hover:text-content/55"
+      >
       <HarnessIcon harness={limits.provider} className="size-3.5 shrink-0" />
       {loading ? (
         <span className="animate-pulse text-content/35">···</span>
@@ -659,8 +688,48 @@ function ProviderChip({ limits }: { limits: ProviderRateLimits }) {
             </span>
           ))}
         </span>
-      )}
-    </span>
+        )}
+      </button>
+      {open && hasWindows ? (
+        <Popover
+          anchor={trigger}
+          side="top"
+          align="start"
+          width={280}
+          autoFocus
+          onDismiss={() => setOpen(false)}
+          role="dialog"
+          aria-label={usageDetailsLabel}
+          className="p-2.5"
+        >
+          <div className="flex items-start gap-2.5 px-1 pb-2.5 pt-0.5">
+            <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-content/[0.06] ring-1 ring-inset ring-content/[0.07]">
+              <HarnessIcon harness={limits.provider} className="size-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-sm font-medium leading-4">
+                {t("{provider} usage", {
+                  provider: HARNESS_TITLE[limits.provider],
+                })}
+              </h2>
+              <p className="mt-0.5 text-[10px] leading-4 text-content/40">
+                {usageUpdatedLabel(limits, now)}
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-col gap-2">
+            {windows.map((entry) => (
+              <UsageWindowCard
+                key={entry.key}
+                kind={entry.key}
+                window={entry.window}
+                now={now}
+              />
+            ))}
+          </div>
+        </Popover>
+      ) : null}
+    </>
   );
 }
 
