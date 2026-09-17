@@ -154,16 +154,6 @@ export const SETTINGS_INDEX: SettingsEntry[] = [
     label: "Working agents",
     keywords: "live running sessions rail card",
   },
-  ...(IS_WIN
-    ? [
-        {
-          id: "close-to-tray",
-          section: "general" as const,
-          label: "Close to tray",
-          keywords: "minimize background quit exit window taskbar windows",
-        },
-      ]
-    : []),
   {
     id: "theme",
     section: "appearance",

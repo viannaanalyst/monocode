@@ -730,6 +730,7 @@ export default function App({
       !!tab && resumed.sessions.some((session) => session.id === tab.focusedId)
     );
   });
+  const [composerFocusToken, setComposerFocusToken] = useState(0);
   /** Tab id -> project name, kept in sync with the rendered title tabs. */
   const tabProjectsRef = useRef(new Map<string, string>());
   const projectOfTab = useCallback(
@@ -1409,6 +1410,19 @@ export default function App({
         if (focused) {
           flushHarnessEvents();
           syncDockBadge(sessionsRef.current);
+          if (
+            document.activeElement === document.body &&
+            !projectTerminalFocusedRef.current &&
+            !searchViewOpenRef.current &&
+            !inboxViewOpenRef.current &&
+            !notesViewOpenRef.current &&
+            !kanbanViewOpenRef.current &&
+            !automationsViewOpenRef.current &&
+            !settingsOpenRef.current
+          ) {
+            setComposerFocused(true);
+            setComposerFocusToken((token) => token + 1);
+          }
         }
       })
       .then((fn) => {
@@ -3485,6 +3499,7 @@ export default function App({
           restored.id,
           restored.providerSessionId,
           sessionWorkCwd(restored),
+          restored.providerAccountId,
         );
       }
       lastPersisted.current.set(restored.id, persistFingerprint(restored));
@@ -5266,6 +5281,7 @@ export default function App({
           sessionId,
           cwd: workCwd,
           message: titleMessage,
+          providerAccountId: current.providerAccountId,
         })
           .then(async (generated) => {
             const linkedWorkItem = await resolveLinkedWorkItem(
@@ -5366,6 +5382,7 @@ export default function App({
                 cwd: workCwd,
                 model: pendingSwitch.fromModel,
                 modelSettings: pendingSwitch.fromSettings,
+                providerAccountId: pendingSwitch.fromProviderAccountId,
                 userRequest: text,
               });
             } catch {
@@ -5466,6 +5483,7 @@ export default function App({
             cwd: workCwd,
             model: current.model,
             modelSettings: current.modelSettings,
+            providerAccountId: current.providerAccountId,
             runtimeMode: current.runtimeMode,
             intent: intent === "orchestrate" ? "plan" : intent,
             // A lead drives the control CLI over loopback; without this the
@@ -6364,6 +6382,7 @@ export default function App({
             worker.id,
             worker.providerSessionId,
             worker.cwd,
+            worker.providerAccountId,
           );
         await upsertSession(worker);
         const next = [...sessionsRef.current, worker];
@@ -7788,6 +7807,7 @@ export default function App({
                               composerFocused={
                                 composerFocused && !projectTerminalFocused
                               }
+                              composerFocusToken={composerFocusToken}
                               onSelectFile={onSelectFileSurface}
                               onCloseFile={onCloseFile}
                               onCloseOtherFiles={onCloseOtherFiles}
@@ -8058,6 +8078,7 @@ export default function App({
                         focused={visible}
                         inSplit={false}
                         composerFocused={composerFocused}
+                        composerFocusToken={composerFocusToken}
                       />
                     </SessionSurface>
                   );

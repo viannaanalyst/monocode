@@ -2551,7 +2551,7 @@ function CopyBranchNameButton({ branch }: { branch: string }) {
     <button
       type="button"
       data-no-tooltip
-      aria-label={copied ? "Copied" : "Copy branch name"}
+      aria-label={t(copied ? "Copied" : "Copy branch name")}
       className="shrink-0 rounded p-0.5 text-content/40 hover:bg-content/8 hover:text-content/70"
       onClick={() => {
         void copyText(branch).then(

@@ -578,13 +578,16 @@ export function ProjectRail({
         return false;
       }
       void openInExternalEditor(editorId, path)
-        .then(() => setProjectMenu(null))
+        .then(() => {
+          setProjectMenu(null);
+          menuTrigger.current?.focus();
+        })
         .catch(() => {
           setNotificationError(
             t("Could not open the external editor. Please try again."),
           );
-          return false;
         });
+      return false;
     }
     else if (action === "import-session") onImportSession?.(path);
     else if (action === "archive") {

@@ -194,7 +194,6 @@ export function formatUsagePercent(usedPercent: number): string {
 export function formatWindowLabel(windowMinutes: number): string {
   if (windowMinutes === MONTHLY_WINDOW_MINUTES) return "mo";
   if (windowMinutes === WEEKLY_WINDOW_MINUTES) return "wk";
-  if (windowMinutes === MONTHLY_WINDOW_MINUTES) return "mo";
   if (windowMinutes === SESSION_WINDOW_MINUTES) return "5h";
   if (windowMinutes === 60) return "1h";
   if (windowMinutes < 60) return `${windowMinutes}m`;

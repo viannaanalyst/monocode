@@ -237,7 +237,7 @@ function ImageView({
         <span className="flex-1" />
         {IS_MAC ? (
           <ZoomButton
-            label={copied ? "Copied" : "Copy original file"}
+            label={t(copied ? "Copied" : "Copy original file")}
             onClick={copyOriginal}
           >
             {copied ? (
@@ -280,10 +280,10 @@ function ImageView({
             {
               kind: "item",
               id: "copy-original",
-              label: "Copy Original File",
+              label: t("Copy Original File"),
             },
           ]}
-          ariaLabel="Image actions"
+          ariaLabel={t("Image actions")}
           onPick={(id) => {
             if (id === "copy-original") copyOriginal();
           }}

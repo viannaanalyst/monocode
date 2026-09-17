@@ -228,7 +228,12 @@ export const PT_BR: Record<string, string> = {
   "Could not open the external editor. Please try again.":
     "Não foi possível abrir o editor externo. Tente novamente.",
   "Create and checkout {name}": "Criar e mudar para {name}",
+  "Create and check out a branch in this project.":
+    "Crie e mude para uma branch neste projeto.",
   "New branch": "Nova branch",
+  "Branch name": "Nome da branch",
+  "feature/my-branch": "feature/minha-branch",
+  "Create branch": "Criar branch",
   "5-hour limit": "Limite de 5 horas",
   "Weekly limit": "Limite semanal",
   "Monthly limit": "Limite mensal",
@@ -822,6 +827,10 @@ export const PT_BR: Record<string, string> = {
   "No branches": "Nenhuma branch",
   Copied: "Copiado",
   "Copy response": "Copiar resposta",
+  "Copy branch name": "Copiar nome da branch",
+  "Copy original file": "Copiar arquivo original",
+  "Copy Original File": "Copiar arquivo original",
+  "Image actions": "Ações da imagem",
   "Saved to Notes": "Salvo em Notas",
   "Save as note": "Salvar como nota",
   "Hide the work": "Ocultar o trabalho",
