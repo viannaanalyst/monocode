@@ -901,7 +901,11 @@ export function ModelPicker({
         ref={button}
         type="button"
         data-no-tooltip
-        aria-label={`${HARNESS_TITLE[current.harness]} ${current.name}`}
+        aria-label={`${HARNESS_TITLE[current.harness]}${
+          current.provider ? `, ${current.provider.name},` : ""
+        } ${current.name}${
+          triggerEffort ? `, effort ${triggerEffort}` : ""
+        }`}
         aria-keyshortcuts={`${MOD}.`}
         aria-expanded={open || recentMenu != null}
         aria-haspopup="menu"

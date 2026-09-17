@@ -122,14 +122,13 @@ function HistoryRow({
     <li className="min-w-0 overflow-visible" style={{ height: GRAPH_ROW_PX }}>
       <button
         type="button"
-        title={`${commit.shortSha} ${commit.subject}${commit.author ? ` — ${commit.author}` : ""}`}
         onClick={onOpen}
         aria-pressed={active}
         className={`git-history-item flex h-[22px] min-w-0 w-full items-stretch overflow-visible pr-2 text-left ${
           row.kind === "HEAD" ? "is-head" : ""
         } ${
           active
-            ? "is-selected bg-content/10 text-content"
+            ? "is-selected bg-selection text-content"
             : "text-content hover:bg-content/5"
         }`}
       >

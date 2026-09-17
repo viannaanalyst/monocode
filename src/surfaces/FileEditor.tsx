@@ -960,7 +960,7 @@ function DiffChunkNav({
 }) {
   return (
     <header
-      className="flex h-8 shrink-0 items-center justify-between gap-3 border-b border-content/10 px-3 pr-1"
+      className="flex h-8 shrink-0 items-center justify-between gap-3 border-b border-stroke px-3 pr-1"
       role="toolbar"
       aria-label={t("Jump between changes")}
     >

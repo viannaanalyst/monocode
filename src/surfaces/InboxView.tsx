@@ -36,6 +36,7 @@ import {
   INBOX_FILTER_MENU_WIDTH,
 } from "../chrome/InboxFiltersMenu";
 import { InboxConnectMenu } from "../chrome/InboxConnectMenu";
+import { InboxNotificationsButton } from "../chrome/InboxNotificationsButton";
 import { InboxProviderMark } from "../chrome/InboxProviderMark";
 import { ProjectLogoIcon } from "../chrome/ProjectLogoIcon";
 import { ProjectMascot } from "../chrome/ProjectMascot";
@@ -380,6 +381,8 @@ type Props = {
   target?: LinkedWorkItem | null;
   /** Opens Settings on the card where the given source is connected. */
   onOpenIntegrations: (source: ConnectableInboxSource) => void;
+  /** Opens Settings on the notification card for the given project path. */
+  onOpenNotificationSettings?: (projectPath: string) => void;
 };
 
 export function InboxView({
@@ -396,6 +399,7 @@ export function InboxView({
   onOpenSession,
   target = null,
   onOpenIntegrations,
+  onOpenNotificationSettings,
 }: Props) {
   const [discussionOpen, setDiscussionOpen] = useState(false);
   const listLock = useLockOverscroll<HTMLDivElement>();
@@ -906,6 +910,15 @@ export function InboxView({
           >
             <ListFilter className="size-3.5" strokeWidth={1.75} />
           </button>
+          <InboxNotificationsButton
+            projectPaths={[
+              ...new Set([
+                ...recents.map((project) => project.path),
+                ...items.map((entry) => entry.projectPath).filter(Boolean),
+              ]),
+            ]}
+            onOpenSettings={() => onOpenNotificationSettings?.(cwd)}
+          />
           <button
             type="button"
             data-no-tooltip
@@ -1597,6 +1610,7 @@ export function InboxDetail({
               : githubKind
                 ? githubWorkItemDetails(
                     item.projectPath,
+                    item.repo,
                     githubKind,
                     item.number,
                   )
@@ -1686,6 +1700,7 @@ export function InboxDetail({
               : githubKind
                 ? githubWorkItemThread(
                     item.projectPath,
+                    item.repo,
                     githubKind,
                     item.number,
                   )
@@ -1743,7 +1758,9 @@ export function InboxDetail({
     }
     const pending = gitlab
       ? gitlabMrDiff(item.repo, item.number)
-      : githubPrDiff(item.projectPath, item.number, { fullContext: fullFile });
+      : githubPrDiff(item.projectPath, item.repo, item.number, {
+          fullContext: fullFile,
+        });
     void pending
       .then((next) => {
         if (cancelled) return;
@@ -1843,6 +1860,7 @@ export function InboxDetail({
       if (!githubKind) throw new Error("Unknown inbox item");
       await githubWorkItemComment(
         item.projectPath,
+        item.repo,
         githubKind,
         item.number,
         body,
@@ -1853,6 +1871,7 @@ export function InboxDetail({
         setThread(
           await githubWorkItemThread(
             item.projectPath,
+            item.repo,
             githubKind,
             item.number,
             {
@@ -1876,6 +1895,7 @@ export function InboxDetail({
     invalidateGithubItem(item.projectPath, githubKind, item.number);
     const next = await githubWorkItemDetails(
       item.projectPath,
+      item.repo,
       githubKind,
       item.number,
     );

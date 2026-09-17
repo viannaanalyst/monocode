@@ -1,5 +1,6 @@
 import {
   Archive,
+  BellOff,
   Check,
   ChevronDown,
   ChevronRight,
@@ -20,8 +21,16 @@ import {
   StickyNote,
   Trash2,
 } from "./icons";
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { useDragResize } from "../hooks/useDragResize";
+import type { PaneEdge } from "../lib/layout";
 import { useLockOverscroll } from "../hooks/useLockOverscroll";
 import { useProjectDiffStats } from "../hooks/useProjectDiffStats";
 import { useAnimatedReorder } from "../hooks/useAnimatedReorder";
@@ -35,7 +44,7 @@ import {
 } from "../lib/appearance";
 import { basename, revealPath, type GitDiffStats } from "../lib/fs";
 import { IS_MAC, IS_WIN, MOD } from "../lib/platform";
-import { projectKey, projectName } from "../lib/paths";
+import { pathKey, projectKey, projectName } from "../lib/paths";
 import {
   collectRailProjects,
   loadPinnedProjects,
@@ -66,6 +75,9 @@ import {
 import { formatLiveElapsed, type LiveAgent } from "../lib/liveAgents";
 import type { SessionSummary } from "../lib/sessionStore";
 import { ExplorerMenu, type ExplorerMenuItem } from "./ExplorerMenu";
+import { startDragGhost, type DragGhost } from "../lib/dragGhost";
+import { suppressTextSelection } from "../lib/drag";
+import { paneDropFromPoint, setExternalPaneDrop } from "../lib/paneDrop";
 import { ModelBrandIcon } from "./ModelBrandIcon";
 import { resolveModel } from "../lib/models";
 import { sessionDisplayTitle } from "../lib/session";
@@ -85,6 +97,20 @@ import { TabGroupMenu, type TabGroupMenuExtraItem } from "./TabGroupMenu";
 import { TerminalSpinner } from "./TerminalSpinner";
 import type { SettingsSectionId } from "../lib/settings";
 import { t, withShortcut } from "../i18n";
+import {
+  notificationMuteActions,
+  notificationMuteDeadline,
+  notificationMuteStatus,
+} from "./notificationMuteActions";
+import { NotificationMuteDatePicker } from "./NotificationMuteDatePicker";
+import { Popover } from "./Popover";
+import { updateNotificationPreferences } from "../lib/notificationPreferences";
+import {
+  knownNotificationProject,
+  type NotificationProject,
+} from "../lib/notificationProjects";
+import { useProjectNotificationPreferences } from "../hooks/useProjectNotificationPreferences";
+import { useNotificationProjects } from "../hooks/useNotificationProjects";
 
 function revealLabel() {
   if (IS_MAC) return t("Reveal in Finder");
@@ -96,6 +122,8 @@ function projectMenuExtraItems(
   pinned: boolean,
   canRemove: boolean,
   canImport: boolean,
+  notificationReady: boolean,
+  canConfigureNotifications: boolean,
 ): TabGroupMenuExtraItem[] {
   const items: TabGroupMenuExtraItem[] = [
     {
@@ -107,6 +135,14 @@ function projectMenuExtraItems(
       ? { id: "unpin", label: t("Unpin project"), icon: PinOff }
       : { id: "pin", label: t("Pin project"), icon: Pin },
     { id: "reveal", label: revealLabel(), icon: FolderOpen },
+    {
+      id: "notifications-mute",
+      label: t("Mute notifications"),
+      icon: BellOff,
+      sepBefore: true,
+      disabled: !notificationReady,
+      submenu: notificationMuteActions(),
+    },
     ...(canImport
       ? [
           {
@@ -117,6 +153,13 @@ function projectMenuExtraItems(
         ]
       : []),
   ];
+  if (canConfigureNotifications) {
+    items.push({
+      id: "notifications-settings",
+      label: t("Notification settings…"),
+      icon: Settings,
+    });
+  }
   if (canRemove) {
     items.push(
       { id: "archive", label: t("Archive"), icon: Archive, sepBefore: true },
@@ -160,10 +203,16 @@ type Props = {
   onCancelReminders?: (sessionIds: readonly string[]) => void;
   reminderSessionIds?: Set<string>;
   onNewInProject?: (cwd: string) => void;
+  onPlaceSessionOnPane?: (
+    sessionId: string,
+    targetId: string,
+    edge: PaneEdge,
+  ) => void;
   onSelectProject: (path: string) => void;
   onOpenProject: () => void;
   onRemoveProject?: (path: string, options: { purgeData: boolean }) => void;
   onImportSession?: (cwd: string) => void;
+  onOpenNotificationSettings?: (projectPath: string) => void;
   liveAgents?: LiveAgent[];
   activeSessionId?: string;
   onSelectAgent?: (sessionId: string) => void;
@@ -209,10 +258,12 @@ export function ProjectRail({
   onCancelReminders,
   reminderSessionIds,
   onNewInProject,
+  onPlaceSessionOnPane,
   onSelectProject,
   onOpenProject,
   onRemoveProject,
   onImportSession,
+  onOpenNotificationSettings,
   liveAgents = [],
   activeSessionId,
   onSelectAgent,
@@ -247,6 +298,16 @@ export function ProjectRail({
     path: string;
     projectKey: string;
   } | null>(null);
+  const [notificationMenu, setNotificationMenu] = useState<{
+    x: number;
+    y: number;
+    path: string;
+    project: NotificationProject;
+  } | null>(null);
+  const [notificationError, setNotificationError] = useState<string | null>(
+    null,
+  );
+  const menuTrigger = useRef<HTMLElement | null>(null);
   const [removing, setRemoving] = useState<{
     path: string;
     name: string;
@@ -258,10 +319,27 @@ export function ProjectRail({
   const lockOverscroll = useLockOverscroll<HTMLDivElement>();
   const scrollRef = useRef<HTMLDivElement>(null);
   const groupLogos = useTabGroupLogos();
+  const notificationPreferences = useProjectNotificationPreferences();
+  const notificationPath = projectMenu?.path;
+  const readyNotificationProject = notificationPath
+    ? knownNotificationProject(notificationPath)
+    : undefined;
+  const menuMuteStatus = readyNotificationProject
+    ? notificationMuteStatus(notificationPreferences[readyNotificationProject.id])
+    : null;
+  useEffect(() => {
+    setNotificationError(null);
+  }, [notificationPath]);
   const allProjects = useMemo(
     () => collectRailProjects(recents, cwd),
     [cwd, recents],
   );
+  const notificationProjects = useNotificationProjects([...allProjects.keys()]);
+  const muteStatuses = new Map<string, string | null>();
+  for (const project of notificationProjects.projects) {
+    const status = notificationMuteStatus(notificationPreferences[project.id]);
+    for (const path of project.paths) muteStatuses.set(pathKey(path), status);
+  }
   const sections = useMemo(
     () => projectRailSections(recents, cwd, railOrder, pinnedPaths),
     [cwd, pinnedPaths, railOrder, recents],
@@ -298,7 +376,14 @@ export function ProjectRail({
     return () => scrollParent.removeEventListener("scroll", onScroll, true);
   }, [projectMenu]);
 
-  const openProjectMenu = (path: string, x: number, y: number) => {
+  const openProjectMenu = (
+    path: string,
+    x: number,
+    y: number,
+    trigger: HTMLElement | null = null,
+  ) => {
+    menuTrigger.current = trigger;
+    setNotificationMenu(null);
     setProjectMenu({
       x,
       y,
@@ -307,13 +392,21 @@ export function ProjectRail({
     });
   };
 
+  const closeNotificationMenu = () => {
+    setNotificationMenu(null);
+    menuTrigger.current?.focus();
+  };
+
   const onProjectContextMenu = (
     path: string,
     event: MouseEvent<HTMLElement>,
   ) => {
     event.preventDefault();
     event.stopPropagation();
-    openProjectMenu(path, event.clientX, event.clientY);
+    const trigger =
+      event.currentTarget.querySelector<HTMLButtonElement>("button");
+    trigger?.focus();
+    openProjectMenu(path, event.clientX, event.clientY, trigger);
   };
 
   const onProjectRename = (projectKey: string, label: string) => {
@@ -388,6 +481,33 @@ export function ProjectRail({
   const onProjectMenuPick = (action: string) => {
     if (!projectMenu) return;
     const { path, projectKey } = projectMenu;
+    if (action === "mute:custom") {
+      if (!readyNotificationProject) return false;
+      setNotificationMenu({ ...projectMenu, project: readyNotificationProject });
+      setProjectMenu(null);
+      return;
+    }
+    if (action.startsWith("mute:") || action === "notifications-resume") {
+      if (!readyNotificationProject) return false;
+      const mutedUntil = notificationMuteDeadline(action);
+      if (action !== "notifications-resume" && mutedUntil === undefined)
+        return false;
+      try {
+        updateNotificationPreferences([readyNotificationProject.id], {
+          mutedUntil,
+        });
+      } catch {
+        setNotificationError(
+          t("Could not save notification preferences. Please try again."),
+        );
+        return false;
+      }
+      return;
+    }
+    if (action === "notifications-settings") {
+      onOpenNotificationSettings?.(path);
+      return;
+    }
     if (action === "pin" || action === "unpin") onTogglePin(path);
     else if (action === "background") {
       setBackgroundProject({
@@ -513,6 +633,7 @@ export function ProjectRail({
                 groupCustomColors={groupCustomColors}
                 groupLogos={groupLogos}
                 groupMascots={groupMascots}
+                muteStatuses={muteStatuses}
                 sessions={sessions}
                 onSelectSession={onSelectSession}
                 busySessionIds={busySessionIds}
@@ -525,6 +646,7 @@ export function ProjectRail({
                 onCancelReminders={onCancelReminders}
                 reminderSessionIds={reminderSessionIds}
                 onNewInProject={onNewInProject}
+                onPlaceSessionOnPane={onPlaceSessionOnPane}
               />
             ) : null}
 
@@ -547,6 +669,7 @@ export function ProjectRail({
               groupCustomColors={groupCustomColors}
               groupLogos={groupLogos}
               groupMascots={groupMascots}
+              muteStatuses={muteStatuses}
               sessions={sessions}
               onSelectSession={onSelectSession}
               busySessionIds={busySessionIds}
@@ -559,6 +682,7 @@ export function ProjectRail({
               onCancelReminders={onCancelReminders}
               reminderSessionIds={reminderSessionIds}
               onNewInProject={onNewInProject}
+              onPlaceSessionOnPane={onPlaceSessionOnPane}
             />
           </div>
           <LiveAgentsPreview
@@ -624,17 +748,56 @@ export function ProjectRail({
           onMascotChange={onProjectMascotChange}
           onLogoChange={() => {}}
           onPick={() => {}}
-          onClose={() => setProjectMenu(null)}
+          onClose={() => {
+            setProjectMenu(null);
+            menuTrigger.current?.focus();
+          }}
           showActions={false}
+          leadingAction={
+            menuMuteStatus
+              ? {
+                  id: "notifications-resume",
+                  label: t("Resume notifications"),
+                  description: menuMuteStatus,
+                  icon: BellOff,
+                }
+              : undefined
+          }
           extraItems={projectMenuExtraItems(
             pinnedPaths.some((pinned) =>
               sameProjectPath(pinned, projectMenu.path),
             ),
             Boolean(onRemoveProject),
             Boolean(onImportSession),
+            Boolean(readyNotificationProject),
+            Boolean(onOpenNotificationSettings),
           )}
+          footer={
+            notificationError ? (
+              <p role="alert" className="px-2 py-1.5 text-xs text-red-400">
+                {notificationError}
+              </p>
+            ) : undefined
+          }
           onExtraPick={onProjectMenuPick}
         />
+      ) : null}
+      {notificationMenu ? (
+        <Popover
+          anchor={{ x: notificationMenu.x, y: notificationMenu.y }}
+          gap={0}
+          width={280}
+          role="dialog"
+          aria-label={t("Mute project notifications")}
+          onDismiss={closeNotificationMenu}
+          className="overflow-y-auto p-3"
+        >
+          <NotificationMuteDatePicker
+            projectIds={[notificationMenu.project.id]}
+            onCancel={closeNotificationMenu}
+            onChanged={closeNotificationMenu}
+          />
+        </Popover>
       ) : null}
       {removing ? (
         <RemoveProjectDialog
@@ -879,6 +1042,7 @@ function ProjectSection({
   groupCustomColors,
   groupLogos,
   groupMascots,
+  muteStatuses,
   sessions = [],
   onSelectSession,
   busySessionIds,
@@ -891,6 +1055,7 @@ function ProjectSection({
   onCancelReminders,
   reminderSessionIds,
   onNewInProject,
+  onPlaceSessionOnPane,
 }: {
   label: string;
   items: RecentProject[];
@@ -904,12 +1069,18 @@ function ProjectSection({
   onSelect: (path: string) => void;
   onTogglePin: (path: string) => void;
   onContextMenu: (path: string, event: MouseEvent<HTMLElement>) => void;
-  onOpenMenu: (path: string, x: number, y: number) => void;
+  onOpenMenu: (
+    path: string,
+    x: number,
+    y: number,
+    trigger?: HTMLElement | null,
+  ) => void;
   groupLabels: Record<string, string>;
   groupColors: Record<string, number>;
   groupCustomColors: Record<string, string>;
   groupLogos: ReturnType<typeof useTabGroupLogos>;
   groupMascots: Record<string, string>;
+  muteStatuses: ReadonlyMap<string, string | null>;
   sessions?: SessionSummary[];
   onSelectSession?: (sessionId: string) => void;
   busySessionIds?: Set<string>;
@@ -922,6 +1093,11 @@ function ProjectSection({
   onCancelReminders?: (sessionIds: readonly string[]) => void;
   reminderSessionIds?: Set<string>;
   onNewInProject?: (cwd: string) => void;
+  onPlaceSessionOnPane?: (
+    sessionId: string,
+    targetId: string,
+    edge: PaneEdge,
+  ) => void;
 }) {
   return (
     <div className="shrink-0 mb-2">
@@ -964,6 +1140,7 @@ function ProjectSection({
             groupCustomColors={groupCustomColors}
             groupLogos={groupLogos}
             groupMascots={groupMascots}
+            muteStatus={muteStatuses.get(pathKey(item.path)) ?? undefined}
             sessions={sessions}
             onSelectSession={onSelectSession}
             busySessionIds={busySessionIds}
@@ -976,6 +1153,7 @@ function ProjectSection({
             onCancelReminders={onCancelReminders}
             reminderSessionIds={reminderSessionIds}
             onNewInProject={onNewInProject}
+            onPlaceSessionOnPane={onPlaceSessionOnPane}
           />
         ))}
       </div>
@@ -985,6 +1163,142 @@ function ProjectSection({
 
 const nameClassName =
   "min-w-0 flex-1 truncate text-sm leading-tight";
+
+function ProjectSessionRow({
+  session,
+  busy,
+  approval,
+  onSelect,
+  onOpenMenu,
+  onPlaceOnPane,
+}: {
+  session: SessionSummary;
+  busy: boolean;
+  approval: boolean;
+  onSelect: (sessionId: string) => void;
+  onOpenMenu: (x: number, y: number, session: SessionSummary) => void;
+  onPlaceOnPane?: (sessionId: string, targetId: string, edge: PaneEdge) => void;
+}) {
+  const drag = useSessionRowPaneDrag(session.id, onPlaceOnPane);
+  return (
+    <button
+      type="button"
+      data-no-drag
+      onPointerDown={(event) => {
+        event.stopPropagation();
+        drag.onPointerDown(event);
+      }}
+      onClick={(event) => {
+        event.stopPropagation();
+        if (performance.now() < drag.skipClickUntil.current) return;
+        onSelect(session.id);
+      }}
+      onContextMenu={(event) => {
+        event.preventDefault();
+        onOpenMenu(event.clientX, event.clientY, session);
+      }}
+      className="flex h-7 min-w-0 items-center gap-1.5 rounded-md px-2 text-left text-[12px] text-content/60 hover:bg-content/5 hover:text-content"
+    >
+      {approval ? (
+        <span className="size-1.5 shrink-0 rounded-full bg-amber-400" />
+      ) : busy ? (
+        <span className="size-1.5 shrink-0 rounded-full bg-emerald-400" />
+      ) : null}
+      <ModelBrandIcon
+        model={resolveModel(session.harness, session.model)}
+        className="size-3.5 shrink-0"
+      />
+      <span className="min-w-0 flex-1 truncate">
+        {sessionDisplayTitle(session.title, session.harness)}
+      </span>
+    </button>
+  );
+}
+
+/**
+ * Pointer gesture that places a session row on a pane edge. Mirrors the
+ * sidebar card drag so conversations split the workspace from the rail too.
+ */
+function useSessionRowPaneDrag(
+  sessionId: string,
+  onPlaceOnPane?: (sessionId: string, targetId: string, edge: PaneEdge) => void,
+) {
+  const skipClickUntil = useRef(0);
+  const onPointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (event.button !== 0 || !onPlaceOnPane) return;
+    const handle = event.currentTarget;
+    const pointerId = event.pointerId;
+    const startX = event.clientX;
+    const startY = event.clientY;
+    let active = false;
+    let lastX = startX;
+    let lastY = startY;
+    let ghost: DragGhost | null = null;
+    handle.setPointerCapture(pointerId);
+    const restoreSelection = suppressTextSelection();
+
+    const onMove = (ev: PointerEvent) => {
+      lastX = ev.clientX;
+      lastY = ev.clientY;
+      if (!active) {
+        if (Math.hypot(ev.clientX - startX, ev.clientY - startY) < 5) return;
+        active = true;
+        ghost = startDragGhost(handle, ev.clientX, ev.clientY);
+        setExternalPaneDrop({ fromId: sessionId, overId: null, edge: "left" });
+      }
+      ghost?.move(ev.clientX, ev.clientY);
+      const over = paneDropFromPoint(ev.clientX, ev.clientY);
+      if (!over || over.id === sessionId) {
+        setExternalPaneDrop({
+          fromId: sessionId,
+          overId: null,
+          edge: over?.edge ?? "left",
+        });
+        return;
+      }
+      setExternalPaneDrop({
+        fromId: sessionId,
+        overId: over.id,
+        edge: over.edge,
+      });
+    };
+    const onUp = () => finish(true);
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.key !== "Escape") return;
+      ev.preventDefault();
+      finish(false);
+    };
+
+    function finish(commit: boolean) {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+      window.removeEventListener("keydown", onKey);
+      restoreSelection();
+      setExternalPaneDrop(null);
+      ghost?.end();
+      ghost = null;
+      try {
+        handle.releasePointerCapture(pointerId);
+      } catch {
+        /* already released */
+      }
+      if (!active) return;
+      skipClickUntil.current = performance.now() + 400;
+      if (!commit) return;
+      const over = paneDropFromPoint(lastX, lastY);
+      if (over && over.id !== sessionId) {
+        onPlaceOnPane?.(sessionId, over.id, over.edge);
+      }
+    }
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    window.addEventListener("keydown", onKey);
+  };
+  return { onPointerDown, skipClickUntil };
+}
 
 function ProjectCard({
   item,
@@ -1001,6 +1315,7 @@ function ProjectCard({
   groupCustomColors,
   groupLogos,
   groupMascots,
+  muteStatus,
   sessions = [],
   onSelectSession,
   busySessionIds,
@@ -1013,6 +1328,7 @@ function ProjectCard({
   onCancelReminders,
   reminderSessionIds,
   onNewInProject,
+  onPlaceSessionOnPane,
 }: {
   item: RecentProject;
   selected: boolean;
@@ -1022,12 +1338,18 @@ function ProjectCard({
   onSelect: (path: string) => void;
   onTogglePin: (path: string) => void;
   onContextMenu: (path: string, event: MouseEvent<HTMLElement>) => void;
-  onOpenMenu: (path: string, x: number, y: number) => void;
+  onOpenMenu: (
+    path: string,
+    x: number,
+    y: number,
+    trigger?: HTMLElement | null,
+  ) => void;
   groupLabels: Record<string, string>;
   groupColors: Record<string, number>;
   groupCustomColors: Record<string, string>;
   groupLogos: ReturnType<typeof useTabGroupLogos>;
   groupMascots: Record<string, string>;
+  muteStatus?: string;
   sessions?: SessionSummary[];
   onSelectSession?: (sessionId: string) => void;
   busySessionIds?: Set<string>;
@@ -1040,6 +1362,11 @@ function ProjectCard({
   onCancelReminders?: (sessionIds: readonly string[]) => void;
   reminderSessionIds?: Set<string>;
   onNewInProject?: (cwd: string) => void;
+  onPlaceSessionOnPane?: (
+    sessionId: string,
+    targetId: string,
+    edge: PaneEdge,
+  ) => void;
 }) {
   const fallbackName = basename(item.path);
   const key = projectKey(item.path);
@@ -1095,11 +1422,24 @@ function ProjectCard({
         onSelect(item.path);
       }}
       onContextMenu={(event) => onContextMenu(item.path, event)}
+      onKeyDown={(event) => {
+        if (
+          event.key !== "ContextMenu" &&
+          !(event.shiftKey && event.key === "F10")
+        )
+          return;
+        event.preventDefault();
+        event.stopPropagation();
+        const rect = event.currentTarget.getBoundingClientRect();
+        const trigger =
+          event.currentTarget.querySelector<HTMLButtonElement>("button");
+        onOpenMenu(item.path, rect.left, rect.bottom, trigger);
+      }}
     >
       <button
         type="button"
         data-no-tooltip
-        aria-label={cardAriaLabel}
+        aria-label={muteStatus ? `${cardAriaLabel}, ${muteStatus}` : cardAriaLabel}
         aria-current={selected ? "true" : undefined}
         className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left group-hover:pr-20"
       >
@@ -1154,6 +1494,15 @@ function ProjectCard({
         ) : (
           <span className={nameClassName}>{name}</span>
         )}
+        {muteStatus ? (
+          <span
+            role="img"
+            aria-label={muteStatus}
+            className="grid size-4 shrink-0 place-items-center text-amber-400"
+          >
+            <BellOff className="size-3.5" strokeWidth={1.75} aria-hidden="true" />
+          </span>
+        ) : null}
         {hasChanges ? (
           <span className="project-card-stats shrink-0 group-hover:hidden">
             <ProjectDiffStat additions={additions} deletions={deletions} />
@@ -1169,7 +1518,12 @@ function ProjectCard({
         onPointerDown={(event) => event.stopPropagation()}
         onClick={(event) => {
           event.stopPropagation();
-          onOpenMenu(item.path, event.clientX, event.clientY);
+          onOpenMenu(
+            item.path,
+            event.clientX,
+            event.clientY,
+            event.currentTarget,
+          );
         }}
         className="absolute right-1 top-1/2 hidden size-6 -translate-y-1/2 place-items-center rounded-md text-content/55 hover:bg-content/8 hover:text-content group-hover:grid"
       >
@@ -1238,34 +1592,17 @@ function ProjectCard({
                     className="h-7 w-full rounded-md bg-content/10 px-2 text-[12px] text-content outline-none"
                   />
                 ) : (
-                <button
+                <ProjectSessionRow
                   key={session.id}
-                  type="button"
-                  data-no-drag
-                  onClick={() => onSelectSession?.(session.id)}
-                  onContextMenu={(event) => {
-                    event.preventDefault();
-                    setSessionMenu({
-                      x: event.clientX,
-                      y: event.clientY,
-                      session,
-                    });
-                  }}
-                  className="flex h-7 min-w-0 items-center gap-1.5 rounded-md px-2 text-left text-[12px] text-content/60 hover:bg-content/5 hover:text-content"
-                >
-                  {approvalSessionIds?.has(session.id) ? (
-                    <span className="size-1.5 shrink-0 rounded-full bg-amber-400" />
-                  ) : busySessionIds?.has(session.id) ? (
-                    <span className="size-1.5 shrink-0 rounded-full bg-emerald-400" />
-                  ) : null}
-                  <ModelBrandIcon
-                    model={resolveModel(session.harness, session.model)}
-                    className="size-3.5 shrink-0"
-                  />
-                  <span className="min-w-0 flex-1 truncate">
-                    {sessionDisplayTitle(session.title, session.harness)}
-                  </span>
-                </button>
+                  session={session}
+                  busy={busySessionIds?.has(session.id) ?? false}
+                  approval={approvalSessionIds?.has(session.id) ?? false}
+                  onSelect={(sessionId) => onSelectSession?.(sessionId)}
+                  onOpenMenu={(x, y, entry) =>
+                    setSessionMenu({ x, y, session: entry })
+                  }
+                  onPlaceOnPane={onPlaceSessionOnPane}
+                />
                 )
               )}
             </div>

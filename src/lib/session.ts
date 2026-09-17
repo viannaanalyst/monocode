@@ -73,10 +73,13 @@ export type PlanBlockMeta = {
   edited?: boolean;
 };
 
-export type PlanBuildTarget = {
+export type ModelTarget = {
   harness: HarnessId;
   model: string;
+  modelSettings: Record<string, string>;
 };
+
+export type PlanBuildTarget = ModelTarget;
 
 export type HandoffStatus = "preparing" | "ready";
 
@@ -263,6 +266,11 @@ export type Block = {
   browserCard?: BrowserCardMeta;
   /** Mid-turn interjection chrome; system blocks only. Body lives in text. */
   interjection?: InterjectionMeta;
+  /**
+   * A system row the reader must not miss — an error or an interruption —
+   * rather than turn chrome like a status ping. Never folds into the trail.
+   */
+  notice?: "error" | "interrupt";
 };
 
 export type RuntimeMode =

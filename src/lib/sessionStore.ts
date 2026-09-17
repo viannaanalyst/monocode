@@ -488,6 +488,9 @@ export function sanitizeBlock(block: Block): Block | null {
   if (block.role === "system") {
     const interjection = sanitizeInterjection(block.interjection);
     if (interjection) next.interjection = interjection;
+    if (block.notice === "error" || block.notice === "interrupt") {
+      next.notice = block.notice;
+    }
   }
   return next;
 }

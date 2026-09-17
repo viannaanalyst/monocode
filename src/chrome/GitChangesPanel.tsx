@@ -59,6 +59,7 @@ import {
   type GitPr,
 } from "../lib/fs";
 import type { HarnessId } from "../lib/session";
+import { recordInboxSelfActivity } from "../lib/inboxSelfActivity";
 import {
   loadChangesView,
   saveChangesView,
@@ -199,7 +200,7 @@ export function GitChangesPanel({
       />
       ) : null}
       <div
-        className={`shrink-0 overflow-hidden border-t border-content/10 ${
+        className={`shrink-0 overflow-hidden border-t border-stroke ${
           graphExpanded ? "min-h-0" : "h-7"
         }`}
         style={graphExpanded ? { height: graphHeight } : undefined}
@@ -314,6 +315,16 @@ function ChangedFiles({
     window.alert(error instanceof Error ? error.message : String(error));
   };
 
+  const recordPrActivity = (number = pr?.number) => {
+    if (!number) return;
+    recordInboxSelfActivity({
+      provider: "github",
+      kind: "pr",
+      number,
+      projectPath: cwd,
+    });
+  };
+
   const confirmDefault = async (kind: "push" | "pr") => {
     if (!onDefault || !index?.branch) return true;
     const branch = index.branch;
@@ -418,7 +429,10 @@ function ChangedFiles({
     setMenuOpen(false);
     try {
       await gitCommit(cwd, message);
-      if (push || createPr) await gitPush(cwd);
+      if (push || createPr) {
+        await gitPush(cwd);
+        recordPrActivity();
+      }
       setMessage("");
       onMutated();
       if (createPr) {
@@ -435,9 +449,11 @@ function ChangedFiles({
 
   const sync = async () => {
     if (!index || !(canSync || canPublish)) return;
+    const pushesCommits = index.ahead > 0;
     setBusy("sync");
     try {
       await gitSync(cwd);
+      if (pushesCommits) recordPrActivity();
       onMutated();
       reloadPr();
     } catch (error) {
@@ -458,6 +474,8 @@ function ChangedFiles({
       content.base,
       content.head,
     );
+    const number = Number(/\/pull\/(\d+)(?:[/?#]|$)/.exec(url)?.[1]);
+    if (Number.isInteger(number) && number > 0) recordPrActivity(number);
     await openUrl(url.trim());
   };
 
@@ -482,7 +500,7 @@ function ChangedFiles({
     <aside
       className={`flex min-h-0 min-w-0 flex-col ${fill ? "flex-1" : "shrink-0"}`}
     >
-      <div className="shrink-0 border-b border-content/10 p-2">
+      <div className="shrink-0 border-b border-stroke p-2">
         <div className="relative">
           <textarea
             ref={messageRef}
@@ -1187,7 +1205,7 @@ function ChangeRow({
           tree ? "" : "pl-2"
         } ${
           active
-            ? "bg-content/10 text-content"
+            ? "bg-selection text-content"
             : "text-content hover:bg-content/5"
         }`}
       >
