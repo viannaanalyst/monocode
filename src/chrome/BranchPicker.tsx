@@ -278,10 +278,12 @@ export function BranchPicker({
           }}
           className={
             missingGit
-              ? "flex min-w-0 cursor-default items-center gap-1.5 text-content/50"
-              : `flex min-w-0 items-center gap-1.5 ${
-                  open ? "text-content" : "text-content/50 hover:text-content"
-                } disabled:opacity-40 disabled:hover:text-content/50`
+              ? "flex h-6 min-w-0 cursor-default items-center gap-1.5 rounded-full px-1.5 text-content/50"
+              : `flex h-6 min-w-0 items-center gap-1.5 rounded-full px-1.5 text-content/60 ${
+                  open
+                    ? "bg-content/10 text-content"
+                    : "hover:bg-content/10 hover:text-content"
+                } disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-content/50`
           }
         >
           <GitBranch className="size-3.5 shrink-0" strokeWidth={1.5} />
@@ -302,7 +304,7 @@ export function BranchPicker({
             )}
           </span>
           <ChevronDown
-            className="size-3.5 shrink-0 text-content/40"
+            className="size-3.5 shrink-0 text-content/50"
             strokeWidth={1.75}
           />
         </button>
