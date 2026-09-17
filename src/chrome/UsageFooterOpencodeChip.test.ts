@@ -8,7 +8,7 @@ const rateLimitsFetch = vi.hoisted(() => ({
   consumeCodexRateLimitResetCredit: vi.fn(),
   fetchClaudeRateLimits: vi.fn(),
   fetchCodexRateLimits: vi.fn(),
-  fetchOpencodeRateLimits: vi.fn(),
+  fetchOpencodeGoRateLimits: vi.fn(),
 }));
 
 vi.mock("../lib/rateLimitsFetch", () => rateLimitsFetch);
@@ -55,7 +55,7 @@ beforeEach(() => {
   );
   rateLimitsFetch.fetchClaudeRateLimits.mockReset();
   rateLimitsFetch.fetchCodexRateLimits.mockReset();
-  rateLimitsFetch.fetchOpencodeRateLimits
+  rateLimitsFetch.fetchOpencodeGoRateLimits
     .mockReset()
     .mockResolvedValue(opencodeLimits());
   container = document.createElement("div");
@@ -100,7 +100,7 @@ describe("opencode usage chip", () => {
   });
 
   it("does not open a popover without windows", async () => {
-    rateLimitsFetch.fetchOpencodeRateLimits.mockResolvedValue({
+    rateLimitsFetch.fetchOpencodeGoRateLimits.mockResolvedValue({
       ...opencodeLimits(),
       session: null,
       weekly: null,

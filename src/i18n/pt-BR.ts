@@ -222,6 +222,13 @@ export const PT_BR: Record<string, string> = {
   "Linear API key": "Chave de API do Linear",
   "Main pane glass": "Vidro do painel principal",
   "Mark all as read": "Marcar tudo como lido",
+  "Open in editor": "Abrir no editor",
+  "Looking for editors…": "Procurando editores…",
+  "No supported editors found": "Nenhum editor compatível encontrado",
+  "Could not open the external editor. Please try again.":
+    "Não foi possível abrir o editor externo. Tente novamente.",
+  "Create and checkout {name}": "Criar e mudar para {name}",
+  "New branch": "Nova branch",
   "5-hour limit": "Limite de 5 horas",
   "Weekly limit": "Limite semanal",
   "Monthly limit": "Limite mensal",

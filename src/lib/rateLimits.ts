@@ -79,11 +79,13 @@ export function shouldFetchRateLimits(input: {
   visible: boolean;
   claude: ProviderRateLimits;
   codex: ProviderRateLimits;
+  opencode?: ProviderRateLimits;
   now?: number;
 }): boolean {
   return (
     shouldFetchProvider(input.claude, input) ||
-    shouldFetchProvider(input.codex, input)
+    shouldFetchProvider(input.codex, input) ||
+    (input.opencode ? shouldFetchProvider(input.opencode, input) : false)
   );
 }
 
@@ -192,6 +194,7 @@ export function formatUsagePercent(usedPercent: number): string {
 export function formatWindowLabel(windowMinutes: number): string {
   if (windowMinutes === MONTHLY_WINDOW_MINUTES) return "mo";
   if (windowMinutes === WEEKLY_WINDOW_MINUTES) return "wk";
+  if (windowMinutes === MONTHLY_WINDOW_MINUTES) return "mo";
   if (windowMinutes === SESSION_WINDOW_MINUTES) return "5h";
   if (windowMinutes === 60) return "1h";
   if (windowMinutes < 60) return `${windowMinutes}m`;
@@ -323,53 +326,6 @@ export function parseClaudeOAuthUsage(body: string): ProviderRateLimits {
   };
 }
 
-/**
- * OpenCode Go returns three rolling windows: `rolling` (5h), `weekly`, and
- * `monthly`, each as a used percentage plus an ISO reset time.
- */
-export function parseOpencodeUsage(body: string): ProviderRateLimits {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(body);
-  } catch {
-    return errorRateLimits("opencode", "OpenCode usage response was not JSON");
-  }
-  const root = asRecord(parsed);
-  const usage = asRecord(root?.usage) ?? root;
-  if (!usage) {
-    return errorRateLimits("opencode", "OpenCode usage response was empty");
-  }
-  return {
-    provider: "opencode",
-    session: opencodeWindow(usage, "rolling", SESSION_WINDOW_MINUTES),
-    weekly: opencodeWindow(usage, "weekly", WEEKLY_WINDOW_MINUTES),
-    monthly: opencodeWindow(usage, "monthly", MONTHLY_WINDOW_MINUTES),
-    resetCredits: null,
-    updatedAt: Date.now(),
-    error: null,
-    status: "ok",
-  };
-}
-
-function opencodeWindow(
-  usage: Record<string, unknown>,
-  key: string,
-  windowMinutes: number,
-): RateLimitWindow | null {
-  const rec = asRecord(usage[key]);
-  if (!rec) return null;
-  const percent =
-    numberField(rec, "percent") ??
-    numberField(rec, "usedPercent") ??
-    numberField(rec, "utilization");
-  if (percent == null) return null;
-  return {
-    usedPercent: clampUsedPercent(percent),
-    windowMinutes,
-    resetsAt: parseResetTimestamp(rec.resetsAt ?? rec.resets_at),
-  };
-}
-
 type CodexWindowSnapshot = {
   usedPercent: number;
   windowDurationMins: number | null;
@@ -394,6 +350,48 @@ export function parseCodexRateLimits(result: unknown): ProviderRateLimits {
     updatedAt: Date.now(),
     error: null,
     status: "ok",
+  };
+}
+
+/**
+ * Parse the official OpenCode Go usage payload:
+ * { usage: { rolling: { status, percent, resetsAt },
+ *            weekly: {...}, monthly: {...} } }
+ * `percent` is percent used, matching the dashboard.
+ */
+export function parseOpencodeGoUsage(result: unknown): ProviderRateLimits {
+  const rec = asRecord(result);
+  const usage = asRecord(rec?.usage) ?? rec;
+  return {
+    provider: "opencode",
+    session: mapOpencodeGoWindow(usage?.rolling, SESSION_WINDOW_MINUTES),
+    weekly: mapOpencodeGoWindow(usage?.weekly, WEEKLY_WINDOW_MINUTES),
+    monthly: mapOpencodeGoWindow(usage?.monthly, MONTHLY_WINDOW_MINUTES),
+    resetCredits: null,
+    updatedAt: Date.now(),
+    error: null,
+    status: "ok",
+  };
+}
+
+function mapOpencodeGoWindow(
+  raw: unknown,
+  windowMinutes: number,
+): RateLimitWindow | null {
+  const rec = asRecord(raw);
+  if (!rec) return null;
+  // Require an explicit valid status; unknown shapes are dropped so the
+  // caller can treat a fully empty payload as an error, not a snapshot.
+  const status = rec.status;
+  if (status !== "ok" && status !== "rate-limited") return null;
+  const usedPercent =
+    numberField(rec, "percent") ?? numberField(rec, "usedPercent");
+  if (usedPercent == null) return null;
+  return {
+    usedPercent: clampUsedPercent(usedPercent),
+    windowMinutes,
+    resetsAt:
+      parseResetTimestamp(rec.resetsAt) ?? parseResetTimestamp(rec.resets_at),
   };
 }
 

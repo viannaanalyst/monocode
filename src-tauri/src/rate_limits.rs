@@ -3,12 +3,15 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde::Serialize;
 use serde_json::Value;
+#[cfg(target_os = "macos")]
+use sha2::{Digest, Sha256};
+use tauri::AppHandle;
+#[cfg(target_os = "macos")]
+use unicode_normalization::UnicodeNormalization;
 
 use crate::dirs_home;
 
 const OAUTH_USAGE_URL: &str = "https://api.anthropic.com/api/oauth/usage";
-const OPENCODE_USAGE_URL: &str = "https://opencode.ai/zen/go/v1/usage";
-const OPENCODE_USER_AGENT: &str = "opencode/1.18.0";
 const OAUTH_BETA: &str = "oauth-2025-04-20";
 const USER_AGENT: &str = "claude-code/2.1.0";
 const HTTP_TIMEOUT: Duration = Duration::from_secs(10);
@@ -27,6 +30,351 @@ pub struct ClaudeUsageFetch {
     pub http_status: Option<u16>,
     pub body: Option<String>,
     pub error: Option<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpencodeGoUsageFetch {
+    pub status: String,
+    pub http_status: Option<u16>,
+    pub body: Option<String>,
+    pub error: Option<String>,
+}
+
+const OPENCODE_GO_USAGE_URL: &str = "https://opencode.ai/zen/go/v1/usage";
+
+/// Fetch OpenCode Go 5h / weekly / monthly usage via the local Go API key.
+/// Runs in the host process so the webview CORS policy does not apply.
+/// The key never leaves the host process.
+#[tauri::command]
+pub async fn fetch_opencode_go_usage() -> Result<OpencodeGoUsageFetch, String> {
+    tauri::async_runtime::spawn_blocking(fetch_opencode_go_usage_sync)
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+fn opencode_go_result(
+    status: &str,
+    http_status: Option<u16>,
+    body: Option<String>,
+    error: Option<String>,
+) -> OpencodeGoUsageFetch {
+    OpencodeGoUsageFetch {
+        status: status.into(),
+        http_status,
+        body,
+        error,
+    }
+}
+
+fn fetch_opencode_go_usage_sync() -> Result<OpencodeGoUsageFetch, String> {
+    let Some(api_key) = read_opencode_go_api_key() else {
+        return Ok(opencode_go_result(
+            "unavailable",
+            None,
+            None,
+            Some("OpenCode Go not connected".into()),
+        ));
+    };
+    let agent = ureq::AgentBuilder::new().timeout(HTTP_TIMEOUT).build();
+    let result = agent
+        .get(OPENCODE_GO_USAGE_URL)
+        .set("Authorization", &format!("Bearer {api_key}"))
+        .call();
+    match result {
+        Ok(response) => {
+            let http_status = response.status();
+            let body = response.into_string().unwrap_or_default();
+            if (200..300).contains(&http_status) {
+                Ok(opencode_go_result(
+                    "ok",
+                    Some(http_status),
+                    Some(body),
+                    None,
+                ))
+            } else {
+                Ok(opencode_go_error(http_status))
+            }
+        }
+        Err(ureq::Error::Status(status, response)) => {
+            let _ = response.into_string();
+            Ok(opencode_go_error(status))
+        }
+        Err(error) => Ok(opencode_go_result(
+            "error",
+            None,
+            None,
+            Some(format!("OpenCode Go usage request failed: {error}")),
+        )),
+    }
+}
+
+fn opencode_go_error(status: u16) -> OpencodeGoUsageFetch {
+    // 403 means a valid key without a Go subscription — not a failure,
+    // so the footer can hide the chip instead of showing an error.
+    if status == 403 {
+        return opencode_go_result(
+            "unavailable",
+            Some(status),
+            None,
+            Some("No OpenCode Go subscription".into()),
+        );
+    }
+    let message = if status == 401 {
+        "OpenCode Go sign-in expired".into()
+    } else {
+        format!("OpenCode Go usage request failed ({status})")
+    };
+    opencode_go_result("error", Some(status), None, Some(message))
+}
+
+/// Resolve the OpenCode data directory the same way OpenCode does:
+/// `OPENCODE_DATA_DIR`, then `$XDG_DATA_HOME/<app>`, then the default
+/// `~/.local/share/<app>`, where `<app>` is `OPENCODE_APPNAME` or "opencode".
+fn opencode_data_dir() -> Option<PathBuf> {
+    if let Some(dir) = env_var("OPENCODE_DATA_DIR") {
+        return Some(PathBuf::from(dir));
+    }
+    let app = env_var("OPENCODE_APPNAME").unwrap_or_else(|| "opencode".into());
+    if let Some(xdg) = env_var("XDG_DATA_HOME") {
+        return Some(PathBuf::from(xdg).join(app));
+    }
+    let home = dirs_home().or_else(|| {
+        std::env::var_os("USERPROFILE").map(|value| value.to_string_lossy().into_owned())
+    })?;
+    Some(PathBuf::from(home).join(".local/share").join(app))
+}
+
+fn env_var(name: &str) -> Option<String> {
+    std::env::var(name)
+        .ok()
+        .map(|v| v.trim().to_string())
+        .filter(|v| !v.is_empty())
+}
+
+/// The Go key lives at `auth.json -> "opencode-go" -> "key"` inside the
+/// OpenCode data directory. Resolution mirrors OpenCode's own precedence:
+/// the `OPENCODE_AUTH_CONTENT` blob, then an explicit provider key in
+/// opencode config, then stored credentials on disk.
+fn read_opencode_go_api_key() -> Option<String> {
+    // Env-injected auth blob is authoritative when it parses: a valid blob
+    // without opencode-go means "no key", not "look elsewhere".
+    if let Some(blob) = env_var("OPENCODE_AUTH_CONTENT") {
+        if let Ok(value) = serde_json::from_str::<Value>(&blob) {
+            if value.is_object() {
+                return extract_opencode_go_key(&value);
+            }
+        }
+    }
+    if let Some(key) = read_opencode_config_api_key() {
+        return Some(key);
+    }
+    let primary = opencode_data_dir()?.join("auth.json");
+    let raw = std::fs::read_to_string(&primary)
+        .or_else(|_| {
+            // Legacy macOS location.
+            dirs_home()
+                .or_else(|| {
+                    std::env::var_os("USERPROFILE")
+                        .map(|value| value.to_string_lossy().into_owned())
+                })
+                .ok_or_else(|| {
+                    std::io::Error::new(std::io::ErrorKind::NotFound, "no home directory")
+                })
+                .and_then(|home| {
+                    std::fs::read_to_string(
+                        PathBuf::from(home).join("Library/Application Support/opencode/auth.json"),
+                    )
+                })
+        })
+        .ok()?;
+    extract_opencode_go_api_key(&raw)
+}
+
+/// Explicit `provider.options.apiKey` for the Go provider in opencode
+/// config: `OPENCODE_CONFIG_CONTENT`, then `OPENCODE_CONFIG`, then the
+/// global `opencode.json`. Only the Go provider IDs are considered so keys
+/// for unrelated providers are never picked up.
+fn read_opencode_config_api_key() -> Option<String> {
+    if let Some(content) = env_var("OPENCODE_CONFIG_CONTENT") {
+        if let Some(value) = parse_opencode_config(&content) {
+            if let Some(key) = config_go_api_key(&value) {
+                return Some(key);
+            }
+        }
+    }
+    opencode_config_paths()
+        .iter()
+        .filter_map(|path| std::fs::read_to_string(path).ok())
+        .filter_map(|raw| parse_opencode_config(&raw))
+        .find_map(|value| config_go_api_key(&value))
+}
+
+fn opencode_config_paths() -> Vec<PathBuf> {
+    let mut paths = Vec::new();
+    if let Some(custom) = env_var("OPENCODE_CONFIG") {
+        paths.push(PathBuf::from(custom));
+    }
+    if let Some(xdg) = env_var("XDG_CONFIG_HOME") {
+        let root = PathBuf::from(xdg).join("opencode");
+        paths.push(root.join("opencode.jsonc"));
+        paths.push(root.join("opencode.json"));
+    }
+    if let Some(home) = dirs_home().or_else(|| {
+        std::env::var_os("USERPROFILE").map(|value| value.to_string_lossy().into_owned())
+    }) {
+        let root = PathBuf::from(home).join(".config/opencode");
+        paths.push(root.join("opencode.jsonc"));
+        paths.push(root.join("opencode.json"));
+    }
+    paths
+}
+
+/// Parse OpenCode configuration using JSONC semantics: comments and trailing
+/// commas are accepted, while ordinary JSON stays on serde_json's fast path.
+fn parse_opencode_config(raw: &str) -> Option<Value> {
+    serde_json::from_str(raw.trim()).ok().or_else(|| {
+        let without_comments = strip_jsonc_comments(raw)?;
+        let normalized = strip_jsonc_trailing_commas(&without_comments);
+        serde_json::from_str(&normalized).ok()
+    })
+}
+
+fn strip_jsonc_comments(raw: &str) -> Option<String> {
+    let mut out = String::with_capacity(raw.len());
+    let mut chars = raw.chars().peekable();
+    let mut in_string = false;
+    let mut escaped = false;
+
+    while let Some(ch) = chars.next() {
+        if in_string {
+            out.push(ch);
+            if escaped {
+                escaped = false;
+            } else if ch == '\\' {
+                escaped = true;
+            } else if ch == '"' {
+                in_string = false;
+            }
+            continue;
+        }
+
+        match (ch, chars.peek().copied()) {
+            ('"', _) => {
+                in_string = true;
+                out.push(ch);
+            }
+            ('/', Some('/')) => {
+                let _ = chars.next();
+                out.push(' ');
+                for next in chars.by_ref() {
+                    if next == '\n' {
+                        out.push('\n');
+                        break;
+                    }
+                }
+            }
+            ('/', Some('*')) => {
+                let _ = chars.next();
+                out.push(' ');
+                let mut closed = false;
+                while let Some(next) = chars.next() {
+                    if next == '\n' {
+                        out.push('\n');
+                    }
+                    if next == '*' && chars.next_if_eq(&'/').is_some() {
+                        closed = true;
+                        break;
+                    }
+                }
+                if !closed {
+                    return None;
+                }
+            }
+            _ => out.push(ch),
+        }
+    }
+    Some(out)
+}
+
+fn strip_jsonc_trailing_commas(raw: &str) -> String {
+    let mut out = String::with_capacity(raw.len());
+    let mut chars = raw.chars().peekable();
+    let mut in_string = false;
+    let mut escaped = false;
+
+    while let Some(ch) = chars.next() {
+        if in_string {
+            out.push(ch);
+            if escaped {
+                escaped = false;
+            } else if ch == '\\' {
+                escaped = true;
+            } else if ch == '"' {
+                in_string = false;
+            }
+            continue;
+        }
+
+        match ch {
+            '"' => {
+                in_string = true;
+                out.push(ch);
+            }
+            ',' if matches!(
+                chars.clone().find(|next| !next.is_whitespace()),
+                Some('}' | ']')
+            ) => {}
+            _ => out.push(ch),
+        }
+    }
+    out
+}
+
+fn config_go_api_key(value: &Value) -> Option<String> {
+    let providers = value.get("provider")?.as_object()?;
+    for id in ["opencode-go", "opencode"] {
+        let Some(api_key) = providers
+            .get(id)
+            .and_then(|entry| entry.get("options"))
+            .and_then(|options| options.get("apiKey"))
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|key| !key.is_empty())
+        else {
+            continue;
+        };
+        if let Some(var) = api_key
+            .strip_prefix("{env:")
+            .and_then(|rest| rest.strip_suffix('}'))
+        {
+            if let Some(resolved) = env_var(var) {
+                return Some(resolved);
+            }
+            continue;
+        }
+        return Some(api_key.to_string());
+    }
+    None
+}
+
+fn extract_opencode_go_key(value: &Value) -> Option<String> {
+    let key = value.get("opencode-go")?.get("key")?.as_str()?.trim();
+    if key.is_empty() {
+        None
+    } else {
+        Some(key.to_string())
+    }
+}
+
+pub(crate) fn extract_opencode_go_api_key(raw: &str) -> Option<String> {
+    let value: Value = serde_json::from_str(raw.trim()).ok()?;
+    let key = value.get("opencode-go")?.get("key")?.as_str()?.trim();
+    if key.is_empty() {
+        None
+    } else {
+        Some(key.to_string())
+    }
 }
 
 struct ClaudeCredentials {
@@ -51,14 +399,18 @@ fn usage_result(
 /// Fetch Claude Code 5-hour / weekly usage via the local OAuth token.
 /// The token never leaves the host process.
 #[tauri::command]
-pub async fn fetch_claude_usage() -> Result<ClaudeUsageFetch, String> {
-    tauri::async_runtime::spawn_blocking(fetch_claude_usage_sync)
+pub async fn fetch_claude_usage(
+    app: AppHandle,
+    account_id: Option<String>,
+) -> Result<ClaudeUsageFetch, String> {
+    let config_dir = crate::harness::provider_account_dir(&app, "claude", account_id.as_deref())?;
+    tauri::async_runtime::spawn_blocking(move || fetch_claude_usage_sync(config_dir))
         .await
         .map_err(|e| e.to_string())?
 }
 
-fn fetch_claude_usage_sync() -> Result<ClaudeUsageFetch, String> {
-    let Some(creds) = read_claude_credentials() else {
+fn fetch_claude_usage_sync(config_dir: Option<PathBuf>) -> Result<ClaudeUsageFetch, String> {
+    let Some(creds) = read_claude_credentials(config_dir.as_deref()) else {
         return Ok(usage_result(
             "unavailable",
             None,
@@ -110,89 +462,6 @@ fn fetch_usage_with_token(token: &str) -> ClaudeUsageFetch {
     }
 }
 
-/// OpenCode Go rolling (5h) / weekly / monthly limits from the Zen usage API.
-/// The key comes from the opencode CLI's own `auth.json` and never leaves the
-/// host process.
-#[tauri::command]
-pub async fn fetch_opencode_usage() -> Result<ClaudeUsageFetch, String> {
-    tauri::async_runtime::spawn_blocking(fetch_opencode_usage_sync)
-        .await
-        .map_err(|e| e.to_string())
-}
-
-fn fetch_opencode_usage_sync() -> ClaudeUsageFetch {
-    let Some(key) = read_opencode_key() else {
-        return usage_result(
-            "unavailable",
-            None,
-            None,
-            Some("OpenCode Go not signed in".into()),
-        );
-    };
-
-    let agent = ureq::AgentBuilder::new().timeout(HTTP_TIMEOUT).build();
-    let result = agent
-        .get(OPENCODE_USAGE_URL)
-        .set("Authorization", &format!("Bearer {key}"))
-        .set("User-Agent", OPENCODE_USER_AGENT)
-        .set("Accept", "application/json")
-        .call();
-
-    match result {
-        Ok(response) => {
-            let http_status = response.status();
-            let body = response.into_string().unwrap_or_default();
-            if (200..300).contains(&http_status) {
-                usage_result("ok", Some(http_status), Some(body), None)
-            } else {
-                usage_result(
-                    "error",
-                    Some(http_status),
-                    None,
-                    Some(format!("OpenCode usage request failed ({http_status})")),
-                )
-            }
-        }
-        Err(ureq::Error::Status(status, response)) => {
-            let _ = response.into_string();
-            usage_result(
-                "error",
-                Some(status),
-                None,
-                Some(format!("OpenCode usage request failed ({status})")),
-            )
-        }
-        Err(error) => usage_result(
-            "error",
-            None,
-            None,
-            Some(format!("OpenCode usage request failed: {error}")),
-        ),
-    }
-}
-
-fn read_opencode_key() -> Option<String> {
-    let home = dirs_home().or_else(|| {
-        std::env::var_os("USERPROFILE").map(|value| value.to_string_lossy().into_owned())
-    })?;
-    let path = PathBuf::from(home).join(".local/share/opencode/auth.json");
-    let raw = std::fs::read_to_string(path).ok()?;
-    let blob: Value = serde_json::from_str(raw.trim()).ok()?;
-    for provider in ["opencode-go", "opencode"] {
-        let key = blob
-            .get(provider)
-            .and_then(|entry| entry.get("key"))
-            .and_then(Value::as_str)
-            .map(str::trim);
-        if let Some(key) = key {
-            if !key.is_empty() {
-                return Some(key.to_string());
-            }
-        }
-    }
-    None
-}
-
 fn usage_error(status: u16) -> ClaudeUsageFetch {
     let message = if status == 401 {
         "Claude sign-in expired".into()
@@ -204,23 +473,27 @@ fn usage_error(status: u16) -> ClaudeUsageFetch {
     usage_result("error", Some(status), None, Some(message))
 }
 
-fn read_claude_credentials() -> Option<ClaudeCredentials> {
+fn read_claude_credentials(config_dir: Option<&std::path::Path>) -> Option<ClaudeCredentials> {
     #[cfg(target_os = "macos")]
     {
-        if let Some(creds) = read_macos_keychain_credentials() {
+        let service = claude_keychain_service(config_dir);
+        if let Some(creds) = read_macos_keychain_credentials(&service) {
             return Some(creds);
         }
     }
-    read_credentials_file()
+    read_credentials_file(config_dir)
 }
 
-fn read_credentials_file() -> Option<ClaudeCredentials> {
-    let path = claude_credentials_path()?;
+fn read_credentials_file(config_dir: Option<&std::path::Path>) -> Option<ClaudeCredentials> {
+    let path = claude_credentials_path(config_dir)?;
     let raw = std::fs::read_to_string(&path).ok()?;
     credentials_from_blob(&raw)
 }
 
-fn claude_credentials_path() -> Option<PathBuf> {
+fn claude_credentials_path(config_dir: Option<&std::path::Path>) -> Option<PathBuf> {
+    if let Some(dir) = config_dir {
+        return Some(dir.join(".credentials.json"));
+    }
     let home = dirs_home().or_else(|| {
         std::env::var_os("USERPROFILE").map(|value| value.to_string_lossy().into_owned())
     })?;
@@ -286,20 +559,20 @@ fn now_ms() -> i64 {
 }
 
 #[cfg(target_os = "macos")]
-fn read_macos_keychain_credentials() -> Option<ClaudeCredentials> {
+fn read_macos_keychain_credentials(service: &str) -> Option<ClaudeCredentials> {
     let candidates = [
         {
-            let mut args = keychain_find_args();
+            let mut args = keychain_find_args(service);
             args.push("-w".into());
             args
         },
         {
-            let mut args = keychain_find_args();
+            let mut args = keychain_find_args(service);
             args.extend(["-a".into(), keychain_user(), "-w".into()]);
             args
         },
         {
-            let mut args = keychain_find_args();
+            let mut args = keychain_find_args(service);
             args.extend(["-a".into(), KEYCHAIN_FALLBACK_USER.into(), "-w".into()]);
             args
         },
@@ -315,12 +588,21 @@ fn read_macos_keychain_credentials() -> Option<ClaudeCredentials> {
 }
 
 #[cfg(target_os = "macos")]
-fn keychain_find_args() -> Vec<String> {
-    vec![
-        "find-generic-password".into(),
-        "-s".into(),
-        LEGACY_KEYCHAIN_SERVICE.into(),
-    ]
+fn keychain_find_args(service: &str) -> Vec<String> {
+    vec!["find-generic-password".into(), "-s".into(), service.into()]
+}
+
+#[cfg(target_os = "macos")]
+fn claude_keychain_service(config_dir: Option<&std::path::Path>) -> String {
+    let Some(config_dir) = config_dir else {
+        return LEGACY_KEYCHAIN_SERVICE.into();
+    };
+    // Claude Code hashes the exact, NFC-normalized selector string and uses
+    // the first eight lowercase hex characters as its Keychain service suffix.
+    let selector: String = config_dir.to_string_lossy().nfc().collect();
+    let digest = Sha256::digest(selector.as_bytes());
+    let suffix = format!("{digest:x}");
+    format!("{LEGACY_KEYCHAIN_SERVICE}-{}", &suffix[..8])
 }
 
 #[cfg(target_os = "macos")]
@@ -415,11 +697,128 @@ mod tests {
     }
 
     #[test]
+    fn extract_opencode_go_api_key_from_auth_json() {
+        let raw = r#"{"openai":{"type":"oauth"},"opencode-go":{"type":"api","key":"sk-go-abc"}}"#;
+        assert_eq!(
+            extract_opencode_go_api_key(raw).as_deref(),
+            Some("sk-go-abc")
+        );
+    }
+
+    #[test]
+    fn opencode_go_forbidden_maps_to_unavailable() {
+        // A valid key without a Go subscription hides the chip
+        // instead of rendering an error.
+        let fetch = opencode_go_error(403);
+        assert_eq!(fetch.status, "unavailable");
+        assert_eq!(fetch.http_status, Some(403));
+
+        let fetch = opencode_go_error(500);
+        assert_eq!(fetch.status, "error");
+    }
+
+    #[test]
+    fn extract_opencode_go_api_key_rejects_missing_or_empty() {
+        assert_eq!(
+            extract_opencode_go_api_key(r#"{"openai":{"type":"oauth"}}"#),
+            None
+        );
+        assert_eq!(
+            extract_opencode_go_api_key(r#"{"opencode-go":{"key":"  "}}"#),
+            None
+        );
+        assert_eq!(extract_opencode_go_api_key("not json"), None);
+    }
+
+    #[test]
+    fn opencode_data_dir_prefers_explicit_override() {
+        std::env::set_var("OPENCODE_DATA_DIR", "/tmp/custom-data");
+        assert_eq!(opencode_data_dir(), Some(PathBuf::from("/tmp/custom-data")));
+        std::env::remove_var("OPENCODE_DATA_DIR");
+    }
+
+    #[test]
+    fn parse_opencode_config_accepts_jsonc() {
+        let value = parse_opencode_config(
+            r#"{
+              // URLs inside strings must not be treated as comments.
+              "provider": {
+                /* OpenCode Go credentials */
+                "opencode-go": {
+                  "options": {
+                    "apiKey": "sk-go-jsonc",
+                    "baseURL": "https://opencode.ai/v1",
+                  },
+                },
+              },
+            }"#,
+        )
+        .unwrap();
+        assert_eq!(config_go_api_key(&value).as_deref(), Some("sk-go-jsonc"));
+    }
+
+    #[test]
+    fn config_go_api_key_reads_provider_options() {
+        let value: Value = serde_json::from_str(
+            r#"{"provider":{"anthropic":{"options":{"apiKey":"sk-ant-x"}},"opencode-go":{"options":{"apiKey":"sk-go-cfg"}}}}"#,
+        )
+        .unwrap();
+        assert_eq!(config_go_api_key(&value).as_deref(), Some("sk-go-cfg"));
+    }
+
+    #[test]
+    fn config_go_api_key_falls_through_to_opencode_provider() {
+        let value: Value = serde_json::from_str(
+            r#"{"provider":{"opencode":{"options":{"apiKey":"sk-go-opencode"}}}}"#,
+        )
+        .unwrap();
+        assert_eq!(config_go_api_key(&value).as_deref(), Some("sk-go-opencode"));
+    }
+
+    #[test]
+    fn config_go_api_key_ignores_other_providers_and_supports_env() {
+        let value: Value =
+            serde_json::from_str(r#"{"provider":{"anthropic":{"options":{"apiKey":"sk-ant-x"}}}}"#)
+                .unwrap();
+        assert_eq!(config_go_api_key(&value), None);
+
+        std::env::set_var("MONOCODE_TEST_GO_KEY", "sk-go-env");
+        let value: Value = serde_json::from_str(
+            r#"{"provider":{"opencode-go":{"options":{"apiKey":"{env:MONOCODE_TEST_GO_KEY}"}}}}"#,
+        )
+        .unwrap();
+        assert_eq!(config_go_api_key(&value).as_deref(), Some("sk-go-env"));
+        std::env::remove_var("MONOCODE_TEST_GO_KEY");
+    }
+
+    #[test]
+    fn auth_content_blob_without_key_stays_authoritative() {
+        // A valid blob without opencode-go means "no key", even when disk
+        // credentials exist: no fallback to auth.json.
+        std::env::set_var(
+            "OPENCODE_AUTH_CONTENT",
+            r#"{"openai":{"type":"api","key":"sk-openai-x"}}"#,
+        );
+        assert_eq!(read_opencode_go_api_key(), None);
+        std::env::remove_var("OPENCODE_AUTH_CONTENT");
+    }
+
+    #[test]
     fn token_expired_uses_actual_expiry() {
         let now = 1_000_000;
         assert!(!token_expired(Some(now + 1), now));
         assert!(token_expired(Some(now), now));
         assert!(token_expired(Some(now - 1), now));
         assert!(!token_expired(None, now));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn custom_config_dir_selects_claudes_hashed_keychain_service() {
+        assert_eq!(
+            claude_keychain_service(Some(std::path::Path::new("/tmp/profile"))),
+            "Claude Code-credentials-902e721c"
+        );
+        assert_eq!(claude_keychain_service(None), "Claude Code-credentials");
     }
 }

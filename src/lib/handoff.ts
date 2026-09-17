@@ -61,7 +61,11 @@ const MIN_AGENT_BRIEF = 40;
 export type ComposerSwitchPlan =
   | { kind: "model" }
   | { kind: "empty"; forget: HarnessId }
-  | { kind: "revert"; restoreProviderSessionId?: string }
+  | {
+      kind: "revert";
+      restoreProviderSessionId?: string;
+      restoreProviderAccountId?: string;
+    }
   | { kind: "arm"; pending: PendingHarnessSwitch };
 
 /** Switching providers while a turn is live leaves the old CLI running and
@@ -81,7 +85,18 @@ export function planComposerSwitch(
   if (session.pendingSwitch && next === session.pendingSwitch.from) {
     return {
       kind: "revert",
-      restoreProviderSessionId: session.pendingSwitch.fromProviderSessionId,
+      ...(session.pendingSwitch.fromProviderSessionId
+        ? {
+            restoreProviderSessionId:
+              session.pendingSwitch.fromProviderSessionId,
+          }
+        : {}),
+      ...(session.pendingSwitch.fromProviderAccountId
+        ? {
+            restoreProviderAccountId:
+              session.pendingSwitch.fromProviderAccountId,
+          }
+        : {}),
     };
   }
   if (
@@ -98,6 +113,9 @@ export function planComposerSwitch(
       fromSettings: session.modelSettings,
       ...(session.providerSessionId
         ? { fromProviderSessionId: session.providerSessionId }
+        : {}),
+      ...(session.providerAccountId
+        ? { fromProviderAccountId: session.providerAccountId }
         : {}),
     },
   };

@@ -8,6 +8,7 @@ mod clickup;
 mod control;
 pub mod control_cli;
 mod cursor_store;
+mod external_editor;
 mod fonts;
 mod fs;
 mod gitlab;
@@ -22,6 +23,7 @@ mod menu;
 mod notes;
 mod notifications;
 mod notion;
+mod pasteboard;
 mod project_logo;
 mod pty;
 mod rate_limits;
@@ -31,6 +33,8 @@ mod secrets;
 mod session_store;
 mod skills;
 mod transcribe;
+#[cfg(target_os = "windows")]
+mod tray;
 mod usage_cost;
 mod window;
 mod window_transfer;
@@ -212,6 +216,8 @@ pub fn run() {
             reminders::init(app.handle());
             checkpoint::init(app.handle())?;
             menu::install(app.handle())?;
+            #[cfg(target_os = "windows")]
+            tray::install(app.handle())?;
             #[cfg(target_os = "macos")]
             {
                 macos::install_dock_menu(app.handle());
@@ -238,6 +244,7 @@ pub fn run() {
             control::control_save,
             control::control_load,
             control::control_scopes,
+            control::control_write_path,
             control::control_attach_worker,
             control::control_authorize_turn,
             control::control_turn_finished,
@@ -268,6 +275,8 @@ pub fn run() {
             automations::automation_take_due,
             automations::automation_record_missed,
             automations::automation_record_result,
+            external_editor::list_external_editors,
+            external_editor::open_in_external_editor,
             fs::list_dir,
             fs::list_project_files,
             fs::git_diff_stats,
@@ -356,6 +365,8 @@ pub fn run() {
             fs::copy_path,
             fs::move_path,
             fs::reveal_path,
+            pasteboard::clipboard_file_paths,
+            pasteboard::copy_file_to_clipboard,
             fs::clone_repo,
             fs::read_file_preview,
             fs::stat_files,
@@ -380,6 +391,7 @@ pub fn run() {
             harness::harness_resolve_pi,
             harness::harness_resolve_fx,
             harness::harness_resolve_grok,
+            harness::harness_resolve_hermes,
             harness::harness_free_port,
             harness::harness_spawn,
             harness::harness_write,
@@ -390,7 +402,7 @@ pub fn run() {
             harness::harness_sse_close,
             harness::harness_exec,
             rate_limits::fetch_claude_usage,
-            rate_limits::fetch_opencode_usage,
+            rate_limits::fetch_opencode_go_usage,
             usage_cost::fetch_usage_cost,
             pty::pty_spawn,
             pty::pty_write,
@@ -435,7 +447,9 @@ pub fn run() {
             menu::set_menu_locale,
             window::hide_window,
             window::destroy_window,
-            window::confirm_quit,
+            window::quit_poll_reply,
+            window::quit_decision,
+            window::quit_ready,
             window::set_window_glass_enabled,
             window_transfer::stage_window_transfer,
             window_transfer::take_window_transfer,
@@ -478,6 +492,7 @@ pub fn run() {
             event: tauri::WindowEvent::Destroyed,
             ..
         } => {
+            window::forget_quit_window(handle, &label);
             let other_window = handle.webview_windows().keys().any(|name| name != &label);
             control::window_closed(handle, &label);
             if !other_window {

@@ -6,6 +6,7 @@ import {
   ChevronRight,
   ChevronUp,
   CircleAlert,
+  AppWindow,
   FilePlusCorner,
   FolderOpen,
   History,
@@ -42,7 +43,14 @@ import {
   PROJECT_RAIL_WIDTH_MIN,
   saveProjectRailWidth,
 } from "../lib/appearance";
-import { basename, revealPath, type GitDiffStats } from "../lib/fs";
+import {
+  basename,
+  listExternalEditors,
+  openInExternalEditor,
+  revealPath,
+  type ExternalEditor,
+  type GitDiffStats,
+} from "../lib/fs";
 import { IS_MAC, IS_WIN, MOD } from "../lib/platform";
 import { pathKey, projectKey, projectName } from "../lib/paths";
 import {
@@ -124,6 +132,7 @@ function projectMenuExtraItems(
   canImport: boolean,
   notificationReady: boolean,
   canConfigureNotifications: boolean,
+  externalEditors: ExternalEditor[] | null,
 ): TabGroupMenuExtraItem[] {
   const items: TabGroupMenuExtraItem[] = [
     {
@@ -135,6 +144,36 @@ function projectMenuExtraItems(
       ? { id: "unpin", label: t("Unpin project"), icon: PinOff }
       : { id: "pin", label: t("Pin project"), icon: Pin },
     { id: "reveal", label: revealLabel(), icon: FolderOpen },
+    {
+      id: "external-editor",
+      label: t("Open in editor"),
+      icon: AppWindow,
+      disabled: externalEditors === null,
+      submenu:
+        externalEditors === null
+          ? [
+              {
+                kind: "item",
+                id: "external-editor:loading",
+                label: t("Looking for editors…"),
+                disabled: true,
+              },
+            ]
+          : externalEditors.length > 0
+            ? externalEditors.map((editor) => ({
+                kind: "item" as const,
+                id: `external-editor:${editor.id}`,
+                label: editor.name,
+              }))
+            : [
+                {
+                  kind: "item",
+                  id: "external-editor:none",
+                  label: t("No supported editors found"),
+                  disabled: true,
+                },
+              ],
+    },
     {
       id: "notifications-mute",
       label: t("Mute notifications"),
@@ -292,6 +331,24 @@ export function ProjectRail({
   const [groupCustomColors, setGroupCustomColors] = useState(
     loadTabGroupCustomColors,
   );
+  const [externalEditors, setExternalEditors] = useState<
+    ExternalEditor[] | null
+  >(null);
+  useEffect(() => {
+    let active = true;
+    void listExternalEditors()
+      .then((installed) => {
+        if (active) {
+          setExternalEditors(Array.isArray(installed) ? installed : []);
+        }
+      })
+      .catch(() => {
+        if (active) setExternalEditors([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
   const [projectMenu, setProjectMenu] = useState<{
     x: number;
     y: number;
@@ -515,6 +572,20 @@ export function ProjectRail({
         name: resolveTabGroupLabel(projectKey, groupLabels, basename(path)),
       });
     } else if (action === "reveal") void revealPath(path);
+    else if (action.startsWith("external-editor:")) {
+      const editorId = action.slice("external-editor:".length);
+      if (!externalEditors?.some((editor) => editor.id === editorId)) {
+        return false;
+      }
+      void openInExternalEditor(editorId, path)
+        .then(() => setProjectMenu(null))
+        .catch(() => {
+          setNotificationError(
+            t("Could not open the external editor. Please try again."),
+          );
+          return false;
+        });
+    }
     else if (action === "import-session") onImportSession?.(path);
     else if (action === "archive") {
       onRemoveProject?.(path, { purgeData: false });
@@ -771,6 +842,7 @@ export function ProjectRail({
             Boolean(onImportSession),
             Boolean(readyNotificationProject),
             Boolean(onOpenNotificationSettings),
+            externalEditors,
           )}
           footer={
             notificationError ? (

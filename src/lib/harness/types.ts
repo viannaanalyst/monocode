@@ -137,6 +137,7 @@ export type HarnessSessionInput = {
   cwd: string;
   model: string;
   modelSettings?: Record<string, string>;
+  providerAccountId?: string;
   runtimeMode: RuntimeMode;
   intent?: TurnIntent;
   /**

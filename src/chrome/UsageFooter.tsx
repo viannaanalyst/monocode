@@ -12,7 +12,7 @@ import { Popover, type PopoverDismissReason } from "./Popover";
 import {
   fetchClaudeRateLimits,
   fetchCodexRateLimits,
-  fetchOpencodeRateLimits,
+  fetchOpencodeGoRateLimits,
 } from "../lib/rateLimitsFetch";
 import {
   clampUsedPercent,
@@ -149,7 +149,7 @@ export function UsageFooter({
     if (fetchOpencode) {
       setOpencode((current) => fetchingRateLimits("opencode", current));
       jobs.push(
-        fetchOpencodeRateLimits().then((value) => {
+        fetchOpencodeGoRateLimits().then((value) => {
           setOpencode(value);
         }),
       );

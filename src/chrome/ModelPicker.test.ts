@@ -293,6 +293,7 @@ describe("model picker", () => {
       "pi",
       "omp",
       "fx",
+      "hermes",
     ]);
   });
 

@@ -52,7 +52,17 @@ describe("persistence", () => {
     saveProviderOrder(["pi", "fx", "claude"]);
     unsubscribe();
     expect(JSON.parse(localStorage.getItem(PROVIDER_ORDER_KEY) ?? "[]")).toEqual(
-      ["pi", "fx", "claude", "codex", "cursor", "grok", "opencode", "omp"],
+      [
+        "pi",
+        "fx",
+        "claude",
+        "codex",
+        "cursor",
+        "grok",
+        "opencode",
+        "omp",
+        "hermes",
+      ],
     );
     expect(loadProviderOrder()).toEqual([
       "pi",
@@ -63,6 +73,7 @@ describe("persistence", () => {
       "grok",
       "opencode",
       "omp",
+      "hermes",
     ]);
     expect(seen.length).toBeGreaterThan(0);
   });
