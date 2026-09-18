@@ -287,7 +287,7 @@ describe("UsageProviderChip", () => {
     const dialog = document.querySelector('[role="dialog"]');
     expect(dialog?.textContent).toContain("Plan cycle");
     expect(dialog?.textContent).toContain("$12.88 of $20.00");
-    expect(dialog?.textContent).toContain("Bonus $0.50");
+    expect(dialog?.textContent).toContain("Bonus usage $0.50");
     expect(dialog?.textContent).not.toContain("Monthly limit");
   });
 });

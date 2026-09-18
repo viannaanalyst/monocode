@@ -340,6 +340,25 @@ describe("parseCursorDashboardUsage", () => {
     expect(limits.monthly?.resetsAt).toBe(endMs);
   });
 
+  it("uses autoPercentUsed when included spend is capped at limit", () => {
+    const limits = parseCursorDashboardUsage({
+      billingCycleEnd: cycleEnd,
+      displayMessage: "You've used 97% of your included usage",
+      planUsage: {
+        includedSpend: 7000,
+        totalSpend: 87319,
+        bonusSpend: 80319,
+        limit: 7000,
+        autoPercentUsed: 72.71083333333334,
+        totalPercentUsed: 68.0849902534113,
+      },
+    });
+    expect(limits.monthly?.usedPercent).toBeCloseTo(72.71, 2);
+    expect(limits.cursorDetail?.includedUsd).toBeCloseTo(50.9, 1);
+    expect(limits.cursorDetail?.limitUsd).toBe(70);
+    expect(limits.cursorDetail?.bonusUsd).toBeCloseTo(803.19, 2);
+  });
+
   it("records bonus dollars without a fake window", () => {
     const limits = parseCursorDashboardUsage({
       planUsage: { includedSpend: 100, limit: 200, bonusSpend: 50 },

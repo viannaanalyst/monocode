@@ -295,7 +295,7 @@ export function UsageProviderChip({
                   ))}
                   {limits.cursorDetail && limits.cursorDetail.bonusUsd > 0 ? (
                     <p className="px-1 text-[10px] leading-4 text-content/40">
-                      {t("Bonus {amount}", {
+                      {t("Bonus usage {amount}", {
                         amount: formatCost(limits.cursorDetail.bonusUsd),
                       })}
                     </p>

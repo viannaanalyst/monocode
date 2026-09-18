@@ -245,6 +245,7 @@ export const PT_BR: Record<string, string> = {
   "On-demand": "On-demand",
   "{used} of {limit}": "{used} de {limit}",
   "Bonus {amount}": "Bônus {amount}",
+  "Bonus usage {amount}": "Uso de bônus {amount}",
   "5-hour window": "Janela de 5 horas",
   "Weekly window": "Janela semanal",
   "Monthly window": "Janela mensal",

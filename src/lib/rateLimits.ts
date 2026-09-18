@@ -409,6 +409,12 @@ export function parseCursorDashboardUsage(body: unknown): ProviderRateLimits {
   if (includedCents == null || limitCents == null || limitCents <= 0) {
     return errorRateLimits("cursor", "Cursor usage response was unexpected");
   }
+  const usedPercent = cursorPlanUsedPercent(
+    planUsage,
+    rec.displayMessage ?? rec.display_message,
+    includedCents,
+    limitCents,
+  );
   const resetsAt =
     parseResetTimestamp(rec.billingCycleEnd) ??
     parseResetTimestamp(rec.billing_cycle_end);
@@ -420,7 +426,7 @@ export function parseCursorDashboardUsage(body: unknown): ProviderRateLimits {
     windowMinutes = Math.max(1, Math.round((resetsAt - startsAt) / 60_000));
   }
   const monthly: RateLimitWindow = {
-    usedPercent: clampUsedPercent((100 * includedCents) / limitCents),
+    usedPercent,
     windowMinutes,
     resetsAt,
   };
@@ -450,7 +456,7 @@ export function parseCursorDashboardUsage(body: unknown): ProviderRateLimits {
     monthly,
     resetCredits: null,
     cursorDetail: {
-      includedUsd: includedCents / 100,
+      includedUsd: (limitCents * usedPercent) / 10_000,
       limitUsd: limitCents / 100,
       bonusUsd: bonusCents / 100,
       spendUsedUsd,
@@ -469,6 +475,50 @@ function centsField(
 ): number | null {
   if (!rec) return null;
   return numberField(rec, key) ?? (alt ? numberField(rec, alt) : null);
+}
+
+/** Matches the Included Usage table when included dollars are capped at limit. */
+export function cursorPlanUsedPercent(
+  planUsage: Record<string, unknown> | null,
+  displayMessage: unknown,
+  includedCents: number,
+  limitCents: number,
+): number {
+  const auto = numberField(
+    planUsage,
+    "autoPercentUsed",
+    "auto_percent_used",
+  );
+  const total = numberField(
+    planUsage,
+    "totalPercentUsed",
+    "total_percent_used",
+  );
+  const fromMessage = parseDisplayMessagePercent(displayMessage);
+  const remaining = centsField(planUsage, "remaining");
+
+  if (includedCents >= limitCents) {
+    if (auto != null) return clampUsedPercent(auto);
+    if (fromMessage != null) return fromMessage;
+    if (total != null) return clampUsedPercent(total);
+    return 100;
+  }
+
+  if (remaining != null && limitCents > 0) {
+    return clampUsedPercent((100 * (limitCents - remaining)) / limitCents);
+  }
+  if (fromMessage != null) return fromMessage;
+  if (auto != null) return clampUsedPercent(auto);
+  if (total != null) return clampUsedPercent(total);
+  return clampUsedPercent((100 * includedCents) / limitCents);
+}
+
+function parseDisplayMessagePercent(message: unknown): number | null {
+  if (typeof message !== "string") return null;
+  const match = message.match(/(\d+(?:\.\d+)?)\s*%/);
+  if (!match) return null;
+  const value = Number(match[1]);
+  return Number.isFinite(value) ? clampUsedPercent(value) : null;
 }
 
 function mapOpencodeGoWindow(
