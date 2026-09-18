@@ -9,21 +9,23 @@ let accountsVersion = 0;
 
 export const DEFAULT_PROVIDER_ACCOUNT_ID = "default";
 
+export type NamedAccountProvider = Exclude<RateLimitProvider, "cursor">;
+
 export type ProviderAccount = {
   id: string;
-  provider: RateLimitProvider;
+  provider: NamedAccountProvider;
   label: string;
   isDefault?: boolean;
 };
 
-type StoredAccounts = Partial<Record<RateLimitProvider, ProviderAccount[]>>;
+type StoredAccounts = Partial<Record<NamedAccountProvider, ProviderAccount[]>>;
 type StoredSelections = Record<
   string,
-  Partial<Record<RateLimitProvider, string>>
+  Partial<Record<NamedAccountProvider, string>>
 >;
 
 export function providerAccounts(
-  provider: RateLimitProvider,
+  provider: NamedAccountProvider,
 ): ProviderAccount[] {
   const stored = readRecord<StoredAccounts>(ACCOUNTS_KEY);
   const seen = new Set<string>([DEFAULT_PROVIDER_ACCOUNT_ID]);
@@ -49,7 +51,7 @@ export function providerAccounts(
 }
 
 export function newProviderAccount(
-  provider: RateLimitProvider,
+  provider: NamedAccountProvider,
   label: string,
 ): ProviderAccount {
   return {
@@ -95,7 +97,7 @@ export function saveProviderAccount(account: ProviderAccount): void {
 }
 
 export function selectedProviderAccountId(
-  provider: RateLimitProvider,
+  provider: NamedAccountProvider,
   project: string | undefined,
 ): string {
   const selections = readRecord<StoredSelections>(SELECTIONS_KEY);
@@ -107,7 +109,7 @@ export function selectedProviderAccountId(
 
 export function supportsProviderAccounts(
   harness: string,
-): harness is RateLimitProvider {
+): harness is NamedAccountProvider {
   return harness === "claude" || harness === "codex" || harness === "opencode";
 }
 
@@ -122,7 +124,7 @@ export function selectedAccountForHarness(
 }
 
 export function selectProviderAccount(
-  provider: RateLimitProvider,
+  provider: NamedAccountProvider,
   project: string | undefined,
   accountId: string,
 ): void {
@@ -137,7 +139,7 @@ export function selectProviderAccount(
 }
 
 export function providerAccountLabel(
-  provider: RateLimitProvider,
+  provider: NamedAccountProvider,
   accountId: string | undefined,
 ): string {
   return (

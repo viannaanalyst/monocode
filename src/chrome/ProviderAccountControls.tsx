@@ -10,6 +10,7 @@ import {
   selectedProviderAccountId,
   selectProviderAccount,
   subscribeProviderAccounts,
+  supportsProviderAccounts,
   type ProviderAccount,
 } from "../lib/providerAccounts";
 import type { RateLimitProvider } from "../lib/rateLimits";
@@ -29,13 +30,14 @@ export function ProviderAccountControls({
     getProviderAccountsSnapshot,
     getProviderAccountsSnapshot,
   );
-  const accounts = providerAccounts(provider);
-  const selectedId = selectedProviderAccountId(provider, project);
   const [adding, setAdding] = useState(false);
   const [label, setLabel] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
+  if (!supportsProviderAccounts(provider)) return null;
+  const accounts = providerAccounts(provider);
+  const selectedId = selectedProviderAccountId(provider, project);
 
   const pick = (accountId: string) => {
     selectProviderAccount(provider, project, accountId);
@@ -196,6 +198,7 @@ export function providerChipAccountSuffix(
   provider: RateLimitProvider,
   project?: string,
 ): string | null {
+  if (!supportsProviderAccounts(provider)) return null;
   const accounts = providerAccounts(provider);
   if (accounts.length <= 1) return null;
   const selected = selectedProviderAccountId(provider, project);

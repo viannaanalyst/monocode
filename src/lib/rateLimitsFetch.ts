@@ -4,6 +4,7 @@ import {
   errorRateLimits,
   parseClaudeOAuthUsage,
   parseCodexRateLimits,
+  parseCursorDashboardUsage,
   parseOpencodeGoUsage,
   unavailableRateLimits,
   type ProviderRateLimits,
@@ -114,6 +115,41 @@ export async function fetchClaudeRateLimits(
     return errorRateLimits(
       "claude",
       error instanceof Error ? error.message : "Claude usage unavailable",
+    );
+  }
+}
+
+export async function fetchCursorRateLimits(): Promise<ProviderRateLimits> {
+  try {
+    const result = await invoke<ClaudeUsageFetch>("fetch_cursor_usage");
+    if (result.status === "ok" && result.body) {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(result.body);
+      } catch {
+        return errorRateLimits("cursor", "Cursor usage response was not JSON");
+      }
+      const limits = parseCursorDashboardUsage(parsed);
+      if (limits.monthly) return limits;
+      return errorRateLimits(
+        "cursor",
+        limits.error?.trim() || "Cursor usage response was unexpected",
+      );
+    }
+    if (result.status === "unavailable") {
+      return unavailableRateLimits(
+        "cursor",
+        result.error?.trim() || "Cursor not signed in",
+      );
+    }
+    return errorRateLimits(
+      "cursor",
+      result.error?.trim() || "Cursor usage unavailable",
+    );
+  } catch (error) {
+    return errorRateLimits(
+      "cursor",
+      error instanceof Error ? error.message : "Cursor usage unavailable",
     );
   }
 }

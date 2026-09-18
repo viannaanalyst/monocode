@@ -1,7 +1,7 @@
 import { t } from "../i18n";
 import { asRecord } from "./harness/codexProtocol";
 
-export type RateLimitProvider = "claude" | "codex" | "opencode";
+export type RateLimitProvider = "claude" | "codex" | "opencode" | "cursor";
 
 export type RateLimitStatus =
   "idle" | "fetching" | "ok" | "error" | "unavailable";
@@ -31,14 +31,24 @@ export type RateLimitResetCredits = {
   credits: RateLimitResetCredit[] | null;
 };
 
+export type CursorUsageDetail = {
+  includedUsd: number;
+  limitUsd: number;
+  bonusUsd: number;
+  spendUsedUsd: number | null;
+  spendLimitUsd: number | null;
+};
+
 export type ProviderRateLimits = {
   provider: RateLimitProvider;
   session: RateLimitWindow | null;
   weekly: RateLimitWindow | null;
-  /** OpenCode Go only; other providers report no monthly window. */
+  /** OpenCode Go monthly window, or Cursor included billing cycle. */
   monthly: RateLimitWindow | null;
   /** Codex-only banked rate-limit reset rewards, when supplied by app-server. */
   resetCredits: RateLimitResetCredits | null;
+  /** Cursor dollar breakdown for the popover; other providers omit this. */
+  cursorDetail?: CursorUsageDetail | null;
   updatedAt: number;
   error: string | null;
   status: RateLimitStatus;
@@ -100,6 +110,7 @@ export function idleRateLimits(
     weekly: null,
     monthly: null,
     resetCredits: null,
+    cursorDetail: null,
     updatedAt: 0,
     error: null,
     status: "idle",
@@ -125,6 +136,7 @@ export function fetchingRateLimits(
     weekly: previous?.weekly ?? null,
     monthly: previous?.monthly ?? null,
     resetCredits: previous?.resetCredits ?? null,
+    cursorDetail: previous?.cursorDetail ?? null,
     updatedAt: previous?.updatedAt ?? 0,
     error: null,
     status: "fetching",
@@ -141,6 +153,7 @@ export function unavailableRateLimits(
     weekly: null,
     monthly: null,
     resetCredits: null,
+    cursorDetail: null,
     updatedAt: Date.now(),
     error,
     status: "unavailable",
@@ -172,6 +185,7 @@ export function errorRateLimits(
     weekly: null,
     monthly: null,
     resetCredits: null,
+    cursorDetail: null,
     updatedAt: Date.now(),
     error,
     status: "error",
@@ -371,6 +385,90 @@ export function parseOpencodeGoUsage(result: unknown): ProviderRateLimits {
     error: null,
     status: "ok",
   };
+}
+
+export function parseCursorDashboardUsage(body: unknown): ProviderRateLimits {
+  const rec = asRecord(body);
+  if (!rec) {
+    return errorRateLimits("cursor", "Cursor usage response was empty");
+  }
+  const planUsage = asRecord(rec.planUsage) ?? asRecord(rec.plan_usage);
+  const planInfo = asRecord(rec.planInfo) ?? asRecord(rec.plan_info);
+  const spendLimit =
+    asRecord(rec.spendLimitUsage) ?? asRecord(rec.spend_limit_usage);
+  const includedCents = centsField(planUsage, "includedSpend", "included_spend");
+  const bonusCents = centsField(planUsage, "bonusSpend", "bonus_spend") ?? 0;
+  let limitCents = centsField(planUsage, "limit");
+  if (limitCents == null || limitCents <= 0) {
+    limitCents = centsField(
+      planInfo,
+      "includedAmountCents",
+      "included_amount_cents",
+    );
+  }
+  if (includedCents == null || limitCents == null || limitCents <= 0) {
+    return errorRateLimits("cursor", "Cursor usage response was unexpected");
+  }
+  const resetsAt =
+    parseResetTimestamp(rec.billingCycleEnd) ??
+    parseResetTimestamp(rec.billing_cycle_end);
+  const startsAt =
+    parseResetTimestamp(rec.billingCycleStart) ??
+    parseResetTimestamp(rec.billing_cycle_start);
+  let windowMinutes = MONTHLY_WINDOW_MINUTES;
+  if (startsAt != null && resetsAt != null && resetsAt > startsAt) {
+    windowMinutes = Math.max(1, Math.round((resetsAt - startsAt) / 60_000));
+  }
+  const monthly: RateLimitWindow = {
+    usedPercent: clampUsedPercent((100 * includedCents) / limitCents),
+    windowMinutes,
+    resetsAt,
+  };
+  let weekly: RateLimitWindow | null = null;
+  let spendUsedUsd: number | null = null;
+  let spendLimitUsd: number | null = null;
+  const spendLimitCents =
+    centsField(spendLimit, "individualLimit", "individual_limit") ??
+    centsField(spendLimit, "pooledLimit", "pooled_limit");
+  if (spendLimitCents != null && spendLimitCents > 0) {
+    const spendUsedCents =
+      centsField(spendLimit, "individualUsed", "individual_used") ??
+      centsField(spendLimit, "pooledUsed", "pooled_used") ??
+      0;
+    weekly = {
+      usedPercent: clampUsedPercent((100 * spendUsedCents) / spendLimitCents),
+      windowMinutes,
+      resetsAt,
+    };
+    spendUsedUsd = spendUsedCents / 100;
+    spendLimitUsd = spendLimitCents / 100;
+  }
+  return {
+    provider: "cursor",
+    session: null,
+    weekly,
+    monthly,
+    resetCredits: null,
+    cursorDetail: {
+      includedUsd: includedCents / 100,
+      limitUsd: limitCents / 100,
+      bonusUsd: bonusCents / 100,
+      spendUsedUsd,
+      spendLimitUsd,
+    },
+    updatedAt: Date.now(),
+    error: null,
+    status: "ok",
+  };
+}
+
+function centsField(
+  rec: Record<string, unknown> | null,
+  key: string,
+  alt?: string,
+): number | null {
+  if (!rec) return null;
+  return numberField(rec, key) ?? (alt ? numberField(rec, alt) : null);
 }
 
 function mapOpencodeGoWindow(

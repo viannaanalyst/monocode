@@ -11,6 +11,7 @@ const rateLimitsFetch = vi.hoisted(() => ({
   consumeCodexRateLimitResetCredit: vi.fn(),
   fetchClaudeRateLimits: vi.fn(),
   fetchCodexRateLimits: vi.fn(),
+  fetchCursorRateLimits: vi.fn(),
 }));
 
 vi.mock("../lib/harness/auth", async (importOriginal) => ({
@@ -37,7 +38,7 @@ beforeEach(() => {
   auth.loginHarness.mockReset();
   rateLimitsFetch.consumeCodexRateLimitResetCredit.mockReset();
   rateLimitsFetch.fetchClaudeRateLimits.mockReset();
-  rateLimitsFetch.fetchCodexRateLimits.mockReset();
+  rateLimitsFetch.fetchCursorRateLimits.mockReset();
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);

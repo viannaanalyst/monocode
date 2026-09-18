@@ -52,18 +52,22 @@ export function UsageWindowCard({
   kind,
   window,
   now,
+  title,
+  remainingLabel,
 }: {
   kind: UsageWindowKind;
   window: RateLimitWindow;
   now: number;
+  title?: string;
+  remainingLabel?: string;
 }) {
   const pct = clampUsedPercent(window.usedPercent);
   const remaining = Math.max(0, Math.round(100 - pct));
-  const title = windowLimitLabel(kind);
+  const resolvedTitle = title ?? windowLimitLabel(kind);
   return (
     <section className="rounded-lg bg-content/[0.045] px-3 py-2.5 ring-1 ring-inset ring-content/[0.06]">
       <div className="flex items-baseline justify-between gap-3">
-        <h3 className="text-xs font-medium text-content/65">{title}</h3>
+        <h3 className="text-xs font-medium text-content/65">{resolvedTitle}</h3>
         <span className="shrink-0 text-xs font-medium tabular-nums">
           {t("{percent} used", { percent: formatUsagePercent(pct) })}
         </span>
@@ -71,7 +75,7 @@ export function UsageWindowCard({
       <div
         className="mt-2 h-1.5 overflow-hidden rounded-full bg-content/10"
         role="progressbar"
-        aria-label={t("{title} used", { title })}
+        aria-label={t("{title} used", { title: resolvedTitle })}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.round(pct)}
@@ -83,7 +87,8 @@ export function UsageWindowCard({
       </div>
       <div className="mt-1.5 flex items-center justify-between gap-3 text-[10px] leading-4 text-content/40">
         <span className="tabular-nums">
-          {t("{percent}% remaining", { percent: remaining })}
+          {remainingLabel ??
+            t("{percent}% remaining", { percent: remaining })}
         </span>
         <span
           className="truncate text-right tabular-nums"

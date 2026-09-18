@@ -9,6 +9,7 @@ const rateLimitsFetch = vi.hoisted(() => ({
   fetchClaudeRateLimits: vi.fn(),
   fetchCodexRateLimits: vi.fn(),
   fetchOpencodeGoRateLimits: vi.fn(),
+  fetchCursorRateLimits: vi.fn(),
 }));
 
 vi.mock("../lib/rateLimitsFetch", () => rateLimitsFetch);
@@ -58,6 +59,7 @@ beforeEach(() => {
   rateLimitsFetch.fetchOpencodeGoRateLimits
     .mockReset()
     .mockResolvedValue(opencodeLimits());
+  rateLimitsFetch.fetchCursorRateLimits.mockReset();
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);

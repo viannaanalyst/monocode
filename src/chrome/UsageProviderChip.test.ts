@@ -223,4 +223,37 @@ describe("UsageProviderChip", () => {
     ].filter((item) => item.textContent === "Use reset");
     expect(useButtons).toHaveLength(2);
   });
+
+  it("labels Cursor included usage as the plan cycle", async () => {
+    const limits: ProviderRateLimits = {
+      provider: "cursor",
+      session: null,
+      weekly: null,
+      monthly: {
+        usedPercent: 64.4,
+        windowMinutes: 43_200,
+        resetsAt: now + 10 * 86_400_000,
+      },
+      resetCredits: null,
+      cursorDetail: {
+        includedUsd: 12.88,
+        limitUsd: 20,
+        bonusUsd: 0.5,
+        spendUsedUsd: null,
+        spendLimitUsd: null,
+      },
+      updatedAt: now,
+      error: null,
+      status: "ok",
+    };
+    act(() =>
+      root.render(createElement(UsageProviderChip, { limits, now })),
+    );
+    await act(async () => button("Cursor usage details").click());
+    const dialog = document.querySelector('[role="dialog"]');
+    expect(dialog?.textContent).toContain("Plan cycle");
+    expect(dialog?.textContent).toContain("$12.88 of $20.00");
+    expect(dialog?.textContent).toContain("Bonus $0.50");
+    expect(dialog?.textContent).not.toContain("Monthly limit");
+  });
 });

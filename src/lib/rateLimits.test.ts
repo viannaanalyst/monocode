@@ -11,6 +11,7 @@ import {
   mapUsageWindow,
   parseClaudeOAuthUsage,
   parseCodexRateLimits,
+  parseCursorDashboardUsage,
   parseOpencodeGoUsage,
   parseResetTimestamp,
   RATE_LIMIT_MIN_REFETCH_MS,
@@ -267,6 +268,89 @@ describe("parseOpencodeGoUsage", () => {
     });
     expect(limits.session?.usedPercent).toBe(5);
     expect(limits.weekly).toBeNull();
+    expect(limits.monthly).toBeNull();
+  });
+});
+
+describe("parseCursorDashboardUsage", () => {
+  const cycleStart = "2026-09-01T00:00:00.000Z";
+  const cycleEnd = "2026-10-01T00:00:00.000Z";
+
+  it("maps included spend onto the monthly window", () => {
+    const limits = parseCursorDashboardUsage({
+      billingCycleStart: cycleStart,
+      billingCycleEnd: cycleEnd,
+      planUsage: {
+        includedSpend: 1288,
+        totalSpend: 1288,
+        bonusSpend: 0,
+        remaining: 712,
+        limit: 2000,
+        autoPercentUsed: 99,
+        apiPercentUsed: 50,
+        totalPercentUsed: 80,
+      },
+    });
+    expect(limits.provider).toBe("cursor");
+    expect(limits.status).toBe("ok");
+    expect(limits.session).toBeNull();
+    expect(limits.weekly).toBeNull();
+    expect(limits.monthly?.usedPercent).toBe(64.4);
+    expect(limits.monthly?.resetsAt).toBe(Date.parse(cycleEnd));
+    expect(limits.cursorDetail).toEqual({
+      includedUsd: 12.88,
+      limitUsd: 20,
+      bonusUsd: 0,
+      spendUsedUsd: null,
+      spendLimitUsd: null,
+    });
+  });
+
+  it("adds an on-demand window from spendLimitUsage", () => {
+    const limits = parseCursorDashboardUsage({
+      billingCycleEnd: cycleEnd,
+      planUsage: { includedSpend: 500, limit: 2000 },
+      spendLimitUsage: {
+        individualLimit: 1000,
+        individualUsed: 250,
+        individualRemaining: 750,
+      },
+    });
+    expect(limits.monthly?.usedPercent).toBe(25);
+    expect(limits.weekly?.usedPercent).toBe(25);
+    expect(limits.cursorDetail?.spendUsedUsd).toBe(2.5);
+    expect(limits.cursorDetail?.spendLimitUsd).toBe(10);
+  });
+
+  it("uses planInfo includedAmountCents when limit is zero", () => {
+    const limits = parseCursorDashboardUsage({
+      planUsage: { includedSpend: 500, limit: 0 },
+      planInfo: { includedAmountCents: 2000, planName: "Pro+" },
+    });
+    expect(limits.monthly?.usedPercent).toBe(25);
+    expect(limits.cursorDetail?.limitUsd).toBe(20);
+  });
+
+  it("parses millisecond epoch cycle end", () => {
+    const endMs = Date.parse(cycleEnd);
+    const limits = parseCursorDashboardUsage({
+      billingCycleEnd: endMs,
+      planUsage: { includedSpend: 100, limit: 200 },
+    });
+    expect(limits.monthly?.resetsAt).toBe(endMs);
+  });
+
+  it("records bonus dollars without a fake window", () => {
+    const limits = parseCursorDashboardUsage({
+      planUsage: { includedSpend: 100, limit: 200, bonusSpend: 50 },
+    });
+    expect(limits.cursorDetail?.bonusUsd).toBe(0.5);
+    expect(limits.weekly).toBeNull();
+  });
+
+  it("errors when there is no usable included window", () => {
+    const limits = parseCursorDashboardUsage({ planUsage: {} });
+    expect(limits.status).toBe("error");
     expect(limits.monthly).toBeNull();
   });
 });

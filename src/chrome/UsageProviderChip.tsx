@@ -5,6 +5,7 @@ import {
   formatResetDuration,
   formatUsagePercent,
   type ProviderRateLimits,
+  type RateLimitProvider,
   type RateLimitResetCredit,
   type RateLimitWindow,
 } from "../lib/rateLimits";
@@ -12,6 +13,8 @@ import type { CodexRateLimitResetOutcome } from "../lib/rateLimitsFetch";
 import { mascotPath, projectMascot } from "../lib/projectMascots";
 import { projectKey, projectName } from "../lib/paths";
 import { HARNESS_TITLE } from "../lib/session";
+import { t } from "../i18n";
+import { formatCost } from "../lib/usageCost";
 import {
   ProviderAccountControls,
   providerChipAccountSuffix,
@@ -41,7 +44,7 @@ import {
 } from "./ProviderSignInPanel";
 
 type UsageWindowEntry = {
-  key: "session" | "weekly";
+  key: "session" | "weekly" | "monthly";
   window: RateLimitWindow;
 };
 
@@ -79,7 +82,10 @@ export function UsageProviderChip({
   const accountSuffix = providerChipAccountSuffix(limits.provider, project);
   const loading =
     limits.status === "idle" ||
-    (limits.status === "fetching" && !limits.session && !limits.weekly);
+    (limits.status === "fetching" &&
+      !limits.session &&
+      !limits.weekly &&
+      !limits.monthly);
   const disconnected = limits.status === "unavailable";
   const windows = usageWindows(limits);
   const loginView = Boolean(
@@ -279,8 +285,20 @@ export function UsageProviderChip({
                       kind={entry.key}
                       window={entry.window}
                       now={now}
+                      title={cursorWindowTitle(limits.provider, entry.key)}
+                      remainingLabel={cursorRemainingLabel(
+                        limits,
+                        entry.key,
+                      )}
                     />
                   ))}
+                  {limits.cursorDetail && limits.cursorDetail.bonusUsd > 0 ? (
+                    <p className="px-1 text-[10px] leading-4 text-content/40">
+                      {t("Bonus {amount}", {
+                        amount: formatCost(limits.cursorDetail.bonusUsd),
+                      })}
+                    </p>
+                  ) : null}
                 </div>
               ) : (
                 <EmptyUsageState limits={limits} loading={loading} />
@@ -322,7 +340,45 @@ function usageWindows(limits: ProviderRateLimits): UsageWindowEntry[] {
       ? ({ key: "session", window: limits.session } as const)
       : null,
     limits.weekly ? ({ key: "weekly", window: limits.weekly } as const) : null,
+    limits.monthly
+      ? ({ key: "monthly", window: limits.monthly } as const)
+      : null,
   ].filter((entry): entry is UsageWindowEntry => entry != null);
+}
+
+function cursorWindowTitle(
+  provider: RateLimitProvider,
+  kind: UsageWindowEntry["key"],
+): string | undefined {
+  if (provider !== "cursor") return undefined;
+  if (kind === "monthly") return t("Plan cycle");
+  if (kind === "weekly") return t("On-demand");
+  return undefined;
+}
+
+function cursorRemainingLabel(
+  limits: ProviderRateLimits,
+  kind: UsageWindowEntry["key"],
+): string | undefined {
+  const detail = limits.cursorDetail;
+  if (limits.provider !== "cursor" || !detail) return undefined;
+  if (kind === "monthly") {
+    return t("{used} of {limit}", {
+      used: formatCost(detail.includedUsd),
+      limit: formatCost(detail.limitUsd),
+    });
+  }
+  if (
+    kind === "weekly" &&
+    detail.spendUsedUsd != null &&
+    detail.spendLimitUsd != null
+  ) {
+    return t("{used} of {limit}", {
+      used: formatCost(detail.spendUsedUsd),
+      limit: formatCost(detail.spendLimitUsd),
+    });
+  }
+  return undefined;
 }
 
 function BankedResets({

@@ -13,6 +13,7 @@ import { Popover, type PopoverDismissReason } from "./Popover";
 import {
   fetchClaudeRateLimits,
   fetchCodexRateLimits,
+  fetchCursorRateLimits,
   fetchOpencodeGoRateLimits,
 } from "../lib/rateLimitsFetch";
 import {
@@ -102,6 +103,7 @@ export function UsageFooter({
   const wantClaude = providers.includes("claude");
   const wantCodex = providers.includes("codex");
   const wantOpencode = providers.includes("opencode");
+  const wantCursor = providers.includes("cursor");
   const wantCost =
     session != null &&
     supportsUsageCost(session.harness) &&
@@ -115,6 +117,9 @@ export function UsageFooter({
   const [opencode, setOpencode] = useState<ProviderRateLimits>(() =>
     idleRateLimits("opencode"),
   );
+  const [cursor, setCursor] = useState<ProviderRateLimits>(() =>
+    idleRateLimits("cursor"),
+  );
   const [cost, setCost] = useState<UsageCostState>(() => usageCostSnapshot());
   const [now, setNow] = useState(() => Date.now());
   const [refreshing, setRefreshing] = useState(false);
@@ -122,10 +127,12 @@ export function UsageFooter({
   const claudeRef = useRef(claude);
   const codexRef = useRef(codex);
   const opencodeRef = useRef(opencode);
+  const cursorRef = useRef(cursor);
   const costRef = useRef(cost);
   claudeRef.current = claude;
   codexRef.current = codex;
   opencodeRef.current = opencode;
+  cursorRef.current = cursor;
   costRef.current = cost;
   useSyncExternalStore(
     subscribeProviderAccounts,
@@ -148,9 +155,20 @@ export function UsageFooter({
     const fetchOpencode =
       wantOpencode &&
       shouldFetchProvider(opencodeRef.current, { force, visible });
+    const fetchCursor =
+      wantCursor &&
+      shouldFetchProvider(cursorRef.current, { force, visible });
     const fetchCost =
       wantCost && shouldFetchUsageCost(costRef.current, { force, visible });
-    if (!fetchClaude && !fetchCodex && !fetchOpencode && !fetchCost) return;
+    if (
+      !fetchClaude &&
+      !fetchCodex &&
+      !fetchOpencode &&
+      !fetchCursor &&
+      !fetchCost
+    ) {
+      return;
+    }
     if (force) setRefreshing(true);
     const jobs: Promise<unknown>[] = [];
     if (fetchClaude) {
@@ -177,6 +195,14 @@ export function UsageFooter({
         }),
       );
     }
+    if (fetchCursor) {
+      setCursor((current) => fetchingRateLimits("cursor", current));
+      jobs.push(
+        fetchCursorRateLimits().then((value) => {
+          setCursor(value);
+        }),
+      );
+    }
     if (fetchCost) {
       jobs.push(fetchUsageCost(force).then((value) => setCost(value)));
     }
@@ -192,6 +218,7 @@ export function UsageFooter({
     wantClaude,
     wantCodex,
     wantOpencode,
+    wantCursor,
     wantCost,
     claudeAccountId,
     codexAccountId,
@@ -324,11 +351,17 @@ export function UsageFooter({
     [reconnectProvider, codexAccountId],
   );
 
+  const reconnectCursor = useCallback(
+    () =>
+      reconnectProvider("cursor", () => fetchCursorRateLimits(), setCursor, "default"),
+    [reconnectProvider],
+  );
+
   const sessionCost =
     wantCost && session
       ? findSessionCost(cost.report, session.harness, session.providerSessionId)
       : null;
-  const showUsage = wantClaude || wantCodex || wantOpencode;
+  const showUsage = wantClaude || wantCodex || wantOpencode || wantCursor;
   const showTerminals = terminals.length > 0;
   const showRefresh = showUsage || wantCost;
   const showRight = showUsage || showTerminals || showRefresh;
@@ -378,6 +411,14 @@ export function UsageFooter({
               onAccountSelected={(accountId) =>
                 onAccountSelected?.("opencode", accountId)
               }
+            />
+          ) : null}
+          {wantCursor ? (
+            <UsageProviderChip
+              limits={cursor}
+              now={now}
+              project={project}
+              onReconnect={reconnectCursor}
             />
           ) : null}
         </>

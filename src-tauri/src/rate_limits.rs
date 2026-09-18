@@ -42,6 +42,248 @@ pub struct OpencodeGoUsageFetch {
 }
 
 const OPENCODE_GO_USAGE_URL: &str = "https://opencode.ai/zen/go/v1/usage";
+const CURSOR_USAGE_RPC: &str =
+    "https://api2.cursor.sh/aiserver.v1.DashboardService/GetCurrentPeriodUsage";
+const CURSOR_USAGE_REST: &str = "https://cursor.com/api/dashboard/get-current-period-usage";
+const CURSOR_PLAN_RPC: &str = "https://api2.cursor.sh/aiserver.v1.DashboardService/GetPlanInfo";
+const CURSOR_USER_AGENT: &str = "monocode";
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CursorUsageFetch {
+    pub status: String,
+    pub http_status: Option<u16>,
+    pub body: Option<String>,
+    pub error: Option<String>,
+}
+
+/// Fetch Cursor included / on-demand usage via the local session token.
+/// The token never leaves the host process.
+#[tauri::command]
+pub async fn fetch_cursor_usage() -> Result<CursorUsageFetch, String> {
+    tauri::async_runtime::spawn_blocking(fetch_cursor_usage_sync)
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+fn cursor_result(
+    status: &str,
+    http_status: Option<u16>,
+    body: Option<String>,
+    error: Option<String>,
+) -> CursorUsageFetch {
+    CursorUsageFetch {
+        status: status.into(),
+        http_status,
+        body,
+        error,
+    }
+}
+
+fn fetch_cursor_usage_sync() -> Result<CursorUsageFetch, String> {
+    let Some(token) = read_cursor_access_token() else {
+        return Ok(cursor_result(
+            "unavailable",
+            None,
+            None,
+            Some("Cursor not signed in".into()),
+        ));
+    };
+    Ok(fetch_cursor_with_token(&token))
+}
+
+fn fetch_cursor_with_token(token: &str) -> CursorUsageFetch {
+    let (status, body) = cursor_post(CURSOR_USAGE_RPC, token);
+    let (status, body) = if status == 404 || status == 405 {
+        cursor_post(CURSOR_USAGE_REST, token)
+    } else {
+        (status, body)
+    };
+    if status == 401 {
+        let (cookie_status, cookie_body) = cursor_post_cookie(CURSOR_USAGE_RPC, token);
+        if (200..300).contains(&cookie_status) {
+            return finish_cursor_usage(cookie_status, cookie_body, token);
+        }
+        return cursor_error(401);
+    }
+    if !(200..300).contains(&status) {
+        return cursor_error(status);
+    }
+    finish_cursor_usage(status, body, token)
+}
+
+fn finish_cursor_usage(status: u16, body: String, token: &str) -> CursorUsageFetch {
+    let merged = merge_plan_info_if_needed(&body, token);
+    cursor_result("ok", Some(status), Some(merged), None)
+}
+
+fn cursor_error(status: u16) -> CursorUsageFetch {
+    let (kind, message) = if status == 401 {
+        (
+            "error",
+            "Cursor sign-in expired".to_string(),
+        )
+    } else if status == 403 {
+        (
+            "unavailable",
+            "Cursor usage is unavailable for this account".to_string(),
+        )
+    } else {
+        (
+            "error",
+            format!("Cursor usage request failed ({status})"),
+        )
+    };
+    cursor_result(kind, Some(status), None, Some(message))
+}
+
+fn cursor_post(url: &str, token: &str) -> (u16, String) {
+    cursor_request(url, token, false)
+}
+
+fn cursor_post_cookie(url: &str, token: &str) -> (u16, String) {
+    cursor_request(url, token, true)
+}
+
+fn cursor_request(url: &str, token: &str, cookie: bool) -> (u16, String) {
+    let agent = ureq::AgentBuilder::new().timeout(HTTP_TIMEOUT).build();
+    let mut req = agent
+        .post(url)
+        .set("Content-Type", "application/json")
+        .set("Connect-Protocol-Version", "1")
+        .set("User-Agent", CURSOR_USER_AGENT);
+    if cookie {
+        req = req.set("Cookie", &format!("WorkosCursorSessionToken={token}"));
+    } else {
+        req = req.set("Authorization", &format!("Bearer {token}"));
+    }
+    match req.send_string("{}") {
+        Ok(response) => {
+            let status = response.status();
+            let body = response.into_string().unwrap_or_default();
+            (status, body)
+        }
+        Err(ureq::Error::Status(status, response)) => {
+            let body = response.into_string().unwrap_or_default();
+            (status, body)
+        }
+        Err(_) => (0, String::new()),
+    }
+}
+
+fn merge_plan_info_if_needed(body: &str, token: &str) -> String {
+    let Ok(mut value) = serde_json::from_str::<Value>(body) else {
+        return body.to_string();
+    };
+    let limit = value
+        .get("planUsage")
+        .or_else(|| value.get("plan_usage"))
+        .and_then(|plan| plan.get("limit"))
+        .and_then(Value::as_f64)
+        .unwrap_or(0.0);
+    if limit > 0.0 {
+        return body.to_string();
+    }
+    let (status, plan_body) = cursor_post(CURSOR_PLAN_RPC, token);
+    if !(200..300).contains(&status) {
+        return body.to_string();
+    }
+    if let Ok(plan) = serde_json::from_str::<Value>(&plan_body) {
+        if let Some(info) = plan.get("planInfo").cloned() {
+            if let Some(obj) = value.as_object_mut() {
+                obj.insert("planInfo".into(), info);
+                if let Ok(merged) = serde_json::to_string(&value) {
+                    return merged;
+                }
+            }
+        }
+    }
+    body.to_string()
+}
+
+fn read_cursor_access_token() -> Option<String> {
+    for path in cursor_cli_auth_paths() {
+        if let Ok(raw) = std::fs::read_to_string(&path) {
+            if let Some(token) = extract_access_token(&raw) {
+                return Some(token);
+            }
+        }
+    }
+    read_cursor_ide_access_token()
+}
+
+pub(crate) fn cursor_cli_auth_paths() -> Vec<PathBuf> {
+    let mut paths = Vec::new();
+    if let Some(home) = dirs_home() {
+        paths.push(PathBuf::from(&home).join(".cursor/auth.json"));
+        paths.push(PathBuf::from(&home).join(".config/cursor/auth.json"));
+    }
+    if let Ok(xdg) = std::env::var("XDG_CONFIG_HOME") {
+        if !xdg.is_empty() {
+            paths.push(PathBuf::from(xdg).join("cursor/auth.json"));
+        }
+    }
+    paths
+}
+
+pub(crate) fn read_cursor_ide_access_token_from(db: &std::path::Path) -> Option<String> {
+    use rusqlite::{Connection, OpenFlags};
+    let flags = OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX;
+    let connection = Connection::open_with_flags(db, flags)
+        .or_else(|_| {
+            let Some(raw) = db.to_str() else {
+                return Err(rusqlite::Error::InvalidQuery);
+            };
+            let name = raw.replace('%', "%25").replace('?', "%3F").replace('#', "%23");
+            Connection::open_with_flags(
+                format!("file:{name}?immutable=1"),
+                flags | OpenFlags::SQLITE_OPEN_URI,
+            )
+        })
+        .ok()?;
+    let value: String = connection
+        .query_row(
+            "SELECT value FROM ItemTable WHERE key = 'cursorAuth/accessToken'",
+            [],
+            |row| row.get(0),
+        )
+        .ok()?;
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    if let Ok(parsed) = serde_json::from_str::<String>(trimmed) {
+        let token = parsed.trim();
+        if !token.is_empty() {
+            return Some(token.to_string());
+        }
+    }
+    Some(trimmed.to_string())
+}
+
+fn read_cursor_ide_access_token() -> Option<String> {
+    let db = cursor_ide_state_db()?;
+    read_cursor_ide_access_token_from(&db)
+}
+
+fn cursor_ide_state_db() -> Option<PathBuf> {
+    #[cfg(target_os = "macos")]
+    {
+        Some(
+            PathBuf::from(dirs_home()?)
+                .join("Library/Application Support/Cursor/User/globalStorage/state.vscdb"),
+        )
+    }
+    #[cfg(target_os = "windows")]
+    {
+        let appdata = std::env::var("APPDATA").ok().filter(|v| !v.is_empty())?;
+        Some(PathBuf::from(appdata).join("Cursor/User/globalStorage/state.vscdb"))
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        Some(PathBuf::from(dirs_home()?).join(".config/Cursor/User/globalStorage/state.vscdb"))
+    }
+}
 
 /// Fetch OpenCode Go 5h / weekly / monthly usage via the local Go API key.
 /// Runs in the host process so the webview CORS policy does not apply.
@@ -704,6 +946,61 @@ mod tests {
             None
         );
         assert_eq!(extract_access_token("not json"), None);
+    }
+
+    #[test]
+    fn cursor_ide_sqlite_reads_json_quoted_and_raw_tokens() {
+        let dir = std::env::temp_dir().join(format!(
+            "monocode-cursor-usage-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let db = dir.join("state.vscdb");
+        {
+            let conn = rusqlite::Connection::open(&db).unwrap();
+            conn.execute(
+                "CREATE TABLE ItemTable (key TEXT PRIMARY KEY, value TEXT)",
+                [],
+            )
+            .unwrap();
+            conn.execute(
+                "INSERT INTO ItemTable (key, value) VALUES (?1, ?2)",
+                rusqlite::params![
+                    "cursorAuth/accessToken",
+                    serde_json::Value::String("jwt-quoted".into()).to_string()
+                ],
+            )
+            .unwrap();
+        }
+        assert_eq!(
+            read_cursor_ide_access_token_from(&db).as_deref(),
+            Some("jwt-quoted")
+        );
+        {
+            let conn = rusqlite::Connection::open(&db).unwrap();
+            conn.execute(
+                "UPDATE ItemTable SET value = ?1 WHERE key = 'cursorAuth/accessToken'",
+                rusqlite::params!["jwt-raw"],
+            )
+            .unwrap();
+        }
+        assert_eq!(
+            read_cursor_ide_access_token_from(&db).as_deref(),
+            Some("jwt-raw")
+        );
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn cursor_unauthorized_maps_to_expired_sign_in() {
+        let fetch = cursor_error(401);
+        assert_eq!(fetch.status, "error");
+        assert_eq!(fetch.error.as_deref(), Some("Cursor sign-in expired"));
+        let fetch = cursor_error(403);
+        assert_eq!(fetch.status, "unavailable");
     }
 
     #[test]
