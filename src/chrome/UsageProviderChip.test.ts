@@ -224,6 +224,40 @@ describe("UsageProviderChip", () => {
     expect(useButtons).toHaveLength(2);
   });
 
+  it("shows only the plan cycle on the Cursor chip", () => {
+    const resetsAt = now + 12 * 86_400_000 + 22 * 3_600_000;
+    const limits: ProviderRateLimits = {
+      provider: "cursor",
+      session: null,
+      weekly: {
+        usedPercent: 0,
+        windowMinutes: 43_200,
+        resetsAt,
+      },
+      monthly: {
+        usedPercent: 100,
+        windowMinutes: 43_200,
+        resetsAt,
+      },
+      resetCredits: null,
+      cursorDetail: {
+        includedUsd: 70,
+        limitUsd: 70,
+        bonusUsd: 796.26,
+        spendUsedUsd: 0,
+        spendLimitUsd: 2,
+      },
+      updatedAt: now,
+      error: null,
+      status: "ok",
+    };
+    act(() =>
+      root.render(createElement(UsageProviderChip, { limits, now })),
+    );
+    const chip = button("Cursor usage details");
+    expect(chip.textContent).toBe("100% 12d 22h");
+  });
+
   it("labels Cursor included usage as the plan cycle", async () => {
     const limits: ProviderRateLimits = {
       provider: "cursor",

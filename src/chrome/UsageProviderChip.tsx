@@ -87,13 +87,14 @@ export function UsageProviderChip({
       !limits.weekly &&
       !limits.monthly);
   const disconnected = limits.status === "unavailable";
-  const windows = usageWindows(limits);
+  const chipWindows = usageWindows(limits, "chip");
+  const popoverWindows = usageWindows(limits, "popover");
   const loginView = Boolean(
     onReconnect &&
-    windows.length === 0 &&
+    popoverWindows.length === 0 &&
     (needsProviderLogin(limits) || reconnectState !== "idle"),
   );
-  const tightest = windows.reduce<RateLimitWindow | null>((best, entry) => {
+  const tightest = chipWindows.reduce<RateLimitWindow | null>((best, entry) => {
     if (!best || entry.window.usedPercent > best.usedPercent) {
       return entry.window;
     }
@@ -187,13 +188,13 @@ export function UsageProviderChip({
           <span className="animate-pulse text-content/35">···</span>
         ) : disconnected ? (
           <span className="text-content/35">not connected</span>
-        ) : windows.length === 0 ? (
+        ) : chipWindows.length === 0 ? (
           <span className="text-content/35">{emptyUsageLabel(limits)}</span>
         ) : (
           <>
             {tightest ? <MiniBar usedPct={tightest.usedPercent} /> : null}
             <span className="flex min-w-0 items-center gap-1 tabular-nums">
-              {windows.map((entry, index) => (
+              {chipWindows.map((entry, index) => (
                 <span
                   key={entry.key}
                   className="inline-flex items-center gap-1"
@@ -271,15 +272,15 @@ export function UsageProviderChip({
                 ) : null}
               </div>
 
-              {limits.status === "error" && windows.length > 0 ? (
+              {limits.status === "error" && popoverWindows.length > 0 ? (
                 <p className="mb-2 rounded-lg bg-amber-400/10 px-2.5 py-2 text-[10px] leading-4 text-amber-700 dark:text-amber-300">
                   Couldn’t refresh. Showing the last available snapshot.
                 </p>
               ) : null}
 
-              {windows.length > 0 ? (
+              {popoverWindows.length > 0 ? (
                 <div className="flex flex-col gap-1.5">
-                  {windows.map((entry) => (
+                  {popoverWindows.map((entry) => (
                     <UsageWindowCard
                       key={entry.key}
                       kind={entry.key}
@@ -334,7 +335,24 @@ export function UsageProviderChip({
   );
 }
 
-function usageWindows(limits: ProviderRateLimits): UsageWindowEntry[] {
+function usageWindows(
+  limits: ProviderRateLimits,
+  surface: "chip" | "popover" = "popover",
+): UsageWindowEntry[] {
+  if (limits.provider === "cursor") {
+    const monthly = limits.monthly
+      ? ({ key: "monthly", window: limits.monthly } as const)
+      : null;
+    const weekly = limits.weekly
+      ? ({ key: "weekly", window: limits.weekly } as const)
+      : null;
+    if (surface === "chip") {
+      return monthly ? [monthly] : weekly ? [weekly] : [];
+    }
+    return [monthly, weekly].filter(
+      (entry): entry is UsageWindowEntry => entry != null,
+    );
+  }
   return [
     limits.session
       ? ({ key: "session", window: limits.session } as const)
