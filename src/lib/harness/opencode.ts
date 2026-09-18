@@ -104,11 +104,13 @@ type Live = {
   turnFailed: ((error: Error) => void) | null;
   turnEndPending: boolean;
   activeTurn: boolean;
+  providerAccountId?: string;
 };
 
 type Resume = {
   sessionId: string;
   cwd: string;
+  providerAccountId?: string;
 };
 
 const SERVER_TIMEOUT_MS = 30_000;
@@ -284,15 +286,20 @@ export function bindOpenCodeSession(
   threadId: string,
   providerSessionId: string,
   cwd: string,
+  providerAccountId?: string,
 ): void {
   const sessionId = providerSessionId.trim();
   if (!threadId || !sessionId || !cwd.trim()) return;
-  resumeByThread.set(threadId, { sessionId, cwd });
+  resumeByThread.set(threadId, { sessionId, cwd, providerAccountId });
 }
 
 async function ensureLive(input: HarnessSessionInput): Promise<Live> {
   const existing = liveByThread.get(input.sessionId);
-  if (existing && existing.cwd === input.cwd) {
+  if (
+    existing &&
+    existing.cwd === input.cwd &&
+    existing.providerAccountId === input.providerAccountId
+  ) {
     existing.onEvent = input.onEvent;
     if (existing.runtimeMode !== input.runtimeMode) {
       await existing.client.updateSession(existing.openCodeSessionId, {
@@ -308,8 +315,11 @@ async function ensureLive(input: HarnessSessionInput): Promise<Live> {
   }
 
   const resume = resumeByThread.get(input.sessionId);
-  const canResume = resume != null && resume.cwd === input.cwd;
-  if (resume && resume.cwd !== input.cwd) {
+  const canResume =
+    resume != null &&
+    resume.cwd === input.cwd &&
+    resume.providerAccountId === input.providerAccountId;
+  if (resume && !canResume) {
     resumeByThread.delete(input.sessionId);
   }
 
@@ -347,11 +357,16 @@ async function ensureLive(input: HarnessSessionInput): Promise<Live> {
   );
 
   const port = await freeHarnessPort();
+  const account =
+    input.providerAccountId && input.providerAccountId !== "default"
+      ? { provider: "opencode" as const, id: input.providerAccountId }
+      : undefined;
   await spawnChild(
     input.sessionId,
     path,
     ["serve", `--hostname=127.0.0.1`, `--port=${port}`],
     input.cwd,
+    account,
   );
 
   try {
@@ -399,12 +414,14 @@ async function ensureLive(input: HarnessSessionInput): Promise<Live> {
       turnFailed: null,
       turnEndPending: false,
       activeTurn: false,
+      providerAccountId: input.providerAccountId,
     };
     liveRef.current = live;
     liveByThread.set(input.sessionId, live);
     resumeByThread.set(input.sessionId, {
       sessionId: openCodeSession.id,
       cwd: input.cwd,
+      providerAccountId: input.providerAccountId,
     });
 
     await client.subscribeEvents(

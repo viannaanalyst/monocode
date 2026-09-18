@@ -167,7 +167,7 @@ describe("UsageFooter provider authentication", () => {
     act(() => button("Claude Code usage details").click());
     act(() => button("Sign in to Claude Code").click());
     await vi.waitFor(() =>
-      expect(auth.loginHarness).toHaveBeenCalledWith("claude"),
+      expect(auth.loginHarness).toHaveBeenCalledWith("claude", "default"),
     );
 
     act(() => button("Codex usage details").click());
@@ -176,7 +176,7 @@ describe("UsageFooter provider authentication", () => {
 
     await act(async () => rejectClaude?.(new Error("Claude login failed")));
     await vi.waitFor(() =>
-      expect(auth.loginHarness).toHaveBeenCalledWith("codex"),
+      expect(auth.loginHarness).toHaveBeenCalledWith("codex", "default"),
     );
   });
 });

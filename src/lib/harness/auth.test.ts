@@ -10,6 +10,7 @@ const child = vi.hoisted(() => ({
   resolveCursorBinary: vi.fn(async () => ({ path: "/bin/agent" })),
   resolveGrokBinary: vi.fn(async () => ({ path: "/bin/grok" })),
   resolveFxBinary: vi.fn(async () => ({ path: "/bin/fx" })),
+  resolveOpenCodeBinary: vi.fn(async () => ({ path: "/bin/opencode" })),
 }));
 
 vi.mock("./child", () => child);
@@ -39,7 +40,8 @@ describe("harness login", () => {
     expect(harnessLoginArgs("cursor")).toEqual(["login"]);
     expect(harnessLoginArgs("grok")).toEqual(["login", "--oauth"]);
     expect(harnessLoginArgs("fx")).toEqual(["login", "vercel"]);
-    expect(supportsHarnessLogin("opencode")).toBe(false);
+    expect(harnessLoginArgs("opencode")).toEqual(["auth", "login"]);
+    expect(supportsHarnessLogin("opencode")).toBe(true);
     expect(supportsHarnessLogin("pi")).toBe(false);
     expect(supportsHarnessLogin("omp")).toBe(false);
   });
@@ -116,8 +118,26 @@ describe("harness login", () => {
     expect(child.spawnChild).toHaveBeenCalledOnce();
   });
 
+  it("isolates a named OpenCode account during sign-in", async () => {
+    const login = loginHarness("opencode", "account-work");
+    await vi.waitFor(() => expect(child.watchChild).toHaveBeenCalledOnce());
+    expect(child.spawnChild).toHaveBeenCalledWith(
+      "monocode-provider-login-test-window-opencode-account-work",
+      "/bin/opencode",
+      ["auth", "login"],
+      "/home/alice",
+      { provider: "opencode", id: "account-work" },
+    );
+
+    const onExit = child.watchChild.mock.calls[0]?.[2] as
+      | ((code: number | null) => void)
+      | undefined;
+    onExit?.(0);
+    await expect(login).resolves.toBeUndefined();
+  });
+
   it("does not invent one login flow for multi-provider harnesses", async () => {
-    await expect(loginHarness("opencode")).rejects.toThrow(
+    await expect(loginHarness("pi")).rejects.toThrow(
       "does not offer a single browser sign-in flow",
     );
     expect(child.spawnChild).not.toHaveBeenCalled();

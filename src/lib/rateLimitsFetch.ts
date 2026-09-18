@@ -33,10 +33,14 @@ type OpencodeGoUsageFetch = {
  * Fetch OpenCode Go 5h / weekly / monthly usage via the official API.
  * Runs through a Tauri command so the webview CORS policy does not apply.
  */
-export async function fetchOpencodeGoRateLimits(): Promise<ProviderRateLimits> {
+export async function fetchOpencodeGoRateLimits(
+  accountId = "default",
+): Promise<ProviderRateLimits> {
   let result: OpencodeGoUsageFetch;
   try {
-    result = await invoke<OpencodeGoUsageFetch>("fetch_opencode_go_usage");
+    result = await invoke<OpencodeGoUsageFetch>("fetch_opencode_go_usage", {
+      accountId,
+    });
   } catch (error) {
     return errorRateLimits(
       "opencode",

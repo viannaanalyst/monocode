@@ -94,12 +94,13 @@ describe("opencode usage chip", () => {
     const dialog = document.querySelector('[role="dialog"]');
     expect(dialog).not.toBeNull();
     expect(dialog!.textContent).toContain("OpenCode usage");
+    expect(dialog!.textContent).toContain("Account in this project");
     expect(dialog!.textContent).toContain("5-hour limit");
     expect(dialog!.textContent).toContain("Weekly limit");
     expect(dialog!.textContent).toContain("Monthly limit");
   });
 
-  it("does not open a popover without windows", async () => {
+  it("opens the account list even without usage windows", async () => {
     rateLimitsFetch.fetchOpencodeGoRateLimits.mockResolvedValue({
       ...opencodeLimits(),
       session: null,
@@ -119,6 +120,8 @@ describe("opencode usage chip", () => {
     );
     expect(chip).not.toBeNull();
     await act(async () => chip!.click());
-    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    const dialog = document.querySelector('[role="dialog"]');
+    expect(dialog).not.toBeNull();
+    expect(dialog!.textContent).toContain("Add account");
   });
 });

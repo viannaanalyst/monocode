@@ -13,6 +13,7 @@ import {
   preferredModelSettings,
   resolveModel,
 } from "./models";
+import { selectedAccountForHarness } from "./providerAccounts";
 
 export type HarnessId =
   | "claude"
@@ -347,7 +348,7 @@ export type Session = {
   editingQueuedMessageId?: string;
   /** Provider-side conversation id (Cursor ACP session id). */
   providerSessionId?: string;
-  /** Named local credential profile used by Claude or Codex. */
+  /** Named local credential profile used by Claude, Codex, or OpenCode. */
   providerAccountId?: string;
   /** Context-window level reported by the harness. Absent until it reports. */
   context?: ContextUsage;
@@ -433,6 +434,7 @@ export function newSession(
   modelSettings?: Record<string, string>,
 ): Session {
   const resolved = resolveModel(harness, model ?? preferredModelId(harness));
+  const providerAccountId = selectedAccountForHarness(harness, cwd);
   return {
     id: crypto.randomUUID(),
     harness,
@@ -442,6 +444,7 @@ export function newSession(
     title: HARNESS_LABEL[harness],
     cwd,
     blocks: [],
+    ...(providerAccountId ? { providerAccountId } : {}),
   };
 }
 

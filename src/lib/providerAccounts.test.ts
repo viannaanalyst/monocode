@@ -6,6 +6,7 @@ import {
   providerAccountLabel,
   providerAccounts,
   saveProviderAccount,
+  selectedAccountForHarness,
   selectedProviderAccountId,
   selectProviderAccount,
 } from "./providerAccounts";
@@ -127,5 +128,18 @@ describe("provider accounts", () => {
     );
     selectProviderAccount("codex", "/repo/one", "missing");
     expect(selectedProviderAccountId("codex", "/repo/one")).toBe(work.id);
+  });
+
+  it("exposes a named profile id only when the project selected one", () => {
+    const work = {
+      id: "account-work",
+      provider: "opencode" as const,
+      label: "Work",
+    };
+    saveProviderAccount(work);
+    selectProviderAccount("opencode", "/repo", work.id);
+    expect(selectedAccountForHarness("opencode", "/repo")).toBe(work.id);
+    expect(selectedAccountForHarness("opencode", "/other")).toBeUndefined();
+    expect(selectedAccountForHarness("cursor", "/repo")).toBeUndefined();
   });
 });

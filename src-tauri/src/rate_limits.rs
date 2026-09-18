@@ -47,8 +47,12 @@ const OPENCODE_GO_USAGE_URL: &str = "https://opencode.ai/zen/go/v1/usage";
 /// Runs in the host process so the webview CORS policy does not apply.
 /// The key never leaves the host process.
 #[tauri::command]
-pub async fn fetch_opencode_go_usage() -> Result<OpencodeGoUsageFetch, String> {
-    tauri::async_runtime::spawn_blocking(fetch_opencode_go_usage_sync)
+pub async fn fetch_opencode_go_usage(
+    app: AppHandle,
+    account_id: Option<String>,
+) -> Result<OpencodeGoUsageFetch, String> {
+    let data_dir = crate::harness::provider_account_dir(&app, "opencode", account_id.as_deref())?;
+    tauri::async_runtime::spawn_blocking(move || fetch_opencode_go_usage_sync(data_dir))
         .await
         .map_err(|e| e.to_string())?
 }
@@ -67,8 +71,10 @@ fn opencode_go_result(
     }
 }
 
-fn fetch_opencode_go_usage_sync() -> Result<OpencodeGoUsageFetch, String> {
-    let Some(api_key) = read_opencode_go_api_key() else {
+fn fetch_opencode_go_usage_sync(
+    profile_data_dir: Option<PathBuf>,
+) -> Result<OpencodeGoUsageFetch, String> {
+    let Some(api_key) = read_opencode_go_api_key(profile_data_dir.as_deref()) else {
         return Ok(opencode_go_result(
             "unavailable",
             None,
@@ -156,7 +162,11 @@ fn env_var(name: &str) -> Option<String> {
 /// OpenCode data directory. Resolution mirrors OpenCode's own precedence:
 /// the `OPENCODE_AUTH_CONTENT` blob, then an explicit provider key in
 /// opencode config, then stored credentials on disk.
-fn read_opencode_go_api_key() -> Option<String> {
+fn read_opencode_go_api_key(profile_data_dir: Option<&std::path::Path>) -> Option<String> {
+    if let Some(dir) = profile_data_dir {
+        let raw = std::fs::read_to_string(dir.join("auth.json")).ok()?;
+        return extract_opencode_go_api_key(&raw);
+    }
     // Env-injected auth blob is authoritative when it parses: a valid blob
     // without opencode-go means "no key", not "look elsewhere".
     if let Some(blob) = env_var("OPENCODE_AUTH_CONTENT") {
@@ -799,8 +809,33 @@ mod tests {
             "OPENCODE_AUTH_CONTENT",
             r#"{"openai":{"type":"api","key":"sk-openai-x"}}"#,
         );
-        assert_eq!(read_opencode_go_api_key(), None);
+        assert_eq!(read_opencode_go_api_key(None), None);
         std::env::remove_var("OPENCODE_AUTH_CONTENT");
+    }
+
+    #[test]
+    fn profile_data_dir_reads_auth_json_and_ignores_global_blob() {
+        let dir = std::env::temp_dir().join(format!(
+            "monocode-opencode-account-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("auth.json"),
+            r#"{"opencode-go":{"type":"api","key":"sk-go-profile"}}"#,
+        )
+        .unwrap();
+        std::env::set_var(
+            "OPENCODE_AUTH_CONTENT",
+            r#"{"openai":{"type":"api","key":"sk-openai-x"}}"#,
+        );
+        assert_eq!(
+            read_opencode_go_api_key(Some(&dir)).as_deref(),
+            Some("sk-go-profile")
+        );
+        std::env::remove_var("OPENCODE_AUTH_CONTENT");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

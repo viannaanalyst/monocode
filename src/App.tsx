@@ -2,6 +2,10 @@ import { invoke } from "@tauri-apps/api/core";
 import { orchestrator, type ControlOutcome } from "./lib/orchestration";
 import { modelsFor } from "./lib/models";
 import { orderedHarnesses } from "./lib/providerOrder";
+import {
+  DEFAULT_PROVIDER_ACCOUNT_ID,
+  selectedAccountForHarness,
+} from "./lib/providerAccounts";
 import { isHarnessAvailable } from "./lib/harness/availability";
 import {
   completeOrchestrationProposal,
@@ -5281,7 +5285,9 @@ export default function App({
           sessionId,
           cwd: workCwd,
           message: titleMessage,
-          providerAccountId: current.providerAccountId,
+          providerAccountId:
+            selectedAccountForHarness(current.harness, current.cwd) ??
+            current.providerAccountId,
         })
           .then(async (generated) => {
             const linkedWorkItem = await resolveLinkedWorkItem(
@@ -5477,13 +5483,28 @@ export default function App({
           const earlier = queuedHandoff
             ? userMessagesAfterHandoff(current)
             : [];
+          const providerAccountId = selectedAccountForHarness(
+            current.harness,
+            current.cwd,
+          );
+          if (current.providerAccountId !== providerAccountId) {
+            setSessions((prev) => {
+              const next = prev.map((session) =>
+                session.id === sessionId
+                  ? { ...session, providerAccountId }
+                  : session,
+              );
+              sessionsRef.current = next;
+              return next;
+            });
+          }
           await sendHarnessTurn({
             harness: current.harness,
             sessionId,
             cwd: workCwd,
             model: current.model,
             modelSettings: current.modelSettings,
-            providerAccountId: current.providerAccountId,
+            providerAccountId,
             runtimeMode: current.runtimeMode,
             intent: intent === "orchestrate" ? "plan" : intent,
             // A lead drives the control CLI over loopback; without this the
@@ -8183,9 +8204,27 @@ export default function App({
               <UsageFooter
                 providers={usageProviders}
                 session={usageSession}
+                project={active?.cwd ?? projectCwd}
                 terminals={runningTerminals}
                 terminalOpen={runningTerminalOpen}
                 onToggleTerminal={onToggleRunningTerminal}
+                onAccountSelected={(provider, accountId) => {
+                  const focused = activeSessionIdRef.current;
+                  if (!focused) return;
+                  const nextId =
+                    accountId === DEFAULT_PROVIDER_ACCOUNT_ID
+                      ? undefined
+                      : accountId;
+                  setSessions((prev) => {
+                    const next = prev.map((session) =>
+                      session.id === focused && session.harness === provider
+                        ? { ...session, providerAccountId: nextId }
+                        : session,
+                    );
+                    sessionsRef.current = next;
+                    return next;
+                  });
+                }}
               />
             )}
           </div>

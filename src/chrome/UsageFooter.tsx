@@ -4,6 +4,7 @@ import {
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   type Dispatch,
   type SetStateAction,
 } from "react";
@@ -30,6 +31,15 @@ import {
 import { HARNESS_LABEL, HARNESS_TITLE, type HarnessId } from "../lib/session";
 import { t } from "../i18n";
 import { loginHarness, supportsHarnessLogin } from "../lib/harness/auth";
+import {
+  getProviderAccountsSnapshot,
+  selectedProviderAccountId,
+  subscribeProviderAccounts,
+} from "../lib/providerAccounts";
+import {
+  ProviderAccountControls,
+  providerChipAccountSuffix,
+} from "./ProviderAccountControls";
 import { consumeCodexRateLimitResetCredit } from "../lib/rateLimitsFetch";
 import { UsageProviderChip } from "./UsageProviderChip";
 import {
@@ -76,6 +86,7 @@ export function UsageFooter({
   terminals = [],
   terminalOpen = false,
   onToggleTerminal,
+  onAccountSelected,
 }: {
   providers: RateLimitProvider[];
   session?: UsageFooterSession;
@@ -83,6 +94,10 @@ export function UsageFooter({
   terminals?: RunningTerminal[];
   terminalOpen?: boolean;
   onToggleTerminal?: (fileId: string) => void;
+  onAccountSelected?: (
+    provider: RateLimitProvider,
+    accountId: string,
+  ) => void;
 }) {
   const wantClaude = providers.includes("claude");
   const wantCodex = providers.includes("codex");
@@ -112,6 +127,14 @@ export function UsageFooter({
   codexRef.current = codex;
   opencodeRef.current = opencode;
   costRef.current = cost;
+  useSyncExternalStore(
+    subscribeProviderAccounts,
+    getProviderAccountsSnapshot,
+    getProviderAccountsSnapshot,
+  );
+  const claudeAccountId = selectedProviderAccountId("claude", project);
+  const codexAccountId = selectedProviderAccountId("codex", project);
+  const opencodeAccountId = selectedProviderAccountId("opencode", project);
 
   const refresh = useCallback((force = false) => {
     if (inflight.current) return inflight.current;
@@ -133,7 +156,7 @@ export function UsageFooter({
     if (fetchClaude) {
       setClaude((current) => fetchingRateLimits("claude", current));
       jobs.push(
-        fetchClaudeRateLimits().then((value) => {
+        fetchClaudeRateLimits(claudeAccountId).then((value) => {
           setClaude(value);
         }),
       );
@@ -141,7 +164,7 @@ export function UsageFooter({
     if (fetchCodex) {
       setCodex((current) => fetchingRateLimits("codex", current));
       jobs.push(
-        fetchCodexRateLimits().then((value) => {
+        fetchCodexRateLimits(codexAccountId).then((value) => {
           setCodex(value);
         }),
       );
@@ -149,7 +172,7 @@ export function UsageFooter({
     if (fetchOpencode) {
       setOpencode((current) => fetchingRateLimits("opencode", current));
       jobs.push(
-        fetchOpencodeGoRateLimits().then((value) => {
+        fetchOpencodeGoRateLimits(opencodeAccountId).then((value) => {
           setOpencode(value);
         }),
       );
@@ -165,7 +188,15 @@ export function UsageFooter({
       });
     inflight.current = run;
     return run;
-  }, [wantClaude, wantCodex, wantOpencode, wantCost]);
+  }, [
+    wantClaude,
+    wantCodex,
+    wantOpencode,
+    wantCost,
+    claudeAccountId,
+    codexAccountId,
+    opencodeAccountId,
+  ]);
 
   useEffect(() => {
     void refresh();
@@ -210,8 +241,11 @@ export function UsageFooter({
     let outcome: Awaited<ReturnType<typeof consumeCodexRateLimitResetCredit>>;
     const operation = (async () => {
       try {
-        outcome = await consumeCodexRateLimitResetCredit(creditId);
-        setCodex(await fetchCodexRateLimits());
+        outcome = await consumeCodexRateLimitResetCredit(
+          creditId,
+          codexAccountId,
+        );
+        setCodex(await fetchCodexRateLimits(codexAccountId));
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Could not use Codex reset";
@@ -226,21 +260,22 @@ export function UsageFooter({
     inflight.current = tracked.catch(() => undefined);
     await tracked;
     return outcome!;
-  }, []);
+  }, [codexAccountId]);
 
   const reconnectProvider = useCallback(
     async (
       provider: RateLimitProvider,
-      fetchLimits: () => Promise<ProviderRateLimits>,
+      fetchLimits: (accountId?: string) => Promise<ProviderRateLimits>,
       setLimits: Dispatch<SetStateAction<ProviderRateLimits>>,
+      accountId: string,
     ) => {
       while (inflight.current) await inflight.current;
       setRefreshing(true);
       setLimits((current) => fetchingRateLimits(provider, current));
       const operation = (async () => {
         try {
-          await loginHarness(provider);
-          const value = await fetchLimits();
+          await loginHarness(provider, accountId);
+          const value = await fetchLimits(accountId);
           setLimits(value);
           if (value.status !== "ok") {
             throw new Error(
@@ -268,13 +303,25 @@ export function UsageFooter({
   );
 
   const reconnectClaude = useCallback(
-    () => reconnectProvider("claude", fetchClaudeRateLimits, setClaude),
-    [reconnectProvider],
+    () =>
+      reconnectProvider(
+        "claude",
+        fetchClaudeRateLimits,
+        setClaude,
+        claudeAccountId,
+      ),
+    [reconnectProvider, claudeAccountId],
   );
 
   const reconnectCodex = useCallback(
-    () => reconnectProvider("codex", fetchCodexRateLimits, setCodex),
-    [reconnectProvider],
+    () =>
+      reconnectProvider(
+        "codex",
+        fetchCodexRateLimits,
+        setCodex,
+        codexAccountId,
+      ),
+    [reconnectProvider, codexAccountId],
   );
 
   const sessionCost =
@@ -304,7 +351,11 @@ export function UsageFooter({
             <UsageProviderChip
               limits={claude}
               now={now}
+              project={project}
               onReconnect={reconnectClaude}
+              onAccountSelected={(accountId) =>
+                onAccountSelected?.("claude", accountId)
+              }
             />
           ) : null}
           {wantCodex ? (
@@ -314,9 +365,21 @@ export function UsageFooter({
               project={project}
               onConsumeReset={consumeCodexReset}
               onReconnect={reconnectCodex}
+              onAccountSelected={(accountId) =>
+                onAccountSelected?.("codex", accountId)
+              }
             />
           ) : null}
-          {wantOpencode ? <ProviderChip limits={opencode} now={now} /> : null}
+          {wantOpencode ? (
+            <ProviderChip
+              limits={opencode}
+              now={now}
+              project={project}
+              onAccountSelected={(accountId) =>
+                onAccountSelected?.("opencode", accountId)
+              }
+            />
+          ) : null}
         </>
       ) : session ? (
         <SessionChip session={session} />
@@ -628,9 +691,13 @@ function RunningTerminalChip({
 function ProviderChip({
   limits,
   now,
+  project,
+  onAccountSelected,
 }: {
   limits: ProviderRateLimits;
   now: number;
+  project?: string;
+  onAccountSelected?: (accountId: string) => void;
 }) {
   const trigger = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
@@ -650,9 +717,17 @@ function ProviderChip({
       entry != null,
   );
   const hasWindows = windows.length > 0;
-  const usageDetailsLabel = t("{provider} usage details", {
-    provider: HARNESS_TITLE[limits.provider],
-  });
+  useSyncExternalStore(
+    subscribeProviderAccounts,
+    getProviderAccountsSnapshot,
+    getProviderAccountsSnapshot,
+  );
+  const accountSuffix = providerChipAccountSuffix(limits.provider, project);
+  const usageDetailsLabel = accountSuffix
+    ? `${HARNESS_TITLE[limits.provider]} · ${accountSuffix}`
+    : t("{provider} usage details", {
+        provider: HARNESS_TITLE[limits.provider],
+      });
   return (
     <>
       <button
@@ -660,13 +735,17 @@ function ProviderChip({
         type="button"
         data-no-tooltip
         aria-label={usageDetailsLabel}
-        aria-haspopup={hasWindows ? "dialog" : undefined}
-        aria-expanded={hasWindows ? open : undefined}
-        disabled={!hasWindows}
+        aria-haspopup="dialog"
+        aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
-        className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap rounded px-1 -mx-1 text-content/55 hover:bg-content/10 hover:text-content disabled:cursor-default disabled:hover:bg-transparent disabled:hover:text-content/55"
+        className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap rounded px-1 -mx-1 text-content/55 hover:bg-content/10 hover:text-content"
       >
       <HarnessIcon harness={limits.provider} className="size-3.5 shrink-0" />
+      {accountSuffix ? (
+        <span className="max-w-[7rem] truncate text-content/45">
+          {accountSuffix}
+        </span>
+      ) : null}
       {loading ? (
         <span className="animate-pulse text-content/35">···</span>
       ) : disconnected ? (
@@ -690,18 +769,26 @@ function ProviderChip({
         </span>
         )}
       </button>
-      {open && hasWindows ? (
+      {open ? (
         <Popover
           anchor={trigger}
           side="top"
           align="start"
-          width={280}
+          width={300}
+          maxHeight={460}
           autoFocus
           onDismiss={() => setOpen(false)}
           role="dialog"
           aria-label={usageDetailsLabel}
-          className="p-2.5"
+          className="overflow-y-auto p-2.5"
         >
+          <ProviderAccountControls
+            provider={limits.provider}
+            project={project}
+            onSelected={onAccountSelected}
+          />
+          {hasWindows ? (
+            <>
           <div className="flex items-start gap-2.5 px-1 pb-2.5 pt-0.5">
             <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-content/[0.06] ring-1 ring-inset ring-content/[0.07]">
               <HarnessIcon harness={limits.provider} className="size-4" />
@@ -727,6 +814,8 @@ function ProviderChip({
               />
             ))}
           </div>
+            </>
+          ) : null}
         </Popover>
       ) : null}
     </>

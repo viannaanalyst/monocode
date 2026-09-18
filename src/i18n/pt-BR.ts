@@ -1,7 +1,10 @@
 /** English source string → Brazilian Portuguese. Missing keys fall back to English. */
 export const PT_BR: Record<string, string> = {
   About: "Sobre",
+  "Account in this project": "Conta neste projeto",
+  "Account name": "Nome da conta",
   Access: "Acesso",
+  "Add account": "Adicionar conta",
   "Add files or choose a mode": "Adicionar arquivos ou escolher um modo",
   "Agent CLIs MonoCode can drive, and the model new sessions start with.":
     "CLIs de agentes que o MonoCode pode usar, e o modelo com que novas sessões começam.",
@@ -96,6 +99,7 @@ export const PT_BR: Record<string, string> = {
   Dark: "Escuro",
   Debug: "Debug",
   Delete: "Excluir",
+  "Default account": "Padrão",
   "Delete group": "Excluir grupo",
   "Development build": "Build de desenvolvimento",
   "Diff is too large to display": "O diff é grande demais para exibir",
@@ -944,6 +948,7 @@ export const PT_BR: Record<string, string> = {
   Plan: "Plano",
   Message: "Mensagem",
   Cancel: "Cancelar",
+  Continue: "Continuar",
   "No projects yet": "Ainda não há projetos",
   "Show less": "Mostrar menos",
   "{count} more": "{count} a mais",
@@ -1480,6 +1485,9 @@ export const PT_BR: Record<string, string> = {
   "Notification categories for {project}":
     "Categorias de notificação de {project}",
   "{enabled} of {total} enabled": "{enabled} de {total} ativas",
+  "New {provider} account": "Nova conta {provider}",
+  "Signing in…": "Entrando…",
+  "Could not complete sign-in": "Não foi possível concluir o login",
   "Open a project or connect an Inbox provider to configure its notifications.":
     "Abra um projeto ou conecte uma fonte do Inbox para configurar as notificações.",
   "Your category choices apply when notifications resume. You can edit them while muted.":

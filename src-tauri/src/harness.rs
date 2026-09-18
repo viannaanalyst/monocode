@@ -27,6 +27,10 @@ const MAX_INSTALLER_BYTES: u64 = 1024 * 1024;
 
 const DEFAULT_PROVIDER_ACCOUNT_ID: &str = "default";
 
+fn provider_supports_accounts(provider: &str) -> bool {
+    matches!(provider, "claude" | "codex" | "opencode")
+}
+
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HarnessAccount {
@@ -554,8 +558,10 @@ pub(crate) fn provider_account_dir(
     let Some(account_id) = account_id.filter(|id| *id != DEFAULT_PROVIDER_ACCOUNT_ID) else {
         return Ok(None);
     };
-    if provider != "claude" && provider != "codex" {
-        return Err("Provider account profiles are only supported for Claude and Codex".into());
+    if !provider_supports_accounts(provider) {
+        return Err(
+            "Provider account profiles are only supported for Claude, Codex, and OpenCode".into(),
+        );
     }
     if account_id.is_empty()
         || account_id.len() > 80
@@ -608,6 +614,12 @@ fn apply_provider_account(
                 .env_remove("OPENAI_API_KEY")
                 .env_remove("CODEX_API_KEY")
                 .env_remove("CODEX_ACCESS_TOKEN");
+        }
+        "opencode" => {
+            cmd.env("OPENCODE_DATA_DIR", &dir)
+                .env_remove("OPENCODE_CONFIG")
+                .env_remove("OPENCODE_CONFIG_CONTENT")
+                .env_remove("OPENCODE_AUTH_CONTENT");
         }
         _ => unreachable!("provider_account_dir validates the provider"),
     }
@@ -2714,6 +2726,15 @@ mod tests {
         assert_eq!(command_basename("fx"), "fx");
         assert_eq!(command_basename("/Users/me/.grok/bin/grok"), "grok");
         assert_eq!(command_basename("fx.exe"), "fx");
+    }
+
+    #[test]
+    fn provider_accounts_cover_claude_codex_and_opencode() {
+        assert!(provider_supports_accounts("claude"));
+        assert!(provider_supports_accounts("codex"));
+        assert!(provider_supports_accounts("opencode"));
+        assert!(!provider_supports_accounts("cursor"));
+        assert!(!provider_supports_accounts("grok"));
     }
 
     #[test]

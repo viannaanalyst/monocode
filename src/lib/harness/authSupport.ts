@@ -2,14 +2,15 @@ import type { Block, HarnessId } from "../session";
 
 /**
  * Account-level login commands that can run without an interactive provider
- * picker. OpenCode, Pi, and omp authenticate individual upstream providers,
- * so a single generic browser button would be misleading for them.
+ * picker. Pi and omp authenticate individual upstream providers, so a single
+ * generic browser button would be misleading for them.
  */
 const LOGIN_ARGS: Partial<Record<HarnessId, readonly string[]>> = {
   claude: ["auth", "login"],
   codex: ["login"],
   cursor: ["login"],
   grok: ["login", "--oauth"],
+  opencode: ["auth", "login"],
   // MonoCode uses fx through Vercel AI Gateway. Choosing it explicitly avoids
   // leaving `fx login` waiting on a TTY-only provider picker.
   fx: ["login", "vercel"],

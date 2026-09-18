@@ -5,6 +5,8 @@ const ACCOUNTS_KEY = "monocode.providerAccounts.v1";
 const SELECTIONS_KEY = "monocode.providerAccountSelections.v1";
 const CHANGE_EVENT = "monocode-provider-accounts-changed";
 
+let accountsVersion = 0;
+
 export const DEFAULT_PROVIDER_ACCOUNT_ID = "default";
 
 export type ProviderAccount = {
@@ -103,6 +105,22 @@ export function selectedProviderAccountId(
     : DEFAULT_PROVIDER_ACCOUNT_ID;
 }
 
+export function supportsProviderAccounts(
+  harness: string,
+): harness is RateLimitProvider {
+  return harness === "claude" || harness === "codex" || harness === "opencode";
+}
+
+/** Named profile id, or `undefined` when the project uses the default CLI home. */
+export function selectedAccountForHarness(
+  harness: string,
+  project: string | undefined,
+): string | undefined {
+  if (!supportsProviderAccounts(harness)) return undefined;
+  const id = selectedProviderAccountId(harness, project);
+  return id === DEFAULT_PROVIDER_ACCOUNT_ID ? undefined : id;
+}
+
 export function selectProviderAccount(
   provider: RateLimitProvider,
   project: string | undefined,
@@ -131,7 +149,9 @@ export function providerAccountLabel(
 export function subscribeProviderAccounts(listener: () => void): () => void {
   const local = () => listener();
   const storage = (event: StorageEvent) => {
-    if (event.key === ACCOUNTS_KEY || event.key === SELECTIONS_KEY) listener();
+    if (event.key !== ACCOUNTS_KEY && event.key !== SELECTIONS_KEY) return;
+    accountsVersion += 1;
+    listener();
   };
   window.addEventListener(CHANGE_EVENT, local);
   window.addEventListener("storage", storage);
@@ -139,6 +159,10 @@ export function subscribeProviderAccounts(listener: () => void): () => void {
     window.removeEventListener(CHANGE_EVENT, local);
     window.removeEventListener("storage", storage);
   };
+}
+
+export function getProviderAccountsSnapshot(): number {
+  return accountsVersion;
 }
 
 function selectionKey(project: string | undefined): string {
@@ -187,5 +211,6 @@ function writeJson(key: string, value: unknown): void {
 }
 
 function announceChange(): void {
+  accountsVersion += 1;
   window.dispatchEvent(new Event(CHANGE_EVENT));
 }

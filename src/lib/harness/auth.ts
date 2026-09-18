@@ -39,6 +39,7 @@ const LOGIN_RESOLVERS: Partial<
   cursor: () => child.resolveCursorBinary(),
   grok: () => child.resolveGrokBinary(),
   fx: () => child.resolveFxBinary(),
+  opencode: () => child.resolveOpenCodeBinary(),
 };
 
 const inflight = new Map<string, Promise<void>>();
@@ -133,7 +134,7 @@ async function runHarnessLogin(
     const account =
       accountId &&
       accountId !== "default" &&
-      (harness === "claude" || harness === "codex")
+      (harness === "claude" || harness === "codex" || harness === "opencode")
         ? { provider: harness, id: accountId }
         : undefined;
     const spawn = account

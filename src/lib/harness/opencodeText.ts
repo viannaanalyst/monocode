@@ -25,6 +25,7 @@ type LiveText = {
   client: OpenCodeClient;
   sessionId: string;
   cwd: string;
+  providerAccountId?: string;
   model: { providerID: string; modelID: string };
 };
 
@@ -52,6 +53,7 @@ export async function runOpenCodeTextPrompt(input: {
   cwd: string;
   prompt: string;
   timeoutMs?: number;
+  providerAccountId?: string;
 }): Promise<string> {
   const run = turns.catch(() => undefined).then(() => promptOnLive(input));
   turns = run.then(
@@ -65,8 +67,9 @@ async function promptOnLive(input: {
   cwd: string;
   prompt: string;
   timeoutMs?: number;
+  providerAccountId?: string;
 }): Promise<string> {
-  const session = await ensureLive(input.cwd);
+  const session = await ensureLive(input.cwd, input.providerAccountId);
   try {
     const result = await session.client.prompt({
       sessionID: session.sessionId,
@@ -90,16 +93,27 @@ async function promptOnLive(input: {
   }
 }
 
-async function ensureLive(cwd: string): Promise<LiveText> {
+async function ensureLive(
+  cwd: string,
+  providerAccountId?: string,
+): Promise<LiveText> {
   const model = pickTextModel();
-  if (live && live.cwd === cwd && sameModel(live.model, model)) return live;
+  if (
+    live &&
+    live.cwd === cwd &&
+    live.providerAccountId === providerAccountId &&
+    sameModel(live.model, model)
+  ) {
+    return live;
+  }
   if (live) await dropLive();
-  return startLive(cwd, model);
+  return startLive(cwd, model, providerAccountId);
 }
 
 async function startLive(
   cwd: string,
   model: { providerID: string; modelID: string },
+  providerAccountId?: string,
 ): Promise<LiveText> {
   const { path } = await resolveOpenCodeBinary();
   const versionOut = await execChild(path, ["--version"], cwd).catch(() => "");
@@ -127,11 +141,16 @@ async function startLive(
   );
 
   const port = await freeHarnessPort();
+  const account =
+    providerAccountId && providerAccountId !== "default"
+      ? { provider: "opencode" as const, id: providerAccountId }
+      : undefined;
   await spawnChild(
     TEXT_CHILD_ID,
     path,
     ["serve", `--hostname=127.0.0.1`, `--port=${port}`],
     cwd,
+    account,
   );
 
   try {
@@ -140,7 +159,7 @@ async function startLive(
     const created = await client.createSession({
       permission: [{ permission: "*", pattern: "*", action: "deny" }],
     });
-    live = { client, sessionId: created.id, cwd, model };
+    live = { client, sessionId: created.id, cwd, model, providerAccountId };
     return live;
   } catch (error) {
     await dropLive();

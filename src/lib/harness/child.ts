@@ -233,12 +233,17 @@ export function unwatchSse(sessionId: string) {
   sseBuffer.delete(sessionId);
 }
 
+export type ProviderSpawnAccount = {
+  provider: "claude" | "codex" | "opencode";
+  id: string;
+};
+
 export async function spawnChild(
   sessionId: string,
   command: string,
   args: string[],
   cwd: string,
-  account?: { provider: "claude" | "codex"; id: string },
+  account?: ProviderSpawnAccount,
 ): Promise<void> {
   livePid.delete(sessionId);
   pendingExit.delete(sessionId);

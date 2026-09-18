@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import {
   clampUsedPercent,
   formatRateLimitWindowChipLabel,
@@ -12,6 +12,14 @@ import type { CodexRateLimitResetOutcome } from "../lib/rateLimitsFetch";
 import { mascotPath, projectMascot } from "../lib/projectMascots";
 import { projectKey, projectName } from "../lib/paths";
 import { HARNESS_TITLE } from "../lib/session";
+import {
+  ProviderAccountControls,
+  providerChipAccountSuffix,
+} from "./ProviderAccountControls";
+import {
+  getProviderAccountsSnapshot,
+  subscribeProviderAccounts,
+} from "../lib/providerAccounts";
 import {
   loadTabGroupColors,
   loadTabGroupCustomColors,
@@ -46,12 +54,14 @@ export function UsageProviderChip({
   project,
   onConsumeReset,
   onReconnect,
+  onAccountSelected,
 }: {
   limits: ProviderRateLimits;
   now: number;
   project?: string;
   onConsumeReset?: (creditId?: string) => Promise<CodexRateLimitResetOutcome>;
   onReconnect?: () => Promise<void>;
+  onAccountSelected?: (accountId: string) => void;
 }) {
   const trigger = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
@@ -61,6 +71,12 @@ export function UsageProviderChip({
   const [reconnectState, setReconnectState] =
     useState<ProviderSignInState>("idle");
   const [reconnectError, setReconnectError] = useState<string | null>(null);
+  useSyncExternalStore(
+    subscribeProviderAccounts,
+    getProviderAccountsSnapshot,
+    getProviderAccountsSnapshot,
+  );
+  const accountSuffix = providerChipAccountSuffix(limits.provider, project);
   const loading =
     limits.status === "idle" ||
     (limits.status === "fetching" && !limits.session && !limits.weekly);
@@ -78,6 +94,9 @@ export function UsageProviderChip({
     return best;
   }, null);
   const providerLabel = HARNESS_TITLE[limits.provider];
+  const chipAria = accountSuffix
+    ? `${providerLabel} · ${accountSuffix}`
+    : `${providerLabel} usage details`;
   const mascotProject = project ? projectName(project) : providerLabel;
   const appearanceKey = project ? projectKey(project) : mascotProject;
   const mascotName = resolveTabGroupMascot(
@@ -147,12 +166,17 @@ export function UsageProviderChip({
         type="button"
         data-no-tooltip
         className="-mx-1 inline-flex h-5 min-w-0 shrink-0 items-center gap-1.5 whitespace-nowrap rounded px-1 text-content/55 transition-[background-color,color,transform] duration-150 ease-out hover:bg-content/10 hover:text-content focus-visible:outline-2 focus-visible:outline-accent active:scale-[0.97]"
-        aria-label={`${providerLabel} usage details`}
+        aria-label={chipAria}
         aria-expanded={open}
         aria-haspopup="dialog"
         onClick={() => setOpen((value) => !value)}
       >
         <HarnessIcon harness={limits.provider} className="size-3 shrink-0" />
+        {accountSuffix ? (
+          <span className="max-w-[7rem] truncate text-content/45">
+            {accountSuffix}
+          </span>
+        ) : null}
         {loading ? (
           <span className="animate-pulse text-content/35">···</span>
         ) : disconnected ? (
@@ -194,17 +218,29 @@ export function UsageProviderChip({
           role="dialog"
           aria-label={`${providerLabel} usage details`}
           tabIndex={-1}
-          className={`overflow-y-auto text-content ${loginView ? "" : "p-2.5"}`}
+          className="overflow-y-auto p-2.5 text-content"
         >
           {loginView ? (
-            <ProviderSignInPanel
-              harness={limits.provider}
-              state={reconnectState}
-              error={reconnectError}
-              onSignIn={() => void reconnect()}
-            />
+            <>
+              <ProviderAccountControls
+                provider={limits.provider}
+                project={project}
+                onSelected={onAccountSelected}
+              />
+              <ProviderSignInPanel
+                harness={limits.provider}
+                state={reconnectState}
+                error={reconnectError}
+                onSignIn={() => void reconnect()}
+              />
+            </>
           ) : (
             <>
+              <ProviderAccountControls
+                provider={limits.provider}
+                project={project}
+                onSelected={onAccountSelected}
+              />
               <div className="flex items-start gap-2.5 px-1 pb-2.5 pt-0.5">
                 <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-content/[0.06] ring-1 ring-inset ring-content/[0.07]">
                   <HarnessIcon harness={limits.provider} className="size-4" />
