@@ -1,14 +1,16 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   isModelEnabled,
   isModelHidden,
   loadEnabledModels,
+  modelCatalogKey,
   pickerModelsFor,
+  remapEnabledPickerModels,
   setHarnessModelsEnabled,
   setModelEnabled,
   setModelHidden,
 } from "./modelVisibility";
-import { modelsFor } from "./models";
+import { modelsFor, resetHarnessModelOverlays, setHarnessModels } from "./models";
 
 function mockStorage() {
   const data = new Map<string, string>();
@@ -25,6 +27,9 @@ function mockStorage() {
 
 describe("model visibility", () => {
   beforeEach(mockStorage);
+  afterEach(() => {
+    resetHarnessModelOverlays();
+  });
 
   it("starts with no models in the picker", () => {
     expect(loadEnabledModels().size).toBe(0);
@@ -69,5 +74,60 @@ describe("model visibility", () => {
     expect(
       pickerModelsFor("opencode").some((model) => model.id === first.id),
     ).toBe(false);
+  });
+
+  it("normalizes catalog keys across provider prefixes", () => {
+    expect(modelCatalogKey("opencode:deepseek-v4.1-flash")).toBe(
+      "deepseek-v4.1-flash",
+    );
+    expect(modelCatalogKey("opencode:opencode-go/deepseek-v4.1-flash")).toBe(
+      "deepseek-v4.1-flash",
+    );
+  });
+
+  it("remaps enabled picker ids when a live catalog rewrites them", () => {
+    resetHarnessModelOverlays();
+    setModelEnabled("opencode:deepseek-v4.1-flash", true);
+    setHarnessModels("opencode", [
+      {
+        id: "opencode:opencode-go/deepseek-v4.1-flash",
+        harness: "opencode",
+        name: "DeepSeek V4.1 Flash",
+        nativeId: "opencode-go/deepseek-v4.1-flash",
+      },
+    ]);
+
+    expect(isModelEnabled("opencode:deepseek-v4.1-flash")).toBe(false);
+    expect(isModelEnabled("opencode:opencode-go/deepseek-v4.1-flash")).toBe(
+      true,
+    );
+    expect(
+      pickerModelsFor("opencode").some(
+        (model) => model.id === "opencode:opencode-go/deepseek-v4.1-flash",
+      ),
+    ).toBe(true);
+  });
+
+  it("remaps stale enabled ids without waiting for setHarnessModels", () => {
+    resetHarnessModelOverlays();
+    setHarnessModels("opencode", [
+      {
+        id: "opencode:opencode-go/deepseek-v4.1-flash",
+        harness: "opencode",
+        name: "DeepSeek V4.1 Flash",
+        nativeId: "opencode-go/deepseek-v4.1-flash",
+      },
+    ]);
+    localStorage.setItem(
+      "monocode.enabledPickerModels",
+      JSON.stringify(["opencode:deepseek-v4.1-flash"]),
+    );
+
+    remapEnabledPickerModels("opencode");
+
+    expect(isModelEnabled("opencode:opencode-go/deepseek-v4.1-flash")).toBe(
+      true,
+    );
+    expect(pickerModelsFor("opencode")).toHaveLength(1);
   });
 });

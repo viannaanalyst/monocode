@@ -1,4 +1,8 @@
-import { modelsFor, type AgentModel } from "./models";
+import {
+  modelsFor,
+  onHarnessCatalogUpdated,
+  type AgentModel,
+} from "./models";
 import { HARNESSES, type HarnessId } from "./session";
 
 const HIDDEN_KEY = "monocode.hiddenModels";
@@ -107,3 +111,47 @@ export function hiddenModelCount(harness: HarnessId): number {
   const enabled = loadEnabledModels();
   return modelsFor(harness).filter((model) => !enabled.has(model.id)).length;
 }
+
+/** Stable slug for matching catalog ids across static and live OpenCode ids. */
+export function modelCatalogKey(id: string): string {
+  const trimmed = id.trim();
+  const colon = trimmed.indexOf(":");
+  let slug = colon >= 0 ? trimmed.slice(colon + 1) : trimmed;
+  const bracket = slug.indexOf("[");
+  if (bracket >= 0) slug = slug.slice(0, bracket);
+  const slash = slug.lastIndexOf("/");
+  return slash >= 0 ? slug.slice(slash + 1) : slug;
+}
+
+function catalogKeyIndex(catalog: AgentModel[]): Map<string, string> {
+  const index = new Map<string, string>();
+  for (const model of catalog) {
+    index.set(modelCatalogKey(model.id), model.id);
+    if (model.nativeId) index.set(modelCatalogKey(model.nativeId), model.id);
+  }
+  return index;
+}
+
+/** Keep opt-in picker entries when a live CLI catalog rewrites model ids. */
+export function remapEnabledPickerModels(harness: HarnessId): void {
+  const enabled = loadEnabledModels();
+  const catalog = modelsFor(harness);
+  const catalogIds = new Set(catalog.map((model) => model.id));
+  const byKey = catalogKeyIndex(catalog);
+  const next = new Set(enabled);
+  let changed = false;
+
+  for (const id of enabled) {
+    if (!id.startsWith(`${harness}:`)) continue;
+    if (catalogIds.has(id)) continue;
+    const replacement = byKey.get(modelCatalogKey(id));
+    if (!replacement || replacement === id) continue;
+    next.delete(id);
+    next.add(replacement);
+    changed = true;
+  }
+
+  if (changed) saveEnabledModels(next);
+}
+
+onHarnessCatalogUpdated(remapEnabledPickerModels);

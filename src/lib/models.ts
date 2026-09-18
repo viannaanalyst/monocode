@@ -165,6 +165,11 @@ export const MODELS: AgentModel[] = [
     harness: "opencode",
     name: "DeepSeek V4 Flash",
   },
+  {
+    id: "opencode:deepseek-v4.1-flash",
+    harness: "opencode",
+    name: "DeepSeek V4.1 Flash",
+  },
   { id: "opencode:qwen-3.5", harness: "opencode", name: "Qwen 3.5" },
   { id: "opencode:grok-4.5", harness: "opencode", name: "Grok 4.5" },
   {
@@ -249,6 +254,7 @@ let overlays: Partial<Record<HarnessId, AgentModel[]>> = {};
 let overlayDefaults: Partial<Record<HarnessId, string>> = {};
 let catalogVersion = 0;
 const listeners = new Set<() => void>();
+const catalogUpdateListeners = new Set<(harness: HarnessId) => void>();
 
 function emit() {
   catalogVersion += 1;
@@ -270,6 +276,15 @@ export function getModelSnapshot(): number {
   return catalogVersion;
 }
 
+export function onHarnessCatalogUpdated(
+  listener: (harness: HarnessId) => void,
+): () => void {
+  catalogUpdateListeners.add(listener);
+  return () => {
+    catalogUpdateListeners.delete(listener);
+  };
+}
+
 export function setHarnessModels(harness: HarnessId, models: AgentModel[]) {
   if (models.length === 0) return;
   overlays = { ...overlays, [harness]: models };
@@ -278,6 +293,7 @@ export function setHarnessModels(harness: HarnessId, models: AgentModel[]) {
     [harness]: pickDefaultId(harness, models),
   };
   emit();
+  for (const listener of catalogUpdateListeners) listener(harness);
 }
 
 /** True after a live CLI catalog has replaced the built-in fallback list. */
