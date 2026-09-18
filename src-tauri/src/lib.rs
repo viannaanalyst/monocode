@@ -1,7 +1,6 @@
 use tauri::Manager;
 
 mod automations;
-mod browser;
 mod chat_background;
 mod checkpoint;
 mod clickup;
@@ -250,11 +249,6 @@ pub fn run() {
             control::control_turn_finished,
             default_cwd,
             home_dir,
-            browser::browser_eval,
-            browser::browser_eval_js,
-            browser::browser_url,
-            browser::browser_reload,
-            browser::browser_screenshot_rect,
             notifications::notification_permission,
             notifications::request_notification_permission,
             notifications::show_notification,

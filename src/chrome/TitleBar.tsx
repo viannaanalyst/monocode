@@ -57,7 +57,6 @@ type Props = {
   onSelect: (id: string) => void;
   onNew: () => void;
   onNewTerminal?: () => void;
-  onNewBrowser?: () => void;
   onShowTerminal?: () => void;
   projectTerminalActive?: boolean;
   onOpenSettings?: () => void;

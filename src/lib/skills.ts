@@ -19,11 +19,6 @@ import {
   CREATE_SKILL_DESCRIPTION,
   CREATE_SKILL_NAME,
 } from "./createSkill";
-import {
-  IN_APP_BROWSER_SKILL_BODY,
-  IN_APP_BROWSER_SKILL_DESCRIPTION,
-  IN_APP_BROWSER_SKILL_NAME,
-} from "./inAppBrowserSkill";
 
 const DISABLED_SKILL_PATHS_KEY = "monocode.disabledSkillPaths";
 
@@ -110,15 +105,6 @@ export const BUILTIN_CREATE_SKILL: BuiltinSkill = {
   name: CREATE_SKILL_NAME,
   description: CREATE_SKILL_DESCRIPTION,
   invocation: CREATE_SKILL_NAME,
-  scope: "builtin",
-  source: "monocode",
-};
-
-export const BUILTIN_IN_APP_BROWSER_SKILL: BuiltinSkill = {
-  kind: "builtin",
-  name: IN_APP_BROWSER_SKILL_NAME,
-  description: IN_APP_BROWSER_SKILL_DESCRIPTION,
-  invocation: IN_APP_BROWSER_SKILL_NAME,
   scope: "builtin",
   source: "monocode",
 };
@@ -341,7 +327,6 @@ export function mergeCatalog(discovered: DiscoveredSkill[]): Skill[] {
     if (skill.source === "agents") add(asSkill(skill));
   }
   add(BUILTIN_CREATE_SKILL);
-  add(BUILTIN_IN_APP_BROWSER_SKILL);
   for (const skill of discovered) {
     if (skill.source !== "agents") add(asSkill(skill));
   }
@@ -575,7 +560,6 @@ export async function readSkillBody(
   skill: FileSkill | BuiltinSkill,
 ): Promise<string> {
   if (skill.kind === "builtin") {
-    if (skill.name === IN_APP_BROWSER_SKILL_NAME) return IN_APP_BROWSER_SKILL_BODY;
     return CREATE_SKILL_BODY;
   }
   try {

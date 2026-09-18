@@ -156,7 +156,7 @@ export function SessionReview({
           <div className="flex shrink-0 items-center gap-0.5">
             <button
               type="button"
-              title={t("Undo only the last response")}
+              data-no-tooltip
               disabled={disabled}
               onClick={() => run("undo-turn")}
               className="h-7 rounded-md px-2.5 text-xs text-content/50 hover:bg-content/8 hover:text-content disabled:opacity-35"
@@ -167,17 +167,7 @@ export function SessionReview({
             </button>
             <button
               type="button"
-              title={
-                canUndoAll
-                  ? t("Undo all session changes")
-                  : undoLocked
-                    ? t(
-                        "Undo is unavailable while another session is running in this project",
-                      )
-                    : t(
-                        "Undo is unavailable because a file changed outside this session",
-                      )
-              }
+              data-no-tooltip
               disabled={disabled || !canUndoAll}
               onClick={() => run("undo")}
               className="h-7 rounded-md px-2.5 text-xs text-content/50 hover:bg-content/8 hover:text-content disabled:opacity-35"
@@ -186,7 +176,7 @@ export function SessionReview({
             </button>
             <button
               type="button"
-              title={t("Keep all session changes and dismiss this card")}
+              data-no-tooltip
               disabled={disabled}
               onClick={() => run("keep")}
               className="h-7 rounded-md px-2.5 text-xs text-content/50 hover:bg-content/8 hover:text-content disabled:opacity-35"
@@ -195,7 +185,7 @@ export function SessionReview({
             </button>
             <button
               type="button"
-              title={t("Review changes")}
+              data-no-tooltip
               onClick={() => onOpenDiff(undefined, { sessionId, cwd })}
               className="h-7 rounded-md border border-content/12 bg-content/8 px-2.5 text-xs font-medium text-content/75 hover:bg-content/12 hover:text-content"
             >

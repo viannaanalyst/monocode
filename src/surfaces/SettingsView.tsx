@@ -266,17 +266,11 @@ import {
   loadNotesEnabled,
   loadSessionActivityEnabled,
   loadExpandToolActivity,
-  loadLocalhostInBrowser,
-  loadBrowserAgentEnabled,
-  loadBrowserAgentAllowlistText,
   loadVoiceEnabled,
   loadVoiceLanguage,
   loadVoiceModel,
   loadVoicePrompt,
   saveClaudeHooks,
-  saveLocalhostInBrowser,
-  saveBrowserAgentEnabled,
-  saveBrowserAgentAllowlistText,
   saveComposerRunner,
   saveDiffViewer,
   saveFollowUpBehavior,
@@ -547,15 +541,6 @@ function GeneralPage({
   const [notificationPermission, setNotificationPermission] =
     useState<NotificationPermission>(cachedNotificationPermission);
   const [claudeHooks, setClaudeHooks] = useState(loadClaudeHooks);
-  const [localhostInBrowser, setLocalhostInBrowser] = useState(
-    loadLocalhostInBrowser,
-  );
-  const [browserAgentEnabled, setBrowserAgentEnabled] = useState(
-    loadBrowserAgentEnabled,
-  );
-  const [browserAllowlist, setBrowserAllowlist] = useState(
-    loadBrowserAgentAllowlistText,
-  );
 
   // The user may flip the switch in System Settings and come back: re-read
   // the OS state whenever the window regains focus while the toggle is on.
@@ -830,51 +815,6 @@ function GeneralPage({
           label={t("Claude Code hooks")}
           on={claudeHooks}
           onChange={onClaudeHooks}
-        />
-      </Row>
-
-      <Heading title={t("Browser")} />
-      <Row
-        label={t("Open localhost in Browser")}
-        description={t(
-          "Links to localhost in the transcript open the in-app browser pane instead of the system browser.",
-        )}
-      >
-        <Toggle
-          label={t("Open localhost in Browser")}
-          on={localhostInBrowser}
-          onChange={(next) => {
-            saveLocalhostInBrowser(next);
-            setLocalhostInBrowser(next);
-          }}
-        />
-      </Row>
-      <Row
-        label={t("Agent browser tools")}
-        description={t(
-          "Let agents control the in-app browser with MCP tools (browser_navigate, click, type) or /in-app-browser. Hosts not on the allowlist need your approval. Leave the list empty to allow localhost only, or add * to allow every host.",
-        )}
-      >
-        <Toggle
-          label={t("Agent browser tools")}
-          on={browserAgentEnabled}
-          onChange={(next) => {
-            saveBrowserAgentEnabled(next);
-            setBrowserAgentEnabled(next);
-          }}
-        />
-      </Row>
-      <Row label={t("Browser allowlist")}>
-        <textarea
-          value={browserAllowlist}
-          onChange={(event) => {
-            const next = event.target.value;
-            setBrowserAllowlist(next);
-            saveBrowserAgentAllowlistText(next);
-          }}
-          spellCheck={false}
-          placeholder="localhost"
-          className="h-16 w-56 resize-y rounded-md border border-content/10 bg-content/5 px-2 py-1.5 font-mono text-sm text-content outline-none"
         />
       </Row>
 

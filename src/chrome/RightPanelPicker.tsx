@@ -1,12 +1,11 @@
-import { Folder, Globe, Terminal } from "./icons";
+import { Folder, Terminal } from "./icons";
 import { Popover } from "./Popover";
 import { t } from "../i18n";
 
-export type RightPanelPick = "terminal" | "browser" | "explorer";
+export type RightPanelPick = "terminal" | "explorer";
 
 const ITEMS: { id: RightPanelPick; label: string; Icon: typeof Terminal }[] = [
   { id: "terminal", label: "Terminal", Icon: Terminal },
-  { id: "browser", label: "Browser", Icon: Globe },
   { id: "explorer", label: "Explorer", Icon: Folder },
 ];
 

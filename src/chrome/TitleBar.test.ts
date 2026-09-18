@@ -181,7 +181,6 @@ describe("TitleBar panels action", () => {
           onSelect: () => {},
           onNew: () => {},
           onNewTerminal: () => {},
-          onNewBrowser: () => {},
           onOpenPanels,
           onClose: () => {},
           onCloseMany: () => {},

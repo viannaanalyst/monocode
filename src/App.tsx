@@ -42,7 +42,6 @@ import {
 } from "react";
 import { Sidebar } from "./chrome/Sidebar";
 import { ApprovalToasts } from "./chrome/ApprovalToasts";
-import { BrowserAgentBridge } from "./chrome/BrowserAgentBridge";
 import { WhatsNewDialog } from "./chrome/WhatsNewDialog";
 import {
   TitleBar,
@@ -89,8 +88,6 @@ import {
 } from "./lib/uiScale";
 import { runUpdateFlow } from "./lib/updater";
 import { displayAttachments, prepareAttachments } from "./lib/attachments";
-import { OPEN_IN_BROWSER_EVENT } from "./lib/browserUrl";
-import type { BrowserCardMeta } from "./lib/session";
 import {
   basename,
   notifyGitChanged,
@@ -113,7 +110,6 @@ import {
   firstLeafId,
   focusedFileTab,
   isolateTerminalPanes,
-  isBrowserTab,
   isFilesystemTab,
   isCommitTab,
   isTerminalTab,
@@ -122,7 +118,6 @@ import {
   movePane,
   neighborLeafId,
   newFileTab,
-  newBrowserTab,
   newPlanTab,
   newTab,
   newTerminalFile,
@@ -142,7 +137,6 @@ import {
   splitPane,
   surfacePanes,
   updateTerminalTab,
-  updateBrowserTab,
   withSurfacePanes,
   type EditorPane,
   type FilePaneTab,
@@ -409,7 +403,6 @@ import { PaneTree } from "./surfaces/PaneTree";
 import { SessionPane } from "./surfaces/SessionPane";
 import { SessionSurface } from "./surfaces/SessionSurface";
 import { ProjectTerminalDock } from "./surfaces/ProjectTerminalDock";
-import { BrowserView } from "./surfaces/BrowserView";
 import { SearchView } from "./surfaces/SearchView";
 import { SettingsView, type SettingsAnchor } from "./surfaces/SettingsView";
 import type { ConnectableInboxSource } from "./lib/inboxFilters";
@@ -760,7 +753,6 @@ export default function App({
   const rightDockTabsRef = useRef(rightDockTabs);
   rightDockTabsRef.current = rightDockTabs;
   const lastRightDockRef = useRef<RightDockKind>("picker");
-  const [panelBrowser, setPanelBrowser] = useState<FilePaneTab | null>(null);
   const [panelTypeMenu, setPanelTypeMenu] = useState(false);
   const panelAddRef = useRef<HTMLDivElement>(null);
   const mainSplitRef = useRef<HTMLDivElement>(null);
@@ -2361,114 +2353,6 @@ export default function App({
       setProjectTerminals((prev) => patchProjectTerminals(prev, fileId, patch));
       setTabs((prev) =>
         prev.map((tab) => updateTerminalTab(tab, fileId, patch)),
-      );
-    },
-    [],
-  );
-
-  const openBrowserTab = useCallback(
-    (url = "about:blank") => {
-      const tab = tabsRef.current.find((entry) => entry.id === activeTabId);
-      if (!tab) return;
-      if (url !== "about:blank") {
-        for (const pane of tab.editorPanes) {
-          const blank = pane.files.find(
-            (file) => isBrowserTab(file) && file.path === "about:blank",
-          );
-          if (blank) {
-            setTabs((prev) =>
-              prev.map((entry) => {
-                if (entry.id !== tab.id) return entry;
-                return updateBrowserTab(
-                  {
-                    ...entry,
-                    focusedId: pane.id,
-                    editorPanes: entry.editorPanes.map((item) =>
-                      item.id === pane.id
-                        ? { ...item, activeFileId: blank.id }
-                        : item,
-                    ),
-                  },
-                  blank.id,
-                  url,
-                );
-              }),
-            );
-            setComposerFocused(false);
-            return;
-          }
-        }
-      }
-      const file = newBrowserTab(sidebarCwdRef.current || projectCwd, url);
-      setTabs((prev) =>
-        prev.map((entry) =>
-          entry.id === tab.id ? openEditorTab(entry, file) : entry,
-        ),
-      );
-      setComposerFocused(false);
-    },
-    [activeTabId, projectCwd],
-  );
-
-  const onNewBrowser = useCallback(() => {
-    openBrowserTab("about:blank");
-  }, [openBrowserTab]);
-
-  // Links open in the right-dock browser: the pane tab chrome (a file tab with
-  // the pane's toolbar) is not what the surface is for.
-  const openBrowserInPanel = useCallback(
-    (url: string) => {
-      setPanelBrowser((current) =>
-        current
-          ? { ...current, path: url, browserTitle: undefined }
-          : newBrowserTab(active?.cwd ?? projectCwd, url),
-      );
-      showRightDock("browser");
-    },
-    [active?.cwd, projectCwd, showRightDock],
-  );
-
-  useEffect(() => {
-    const onOpen = (event: Event) => {
-      const url = (event as CustomEvent<string>).detail;
-      if (typeof url === "string" && url) openBrowserInPanel(url);
-    };
-    window.addEventListener(OPEN_IN_BROWSER_EVENT, onOpen);
-    return () => window.removeEventListener(OPEN_IN_BROWSER_EVENT, onOpen);
-  }, [openBrowserInPanel]);
-
-  const onBrowserTool = useCallback((card: BrowserCardMeta) => {
-    const sessionId = activeSessionIdRef.current;
-    if (!sessionId) return;
-    setSessions((prev) =>
-      prev.map((session) => {
-        if (session.id !== sessionId) return session;
-        return {
-          ...session,
-          blocks: [
-            ...session.blocks,
-            {
-              id: crypto.randomUUID(),
-              role: "tool",
-              text: "",
-              tool: {
-                title: `browser_${card.op}`,
-                kind: "browser",
-                status: card.ok ? "completed" : "error",
-                detail: card.url,
-              },
-              browserCard: card,
-            },
-          ],
-        };
-      }),
-    );
-  }, []);
-
-  const onBrowserUrlChange = useCallback(
-    (fileId: string, url: string, title?: string) => {
-      setTabs((prev) =>
-        prev.map((tab) => updateBrowserTab(tab, fileId, url, title)),
       );
     },
     [],
@@ -7554,7 +7438,6 @@ export default function App({
     onSecondOpinion,
     onHandoff,
     onNewTerminal: onNewTerminalInSession,
-    onBrowserUrlChange,
   };
 
   return (
@@ -7743,7 +7626,6 @@ export default function App({
                 onSelect={activateTab}
                 onNew={onNew}
                 onNewTerminal={onNewTerminal}
-                onNewBrowser={onNewBrowser}
                 onShowTerminal={onShowProjectTerminal}
                 projectTerminalActive={
                   !!currentProjectDock && currentProjectDock.pane.files.length > 0
@@ -7843,7 +7725,6 @@ export default function App({
                               onUpdatePlan={onUpdatePlan}
                               onMovePane={onMovePane}
                               onTerminalMetaChange={onTerminalMetaChange}
-                              onNewBrowser={onNewBrowser}
                             />
                           </div>
                         </div>
@@ -7899,15 +7780,6 @@ export default function App({
                           onPick={(id) => {
                             if (id === "terminal") {
                               onShowProjectTerminal();
-                              return;
-                            }
-                            if (id === "browser") {
-                              setPanelBrowser(
-                                (current) =>
-                                  current ??
-                                  newBrowserTab(active?.cwd ?? projectCwd),
-                              );
-                              showRightDock("browser");
                               return;
                             }
                             showRightDock("explorer");
@@ -8018,26 +7890,6 @@ export default function App({
                                 onOpenCommit={onOpenCommit}
                               />
                             ) : null}
-                            {rightDock === "browser" && panelBrowser ? (
-                              <BrowserView
-                                id={panelBrowser.id}
-                                url={panelBrowser.path}
-                                cwd={panelBrowser.cwd}
-                                active
-                                onUrlChange={(url, title) =>
-                                  setPanelBrowser((current) =>
-                                    current
-                                      ? {
-                                          ...current,
-                                          path: url,
-                                          browserTitle:
-                                            title ?? current.browserTitle,
-                                        }
-                                      : current,
-                                  )
-                                }
-                              />
-                            ) : null}
                       </div>
                       {panelTypeMenu ? (
                         <RightPanelTypeMenu
@@ -8046,15 +7898,6 @@ export default function App({
                             setPanelTypeMenu(false);
                             if (id === "terminal") {
                               onShowProjectTerminal();
-                              return;
-                            }
-                            if (id === "browser") {
-                              setPanelBrowser(
-                                (current) =>
-                                  current ??
-                                  newBrowserTab(active?.cwd ?? projectCwd),
-                              );
-                              showRightDock("browser");
                               return;
                             }
                             showRightDock("explorer");
@@ -8258,13 +8101,6 @@ export default function App({
             onOpenSettings={() => openSettings()}
             onHeightChange={setReminderNoticesHeight}
           />
-          {projectCwd ? (
-            <BrowserAgentBridge
-              cwd={projectCwd}
-              onEnsurePane={openBrowserTab}
-              onTool={onBrowserTool}
-            />
-          ) : null}
           {whatsNewVersion ? (
             <WhatsNewDialog
               version={whatsNewVersion}

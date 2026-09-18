@@ -72,10 +72,6 @@ export type FilePaneTab = {
   /** Read-only transcript of an orchestration worker. Live only — not persisted. */
   agent?: AgentTabSource;
   terminal?: boolean;
-  /** In-app browser pane (user-driven webview). */
-  browser?: boolean;
-  /** Live document.title for a browser tab. */
-  browserTitle?: string;
   /** Foreground command when it isn't the shell. Live only — not persisted. */
   foreground?: string;
 };
@@ -239,15 +235,6 @@ export function newTerminalFile(cwd: string, title?: string): FilePaneTab {
   };
 }
 
-export function newBrowserTab(cwd: string, url = "about:blank"): FilePaneTab {
-  return {
-    id: crypto.randomUUID(),
-    path: url,
-    cwd,
-    browser: true,
-  };
-}
-
 export function newTerminalWorkspaceTab(file: FilePaneTab): WorkspaceTab {
   const pane = newEditorPane(file);
   return {
@@ -302,30 +289,6 @@ export function updateTerminalTab(
   return withSurfacePanes(tab, "terminal", terminalPanes);
 }
 
-export function updateBrowserTab(
-  tab: WorkspaceTab,
-  fileId: string,
-  url: string,
-  title?: string,
-): WorkspaceTab {
-  let changed = false;
-  const editorPanes = tab.editorPanes.map((pane) => {
-    const files = pane.files.map((file) => {
-      if (!file.browser || file.id !== fileId) return file;
-      const nextTitle = title?.trim() ? title.trim() : file.browserTitle;
-      if (file.path === url && file.browserTitle === nextTitle) return file;
-      changed = true;
-      return {
-        ...file,
-        path: url,
-        ...(nextTitle ? { browserTitle: nextTitle } : {}),
-      };
-    });
-    return files === pane.files ? pane : { ...pane, files };
-  });
-  return changed ? { ...tab, editorPanes } : tab;
-}
-
 export function surfacePanes(
   tab: WorkspaceTab,
   kind: SurfaceKind,
@@ -375,10 +338,6 @@ export function isTerminalTab(file: FilePaneTab): boolean {
   return !!file.terminal;
 }
 
-export function isBrowserTab(file: FilePaneTab): boolean {
-  return !!file.browser;
-}
-
 export function isAgentTab(
   file: FilePaneTab,
 ): file is FilePaneTab & { agent: AgentTabSource } {
@@ -397,7 +356,6 @@ export function isVirtualDocumentTab(file: FilePaneTab): boolean {
 export function isFilesystemTab(file: FilePaneTab): boolean {
   return (
     !isTerminalTab(file) &&
-    !isBrowserTab(file) &&
     !isVirtualDocumentTab(file) &&
     !file.sessionChanges
   );
@@ -471,7 +429,6 @@ export function isSessionChangesTab(
 
 export function editorTabKey(file: FilePaneTab): string {
   if (file.terminal) return `terminal:${file.id}`;
-  if (file.browser) return `browser:${file.id}`;
   if (file.agent) return `agent:${file.agent.sessionId}`;
   if (file.plan) return `plan:${file.plan.blockId}`;
   if (file.releaseNotes) return `release-notes:${file.releaseNotes.version}`;

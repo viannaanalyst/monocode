@@ -6,7 +6,6 @@ import {
 } from "../chrome/MarkdownModeToggle";
 import { SurfaceTabs } from "../chrome/SurfaceTabs";
 import {
-  isBrowserTab,
   isAgentTab,
   isChangesTab,
   isCommitTab,
@@ -29,7 +28,6 @@ import { loadDiffViewer, subscribeDiffViewer } from "../lib/settings";
 import { AgentTabView } from "./AgentTabView";
 import { MarkdownPreview } from "./AgentMarkdown";
 import { BinaryFileView } from "./BinaryFileView";
-import { BrowserView } from "./BrowserView";
 import { CommitDiff } from "./CommitDiff";
 import { FileEditor } from "./FileEditor";
 import { ReleaseNotesSurface } from "./ReleaseNotesSurface";
@@ -62,8 +60,6 @@ type Props = {
   editorNavigation?: EditorNavigationTarget | null;
   onPaneDragStart?: (event: ReactPointerEvent<HTMLElement>) => void;
   onTerminalMetaChange?: (fileId: string, patch: TerminalMetaPatch) => void;
-  onBrowserUrlChange?: (fileId: string, url: string, title?: string) => void;
-  onNewBrowser?: () => void;
 };
 
 function FilePaneComponent({
@@ -85,8 +81,6 @@ function FilePaneComponent({
   editorNavigation,
   onPaneDragStart,
   onTerminalMetaChange,
-  onBrowserUrlChange,
-  onNewBrowser,
 }: Props) {
   const diffViewer = useSyncExternalStore(
     subscribeDiffViewer,
@@ -118,9 +112,6 @@ function FilePaneComponent({
         onCloseOtherFiles={(fileId) => onCloseOtherFiles(pane.id, fileId)}
         onReorder={(ids) => onReorderFiles(pane.id, ids)}
         onPaneDragStart={onPaneDragStart}
-        onNewTab={
-          pane.files.some(isBrowserTab) ? onNewBrowser : undefined
-        }
       />
       <div className="relative min-h-0 flex-1">
         {sessionReview ? (
@@ -190,16 +181,6 @@ function FilePaneComponent({
                     onTerminalMetaChange?.(file.id, patch)
                   }
                 />
-              ) : isBrowserTab(file) ? (
-                <BrowserView
-                  id={file.id}
-                  url={file.path}
-                  cwd={file.cwd}
-                  active={focused && file.id === pane.activeFileId}
-                  onUrlChange={(next, title) =>
-                    onBrowserUrlChange?.(file.id, next, title)
-                  }
-                />
               ) : isImagePath(file.path) ? (
                 <BinaryFileView path={file.path} cwd={file.cwd} />
               ) : (
@@ -249,9 +230,7 @@ export const FilePane = memo(FilePaneComponent, (previous, next) => {
     previous.onBuildPlan !== next.onBuildPlan ||
     previous.editorNavigation !== next.editorNavigation ||
     Boolean(previous.onPaneDragStart) !== Boolean(next.onPaneDragStart) ||
-    previous.onTerminalMetaChange !== next.onTerminalMetaChange ||
-    previous.onBrowserUrlChange !== next.onBrowserUrlChange ||
-    previous.onNewBrowser !== next.onNewBrowser
+    previous.onTerminalMetaChange !== next.onTerminalMetaChange
   ) {
     return false;
   }

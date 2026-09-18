@@ -1,15 +1,12 @@
 import { openPath } from "@tauri-apps/plugin-opener";
-import { convertFileSrc } from "@tauri-apps/api/core";
-import { openInAppBrowser } from "../lib/browserUrl";
 import { isHtmlFilePath } from "../lib/fileKind";
-import { GitCompare, Globe, GripVertical, Plus, Terminal, X } from "./icons";
+import { GitCompare, GripVertical, Plus, Terminal, X } from "./icons";
 import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { copyText } from "../lib/clipboard";
 import { basename, revealPath } from "../lib/fs";
 import {
   isAgentTab,
-  isBrowserTab,
   isChangesTab,
   isCommitTab,
   isFilesystemTab,
@@ -23,7 +20,6 @@ import {
 import { displayPath } from "../lib/paths";
 import { IS_MAC, IS_WIN } from "../lib/platform";
 import { releaseNotesTitle } from "../lib/releaseNotes";
-import { browserFaviconUrl, browserTabLabel } from "../lib/browserUrl";
 import { terminalTabLabel } from "../lib/terminalTab";
 import { useLockOverscroll } from "../hooks/useLockOverscroll";
 import { useAnimatedReorder } from "../hooks/useAnimatedReorder";
@@ -57,7 +53,6 @@ export type SurfaceTabPresentation = {
   label: string;
   iconName: string;
   tooltip: string;
-  favicon?: string | null;
 };
 
 type SurfaceTabMenu = {
@@ -168,19 +163,6 @@ export function surfaceTabPresentation(
     };
   }
 
-  if (isBrowserTab(file)) {
-    const name = file.browserTitle?.trim()
-      ? browserTabLabel(file.path, file.browserTitle)
-      : t(browserTabLabel(file.path));
-    return {
-      name,
-      label: name,
-      iconName: "BROWSER",
-      tooltip: file.path === "about:blank" ? name : file.path,
-      favicon: browserFaviconUrl(file.path),
-    };
-  }
-
   const review = isReviewTab(file);
   const terminal = isTerminalTab(file);
   const name = isPlanTab(file)
@@ -230,8 +212,7 @@ export function SurfaceTabs({
   const [menu, setMenu] = useState<SurfaceTabMenu | null>(null);
   const fileIds = files.map((file) => file.id);
   const sortable = useAnimatedReorder(fileIds, onReorder);
-  const browserOnly = files.length > 0 && files.every(isBrowserTab);
-  const canDrag = files.length > 1 && !browserOnly;
+  const canDrag = files.length > 1;
   const menuFile = menu
     ? files.find((file) => file.id === menu.fileId)
     : undefined;
@@ -250,7 +231,7 @@ export function SurfaceTabs({
     if (!isFilesystemTab(menuFile) || isChangesTab(menuFile)) return;
 
     if (id === "open-browser") {
-      openInAppBrowser(convertFileSrc(menuFile.path));
+      void openPath(menuFile.path);
       return;
     }
 
@@ -291,7 +272,7 @@ export function SurfaceTabs({
     <div className={`flex min-w-0 shrink-0 border-b border-content/10 ${
       pills ? "h-9 bg-transparent px-1.5" : "bg-content/2"
     } ${
-      !pills && (compact || browserOnly) ? "h-8" : pills ? "" : "h-9"
+      !pills && compact ? "h-8" : pills ? "" : "h-9"
     }`}>
       <div
         ref={lockOverscroll}
@@ -299,7 +280,7 @@ export function SurfaceTabs({
         aria-label={label}
         className="scrollbar-none flex min-w-0 flex-1 overflow-x-auto overscroll-none"
       >
-      {onPaneDragStart && !browserOnly ? (
+      {onPaneDragStart ? (
         <div
           role="button"
           title={t("Drag to reorder pane")}
@@ -325,9 +306,8 @@ export function SurfaceTabs({
         const review = isReviewTab(file) && !changes;
         const terminal = isTerminalTab(file);
         const agent = isAgentTab(file) ? file.agent : null;
-        const browser = isBrowserTab(file);
-        const { label, iconName, tooltip, favicon } = surfaceTabPresentation(file);
-        const tabDraggable = canDrag && !browser;
+        const { label, iconName, tooltip } = surfaceTabPresentation(file);
+        const tabDraggable = canDrag;
         return (
           <div
             key={file.id}
@@ -341,11 +321,9 @@ export function SurfaceTabs({
                     active ? "bg-content/[0.08]" : "hover:bg-content/5"
                   }`
                 : `border-r border-content/10 ${
-                    browser
-                      ? "w-max min-w-[4.5rem] max-w-[8.5rem]"
-                      : compact
-                        ? "w-max min-w-0 max-w-[11rem] touch-none"
-                        : "w-52 min-w-28 touch-none"
+                    compact
+                      ? "w-max min-w-0 max-w-[11rem] touch-none"
+                      : "w-52 min-w-28 touch-none"
                   } ${
                     active ? "bg-content/8" : "hover:bg-content/5"
                   }`
@@ -396,11 +374,9 @@ export function SurfaceTabs({
               } ${
                 pills
                   ? "px-2.5"
-                  : browser
-                    ? "px-1.5 pr-5"
-                    : compact
-                      ? "px-2 pr-6"
-                      : "px-3 pr-8"
+                  : compact
+                    ? "px-2 pr-6"
+                    : "px-3 pr-8"
               } ${
                 tabDraggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
               } ${
@@ -421,8 +397,6 @@ export function SurfaceTabs({
                   harness={agent.harness}
                   className="size-3.5 shrink-0"
                 />
-              ) : browser ? (
-                <BrowserFavicon key={favicon ?? "globe"} url={favicon} />
               ) : changes || commit ? (
                 <GitCompare className="size-3.5 shrink-0" strokeWidth={1.75} />
               ) : (
@@ -502,7 +476,7 @@ export function SurfaceTabs({
           <Plus className="size-3.5" strokeWidth={1.75} />
         </button>
       ) : null}
-      {onPaneDragStart && !browserOnly ? (
+      {onPaneDragStart ? (
         <div
           className="min-w-4 flex-1 cursor-grab active:cursor-grabbing"
           onPointerDown={(event) => {
@@ -525,22 +499,5 @@ export function SurfaceTabs({
         />
       ) : null}
     </div>
-  );
-}
-
-function BrowserFavicon({ url }: { url?: string | null }) {
-  const [failed, setFailed] = useState(false);
-  if (!url || failed) {
-    return <Globe className="size-3.5 shrink-0" strokeWidth={1.75} />;
-  }
-  return (
-    <img
-      src={url}
-      alt=""
-      width={14}
-      height={14}
-      className="size-3.5 shrink-0 rounded-[3px]"
-      onError={() => setFailed(true)}
-    />
   );
 }

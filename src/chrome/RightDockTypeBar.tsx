@@ -1,8 +1,8 @@
-import { ExpandPanel, Folder, GitBranch, Globe, PanelLeft, Plus, RestorePanel, Terminal, X } from "./icons";
+import { ExpandPanel, Folder, GitBranch, PanelLeft, Plus, RestorePanel, Terminal, X } from "./icons";
 import { IconButton } from "./TitleBar";
 import { t } from "../i18n";
 
-export type RightDockType = "terminal" | "browser" | "explorer" | "changes";
+export type RightDockType = "terminal" | "explorer" | "changes";
 
 const TYPES: {
   id: RightDockType;
@@ -10,7 +10,6 @@ const TYPES: {
   Icon: typeof Terminal;
 }[] = [
   { id: "terminal", label: "Terminal", Icon: Terminal },
-  { id: "browser", label: "Browser", Icon: Globe },
   { id: "explorer", label: "Explorer", Icon: Folder },
   { id: "changes", label: "Changes", Icon: GitBranch },
 ];

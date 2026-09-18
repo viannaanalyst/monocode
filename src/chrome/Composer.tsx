@@ -705,7 +705,7 @@ export function Composer({
     [harness, syncHasValue],
   );
 
-  // Another surface (e.g. the browser pane) can hand the focused composer a
+  // Another surface can hand the focused composer a
   // screenshot to describe and fix.
   useEffect(() => {
     if (!focused) return;

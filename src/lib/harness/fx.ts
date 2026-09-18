@@ -1,7 +1,6 @@
 import { nativeModelId } from "../models";
 import { AcpSubagents } from "./acpSubagents";
 import type { RuntimeMode } from "../session";
-import { browserMcpServers } from "../browserMcp";
 import { AcpClient, type AcpHandlers } from "./acp";
 import {
   killChild,
@@ -299,7 +298,7 @@ async function ensureLive(input: SendTurnInput): Promise<Live> {
             {
               sessionId: resume.acpSessionId,
               cwd: input.cwd,
-              mcpServers: browserMcpServers(input.cwd),
+              mcpServers: [],
             },
             SESSION_TIMEOUT_MS,
           );
@@ -318,7 +317,7 @@ async function ensureLive(input: SendTurnInput): Promise<Live> {
     if (!acpSessionId) {
       setup = await acp.request<SessionSetupResult>(
         "session/new",
-        { cwd: input.cwd, mcpServers: browserMcpServers(input.cwd) },
+        { cwd: input.cwd, mcpServers: [] },
         SESSION_TIMEOUT_MS,
       );
       acpSessionId = sessionIdFromResult(setup);

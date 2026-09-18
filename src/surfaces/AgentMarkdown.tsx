@@ -45,9 +45,7 @@ import { isNoteImagePath } from "../lib/noteImages";
 import { IS_MAC, IS_WIN } from "../lib/platform";
 import { InboxMedia } from "./InboxMedia";
 import { t } from "../i18n";
-import { isLocalhostUrl, openInAppBrowser } from "../lib/browserUrl";
 import { isHtmlFilePath } from "../lib/fileKind";
-import { loadLocalhostInBrowser } from "../lib/settings";
 
 const MERMAID_BASE_CONFIG = {
   startOnLoad: false,
@@ -245,10 +243,6 @@ function MarkdownLink({
         }
         event.preventDefault();
         if (href && /^https?:\/\//i.test(href)) {
-          if (loadLocalhostInBrowser() && isLocalhostUrl(href)) {
-            openInAppBrowser(href);
-            return;
-          }
           void openUrl(href).catch((error) => {
             console.error("Failed to open web link:", error);
           });
@@ -511,7 +505,7 @@ export const AgentMarkdown = memo(function AgentMarkdown({
       return;
     }
     if (id === "open-browser") {
-      openInAppBrowser(convertFileSrc(path));
+      void openPath(path);
       return;
     }
 

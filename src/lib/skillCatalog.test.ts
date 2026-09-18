@@ -40,7 +40,6 @@ import {
   saveDisabledSkillPaths,
   SKILLS_CHANGE_EVENT,
   BUILTIN_CREATE_SKILL,
-  BUILTIN_IN_APP_BROWSER_SKILL,
   invalidateSkills,
   loadSkills,
   peekSkills,
@@ -312,10 +311,7 @@ describe("file skill visibility preferences", () => {
       (await loadSkills(context)).some((skill) => skill.name === "review"),
     ).toBe(true);
     saveDisabledSkillPaths([path]);
-    expect(await loadSkills(context)).toEqual([
-      BUILTIN_CREATE_SKILL,
-      BUILTIN_IN_APP_BROWSER_SKILL,
-    ]);
+    expect(await loadSkills(context)).toEqual([BUILTIN_CREATE_SKILL]);
     saveDisabledSkillPaths([]);
     expect(
       (await loadSkills(context)).some((skill) => skill.name === "review"),

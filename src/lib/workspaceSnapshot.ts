@@ -502,6 +502,7 @@ function sanitizeFile(raw: unknown): FilePaneTab | null {
   if (typeof value.id !== "string" || !value.id) return null;
   if (typeof value.path !== "string" || !value.path) return null;
   if (typeof value.cwd !== "string" || !value.cwd) return null;
+  if (value.browser === true) return null;
   const plan = sanitizePlan(value.plan);
   const hasReleaseNotes = "releaseNotes" in value;
   const releaseNotes = sanitizeReleaseNotes(value.releaseNotes);

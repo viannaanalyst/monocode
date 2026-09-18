@@ -272,7 +272,7 @@ export type Block = {
   handoff?: HandoffMeta;
   secondOpinion?: SecondOpinionMeta;
   noteCard?: NoteCardMeta;
-  /** Compact in-app browser action shown in the transcript. */
+  /** Compact browser-tool card from an older session transcript. */
   browserCard?: BrowserCardMeta;
   /** Mid-turn interjection chrome; system blocks only. Body lives in text. */
   interjection?: InterjectionMeta;

@@ -1025,32 +1025,6 @@ export const PT_BR: Record<string, string> = {
   "{cli} not found{how}. Install it, or restart MonoCode if it is already installed.":
     "{cli} não encontrado{how}. Instale, ou reinicie o MonoCode se já estiver instalado.",
   "{name} model": "Modelo {name}",
-  Browser: "Navegador",
-  "New Browser": "Novo navegador",
-  Reload: "Recarregar",
-  "Search or enter a URL": "Busque ou digite um URL",
-  "Open in system browser": "Abrir no navegador do sistema",
-  "Enter a URL to open a page in this pane.":
-    "Digite um URL para abrir uma página neste painel.",
-  "The browser pane needs the MonoCode app.":
-    "O painel do navegador precisa do app MonoCode.",
-  "Couldn’t open the browser pane.":
-    "Não foi possível abrir o painel do navegador.",
-  "Copy URL": "Copiar URL",
-  "Hard reload": "Recarregar à força",
-  "Clear cache": "Limpar cache",
-  "Browser actions": "Ações do navegador",
-  "Open localhost in Browser": "Abrir localhost no Navegador",
-  "Links to localhost in the transcript open the in-app browser pane instead of the system browser.":
-    "Links para localhost na transcrição abrem o painel do navegador em vez do navegador do sistema.",
-  "Agent browser tools": "Ferramentas de navegador do agente",
-  "Let agents control the in-app browser with MCP tools (browser_navigate, click, type) or /in-app-browser. Hosts not on the allowlist need your approval. Leave the list empty to allow localhost only, or add * to allow every host.":
-    "Deixe agentes controlarem o navegador embutido com tools MCP (browser_navigate, click, type) ou /in-app-browser. Hosts fora da lista precisam da sua aprovação. Lista vazia libera só localhost; * libera todos.",
-  "Browser allowlist": "Lista de hosts permitidos",
-  "Browser tool needs approval": "Ferramenta do navegador precisa de aprovação",
-  "Navigate to {url}": "Navegar para {url}",
-  "Click {selector}": "Clicar em {selector}",
-  "Type into {selector}": "Digitar em {selector}",
   "Browser: {op}": "Navegador: {op}",
   Failed: "Falhou",
   Deny: "Negar",

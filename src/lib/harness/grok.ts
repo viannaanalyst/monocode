@@ -1,7 +1,6 @@
 import { nativeModelId } from "../models";
 import { AcpSubagents } from "./acpSubagents";
 import type { RuntimeMode } from "../session";
-import { browserMcpServers } from "../browserMcp";
 import { AcpClient, type AcpHandlers } from "./acp";
 import {
   killChild,
@@ -351,7 +350,7 @@ async function ensureLive(input: HarnessSessionInput): Promise<Live> {
             {
               sessionId: resume.acpSessionId,
               cwd: input.cwd,
-              mcpServers: browserMcpServers(input.cwd),
+              mcpServers: [],
             },
             SESSION_TIMEOUT_MS,
           );
