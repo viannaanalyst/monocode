@@ -484,16 +484,14 @@ export function cursorPlanUsedPercent(
   includedCents: number,
   limitCents: number,
 ): number {
-  const auto = numberField(
-    planUsage,
-    "autoPercentUsed",
-    "auto_percent_used",
-  );
-  const total = numberField(
-    planUsage,
-    "totalPercentUsed",
-    "total_percent_used",
-  );
+  const auto = planUsage
+    ? numberField(planUsage, "autoPercentUsed") ??
+      numberField(planUsage, "auto_percent_used")
+    : null;
+  const total = planUsage
+    ? numberField(planUsage, "totalPercentUsed") ??
+      numberField(planUsage, "total_percent_used")
+    : null;
   const fromMessage = parseDisplayMessagePercent(displayMessage);
   const remaining = centsField(planUsage, "remaining");
 
