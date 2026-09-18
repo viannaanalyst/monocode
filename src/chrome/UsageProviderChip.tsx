@@ -349,9 +349,10 @@ function usageWindows(
     if (surface === "chip") {
       return monthly ? [monthly] : weekly ? [weekly] : [];
     }
-    return [monthly, weekly].filter(
-      (entry): entry is UsageWindowEntry => entry != null,
-    );
+    const entries: UsageWindowEntry[] = [];
+    if (monthly) entries.push(monthly);
+    if (weekly) entries.push(weekly);
+    return entries;
   }
   return [
     limits.session
