@@ -1,0 +1,131 @@
+import { describe, expect, it } from "vitest";
+import {
+  addReviewComment,
+  canSubmitReview,
+  clearReviewDraft,
+  emptyReviewDraft,
+  peekReviewDraft,
+  prApproveAvailability,
+  prEventDelta,
+  prMergeAvailability,
+  removeReviewComment,
+  reviewCommentCount,
+  reviewDraftKey,
+  saveReviewDraft,
+  updateReviewComment,
+} from "./prReview";
+import type { GithubPrDetails } from "../../inbox/model/githubTasks";
+
+function details(overrides: Partial<GithubPrDetails> = {}): GithubPrDetails {
+  return {
+    body: "",
+    author: "me",
+    baseRefName: "main",
+    headRefName: "feat/x",
+    reviewDecision: "",
+    id: "PR_1",
+    state: "OPEN",
+    draft: false,
+    mergeable: "MERGEABLE",
+    mergeStateStatus: "CLEAN",
+    labels: [],
+    assignees: [],
+    reviewRequests: [],
+    ...overrides,
+  };
+}
+
+describe("review draft", () => {
+  it("adds, replaces, updates, and removes comments", () => {
+    const input = { path: "a.ts", line: 3, side: "right" as const, body: "nit" };
+    let draft = addReviewComment(emptyReviewDraft(), input);
+    draft = addReviewComment(draft, { ...input, body: "nit 2" });
+    expect(reviewCommentCount(draft)).toBe(1);
+    expect(draft.comments[0]?.body).toBe("nit 2");
+
+    const id = draft.comments[0]!.id;
+    draft = updateReviewComment(draft, id, "updated");
+    expect(draft.comments[0]?.body).toBe("updated");
+
+    draft = removeReviewComment(draft, id);
+    expect(reviewCommentCount(draft)).toBe(0);
+  });
+
+  it("requires content except for approve", () => {
+    const draft = emptyReviewDraft();
+    expect(canSubmitReview(draft, "approve")).toBe(true);
+    expect(canSubmitReview(draft, "comment")).toBe(false);
+    expect(canSubmitReview(draft, "request-changes")).toBe(false);
+    const withComment = addReviewComment(draft, {
+      path: "a.ts",
+      line: 1,
+      side: "right",
+      body: "x",
+    });
+    expect(canSubmitReview(withComment, "comment")).toBe(true);
+    expect(canSubmitReview(withComment, "request-changes")).toBe(false);
+    expect(canSubmitReview(withComment, "request-changes", "why")).toBe(true);
+    expect(canSubmitReview(draft, "comment", "why")).toBe(true);
+  });
+
+  it("ignores comments with empty bodies", () => {
+    let draft = addReviewComment(emptyReviewDraft(), {
+      path: "a.ts",
+      line: 1,
+      side: "right",
+      body: "   ",
+    });
+    expect(canSubmitReview(draft, "comment")).toBe(false);
+    expect(canSubmitReview(draft, "comment", "why")).toBe(true);
+    const id = draft.comments[0]!.id;
+    draft = updateReviewComment(draft, id, "  ");
+    expect(canSubmitReview(draft, "comment")).toBe(false);
+    draft = updateReviewComment(draft, id, "ok");
+    expect(canSubmitReview(draft, "comment")).toBe(true);
+    expect(canSubmitReview(draft, "request-changes")).toBe(false);
+    expect(canSubmitReview(draft, "request-changes", "why")).toBe(true);
+  });
+
+  it("persists and clears drafts by key", () => {
+    const key = reviewDraftKey("/tmp/repo", 7);
+    clearReviewDraft(key);
+    expect(peekReviewDraft(key)).toBeNull();
+    const draft = addReviewComment(emptyReviewDraft(), {
+      path: "a.ts",
+      line: 1,
+      side: "right",
+      body: "x",
+    });
+    saveReviewDraft(key, draft);
+    expect(peekReviewDraft(key)?.comments[0]?.body).toBe("x");
+    clearReviewDraft(key);
+    expect(peekReviewDraft(key)).toBeNull();
+  });
+});
+
+describe("gating", () => {
+  it("blocks merge when closed, draft, conflicting, blocked, or unknown", () => {
+    expect(prMergeAvailability(details()).enabled).toBe(true);
+    expect(prMergeAvailability(details({ state: "MERGED" })).enabled).toBe(false);
+    expect(prMergeAvailability(details({ draft: true })).enabled).toBe(false);
+    expect(prMergeAvailability(details({ mergeable: "CONFLICTING" })).enabled).toBe(false);
+    expect(prMergeAvailability(details({ mergeStateStatus: "BLOCKED" })).enabled).toBe(false);
+    expect(prMergeAvailability(details({ mergeable: "UNKNOWN" })).enabled).toBe(false);
+  });
+
+  it("blocks approving your own pull request", () => {
+    expect(prApproveAvailability(details({ author: "other" }), "me").enabled).toBe(true);
+    const own = prApproveAvailability(details({ author: "me" }), "me");
+    expect(own.enabled).toBe(false);
+    expect(own.reason.length).toBeGreaterThan(0);
+  });
+});
+
+describe("entity delta", () => {
+  it("computes adds and removes", () => {
+    expect(prEventDelta(["bug", "ui"], ["ui", "api"])).toEqual({
+      add: ["api"],
+      remove: ["bug"],
+    });
+  });
+});

@@ -507,7 +507,7 @@ fn validate_upsert(input: &AutomationUpsert, now: i64) -> Result<(), String> {
     }
     if !matches!(
         input.trigger_kind.as_str(),
-        "time" | "github" | "linear" | "gitlab"
+        "time" | "github" | "linear" | "gitlab" | "azuredevops"
     ) {
         return Err("Invalid automation trigger.".into());
     }
@@ -546,7 +546,7 @@ fn validate_upsert(input: &AutomationUpsert, now: i64) -> Result<(), String> {
 fn validate_trigger(trigger: &AutomationTrigger) -> Result<(), String> {
     if !matches!(
         trigger.kind.as_str(),
-        "time" | "github" | "linear" | "gitlab"
+        "time" | "github" | "linear" | "gitlab" | "azuredevops"
     ) {
         return Err("Invalid automation trigger.".into());
     }
@@ -1135,7 +1135,10 @@ pub fn automations_claim_event(
 ) -> Result<Option<DueAutomationRun>, String> {
     validate_id(&automation_id, "automation")?;
     validate_event_key(&claim.event_key)?;
-    if !matches!(claim.event_kind.as_str(), "github" | "linear" | "gitlab") {
+    if !matches!(
+        claim.event_kind.as_str(),
+        "github" | "linear" | "gitlab" | "azuredevops"
+    ) {
         return Err("Invalid automation trigger.".into());
     }
     if claim.event.is_empty() || claim.event.len() > 200 {
@@ -1469,8 +1472,23 @@ mod tests {
     fn accepts_inbox_event_keys() {
         assert!(validate_event_key("github:pr:acme/web:12").is_ok());
         assert!(validate_event_key("linear:issue:eng-12").is_ok());
+        assert!(validate_event_key("azuredevops:pr:acme/web:12").is_ok());
         assert!(validate_event_key("").is_err());
         assert!(validate_event_key("github:pr:acme web:12").is_err());
+    }
+
+    #[test]
+    fn accepts_azure_devops_triggers() {
+        let trigger = trigger_from_fields(
+            "trigger-id",
+            "azuredevops",
+            "pull_request_appeared",
+            "weekdays",
+            0,
+            "09:00",
+            1,
+        );
+        assert!(validate_trigger(&trigger).is_ok());
     }
 
     #[test]

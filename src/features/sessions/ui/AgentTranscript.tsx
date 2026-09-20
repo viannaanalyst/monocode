@@ -1,0 +1,3367 @@
+import {
+  Check,
+  ChevronRight,
+  CircleDashed,
+  Copy,
+  FilePlusCorner,
+  History,
+  Minus,
+  Bot,
+  ChartBreakoutSquare,
+  PenLine,
+  Search,
+  Terminal,
+  Wrench,
+  X,
+  Globe,
+} from "../../../shared/ui/icons";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+} from "react";
+import { flushSync } from "react-dom";
+import { TranscriptFindBar } from "./TranscriptFindBar";
+import {
+  BookmarkButton,
+  BookmarksListButton,
+} from "./TranscriptBookmarks";
+import {
+  applyFindHighlights,
+  clearFindHighlights,
+  collectMatchRanges,
+  scrollRangeIntoView,
+  TRANSCRIPT_FIND_EVENT,
+} from "../model/transcriptFind";
+import {
+  EXPAND_TOOL_ACTIVITY_DEFAULT,
+  loadExpandToolActivity,
+  subscribeExpandToolActivity,
+} from "../../settings/model/settings";
+import { AttachmentChip } from "./AttachmentChip";
+import { FilePreview } from "../../files/ui/FilePreview";
+import { FileTypeIcon } from "../../files/ui/FileTypeIcon";
+import { ToolDiffPreview } from "./ToolDiffPreview";
+import { PlanPreview } from "./PlanPreview";
+import { OrchestrationPreview } from "../../orchestration/ui/OrchestrationPreview";
+import { TaskListPreview } from "./TaskListPreview";
+import {
+  HandoffButton,
+  SecondOpinionButton,
+} from "./SecondOpinionButton";
+import { SecondOpinionCard } from "./SecondOpinionCard";
+import { NoteMiniCard } from "../../notes/ui/NoteMiniCard";
+import { TerminalSpinner } from "./TerminalSpinner";
+import { Popover } from "../../../shared/ui/Popover";
+import { ProjectMascot } from "../../projects/ui/ProjectMascot";
+import type { ApprovalDecision } from "../../../integrations/harness";
+import {
+  isHarnessAuthError,
+  supportsHarnessLogin,
+} from "../../../integrations/harness/core/authSupport";
+import {
+  isEditTool,
+  isReadTool,
+  isSearchTool,
+  stubFilePreview,
+} from "../../../integrations/harness/core/preview";
+import { copyText } from "../../../platform/tauri/clipboard";
+import { visibleUserPrompt } from "../../orchestration/model/orchestration";
+import { playCue } from "../../settings/model/sounds";
+import { legacyTaskListFromText } from "../model/taskList";
+import { displayPath, pathKey, resolveWorkspacePath } from "../../../shared/lib/paths";
+import { resolveModel } from "../model/models";
+import type { OpenFileFn } from "../../search/model/search";
+import { harnessForTurn } from "../model/secondOpinion";
+import { Shimmer } from "../../../shared/ui/Shimmer";
+import {
+  hasPendingApproval,
+  HARNESS_TITLE,
+  type AgentStep,
+  type Block,
+  type BrowserCardMeta,
+  type HarnessId,
+  type InterjectionMeta,
+  type ModelTarget,
+  type PlanBuildTarget,
+  type ToolPreview,
+  type TurnMetrics,
+} from "../model/session";
+import { HarnessIcon } from "./HarnessIcon";
+import { ModelBrandMark } from "./ModelBrandIcon";
+import { useLockOverscroll } from "../../../shared/hooks/useLockOverscroll";
+import { useTranscriptLayout } from "../hooks/useTranscriptLayout";
+import { useTranscriptAnchor } from "../hooks/useTranscriptAnchor";
+import { useTranscriptSelection } from "../hooks/useTranscriptSelection";
+import type { TranscriptLayout } from "../../settings/model/appearance";
+import { AgentMarkdown } from "./AgentMarkdown";
+import { TranscriptSelectionMenu } from "./TranscriptSelectionMenu";
+import { ModalPanel } from "../../../shared/ui/Modal";
+import { rewindSessionCode } from "../model/sessionRewind";
+import { t } from "../../../i18n";
+import { parseUserMessageLink } from "../model/linkPreview";
+import { UserLinkPreview } from "./UserLinkPreview";
+import {
+
+  activityPhaseTitle,
+  activityStillRunning,
+  buildActivityPhases,
+  editVerb,
+  firstFoldableIndex,
+  foldableWork,
+  foldedBlocks,
+  groupTurnItems,
+  groupTurns,
+  initialThinkingIndex,
+  isIncompleteTool,
+  isSubagentBlock,
+  isThinkingBlock,
+  lastActivityIndex,
+  isProseBlock,
+  needsApproval,
+  nestedScrollAbsorbsWheel,
+  proseSummary,
+  subagentFailureSummary,
+  transcriptFilePaths,
+  subagentBrief,
+  subagentModelName,
+  subagentName,
+  subagentReport,
+  toolCallLabel,
+  toolCallState,
+  turnCopyText,
+  workKind,
+  workSummaryLine,
+  type ActivityPhase,
+  type ActivityPhaseKind,
+  type ToolCallState,
+  type TurnItem,
+} from "../model/transcriptActivity";
+
+const NEAR_BOTTOM_PX = 16;
+const INITIAL_TURNS = 20;
+const TURN_PAGE_SIZE = 20;
+
+type Props = {
+  blocks: Block[];
+  busy?: boolean;
+  cwd?: string;
+  harness?: HarnessId;
+  model?: string;
+  sessionId?: string;
+  modelSettings?: Record<string, string>;
+  pendingQuestion?: boolean;
+  onApproval?: (requestId: number, decision: ApprovalDecision) => void;
+  onAddToChat?: (text: string) => void;
+  onSaveNote?: (text: string) => void;
+  onOpenFile?: OpenFileFn;
+  onOpenDiff?: (path: string) => void;
+  onOpenPlan?: (blockId: string) => void;
+  onBuildPlan?: (blockId: string, target?: PlanBuildTarget) => void;
+  onSecondOpinion?: (target: ModelTarget, turn: Block[]) => void;
+  onHandoff?: (target: ModelTarget, turn: Block[]) => void;
+  onJumpToBottomChange?: (show: boolean) => void;
+  onJumpToBottomReady?: (jump: () => void) => void;
+  /** Passes a function that renders the turn that holds a block. The render completes before the function returns. */
+  onRevealReady?: (reveal: (blockId: string) => boolean) => void;
+  /** Session-level output shown after the latest reply and before its action row. */
+  latestTurnAccessory?: ReactNode;
+  /** False while another tab is in front; local transcript state is retained. */
+  visible?: boolean;
+  /** False while another pane holds focus; gates Ctrl/Cmd+F to one transcript. */
+  focused?: boolean;
+  /** A worker's transcript: show the orchestrator's turns instead of hiding them. */
+  managed?: boolean;
+};
+
+function AgentTranscriptComponent({
+  blocks: sourceBlocks,
+  busy,
+  cwd,
+  harness,
+  model,
+  sessionId,
+  modelSettings,
+  pendingQuestion = false,
+  onApproval,
+  onAddToChat,
+  onSaveNote,
+  onOpenFile: onOpenFileProp,
+  onOpenDiff,
+  onOpenPlan,
+  onBuildPlan,
+  onSecondOpinion,
+  onHandoff,
+  onJumpToBottomChange,
+  onJumpToBottomReady,
+  onRevealReady,
+  latestTurnAccessory,
+  visible = true,
+  focused = true,
+  managed = false,
+}: Props) {
+  const blocks = useMemo(() => {
+    if (!harness || !supportsHarnessLogin(harness)) return sourceBlocks;
+    const visibleBlocks = sourceBlocks.filter(
+      (block) =>
+        !(
+          block.role === "system" &&
+          block.notice === "error" &&
+          isHarnessAuthError(block.text)
+        ),
+    );
+    return visibleBlocks.length === sourceBlocks.length
+      ? sourceBlocks
+      : visibleBlocks;
+  }, [harness, sourceBlocks]);
+  const lockOverscroll = useLockOverscroll<HTMLDivElement>();
+  const scroller = useRef<HTMLDivElement>(null);
+  const stickToBottom = useRef(true);
+  const showJumpRef = useRef(false);
+  const distanceFromBottom = useRef(0);
+  const prependHeight = useRef<number | null>(null);
+  const wasVisible = useRef(false);
+  const [scrollerEl, setScrollerEl] = useState<HTMLDivElement | null>(null);
+  const [visibleTurnCount, setVisibleTurnCount] = useState(INITIAL_TURNS);
+  // Turns whose folded work the reader has opened, by turn id.
+  const [openWork, setOpenWork] = useState<Record<string, boolean>>({});
+  const toggleWork = useCallback((turnId: string, currentlyOpen: boolean) => {
+    setOpenWork((open) => ({ ...open, [turnId]: !currentlyOpen }));
+  }, []);
+  // Rewind: restore the code to before a prompt. Confirm first, it is a
+  // destructive rollback of every response after that message.
+  const [rewindTurnId, setRewindTurnId] = useState<string | null>(null);
+  const [rewinding, setRewinding] = useState(false);
+  const requestRewind = useCallback((turnId: string) => {
+    setRewindTurnId(turnId);
+  }, []);
+  const confirmRewind = useCallback(async () => {
+    if (!rewindTurnId || !cwd || !sessionId) return;
+    setRewinding(true);
+    try {
+      await rewindSessionCode(sessionId, cwd, rewindTurnId);
+      setRewindTurnId(null);
+    } catch {
+      // Leave the dialog open so the user can retry.
+    } finally {
+      setRewinding(false);
+    }
+  }, [rewindTurnId, sessionId, cwd]);
+  // Stretch the last turn after a send while this tab stays open. Closing
+  // the tab is a new visit: the remount uses the true transcript height so
+  // the latest reply sits on the composer instead of a hole of empty space.
+  const [anchorTurn, setAnchorTurn] = useState(!!busy);
+  const { selection, dismissSelection } = useTranscriptSelection(
+    scrollerEl,
+    onAddToChat !== undefined,
+  );
+  const transcriptLayout = useTranscriptLayout();
+  const promptAnchor = useTranscriptAnchor();
+  const lastUserId = lastUserBlockId(blocks, managed);
+  const seenUserId = useRef(lastUserId);
+  if (lastUserId !== seenUserId.current) {
+    seenUserId.current = lastUserId;
+    if (lastUserId && !anchorTurn) setAnchorTurn(true);
+  }
+  const currentModelName = harness
+    ? resolveModel(harness, model).name
+    : undefined;
+  const filePaths = useMemo(() => transcriptFilePaths(blocks), [blocks]);
+  const handleOpenFile = useCallback<OpenFileFn>(
+    (path, navigation) => {
+      const exactToolPath = filePaths.some((candidate) => {
+        const resolved = resolveWorkspacePath(candidate, cwd);
+        return resolved ? pathKey(resolved) === pathKey(path) : false;
+      });
+      if (filePaths.length === 0 || exactToolPath) {
+        if (navigation) onOpenFileProp?.(path, navigation);
+        else onOpenFileProp?.(path);
+        return;
+      }
+      onOpenFileProp?.(path, navigation, { candidatePaths: filePaths });
+    },
+    [cwd, filePaths, onOpenFileProp],
+  );
+  const onOpenFile = onOpenFileProp ? handleOpenFile : undefined;
+  const waitingForApproval = hasPendingApproval(blocks) || pendingQuestion;
+  const preparingHandoff = blocks.some(
+    (block) =>
+      block.role === "handoff" && block.handoff?.status === "preparing",
+  );
+
+  const setShowJump = useCallback(
+    (show: boolean) => {
+      if (showJumpRef.current === show) return;
+      showJumpRef.current = show;
+      onJumpToBottomChange?.(show);
+    },
+    [onJumpToBottomChange],
+  );
+
+  const syncPinned = useCallback(
+    (el: HTMLElement) => {
+      const near = isNearBottom(el);
+      stickToBottom.current = near;
+      distanceFromBottom.current =
+        el.scrollHeight - el.scrollTop - el.clientHeight;
+      setShowJump(!near);
+    },
+    [setShowJump],
+  );
+
+  const jumpToBottom = useCallback(() => {
+    stickToBottom.current = true;
+    distanceFromBottom.current = 0;
+    setShowJump(false);
+    const el = scroller.current;
+    syncTranscriptViewport(el);
+    pinToBottom(el);
+  }, [setShowJump]);
+
+  const setScroller = useCallback(
+    (el: HTMLDivElement | null) => {
+      scroller.current = el;
+      setScrollerEl(el);
+      lockOverscroll(el);
+    },
+    [lockOverscroll],
+  );
+
+  useEffect(() => {
+    onJumpToBottomReady?.(jumpToBottom);
+  }, [jumpToBottom, onJumpToBottomReady]);
+
+  useEffect(() => {
+    if (!visible || !scrollerEl) return;
+    syncPinned(scrollerEl);
+    const onScroll = () => syncPinned(scrollerEl);
+    const onWheel = (e: WheelEvent) => {
+      if (e.deltaY < 0) {
+        stickToBottom.current = false;
+        setShowJump(true);
+      }
+    };
+    scrollerEl.addEventListener("scroll", onScroll, { passive: true });
+    scrollerEl.addEventListener("wheel", onWheel, { passive: true });
+    return () => {
+      scrollerEl.removeEventListener("scroll", onScroll);
+      scrollerEl.removeEventListener("wheel", onWheel);
+    };
+  }, [scrollerEl, setShowJump, syncPinned, visible]);
+
+  useLayoutEffect(() => {
+    stickToBottom.current = true;
+    setShowJump(false);
+    const el = scroller.current;
+    syncTranscriptViewport(el);
+    pinToBottom(el);
+  }, [lastUserId, setShowJump]);
+
+  useLayoutEffect(() => {
+    const opened = visible && !wasVisible.current;
+    wasVisible.current = visible;
+    if (!opened) return;
+    const el = scroller.current;
+    if (!el) return;
+    syncTranscriptViewport(el);
+    // Previously opened tabs normally retain their scroll position. Only pin
+    // when the scroller looks empty after being hidden with `display: none`.
+    if (el.scrollHeight <= el.clientHeight + NEAR_BOTTOM_PX) {
+      stickToBottom.current = true;
+      setShowJump(false);
+      pinToBottom(el);
+    }
+  }, [visible, setShowJump]);
+
+  useLayoutEffect(() => {
+    if (!visible || !stickToBottom.current) return;
+    const el = scroller.current;
+    syncTranscriptViewport(el);
+    pinToBottom(el);
+  }, [blocks, busy, visible]);
+
+  useLayoutEffect(() => {
+    const el = scrollerEl;
+    const inner = el?.firstElementChild;
+    if (!visible || !el || !inner) return;
+    const onResize = () => {
+      syncTranscriptViewport(el);
+      const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+      if (stickToBottom.current) {
+        pinToBottom(el);
+        distanceFromBottom.current = 0;
+        return;
+      }
+      distanceFromBottom.current = distance;
+      setShowJump(!isNearBottom(el));
+    };
+    const observer = new ResizeObserver(onResize);
+    observer.observe(inner);
+    observer.observe(el);
+    onResize();
+    return () => observer.disconnect();
+  }, [scrollerEl, setShowJump, visible]);
+
+  const turns = groupTurns(blocks, managed);
+  const firstVisibleTurn = Math.max(0, turns.length - visibleTurnCount);
+  const visibleTurns = turns.slice(firstVisibleTurn);
+  const turnsRef = useRef(turns);
+  turnsRef.current = turns;
+  const visibleTurnCountRef = useRef(visibleTurnCount);
+  visibleTurnCountRef.current = visibleTurnCount;
+
+  useLayoutEffect(() => {
+    const previousHeight = prependHeight.current;
+    const el = scroller.current;
+    if (previousHeight == null || !el) return;
+    prependHeight.current = null;
+    el.scrollTop += el.scrollHeight - previousHeight;
+    distanceFromBottom.current =
+      el.scrollHeight - el.scrollTop - el.clientHeight;
+  }, [visibleTurnCount]);
+
+  const prepareToPrepend = useCallback(() => {
+    const el = scroller.current;
+    if (el) prependHeight.current = el.scrollHeight;
+    stickToBottom.current = false;
+  }, []);
+
+  const loadEarlier = () => {
+    prepareToPrepend();
+    setVisibleTurnCount((count) =>
+      Math.min(turns.length, count + TURN_PAGE_SIZE),
+    );
+  };
+
+  const revealBlock = useCallback(
+    (blockId: string): boolean => {
+      const all = turnsRef.current;
+      const index = all.findIndex((turn) =>
+        turn.some((block) => block.id === blockId),
+      );
+      if (index < 0) return false;
+      const needed = all.length - index;
+      if (needed <= visibleTurnCountRef.current) return true;
+      prepareToPrepend();
+      // Synchronous. The caller finds the turn in the DOM after this call.
+      flushSync(() => setVisibleTurnCount(needed));
+      return true;
+    },
+    [prepareToPrepend],
+  );
+
+  useEffect(() => {
+    onRevealReady?.(revealBlock);
+  }, [revealBlock, onRevealReady]);
+
+  const [findOpen, setFindOpen] = useState(false);
+  const [findQuery, setFindQuery] = useState("");
+  const [findActive, setFindActive] = useState(0);
+  const [findCount, setFindCount] = useState(0);
+  const findInputRef = useRef<HTMLInputElement>(null);
+  const findRanges = useRef<Range[]>([]);
+  const findActiveRef = useRef(0);
+  findActiveRef.current = findActive;
+  const findQueryRef = useRef("");
+
+  const gotoMatch = useCallback((index: number, ranges?: Range[]) => {
+    const list = ranges ?? findRanges.current;
+    if (list.length === 0) {
+      setFindCount(0);
+      applyFindHighlights([], null);
+      return;
+    }
+    const next = ((index % list.length) + list.length) % list.length;
+    setFindActive(next);
+    applyFindHighlights(list, list[next]);
+    const el = scroller.current;
+    if (el) {
+      // Jumping to a hit must win over the auto-scroll that keeps a live
+      // transcript pinned to the bottom.
+      stickToBottom.current = false;
+      scrollRangeIntoView(list[next], el);
+    }
+  }, []);
+
+  const toggleFind = useCallback(() => {
+    if (findOpen) {
+      setFindOpen(false);
+      setFindQuery("");
+      clearFindHighlights();
+      return;
+    }
+    // Searching must cover every turn, but mounting the earlier ones would
+    // shift the content under the reader. Anchor the scroll first, exactly like
+    // "Load earlier messages" does.
+    prepareToPrepend();
+    setFindOpen(true);
+    setVisibleTurnCount(turnsRef.current.length);
+  }, [findOpen, prepareToPrepend]);
+
+  // Recompute on query change and while the transcript streams new blocks.
+  useEffect(() => {
+    if (!findOpen) {
+      findRanges.current = [];
+      findQueryRef.current = "";
+      setFindCount(0);
+      clearFindHighlights();
+      return;
+    }
+    const el = scroller.current;
+    if (!el || !findQuery.trim()) {
+      findRanges.current = [];
+      findQueryRef.current = "";
+      setFindCount(0);
+      clearFindHighlights();
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      const ranges = collectMatchRanges(el, findQuery);
+      findRanges.current = ranges;
+      setFindCount(ranges.length);
+      const sameQuery = findQueryRef.current === findQuery;
+      findQueryRef.current = findQuery;
+      if (sameQuery && ranges.length > 0) {
+        // The transcript grew while a hit was active: hold that hit instead of
+        // snapping back to the first one (which reads as "nothing happened").
+        const at = Math.min(findActiveRef.current, ranges.length - 1);
+        setFindActive(at);
+        applyFindHighlights(ranges, ranges[at]);
+      } else {
+        gotoMatch(0, ranges);
+      }
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [findOpen, findQuery, blocks, visibleTurnCount, gotoMatch]);
+
+  useEffect(() => {
+    if (!findOpen) return;
+    const frame = window.requestAnimationFrame(() => {
+      findInputRef.current?.focus();
+      findInputRef.current?.select();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [findOpen]);
+
+  useEffect(() => () => clearFindHighlights(), []);
+
+  useEffect(() => {
+    if (!visible || !focused) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.altKey || event.shiftKey) return;
+      if (!(event.metaKey || event.ctrlKey)) return;
+      if (event.key.toLowerCase() !== "f") return;
+      const target = event.target instanceof Element ? event.target : null;
+      if (target?.closest(".monocode-terminal")) return;
+      event.preventDefault();
+      event.stopPropagation();
+      toggleFind();
+    };
+    // The macOS menu owns Cmd+F, so the app forwards it here when no editor
+    // is focused. Ctrl+F still reaches the webview directly.
+    const onMenuFind = () => toggleFind();
+    window.addEventListener("keydown", onKey);
+    window.addEventListener(TRANSCRIPT_FIND_EVENT, onMenuFind);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener(TRANSCRIPT_FIND_EVENT, onMenuFind);
+    };
+  }, [focused, visible, toggleFind]);
+
+  const closeFind = useCallback(() => {
+    setFindOpen(false);
+    setFindQuery("");
+    clearFindHighlights();
+  }, []);
+
+  const jumpToBookmark = useCallback(
+    (blockId: string) => {
+      if (!revealBlock(blockId)) return;
+      window.requestAnimationFrame(() => {
+        const el = scroller.current?.querySelector(
+          `[data-block-id="${CSS.escape(blockId)}"]`,
+        );
+        el?.scrollIntoView({ block: "center", behavior: "smooth" });
+      });
+    },
+    [revealBlock],
+  );
+
+  const onFindKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      closeFind();
+      return;
+    }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      gotoMatch(findActive + (event.shiftKey ? -1 : 1));
+    }
+  };
+
+  return (
+    <div className="relative h-full min-h-0">
+    {findOpen ? (
+      <TranscriptFindBar
+        query={findQuery}
+        active={findActive}
+        count={findCount}
+        inputRef={findInputRef}
+        onQueryChange={setFindQuery}
+        onPrev={() => gotoMatch(findActive - 1)}
+        onNext={() => gotoMatch(findActive + 1)}
+        onClose={closeFind}
+        onInputKeyDown={onFindKeyDown}
+      />
+    ) : null}
+    {!findOpen ? (
+      <BookmarksListButton sessionId={sessionId} onJump={jumpToBookmark} />
+    ) : null}
+    <div
+      ref={setScroller}
+      data-no-tooltip
+      className="agent-transcript relative h-full overflow-y-auto overscroll-none [overflow-anchor:none] font-mono text-sm"
+    >
+      <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col gap-1 pb-1">
+        {firstVisibleTurn > 0 ? (
+          <div className="flex justify-center px-4 py-3">
+            <button
+              type="button"
+              className="rounded-md bg-content/8 px-2.5 py-1.5 font-sans text-[12px] text-content/60 hover:bg-content/12 hover:text-content"
+              onClick={loadEarlier}
+            >{t("Load earlier messages")}</button>
+          </div>
+        ) : null}
+        {visibleTurns.map((turn, turnIndex) => {
+          const isLastTurn = firstVisibleTurn + turnIndex === turns.length - 1;
+          const userBlock = turnUserBlock(turn, managed);
+          const durationMs = userBlock?.durationMs;
+          const settled = !(busy && isLastTurn);
+          const proposals = turn.filter((block) => block.orchestration);
+          // Proposals are turn results, like the changes card. Keep them out
+          // of the live work and append them after all of the lead's output.
+          const items = groupTurnItems(
+            turn.filter((block) => !block.orchestration),
+            { settled },
+          );
+          // Earlier activity groups have already been followed by prose or
+          // more work. Only the last one can still be the live group.
+          const foldedAt = lastActivityIndex(items);
+          const initialThinkingAt = initialThinkingIndex(items);
+          const startedAt = userBlock?.startedAt;
+          // The agent starting its answer is the end of the work: fold the
+          // groups then, not when the turn finally settles, so the collapse
+          // never lands under the text you have already started reading.
+          const answering =
+            foldedAt >= 0 &&
+            items
+              .slice(foldedAt + 1)
+              .some(
+                (item) => item.type === "block" && isProseBlock(item.block),
+              );
+          const workStillRunning = activityStillRunning(turn);
+          // New turns carry immutable model provenance. Legacy turns do not,
+          // so omit their model instead of rewriting history from the picker.
+          const turnModel = userBlock?.turnModel;
+          const turnHarness = harness
+            ? (turnModel?.harness ?? harnessForTurn(blocks, turn, harness))
+            : undefined;
+          // Work the turn has already answered for folds away behind one line,
+          // leaving the prompt and the answer to it.
+          const turnId = turn[0].id;
+          const fold = foldableWork(items);
+          const folded = fold ? foldedBlocks(items, fold) : [];
+          const workOpen = openWork[turnId] ?? false;
+          // The fold line is the turn's status line from the first token to
+          // the last: the mark, and the clock beside it. It never moves, so a
+          // turn settling does not shuffle the layout around the answer.
+          const live = visible && !settled && !preparingHandoff;
+          const turnModelName =
+            turnModel?.name ?? (live ? currentModelName : undefined);
+          // The fold line speaks for the main agent only. A delegated run has
+          // its own row, which says who is working and how it went, so saying
+          // it again here would be two lines telling the same story.
+          const foldTitle: ReactNode = live ? (
+            <LiveFoldTitle
+              startedAt={startedAt}
+              paused={waitingForApproval}
+              waitingLabel={
+                managed && waitingForApproval
+                  ? "Waiting for orchestrator"
+                  : pendingQuestion
+                    ? "Waiting for answers"
+                    : undefined
+              }
+              modelName={turnModelName}
+            />
+          ) : durationMs != null ? (
+            formatWorkingDuration(durationMs, turnModelName, true)
+          ) : (
+            workSummaryLine(folded)
+          );
+          const showFoldLine = live || durationMs != null || !!fold;
+          // It sits where the work starts, from before there is any: the row
+          // is there from the first token, so nothing shoves the answer down
+          // when the turn folds.
+          const firstWork = firstFoldableIndex(items);
+          const foldLineAt = fold
+            ? fold.start
+            : firstWork >= 0
+              ? firstWork
+              : items.length;
+          const renderItem = (item: TurnItem, itemIndex: number) =>
+            item.type === "subagents" ? (
+              <SubagentStack
+                key={item.blocks[0].id}
+                blocks={item.blocks}
+                cwd={cwd}
+                live={live}
+                onOpenFile={onOpenFile}
+                onOpenDiff={onOpenDiff}
+              />
+            ) : item.type === "activity" ? (
+              itemIndex === initialThinkingAt ? (
+                <InitialThinking
+                  key={item.blocks[0].id}
+                  live={visible && !settled}
+                />
+              ) : (
+                <ActivityPhases
+                  key={item.blocks[0].id}
+                  blocks={item.blocks}
+                  cwd={cwd}
+                  done={
+                    !visible ||
+                    settled ||
+                    itemIndex < foldedAt ||
+                    (answering && !workStillRunning)
+                  }
+                  onApproval={onApproval}
+                  onOpenFile={onOpenFile}
+                  onOpenDiff={onOpenDiff}
+                />
+              )
+            ) : (
+              <TranscriptBlock
+                key={item.block.id}
+                block={item.block}
+                layout={transcriptLayout}
+                stickyIndex={firstVisibleTurn + turnIndex + 1}
+                // Prose reads the same wherever it lands: under the fold
+                // line at the top of the turn, or under the work it follows.
+                underLine={
+                  isProseBlock(item.block) &&
+                  itemIndex > 0 &&
+                  (items[itemIndex - 1]?.type === "activity" ||
+                    items[itemIndex - 1]?.type === "subagents" ||
+                    (itemIndex === foldLineAt && showFoldLine))
+                }
+                onApproval={onApproval}
+                onOpenFile={onOpenFile}
+                onOpenDiff={onOpenDiff}
+                onOpenPlan={onOpenPlan}
+                onBuildPlan={onBuildPlan}
+                planBusy={!!busy}
+                planHarness={harness}
+                planModel={model}
+                planModelSettings={modelSettings}
+                cwd={cwd}
+                onRewind={requestRewind}
+              />
+            );
+          // The fold reaches across a stack of delegated runs, but those rows
+          // do not collapse with it: they are lifted out and parked under the
+          // work, where they stay put however often it re-folds.
+          const foldEntries = fold
+            ? items.slice(fold.start, fold.end + 1).map((entry, offset) => ({
+                entry,
+                index: fold.start + offset,
+              }))
+            : [];
+          const foldSubagents = foldEntries.filter(
+            ({ entry }) => entry.type === "subagents",
+          );
+          const foldWork = foldEntries.filter(
+            ({ entry }) => entry.type !== "subagents",
+          );
+          const foldLineRow = (
+            <TurnRow key="work-fold" folded={!showFoldLine}>
+              <WorkFoldLine
+                title={foldTitle}
+                kind={workKind(folded)}
+                harness={turnHarness}
+                modelName={turnModelName}
+                live={live}
+                expandable={!!fold}
+                open={workOpen && !!fold}
+                onToggle={() => toggleWork(turnId, workOpen)}
+              />
+            </TurnRow>
+          );
+          return (
+            <div
+              key={turn[0].id}
+              data-block-id={turn[0].id}
+              className={`transcript-turn flex min-w-0 flex-col${
+                isLastTurn ? " transcript-turn-live" : ""
+              }${
+                promptAnchor && anchorTurn && isLastTurn && userBlock
+                  ? " transcript-turn-anchor"
+                  : ""
+              }`}
+            >
+              {items.flatMap((item, itemIndex) => {
+                const inFold =
+                  !!fold && itemIndex >= fold.start && itemIndex <= fold.end;
+                if (inFold) {
+                  if (itemIndex !== fold.start) return [];
+                  return [
+                    foldLineRow,
+                    <TurnRow key="work-details" folded={!workOpen}>
+                      {() =>
+                        foldWork.map(({ entry, index }, offset) => (
+                          <div
+                            key={turnItemKey(entry)}
+                            className={`flow-root pb-1 last:pb-0 pl-5 zen-fold-rail ${
+                              offset === foldWork.length - 1
+                                ? "zen-fold-tail"
+                                : ""
+                            }${
+                              // Prose the trail holds is the agent talking
+                              // while it works; the marker lets it read as
+                              // process, not result.
+                              entry.type === "block" &&
+                              isProseBlock(entry.block)
+                                ? " zen-fold-prose"
+                                : ""
+                            }`}
+                          >
+                            {renderItem(entry, index)}
+                          </div>
+                        ))
+                      }
+                    </TurnRow>,
+                    // Delegated runs sit under the agent's own work, not
+                    // among it: they are a second thing the turn is doing,
+                    // and reading them as the first steps of the main trail
+                    // is what made them look like its work.
+                    ...foldSubagents.map(({ entry, index }) => (
+                      <div key={turnItemKey(entry)} className="flow-root pb-1">
+                        {renderItem(entry, index)}
+                      </div>
+                    )),
+                  ];
+                }
+                const row = (
+                  <div key={turnItemKey(item)} className="flow-root pb-1">
+                    {renderItem(item, itemIndex)}
+                  </div>
+                );
+                if (itemIndex !== foldLineAt) return row;
+                return [foldLineRow, row];
+              })}
+              {foldLineAt >= items.length ? foldLineRow : null}
+              {settled &&
+                proposals
+                  .filter((block) => block.orchestration?.status !== "planning")
+                  .map((block) => (
+                    <div
+                      key={block.id}
+                      className="px-4 pt-1 pb-2"
+                      data-orchestration-result
+                    >
+                      <OrchestrationPreview block={block} busy={!!busy} />
+                    </div>
+                  ))}
+              {isLastTurn && latestTurnAccessory ? latestTurnAccessory : null}
+              {durationMs != null && settled ? (
+                <TurnDuration
+                  elapsedMs={durationMs}
+                  metrics={userBlock?.turnMetrics}
+                  labelHidden={showFoldLine}
+                  modelName={turnModelName}
+                  completedAt={
+                    startedAt != null ? startedAt + durationMs : undefined
+                  }
+                  copyText={turnCopyText(turn)}
+                  onSaveNote={onSaveNote}
+                  harness={turnHarness}
+                  fromHarness={turnHarness}
+                  sessionId={sessionId}
+                  bookmarkBlockId={turn[0].id}
+                  onSecondOpinion={
+                    onSecondOpinion
+                      ? (target) => onSecondOpinion(target, turn)
+                      : undefined
+                  }
+                  onHandoff={
+                    onHandoff ? (target) => onHandoff(target, turn) : undefined
+                  }
+                />
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+      {onAddToChat ? (
+        <TranscriptSelectionMenu
+          selection={selection}
+          onAddToChat={onAddToChat}
+          onDismiss={dismissSelection}
+        />
+      ) : null}
+      {rewindTurnId ? (
+        <ModalPanel
+          onClose={() => setRewindTurnId(null)}
+          title={t("Rewind code to this message?")}
+          description={t(
+            "Files go back to how they were before you sent this message. Every later code change from this session is undone.",
+          )}
+          size="sm"
+        >
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setRewindTurnId(null)}
+              className="h-8 rounded-md px-3 text-sm text-content/70 hover:bg-content/8 hover:text-content"
+            >
+              {t("Cancel")}
+            </button>
+            <button
+              type="button"
+              disabled={rewinding}
+              onClick={() => void confirmRewind()}
+              className="h-8 rounded-md bg-content px-3 text-sm text-background-base hover:bg-content/90 disabled:opacity-40"
+            >
+              {rewinding ? t("Reverting…") : t("Rewind")}
+            </button>
+          </div>
+        </ModalPanel>
+      ) : null}
+    </div>
+    </div>
+  );
+}
+
+// Keep hidden panes' local state, and catch up with current props on activation.
+export const AgentTranscript = memo(
+  AgentTranscriptComponent,
+  (previous, next) => previous.visible === false && next.visible === false,
+);
+
+/** Placeholder for private reasoning before the first assistant text arrives. */
+function InitialThinking({ live }: { live: boolean }) {
+  return (
+    <div className="min-w-0 px-4 pt-3 pb-1 font-sans text-sm text-content/50">
+      {live ? <Shimmer duration={1.6}>{t("Thinking…")}</Shimmer> : "Thinking…"}
+    </div>
+  );
+}
+
+/**
+ * The clock on a turn's fold line: how long the agent has been at it, or what
+ * it is waiting on. The band that sweeps the text is sized off this element,
+ * so it shrinks to the words — stretched across the row, the sweep spends its
+ * time on empty space and the line just sits there looking dim.
+ */
+function LiveFoldTitle({
+  startedAt,
+  paused,
+  waitingLabel,
+  modelName,
+}: {
+  startedAt?: number;
+  paused: boolean;
+  waitingLabel?: string;
+  modelName?: string;
+}) {
+  const elapsedMs = useElapsedFrom(startedAt, paused);
+  const text = paused
+    ? (waitingLabel ?? "Waiting for approval")
+    : formatWorkingDuration(elapsedMs, modelName);
+  return (
+    <Shimmer className="min-w-0 truncate font-sans text-sm" duration={1}>
+      {text}
+    </Shimmer>
+  );
+}
+
+/**
+ * What a finished turn leaves under the answer: what you can do with it, and
+ * when it landed. The clock lives on the fold line above, from the first token
+ * to the last, so it is not repeated here.
+ */
+function TurnDuration({
+  elapsedMs,
+  metrics,
+  labelHidden = false,
+  modelName,
+  harness,
+  completedAt,
+  copyText: output,
+  onSaveNote,
+  fromHarness,
+  sessionId,
+  bookmarkBlockId,
+  onSecondOpinion,
+  onHandoff,
+}: {
+  elapsedMs: number | null;
+  metrics?: TurnMetrics;
+  /** True when the fold line above already keeps the time for this turn. */
+  labelHidden?: boolean;
+  modelName?: string;
+  harness?: HarnessId;
+  completedAt?: number;
+  copyText?: string;
+  onSaveNote?: (text: string) => void;
+  fromHarness?: HarnessId;
+  sessionId?: string;
+  bookmarkBlockId?: string;
+  onSecondOpinion?: (target: ModelTarget) => void;
+  onHandoff?: (target: ModelTarget) => void;
+}) {
+  const label = formatWorkingDuration(elapsedMs, modelName, true);
+  const dot = (
+    <span
+      aria-hidden
+      className="size-[3px] shrink-0 rounded-full bg-content/25"
+    />
+  );
+  return (
+    <div
+      aria-label={label}
+      className="flex min-w-0 items-center gap-2.5 px-4 pt-1 pb-3 font-sans text-sm text-content/40"
+    >
+      <span
+        data-tooltip-enable
+        className="flex shrink-0 items-center gap-1"
+      >
+        {output ? (
+          <>
+            <CopyTurnButton text={output} />
+            {onSaveNote ? (
+              <SaveNoteButton text={output} onSave={onSaveNote} />
+            ) : null}
+            {bookmarkBlockId ? (
+              <BookmarkButton
+                sessionId={sessionId}
+                blockId={bookmarkBlockId}
+                text={output ?? ""}
+              />
+            ) : null}
+          </>
+        ) : (
+          <Check className="size-3.5" strokeWidth={1.75} />
+        )}
+        {fromHarness && onHandoff ? (
+          <HandoffButton from={fromHarness} onPick={onHandoff} />
+        ) : null}
+        {fromHarness && onSecondOpinion ? (
+          <SecondOpinionButton from={fromHarness} onPick={onSecondOpinion} />
+        ) : null}
+        <TurnMetricsBadge metrics={metrics} elapsedMs={elapsedMs} />
+      </span>
+
+      {labelHidden ? null : (
+        <>
+          {dot}
+          <span className="flex min-w-0 items-center gap-1.5">
+            {harness ? (
+              <ModelBrandMark
+                text={modelName ?? ""}
+                harness={harness}
+                className="size-3.5 shrink-0"
+              />
+            ) : null}
+            <span className="min-w-0 truncate">{label}</span>
+          </span>
+        </>
+      )}
+
+      {completedAt != null ? (
+        <>
+          {dot}
+          <span className="shrink-0 text-content/35">
+            {formatClockTime(completedAt)}
+          </span>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+function TurnMetricsBadge({
+  metrics,
+  elapsedMs,
+}: {
+  metrics?: TurnMetrics;
+  elapsedMs: number | null;
+}) {
+  const root = useRef<HTMLDivElement>(null);
+  const [hovered, setHovered] = useState(false);
+  if (!metrics || !hasTurnMetrics(metrics)) return null;
+
+  const outputRate =
+    metrics.outputTokens != null && elapsedMs != null && elapsedMs > 0
+      ? metrics.outputTokens / (elapsedMs / 1000)
+      : undefined;
+  const headline =
+    [
+      metrics.cacheHitPercent != null
+        ? `Cache hit ${Math.round(metrics.cacheHitPercent)}%`
+        : null,
+      outputRate != null
+        ? `Output ${formatMetricCount(outputRate)} tok/s`
+        : null,
+    ]
+      .filter(Boolean)
+      .join(" · ") || "Turn tokens";
+  const detail = [
+    metrics.inputTokens != null
+      ? `${formatMetricCount(metrics.inputTokens)} input`
+      : null,
+    metrics.outputTokens != null
+      ? `${formatMetricCount(metrics.outputTokens)} output`
+      : null,
+    metrics.cacheReadTokens != null
+      ? `${formatMetricCount(metrics.cacheReadTokens)} cached`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const label = [headline, detail].filter(Boolean).join(". ");
+
+  return (
+    <div
+      ref={root}
+      className="relative shrink-0 pl-1"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onFocus={() => setHovered(true)}
+      onBlur={() => setHovered(false)}
+    >
+      <span
+        role="img"
+        tabIndex={0}
+        aria-label={`Turn metrics: ${label}`}
+        title="Turn metrics"
+        className="grid rounded-sm p-1 outline-none hover:text-content focus-visible:ring-1 focus-visible:ring-accent"
+      >
+        <ChartBreakoutSquare className="size-3.5" strokeWidth={1.6} />
+      </span>
+      {hovered ? (
+        <Popover
+          anchor={root}
+          side="top"
+          align="start"
+          className="pointer-events-none w-max px-2.5 py-1.5"
+        >
+          <div className="text-sm leading-4 text-content">{headline}</div>
+          {detail ? (
+            <div className="text-xs leading-4 text-content/50">
+              {detail}
+            </div>
+          ) : null}
+        </Popover>
+      ) : null}
+    </div>
+  );
+}
+
+function hasTurnMetrics(metrics: TurnMetrics): boolean {
+  return (
+    metrics.cacheHitPercent != null ||
+    (metrics.inputTokens ?? 0) > 0 ||
+    (metrics.outputTokens ?? 0) > 0 ||
+    (metrics.cacheReadTokens ?? 0) > 0 ||
+    (metrics.cacheWriteTokens ?? 0) > 0
+  );
+}
+
+function formatMetricCount(value: number): string {
+  return new Intl.NumberFormat(undefined, {
+    notation: "compact",
+    maximumFractionDigits: value >= 1000 ? 1 : 0,
+  }).format(Math.max(0, Math.round(value)));
+}
+
+/** Wall-clock stamp for a finished turn, in the reader's own locale. */
+function formatClockTime(epochMs: number): string {
+  return new Date(epochMs).toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function CopyTurnButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const timer = useRef<number | null>(null);
+
+  useEffect(() => {
+    setCopied(false);
+    return () => {
+      if (timer.current != null) window.clearTimeout(timer.current);
+    };
+  }, [text]);
+
+  return (
+    <button
+      type="button"
+      aria-label={copied ? t("Copied") : t("Copy response")}
+      className="-ml-1 rounded-md p-1 text-content/40 hover:bg-content/8 hover:text-content/70"
+      onClick={() => {
+        playCue("copy");
+        void copyText(text).then(
+          () => {
+            setCopied(true);
+            if (timer.current != null) window.clearTimeout(timer.current);
+            timer.current = window.setTimeout(() => setCopied(false), 2000);
+          },
+          () => {},
+        );
+      }}
+    >
+      {copied ? (
+        <Check className="size-3.5" strokeWidth={1.75} />
+      ) : (
+        <Copy className="size-3.5" strokeWidth={1.75} />
+      )}
+    </button>
+  );
+}
+
+function SaveNoteButton({
+  text,
+  onSave,
+}: {
+  text: string;
+  onSave: (text: string) => void;
+}) {
+  const [saved, setSaved] = useState(false);
+  const timer = useRef<number | null>(null);
+
+  useEffect(() => {
+    setSaved(false);
+    return () => {
+      if (timer.current != null) window.clearTimeout(timer.current);
+    };
+  }, [text]);
+
+  return (
+    <button
+      type="button"
+      aria-label={saved ? t("Saved to Notes") : t("Save as note")}
+      className="rounded-md p-1 text-content/40 hover:bg-content/8 hover:text-content/70"
+      onClick={() => {
+        playCue("copy");
+        onSave(text);
+        setSaved(true);
+        if (timer.current != null) window.clearTimeout(timer.current);
+        timer.current = window.setTimeout(() => setSaved(false), 2000);
+      }}
+    >
+      {saved ? (
+        <Check className="size-3.5" strokeWidth={1.75} />
+      ) : (
+        <FilePlusCorner className="size-3.5" strokeWidth={1.75} />
+      )}
+    </button>
+  );
+}
+
+const TranscriptBlock = memo(function TranscriptBlock({
+  block,
+  layout,
+  stickyIndex,
+  underLine = false,
+  cwd,
+  onApproval,
+  onOpenFile,
+  onOpenDiff,
+  onOpenPlan,
+  onBuildPlan,
+  planBusy,
+  planHarness,
+  planModel,
+  onRewind,
+  planModelSettings,
+}: {
+  block: Block;
+  layout: TranscriptLayout;
+  stickyIndex: number;
+  /** True when something already sits directly above this in the turn. */
+  underLine?: boolean;
+  cwd?: string;
+  onApproval?: (requestId: number, decision: ApprovalDecision) => void;
+  onOpenFile?: (path: string) => void;
+  onOpenDiff?: (path: string) => void;
+  onOpenPlan?: (blockId: string) => void;
+  onBuildPlan?: (blockId: string, target?: PlanBuildTarget) => void;
+  planBusy?: boolean;
+  planHarness?: HarnessId;
+  planModel?: string;
+  onRewind?: (turnId: string) => void;
+  planModelSettings?: Record<string, string>;
+}) {
+  if (block.role === "user") {
+    return (
+      <UserMessageBlock
+        block={block}
+        layout={layout}
+        stickyIndex={stickyIndex}
+        onRewind={onRewind}
+      />
+    );
+  }
+
+  if (block.browserCard) {
+    return <BrowserActionCard card={block.browserCard} />;
+  }
+
+  if (block.role === "tool") {
+    return (
+      <ToolCall
+        block={block}
+        cwd={cwd}
+        onApproval={onApproval}
+        onOpenFile={onOpenFile}
+        onOpenDiff={onOpenDiff}
+      />
+    );
+  }
+
+  if (block.role === "reasoning") {
+    return null;
+  }
+
+  if (block.role === "tasks") {
+    if (!block.taskList?.items.length) return null;
+    return (
+      <div className="px-4 py-1">
+        <TaskListPreview
+          items={block.taskList.items}
+          explanation={block.taskList.explanation}
+        />
+      </div>
+    );
+  }
+
+  if (block.role === "plan") {
+    if (block.orchestration) return null;
+    const legacyTasks = legacyTaskListFromText(block.text);
+    if (legacyTasks) {
+      return (
+        <div className="px-4 py-1">
+          <TaskListPreview items={legacyTasks} />
+        </div>
+      );
+    }
+    return (
+      <div className="px-4 py-1">
+        <PlanPreview
+          text={block.text}
+          streaming={block.streaming}
+          busy={planBusy}
+          plan={block.plan}
+          harness={planHarness}
+          model={planModel}
+          modelSettings={planModelSettings}
+          onOpen={onOpenPlan ? () => onOpenPlan(block.id) : undefined}
+          onBuild={
+            onBuildPlan ? (target) => onBuildPlan(block.id, target) : undefined
+          }
+        />
+      </div>
+    );
+  }
+
+  if (block.role === "approval") {
+    return (
+      <ToolCall
+        block={block}
+        cwd={cwd}
+        onApproval={onApproval}
+        onOpenFile={onOpenFile}
+        onOpenDiff={onOpenDiff}
+      />
+    );
+  }
+
+  if (block.role === "handoff") {
+    return <HandoffDivider block={block} />;
+  }
+
+  if (block.role === "system") {
+    if (block.interjection) {
+      return <InterjectionDivider block={block} />;
+    }
+    return (
+      <div className="px-4 py-2 text-content/50">
+        <pre className="min-w-0 whitespace-pre-wrap break-words">
+          {block.text}
+        </pre>
+      </div>
+    );
+  }
+
+  if (!block.text && block.streaming) return null;
+
+  return (
+    <div
+      data-selectable-agent-response={block.streaming ? undefined : block.id}
+      className={`min-w-0 px-4 pb-1 text-content ${underLine ? "pt-1" : "pt-3"}`}
+    >
+      <AgentMarkdown
+        text={block.text}
+        streaming={block.streaming}
+        cwd={cwd}
+        onOpenFile={onOpenFile}
+      />
+    </div>
+  );
+});
+
+function UserMessageBlock({
+  block,
+  layout,
+  stickyIndex,
+  onRewind,
+}: {
+  block: Block;
+  layout: TranscriptLayout;
+  stickyIndex: number;
+  onRewind?: (turnId: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [overflows, setOverflows] = useState(false);
+  const [singleLine, setSingleLine] = useState(false);
+  const textRef = useRef<HTMLElement>(null);
+  const card = block.secondOpinion;
+  const note = block.noteCard;
+  const text =
+    card && card.kind !== "handoff" ? "" : visibleUserPrompt(block.text);
+  const messageLink = text ? parseUserMessageLink(text) : null;
+  const displayText = messageLink
+    ? `${messageLink.beforeText}${messageLink.afterText}`
+    : text;
+  const chat = layout === "chat";
+  const textOnly =
+    Boolean(text) && !block.attachments?.length && !card && !note;
+
+  // Only the chat layout rounds a single line; the document layout always uses
+  // the square corners, so it never needs the measurement at all.
+  const roundsSingleLine = chat && textOnly;
+
+  useLayoutEffect(() => {
+    const el = textRef.current;
+    if (!el || !text) {
+      setOverflows(false);
+      setSingleLine(false);
+      return;
+    }
+
+    // Every user message carries one of these observers, so the callback runs
+    // once per message whenever the transcript reflows. `getComputedStyle`
+    // forces a style recalculation on each call and the line height only moves
+    // with the font or the UI scale — never with a resize — so it is resolved
+    // once here rather than on every delivery.
+    let lineHeight = 0;
+    const measure = () => {
+      if (!expanded) {
+        setOverflows(el.scrollHeight > el.clientHeight + 1);
+      }
+      if (!roundsSingleLine) {
+        setSingleLine(false);
+        return;
+      }
+      if (!lineHeight) {
+        lineHeight = Number.parseFloat(getComputedStyle(el).lineHeight);
+      }
+      setSingleLine(
+        Number.isFinite(lineHeight) && el.scrollHeight <= lineHeight + 1,
+      );
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [text, roundsSingleLine, expanded]);
+
+  const toggle = () => {
+    if (overflows) setExpanded((value) => !value);
+  };
+
+  const rewindButton =
+    block.checkpointTurnId && onRewind ? (
+      <button
+        type="button"
+        data-tooltip-enable
+        title={t("Rewind code to this message")}
+        aria-label={t("Rewind code to this message")}
+        onClick={(event) => {
+          event.stopPropagation();
+          onRewind(block.checkpointTurnId!);
+        }}
+        className={`shrink-0 rounded-md p-1 text-content/40 opacity-45 transition-opacity hover:bg-content/8 hover:text-content/70 hover:opacity-100 focus-visible:opacity-100 ${
+          chat ? "" : "absolute right-1.5 top-1.5"
+        }`}
+      >
+        <History className="size-3.5" strokeWidth={1.75} />
+      </button>
+    ) : null;
+
+  return (
+    <div
+      data-prompt-anchor={block.id}
+      className={
+        chat
+          ? "group relative flex items-center justify-end gap-1.5 pt-1.5 pr-4 pb-4 pl-14"
+          : "group relative p-1.5 pb-3"
+      }
+    >
+      {chat ? rewindButton : null}
+      <div
+        className={`user-message-bubble min-w-0 bg-content/10 px-3 py-2 font-sans text-content ${
+          chat
+            ? `w-fit max-w-xl ${singleLine ? "rounded-full" : "rounded-xl"}`
+            : "block rounded-lg border border-content/10"
+        }`}
+        style={{ zIndex: stickyIndex }}
+        onClick={overflows ? toggle : undefined}
+      >
+        {block.attachments?.length ? (
+          <div
+            className={`flex flex-wrap gap-1.5 ${text || card || note ? "mb-2" : ""}`}
+          >
+            {block.attachments.map((file) => (
+              <AttachmentChip key={file.id} attachment={file} />
+            ))}
+          </div>
+        ) : null}
+        {note ? (
+          <div className={text || card ? "mb-2" : ""}>
+            <NoteMiniCard card={note} embedded />
+          </div>
+        ) : null}
+        {card ? (
+          <div className={text ? "mb-1.5" : undefined}>
+            <SecondOpinionCard card={card} />
+          </div>
+        ) : null}
+        {messageLink ? (
+          <div
+            ref={(element) => {
+              textRef.current = element;
+            }}
+            className="user-message-with-link min-w-0 whitespace-pre-wrap break-words font-sans text-sm"
+          >
+            {messageLink.beforeText}
+            <UserLinkPreview link={messageLink.link} />
+            {messageLink.afterText}
+          </div>
+        ) : displayText ? (
+          <pre
+            ref={(element) => {
+              textRef.current = element;
+            }}
+            className={`min-w-0 whitespace-pre-wrap break-words font-sans text-sm ${expanded ? "" : "line-clamp-4"}`}
+          >
+            {displayText}
+          </pre>
+        ) : null}
+      </div>
+      {chat ? null : rewindButton}
+    </div>
+  );
+}
+
+/**
+ * Animate one fold, then release its contents. Closed work must not retain
+ * a component and DOM tree for every tool; only expansion builds those rows.
+ * Visible rows stay out of Grid so they rewrap when their pane changes width.
+ */
+function TurnRow({
+  folded,
+  children,
+}: {
+  folded: boolean;
+  children: ReactNode | (() => ReactNode);
+}) {
+  const [foldState, setFoldState] = useState<
+    "open" | "opening" | "closing" | "closed"
+  >(folded ? "closed" : "open");
+
+  useLayoutEffect(() => {
+    setFoldState((current) => {
+      if (folded) {
+        return current === "closed" || current === "closing"
+          ? current
+          : "closing";
+      }
+      return current === "open" || current === "opening" ? current : "opening";
+    });
+  }, [folded]);
+
+  useEffect(() => {
+    if (foldState !== "opening" && foldState !== "closing") return;
+    // Hidden tabs and reduced-motion styles may never fire animationend.
+    const timer = window.setTimeout(() => {
+      setFoldState(folded ? "closed" : "open");
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [foldState, folded]);
+
+  if (folded && foldState === "closed") return null;
+
+  return (
+    // `inert` keeps folded work out of tab order and off the screen reader.
+    <div
+      className="zen-fold-item"
+      data-fold-state={foldState}
+      inert={folded}
+      onAnimationEnd={(event) => {
+        if (event.target !== event.currentTarget) return;
+        setFoldState(folded ? "closed" : "open");
+      }}
+    >
+      {/* Keep padding off the Grid item itself. Otherwise its 4px bottom
+       * padding survives a 0fr track and every folded row leaves a gap. */}
+      <div>
+        <div className="pb-1">
+          {typeof children === "function" ? children() : children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** A turn item's identity, stable as the group it names grows. */
+function turnItemKey(item: TurnItem): string {
+  return item.type === "block" ? item.block.id : item.blocks[0].id;
+}
+
+/**
+ * The line a turn's work folds behind: the harness mark, and the clock —
+ * ticking while the agent works, how long it took once it is done. Everything
+ * the fold holds stays one click away, so the settled transcript reads as
+ * prompt, answer, and a receipt for the work in between.
+ */
+function WorkFoldLine({
+  title,
+  kind,
+  harness,
+  modelName,
+  live = false,
+  expandable,
+  open,
+  onToggle,
+}: {
+  title: ReactNode;
+  kind: ActivityPhaseKind;
+  harness?: HarnessId;
+  modelName?: string;
+  live?: boolean;
+  expandable: boolean;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const icon = (
+    <span className="relative flex size-3.5 shrink-0 items-center justify-center">
+      {open ? (
+        // Open, the chevron stays put: it is the way back, and hunting for it
+        // under the cursor is no way to close what you opened.
+        <ChevronRight
+          className="size-3.5 rotate-90 text-content/45"
+          strokeWidth={1.75}
+        />
+      ) : (
+        <>
+          {harness ? (
+            <ModelBrandMark
+              text={modelName ?? ""}
+              harness={harness}
+              className={`size-3.5 shrink-0 ${expandable ? "group-hover:opacity-0" : ""}`}
+            />
+          ) : (
+            <ActivityPhaseIcon
+              kind={kind}
+              className={expandable ? "group-hover:opacity-0" : ""}
+            />
+          )}
+          {expandable ? (
+            <ChevronRight
+              className="absolute size-3.5 text-content/45 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+              strokeWidth={1.75}
+            />
+          ) : null}
+        </>
+      )}
+    </span>
+  );
+  // While the agent runs, the clock shimmers here rather than at the bottom,
+  // which is now bare.
+  const label = live ? (
+    title
+  ) : (
+    <span className="min-w-0 flex-1 truncate font-sans text-sm text-content/50 transition-colors duration-200 group-hover:text-content/80">
+      {title}
+    </span>
+  );
+  const row = `flex w-full min-w-0 items-center gap-1.5 px-4 py-1 text-left${
+    open ? " zen-fold-drop" : ""
+  }`;
+
+  if (!expandable) {
+    return (
+      <div
+        className={`group ${row}`}
+        role={live ? "status" : undefined}
+        aria-live={live ? "polite" : undefined}
+      >
+        {icon}
+        {label}
+      </div>
+    );
+  }
+  return (
+    <button
+      type="button"
+      aria-expanded={open}
+      aria-label={open ? t("Hide the work") : t("Show the work")}
+      aria-live={live ? "polite" : undefined}
+      onClick={onToggle}
+      className={`group ${row}`}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
+
+/**
+ * The turn's work as phases. Related reasoning and calls stay together while
+ * assistant prose remains outside as full-size transcript text. The phase the
+ * agent is in stays open, with new steps scrolling inside a short window; the
+ * moment it moves on the phase folds back to its header.
+ */
+type ActivityPhasesProps = {
+  blocks: Block[];
+  cwd?: string;
+  done?: boolean;
+  /** False inside a nested panel, which supplies its own gutter. */
+  padded?: boolean;
+  onApproval?: (requestId: number, decision: ApprovalDecision) => void;
+  onOpenFile?: (path: string) => void;
+  onOpenDiff?: (path: string) => void;
+};
+
+const ActivityPhases = memo(function ActivityPhases({
+  blocks,
+  cwd,
+  done,
+  padded = true,
+  onApproval,
+  onOpenFile,
+  onOpenDiff,
+}: ActivityPhasesProps) {
+  const phases = useMemo(() => buildActivityPhases(blocks), [blocks]);
+
+  return (
+    <div className={`flex min-w-0 flex-col gap-1 ${padded ? "px-4" : ""}`}>
+      {phases.map((phase, index) => (
+        <ActivityPhaseGroup
+          key={phase.id}
+          phase={phase}
+          cwd={cwd}
+          active={!done && index === phases.length - 1}
+          onApproval={onApproval}
+          onOpenFile={onOpenFile}
+          onOpenDiff={onOpenDiff}
+        />
+      ))}
+    </div>
+  );
+}, sameActivity);
+
+/**
+ * A settled group is the same calls it was on the last token. Comparing the
+ * blocks themselves keeps every earlier turn out of the streaming re-render,
+ * which is most of what makes a long transcript stutter while the agent works.
+ */
+function sameActivity(a: ActivityPhasesProps, b: ActivityPhasesProps): boolean {
+  return (
+    a.cwd === b.cwd &&
+    a.done === b.done &&
+    a.padded === b.padded &&
+    a.onApproval === b.onApproval &&
+    a.onOpenFile === b.onOpenFile &&
+    a.onOpenDiff === b.onOpenDiff &&
+    a.blocks.length === b.blocks.length &&
+    a.blocks.every((block, index) => block === b.blocks[index])
+  );
+}
+
+/**
+ * Keep a live phase body on its newest step. Pinning happens in layout
+ * before paint so the window follows without a visible hitch; only a real
+ * wheel away from the bottom pauses that.
+ */
+function useLivePhaseScroll(
+  el: HTMLDivElement | null,
+  enabled: boolean,
+  steps: Block[],
+) {
+  const stickToBottom = useRef(true);
+  const wasEnabled = useRef(false);
+
+  useLayoutEffect(() => {
+    if (!enabled) {
+      wasEnabled.current = false;
+      return;
+    }
+    if (!wasEnabled.current) {
+      stickToBottom.current = true;
+      wasEnabled.current = true;
+    }
+    if (!el || !stickToBottom.current) return;
+    el.scrollTop = el.scrollHeight;
+  }, [el, enabled, steps]);
+
+  useEffect(() => {
+    if (!el || !enabled) return;
+
+    const pin = () => {
+      if (stickToBottom.current) el.scrollTop = el.scrollHeight;
+    };
+    const onScroll = () => {
+      if (isNearBottom(el)) stickToBottom.current = true;
+    };
+    const onWheel = (e: WheelEvent) => {
+      if (!nestedScrollAbsorbsWheel(el, e.deltaY)) return;
+      if (e.deltaY < 0) stickToBottom.current = false;
+      e.stopPropagation();
+    };
+
+    el.addEventListener("scroll", onScroll, { passive: true });
+    el.addEventListener("wheel", onWheel, { passive: true });
+    const inner = el.firstElementChild;
+    const observer = new ResizeObserver(pin);
+    if (inner) observer.observe(inner);
+    pin();
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      el.removeEventListener("wheel", onWheel);
+      observer.disconnect();
+    };
+  }, [el, enabled]);
+}
+
+/**
+ * One phase: a header the whole group hangs off, and the steps under it on a
+ * rail. Folding is automatic — the group opens while it is the live one and
+ * closes when the agent moves on — until you click, after which it stays where
+ * you put it. A step still waiting on you keeps the group open regardless.
+ * While live, the open body stays a short scrolling window pinned to the
+ * newest step; after the turn settles an opened group is full height again.
+ */
+function ActivityPhaseGroup({
+  phase,
+  cwd,
+  active,
+  onApproval,
+  onOpenFile,
+  onOpenDiff,
+}: {
+  phase: ActivityPhase;
+  cwd?: string;
+  active: boolean;
+  onApproval?: (requestId: number, decision: ApprovalDecision) => void;
+  onOpenFile?: (path: string) => void;
+  onOpenDiff?: (path: string) => void;
+}) {
+  const [override, setOverride] = useState<boolean | null>(null);
+  const autoExpand = useSyncExternalStore(
+    subscribeExpandToolActivity,
+    loadExpandToolActivity,
+    () => EXPAND_TOOL_ACTIVITY_DEFAULT,
+  );
+  const waiting = phase.steps.some(needsApproval);
+  const failed = !!subagentFailureSummary(phase.steps);
+  // With auto-expand off, a group stays behind its header until clicked (a
+  // pending approval or a failed subagent still forces it open).
+  const open = waiting || (override ?? (active || failed || autoExpand));
+  const [liveScroller, setLiveScroller] = useState<HTMLDivElement | null>(null);
+  useLivePhaseScroll(liveScroller, active && open, phase.steps);
+  const title = activityPhaseTitle(phase, active);
+  // Opening a group on purpose is also how you read the line that titled it,
+  // whole. The auto-open while it runs is a live view, not a reading one, and
+  // a one-line note the header already shows in full has nothing to add.
+  const headline =
+    override === true && phase.headline && headlineHasMore(phase.headline)
+      ? phase.headline
+      : undefined;
+  const inert = phase.steps.length === 0 && !headlineHasMore(phase.headline);
+
+  // A lone call the agent never introduced is not a group: a header repeating
+  // the single row under it says nothing twice.
+  if (!phase.headline && phase.steps.length === 1) {
+    return (
+      <div className="flex min-w-0 items-start gap-1.5">
+        <ActivityPhaseIcon kind={phase.kind} className="mt-[7px]" />
+        <div className="min-w-0 flex-1">
+          <ActivityRow
+            block={phase.steps[0]}
+            cwd={cwd}
+            live={active}
+            onApproval={onApproval}
+            onOpenFile={onOpenFile}
+            onOpenDiff={onOpenDiff}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  const label = active ? (
+    <Shimmer className="min-w-0 truncate font-sans text-sm" duration={1.6}>
+      {title}
+    </Shimmer>
+  ) : (
+    // Dimmed to sit with the icons: the work is chrome around the answer, and
+    // only the answer reads at full strength.
+    <span className="min-w-0 flex-1 truncate font-sans text-sm text-content/50 transition-colors duration-200 group-hover:text-content/80">
+      {title}
+    </span>
+  );
+
+  // A line the agent wrote with nothing under it is just that line.
+  if (inert) {
+    return (
+      <div className="flex min-w-0 items-center gap-1.5 py-1">
+        <ActivityPhaseIcon kind={phase.kind} />
+        {label}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-w-0 flex-col">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-label={
+          open
+            ? t("Hide the steps for {title}", { title })
+            : t("Show the steps for {title}", { title })
+        }
+        onClick={() => setOverride(!open)}
+        className="group flex w-full min-w-0 items-center gap-1.5 py-1 text-left"
+      >
+        {/*
+         * The two icons share one 14px box, so the swap is instant: fading
+         * between them leaves both half-drawn on top of each other.
+         */}
+        <span className="relative flex size-3.5 shrink-0 items-center justify-center">
+          <ActivityPhaseIcon
+            kind={phase.kind}
+            className="group-hover:opacity-0"
+          />
+          <ChevronRight
+            className={`absolute size-3.5 text-content/45 opacity-0 transition-transform duration-200 group-hover:opacity-100 ${
+              open ? "rotate-90" : ""
+            }`}
+            strokeWidth={1.75}
+          />
+        </span>
+        {label}
+      </button>
+      <div className="zen-phase-body" data-open={open}>
+        {open ? (
+          <div
+            ref={setLiveScroller}
+            className={active || !open ? "zen-phase-live" : undefined}
+          >
+            <div className="flex min-w-0 flex-col">
+              {headline ? (
+                <div className="zen-phase-step py-1">
+                  <AgentMarkdown
+                    className={
+                      headline.role === "reasoning"
+                        ? "agent-reasoning"
+                        : undefined
+                    }
+                    text={headline.text}
+                    cwd={cwd}
+                    onOpenFile={onOpenFile}
+                  />
+                </div>
+              ) : null}
+              {phase.steps.map((block) => (
+                <div
+                  key={block.id}
+                  className={`zen-phase-step${active ? " zen-step-in" : ""}`}
+                >
+                  <ActivityRow
+                    block={block}
+                    cwd={cwd}
+                    live={active}
+                    onApproval={onApproval}
+                    onOpenFile={onOpenFile}
+                    onOpenDiff={onOpenDiff}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Every delegated run in the turn, one row each. The main transcript cycles —
+ * work folds behind a line, prose replaces prose — and a subagent you are
+ * watching must not move while that happens, so these rows are never part of a
+ * fold and hold their place from the moment the agents start.
+ *
+ * A row is a mascot, a name, and what that agent is doing right now. Click it
+ * and the agent's own trail opens underneath.
+ */
+function SubagentStack({
+  blocks,
+  cwd,
+  live = false,
+  onOpenFile,
+  onOpenDiff,
+}: {
+  blocks: Block[];
+  cwd?: string;
+  live?: boolean;
+  onOpenFile?: (path: string) => void;
+  onOpenDiff?: (path: string) => void;
+}) {
+  return (
+    <div className="flex min-w-0 flex-col px-4">
+      {blocks.map((block) => (
+        <SubagentRow
+          key={block.id}
+          block={block}
+          cwd={cwd}
+          live={live}
+          onOpenFile={onOpenFile}
+          onOpenDiff={onOpenDiff}
+        />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * One delegated run's row, stateful about being opened. A run that died opens
+ * itself, so the provider's reason is not buried behind a face that looks like
+ * every other finished one. A click takes the row over from there and it stays
+ * where the reader puts it. The same row serves inside a settled turn's trail,
+ * where the run sits as one step of the work it was spawned from.
+ */
+function SubagentRow({
+  block,
+  cwd,
+  live = false,
+  onOpenFile,
+  onOpenDiff,
+}: {
+  block: Block;
+  cwd?: string;
+  live?: boolean;
+  onOpenFile?: (path: string) => void;
+  onOpenDiff?: (path: string) => void;
+}) {
+  const [override, setOverride] = useState<boolean | null>(null);
+  const open = override ?? toolCallState(block) === "rejected";
+  return (
+    <SubagentPanel
+      block={block}
+      cwd={cwd}
+      live={live}
+      open={open}
+      onToggle={() => setOverride(!open)}
+      onOpenFile={onOpenFile}
+      onOpenDiff={onOpenDiff}
+    />
+  );
+}
+
+/**
+ * One delegated run: its name, what it is doing, and — once opened — the trail
+ * it left, with the same tool rows, thinking and prose the main transcript
+ * shows. While it runs the trail is a short window pinned to the newest step,
+ * so a subagent doing hundreds of things cannot push the turn off the screen.
+ */
+function SubagentPanel({
+  block,
+  cwd,
+  live = false,
+  open,
+  onToggle,
+  onOpenFile,
+  onOpenDiff,
+}: {
+  block: Block;
+  cwd?: string;
+  live?: boolean;
+  open: boolean;
+  onToggle: () => void;
+  onOpenFile?: (path: string) => void;
+  onOpenDiff?: (path: string) => void;
+}) {
+  const name = subagentName(block);
+  const brief = subagentBrief(block);
+  const model = subagentModelName(block);
+  const state = toolCallState(block);
+  const active = live && state === "pending";
+  const steps = block.agentRun?.steps ?? [];
+  // The run's trail as transcript blocks, so the panel groups it the way the
+  // main transcript groups the agent's own work: what it said, then the calls
+  // that line introduced, folding behind it once it moves on.
+  const stepBlocks = useMemo(() => steps.map(agentStepBlock), [steps]);
+  const status = subagentStatusLine(block, steps);
+  const report = subagentReport(block);
+  const failed = state === "rejected";
+
+  // The name takes the room it needs and gives the rest back: a provider that
+  // names a run with its whole brief must not push the row off the pane.
+  const label = (
+    <span className="flex min-w-0 flex-1 items-baseline gap-2">
+      {active ? (
+        <Shimmer
+          className="min-w-0 flex-1 truncate font-sans text-sm"
+          duration={1.6}
+        >
+          {name}
+        </Shimmer>
+      ) : (
+        <span
+          className={`min-w-0 flex-1 truncate font-sans text-sm transition-colors duration-200 ${
+            state === "rejected"
+              ? "text-red-400"
+              : "text-content/75 group-hover:text-content"
+          }`}
+        >
+          {name}
+        </span>
+      )}
+      {model || status ? (
+        <span className="flex min-w-0 max-w-[55%] shrink-0 items-baseline gap-2 font-sans text-[12px] text-content/40">
+          {model ? (
+            <span className="truncate" title={`Model: ${model}`}>
+              {model}
+            </span>
+          ) : null}
+          {status ? <span className="shrink-0">{status}</span> : null}
+        </span>
+      ) : null}
+    </span>
+  );
+
+  // A run that has not reported a step yet has nothing to open into. The row
+  // still holds its place, so the chevron arriving does not move anything.
+  if (steps.length === 0 && !report) {
+    return (
+      <div
+        aria-label={`Subagent: ${name}`}
+        title={brief}
+        className="-mx-1.5 flex min-w-0 items-center gap-2 px-1.5 py-1"
+      >
+        <SubagentMascot name={name} state={state} active={active} />
+        {label}
+        <span className="size-3.5 shrink-0" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-w-0 flex-col">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-label={open ? `Hide ${name}'s work` : `Show ${name}'s work`}
+        title={brief}
+        onClick={onToggle}
+        // An open row keeps the wash it lit up under the cursor, so the panel
+        // below reads as hanging off it rather than off the transcript.
+        className={`group -mx-1.5 flex w-full min-w-0 items-center gap-2 rounded-md px-1.5 py-1 text-left transition-colors duration-200 hover:bg-content/8 ${
+          open ? "bg-content/8" : ""
+        }`}
+      >
+        <SubagentMascot name={name} state={state} active={active} />
+        {label}
+        <ChevronRight
+          className={`size-3.5 shrink-0 text-content/35 transition-transform duration-200 group-hover:text-content/60 ${
+            open ? "rotate-90" : ""
+          }`}
+          strokeWidth={1.75}
+        />
+      </button>
+      <div className="zen-phase-body" data-open={open}>
+        {open ? (
+          /*
+           * No scroll window of its own. Each phase inside already keeps the
+           * group the run is working in to a short pinned window; wrapping a
+           * second window around them nests one 17.5rem scroller inside
+           * another, and the inner one can never reach its own last row.
+           */
+          <div className="flex min-w-0 flex-col pb-1">
+            <ActivityPhases
+              blocks={stepBlocks}
+              cwd={cwd}
+              done={!active}
+              padded={false}
+              onOpenFile={onOpenFile}
+              onOpenDiff={onOpenDiff}
+            />
+            {report ? (
+              <div className="zen-phase-step py-1">
+                {failed ? (
+                  <pre className="min-w-0 whitespace-pre-wrap break-words font-mono text-[12px] leading-5 text-red-400/80">
+                    {report}
+                  </pre>
+                ) : (
+                  <AgentMarkdown
+                    text={report}
+                    cwd={cwd}
+                    onOpenFile={onOpenFile}
+                  />
+                )}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The pixel mascot standing in for a subagent, hopping while it works. The
+ * sprite is hashed off the agent's name, so the same reviewer keeps the same
+ * face across a session and two agents in a row are told apart at a glance.
+ */
+function SubagentMascot({
+  name,
+  state,
+  active = false,
+}: {
+  name: string;
+  state: ToolCallState;
+  active?: boolean;
+}) {
+  return (
+    <ProjectMascot
+      project={name}
+      active={active}
+      className={`size-3.5 shrink-0 ${
+        state === "rejected"
+          ? "text-red-400"
+          : state === "pending"
+            ? "text-content/70"
+            : "text-content/45"
+      }`}
+    />
+  );
+}
+
+/**
+ * A mirrored step as the transcript block it stands for, so a subagent's trail
+ * goes through the same rows — labels, file chips, diffs — as the main agent's.
+ */
+function agentStepBlock(step: AgentStep): Block {
+  if (step.kind !== "tool") {
+    return {
+      id: step.id,
+      role: step.kind === "reasoning" ? "reasoning" : "assistant",
+      text: step.text,
+    };
+  }
+  return {
+    id: step.id,
+    role: "tool",
+    text: step.text,
+    tool: {
+      callId: step.id,
+      title: step.text,
+      ...(step.toolKind ? { kind: step.toolKind } : {}),
+      ...(step.status ? { status: step.status } : {}),
+      ...(step.preview ? { preview: step.preview } : {}),
+    },
+  };
+}
+
+/** What a delegated run is up to: its newest step, or how much it got through. */
+/**
+ * A run is counted, never narrated. Echoing the call in flight put a second
+ * scrolling command line on every row — the shimmer on the name already says
+ * the agent is working, and the count says how far it has got.
+ */
+function subagentStatusLine(block: Block, steps: AgentStep[]): string {
+  if (toolCallState(block) === "rejected") return "failed";
+  const tools = steps.filter((step) => step.kind === "tool").length;
+  if (tools === 0) return "";
+  return tools === 1 ? "1 step" : `${tools} steps`;
+}
+
+/** Whether the line that titled a group has more in it than the header shows. */
+function headlineHasMore(block?: Block): boolean {
+  if (!block) return false;
+  return block.role === "reasoning" || /\n\s*\n/.test(block.text.trim());
+}
+
+/** What the group was for, at a glance: look, change, run, think. */
+function ActivityPhaseIcon({
+  kind,
+  className = "",
+}: {
+  kind: ActivityPhaseKind;
+  className?: string;
+}) {
+  const props = {
+    className: `size-3.5 shrink-0 text-content/45 ${className}`,
+    strokeWidth: 1.75,
+  };
+  if (kind === "edit") return <PenLine {...props} />;
+  if (kind === "research") return <Search {...props} />;
+  if (kind === "run") return <Terminal {...props} />;
+  if (kind === "agent") return <Bot {...props} />;
+  if (kind === "think") return null;
+  if (kind === "other") return <Wrench {...props} />;
+  return <Minus {...props} />;
+}
+
+/**
+ * One step of the agent's work, whatever that step was: a tool call, a thought,
+ * a paragraph. In a phase the rail draws the bullet, so the row drops its own
+ * leading icon and leans on the rail instead.
+ */
+function ActivityRow({
+  block,
+  cwd,
+  live = false,
+  onApproval,
+  onOpenFile,
+  onOpenDiff,
+}: {
+  block: Block;
+  cwd?: string;
+  live?: boolean;
+  onApproval?: (requestId: number, decision: ApprovalDecision) => void;
+  onOpenFile?: (path: string) => void;
+  onOpenDiff?: (path: string) => void;
+}) {
+  if (block.browserCard) {
+    return <BrowserActionCard card={block.browserCard} />;
+  }
+  if (isThinkingBlock(block)) {
+    return (
+      <ActivityThinkingRow
+        block={block}
+        cwd={cwd}
+        expandable
+        bare
+        onOpenFile={onOpenFile}
+      />
+    );
+  }
+  if (block.interjection) {
+    return <ActivityInterjectionRow block={block} />;
+  }
+  if (block.role === "system") {
+    return <ActivityStatusRow block={block} />;
+  }
+  if (isProseBlock(block)) {
+    return (
+      <ActivityNoteRow
+        block={block}
+        cwd={cwd}
+        bare
+        expandable
+        onOpenFile={onOpenFile}
+      />
+    );
+  }
+  // Only a settled turn routes a delegated run here; live turns pin the row
+  // outside the trail. Either way it is the same row, so it still opens onto
+  // the agent's own work.
+  if (isSubagentBlock(block)) {
+    return (
+      <SubagentRow
+        block={block}
+        cwd={cwd}
+        live={live}
+        onOpenFile={onOpenFile}
+        onOpenDiff={onOpenDiff}
+      />
+    );
+  }
+  return (
+    <ActivityToolRow
+      block={block}
+      cwd={cwd}
+      live={live}
+      bare
+      onApproval={onApproval}
+      onOpenFile={onOpenFile}
+      onOpenDiff={onOpenDiff}
+    />
+  );
+}
+
+/** A status row folded into the trail: one muted line, nothing to open. */
+function ActivityStatusRow({ block }: { block: Block }) {
+  return (
+    <div className="flex min-w-0 items-center gap-1.5 py-1">
+      <span
+        title={block.text}
+        className="min-w-0 flex-1 truncate font-sans text-sm text-content/50"
+      >
+        {block.text.trim()}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * An interjection inside the work trail: one compact line naming where it came
+ * from and what it said. It opens on a click, so folding the work never costs
+ * you a note you wanted to read.
+ */
+function ActivityInterjectionRow({ block }: { block: Block }) {
+  const [open, setOpen] = useState(false);
+  const meta = block.interjection;
+  if (!meta) return null;
+  const chrome = interjectionChrome(meta);
+  const summary = proseSummary(block.text);
+  const label = (
+    <span className="min-w-0 flex-1 truncate font-sans text-sm">
+      <span className="text-content/55">{chrome.label}</span>
+      {chrome.severityText ? (
+        <span className={`text-xs ${chrome.severityClass}`}>
+          {" "}
+          {chrome.severityText}
+        </span>
+      ) : null}
+      {summary ? (
+        <span className="text-content/50 transition-colors duration-200 group-hover:text-content/75">
+          {" · "}
+          {summary}
+        </span>
+      ) : null}
+    </span>
+  );
+
+  if (!block.text.trim()) {
+    return (
+      <div
+        aria-label={`${chrome.label} note`}
+        className="flex min-w-0 items-center gap-1.5 py-1"
+      >
+        {label}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-w-0 flex-col">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-label={
+          open ? `Hide the ${chrome.label} note` : `${chrome.label}: ${summary}`
+        }
+        onClick={() => setOpen((value) => !value)}
+        className="group flex min-w-0 items-center gap-1.5 py-1 text-left"
+      >
+        {label}
+      </button>
+      {open ? (
+        <div className="min-w-0 pb-2">
+          <pre className={INTERJECTION_BODY}>{block.text}</pre>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * The line that keeps a long think from reading as a stall. Opening the fold
+ * around it does not open the thought itself — reasoning is only ever read on
+ * purpose, one line until you ask for it.
+ */
+function ActivityThinkingRow({
+  block,
+  cwd,
+  expandable = false,
+  bare = false,
+  onOpenFile,
+}: {
+  block: Block;
+  cwd?: string;
+  expandable?: boolean;
+  bare?: boolean;
+  onOpenFile?: (path: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const text = proseSummary(block.text) || "Thinking";
+  // In a group the rail is the bullet, so there is nothing to breathe while
+  // reasoning streams in — the line itself does.
+  const pulse = block.streaming ? "zen-thinking-pulse" : "";
+  const icon = bare ? null : (
+    <Minus
+      className={`size-3.5 shrink-0 text-content/40 ${pulse}`}
+      strokeWidth={1.75}
+    />
+  );
+  const label = (
+    <span
+      className={`min-w-0 flex-1 truncate font-sans text-sm text-content/50 ${
+        bare ? pulse : ""
+      }`}
+    >
+      {text}
+    </span>
+  );
+
+  if (!expandable) {
+    return (
+      <div
+        aria-label={t("Thinking: {text}", { text })}
+        className="flex min-w-0 items-center gap-1.5 py-1"
+      >
+        {icon}
+        {label}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-w-0 flex-col">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-label={
+          open ? t("Hide thinking") : t("Show thinking: {text}", { text })
+        }
+        onClick={() => setOpen((value) => !value)}
+        className="group flex min-w-0 items-center gap-1.5 py-1 text-left"
+      >
+        {icon}
+        <span
+          className={`min-w-0 flex-1 truncate font-sans text-sm text-content/50 transition-colors duration-200 group-hover:text-content/75 ${
+            bare ? pulse : ""
+          }`}
+        >
+          {text}
+        </span>
+      </button>
+      {open ? (
+        <div className={`min-w-0 pb-2 ${bare ? "" : "pl-5"}`}>
+          <AgentMarkdown
+            className="agent-reasoning"
+            text={block.text}
+            cwd={cwd}
+            onOpenFile={onOpenFile}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * A line the agent wrote mid-run, kept to one line. It opens on click, so
+ * folding the work never costs you a paragraph you wanted to read.
+ */
+function ActivityNoteRow({
+  block,
+  cwd,
+  bare = false,
+  expandable = false,
+  onOpenFile,
+}: {
+  block: Block;
+  cwd?: string;
+  bare?: boolean;
+  expandable?: boolean;
+  onOpenFile?: (path: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const text = proseSummary(block.text);
+  const icon = bare ? null : (
+    <Minus className="size-3.5 shrink-0 text-content/50" strokeWidth={1.75} />
+  );
+
+  if (!expandable) {
+    return (
+      <div
+        aria-label={t("Agent said: {text}", { text })}
+        className="flex min-w-0 items-center gap-1.5 py-1"
+      >
+        {icon}
+        <span className="min-w-0 flex-1 truncate font-sans text-sm text-content/70">
+          {text}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-w-0 flex-col">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-label={
+          open ? t("Hide the full note") : t("Agent said: {text}", { text })
+        }
+        onClick={() => setOpen((value) => !value)}
+        className="group flex min-w-0 items-center gap-1.5 py-1 text-left"
+      >
+        {icon}
+        <span className="min-w-0 flex-1 truncate font-sans text-sm text-content/70 transition-colors duration-200 group-hover:text-content">
+          {text}
+        </span>
+      </button>
+      {open ? (
+        <div className="min-w-0 pb-2">
+          <AgentMarkdown text={block.text} cwd={cwd} onOpenFile={onOpenFile} />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ActivityToolRow({
+  block,
+  cwd,
+  live = false,
+  bare = false,
+  onApproval,
+  onOpenFile,
+  onOpenDiff,
+}: {
+  block: Block;
+  cwd?: string;
+  live?: boolean;
+  bare?: boolean;
+  onApproval?: (requestId: number, decision: ApprovalDecision) => void;
+  onOpenFile?: (path: string) => void;
+  onOpenDiff?: (path: string) => void;
+}) {
+  const [errorOpen, setErrorOpen] = useState(false);
+  const label = toolCallLabel(block, cwd);
+  const state = toolCallState(block);
+  const pending = needsApproval(block);
+  const errorDetail =
+    !pending && state === "rejected" ? block.tool?.detail?.trim() : undefined;
+  const summary = (
+    <ToolCallSummary
+      label={label}
+      preview={block.tool?.preview}
+      cwd={cwd}
+      chip={bare}
+      failed={state === "rejected"}
+      status={state}
+      onOpenFile={onOpenFile}
+      onOpenDiff={onOpenDiff}
+    />
+  );
+
+  return (
+    <div className="flex min-w-0 flex-col">
+      {errorDetail ? (
+        <div
+          aria-label={t("Failed tool call: {label}", { label })}
+          className="group flex min-w-0 items-center gap-1.5 py-1"
+        >
+          {bare ? null : <ActivityToolIcon state={state} live={live} />}
+          <div
+            className="flex min-w-0 flex-1 cursor-pointer"
+            onClick={() => setErrorOpen((value) => !value)}
+          >
+            {summary}
+          </div>
+          <ToolCallStatusIcon state={state} />
+          <button
+            type="button"
+            aria-expanded={errorOpen}
+            aria-label={
+              errorOpen
+                ? t("Hide error details for {label}", { label })
+                : t("Show error details for {label}", { label })
+            }
+            onClick={() => setErrorOpen((value) => !value)}
+            className="-m-1 shrink-0 rounded p-1"
+          >
+            <ChevronRight
+              className={`size-3.5 text-red-400/60 transition-transform ${errorOpen ? "rotate-90" : ""}`}
+              strokeWidth={1.75}
+            />
+          </button>
+        </div>
+      ) : (
+        <div
+          aria-label={t("Tool call: {label}", { label })}
+          className="flex min-w-0 items-center gap-1.5 py-1"
+        >
+          {bare ? null : <ActivityToolIcon state={state} live={live} />}
+          {summary}
+          {pending ? null : <ToolCallStatusIcon state={state} />}
+        </div>
+      )}
+      {pending ? (
+        <ApprovalControls block={block} onApproval={onApproval} />
+      ) : null}
+      {errorOpen && errorDetail ? (
+        <pre
+          className={`min-w-0 whitespace-pre-wrap break-words py-1 font-mono text-[12px] leading-5 text-red-400/80 ${bare ? "" : "pl-5"}`}
+        >
+          {errorDetail}
+        </pre>
+      ) : null}
+    </div>
+  );
+}
+
+function ActivityToolIcon({
+  state,
+  live = false,
+}: {
+  state: ToolCallState;
+  live?: boolean;
+}) {
+  if (state === "pending") {
+    return (
+      <CircleDashed
+        className={`size-3.5 shrink-0 text-content/40 ${live ? "zen-tool-spin" : ""}`}
+        strokeWidth={1.75}
+      />
+    );
+  }
+
+  return (
+    <Minus className="size-3.5 shrink-0 text-content/50" strokeWidth={1.75} />
+  );
+}
+
+/** Failure stays marked. Running and success do not get a trailing icon. */
+function ToolCallStatusIcon({ state }: { state: ToolCallState }) {
+  if (state === "rejected") {
+    return <X className="size-3.5 shrink-0 text-red-400" strokeWidth={2} />;
+  }
+  return null;
+}
+
+function useElapsedFrom(
+  startedAt: number | undefined,
+  paused: boolean,
+): number | null {
+  const fallback = useRef<number | null>(null);
+  const pausedMs = useRef(0);
+  const pauseStarted = useRef<number | null>(null);
+  const seenStartedAt = useRef(startedAt);
+
+  if (seenStartedAt.current !== startedAt) {
+    seenStartedAt.current = startedAt;
+    fallback.current = null;
+    pausedMs.current = 0;
+    pauseStarted.current = paused ? Date.now() : null;
+  }
+
+  const origin = startedAt ?? (fallback.current ??= Date.now());
+  const [elapsedMs, setElapsedMs] = useState(() =>
+    Math.max(0, Date.now() - origin),
+  );
+
+  useEffect(() => {
+    const start = startedAt ?? (fallback.current ??= Date.now());
+    if (paused) {
+      if (pauseStarted.current == null) pauseStarted.current = Date.now();
+      return;
+    }
+    if (pauseStarted.current != null) {
+      pausedMs.current += Date.now() - pauseStarted.current;
+      pauseStarted.current = null;
+    }
+    const tick = () =>
+      setElapsedMs(Math.max(0, Date.now() - start - pausedMs.current));
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, [startedAt, paused]);
+
+  return elapsedMs;
+}
+
+function formatWorkingDuration(
+  elapsedMs: number | null,
+  modelName?: string,
+  done = false,
+): string {
+  const who = modelName?.trim();
+  const elapsed = formatElapsed(elapsedMs);
+  const verb = done ? (who ? "worked" : "Worked") : who ? "working" : "Working";
+  if (elapsed == null) {
+    if (done) return who ? `${who} ${verb}` : verb;
+    return who ? `${who} ${verb}…` : `${verb}…`;
+  }
+  return who ? `${who} ${verb} for ${elapsed}` : `${verb} for ${elapsed}`;
+}
+
+function formatElapsed(elapsedMs: number | null): string | null {
+  if (elapsedMs == null) return null;
+  const totalSec = Math.max(1, Math.round(elapsedMs / 1000));
+  if (totalSec < 60) return `${totalSec}s`;
+  const minutes = Math.floor(totalSec / 60);
+  const seconds = totalSec % 60;
+  return seconds ? `${minutes}m ${seconds}s` : `${minutes}m`;
+}
+
+function BrowserActionCard({ card }: { card: BrowserCardMeta }) {
+  const title = t("Browser: {op}", { op: card.op });
+  return (
+    <div className="mx-4 my-1 overflow-hidden rounded-lg border border-content/10 bg-content/5">
+      <div className="flex items-center gap-2 px-3 py-2">
+        <Globe className="size-3.5 shrink-0 text-content/55" strokeWidth={1.75} />
+        <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-content">
+          {title}
+        </span>
+        <span
+          className={`text-xs ${card.ok ? "text-content/40" : "text-red-400/80"}`}
+        >
+          {card.ok ? t("Done") : t("Failed")}
+        </span>
+      </div>
+      {card.url ? (
+        <p className="truncate px-3 pb-1 text-xs text-content/45">{card.url}</p>
+      ) : null}
+      {card.summary && card.summary !== card.url ? (
+        <p className="truncate px-3 pb-2 text-xs text-content/45">{card.summary}</p>
+      ) : null}
+      {card.screenshot ? (
+        <img
+          src={card.screenshot}
+          alt=""
+          className="max-h-56 w-full border-t border-content/10 object-cover object-top"
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function ToolCall({
+  block,
+  cwd,
+  onApproval,
+  onOpenFile,
+  onOpenDiff,
+  embedded,
+}: {
+  block: Block;
+  cwd?: string;
+  onApproval?: (requestId: number, decision: ApprovalDecision) => void;
+  onOpenFile?: (path: string) => void;
+  onOpenDiff?: (path: string) => void;
+  embedded?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const preview = block.tool?.preview;
+  const label = toolCallLabel(block, cwd);
+  const detail = block.tool?.detail?.trim();
+  const expanded = detail && detail !== label ? detail : label;
+  const state = toolCallState(block);
+  const stateLabel =
+    state === "accepted"
+      ? "Accepted"
+      : state === "rejected"
+        ? "Rejected" : t("Pending");
+  const editTool = isEditTool(
+    block.tool?.kind,
+    block.text || block.tool?.title,
+    preview,
+  );
+  const compact =
+    isReadTool(block.tool?.kind, label, preview) ||
+    isSearchTool(block.tool?.kind, label, preview);
+  const expandable = !compact && !!detail && detail !== label;
+
+  const frame = embedded ? "py-0.5" : "px-4 py-1";
+
+  if (editTool) {
+    return (
+      <div className={frame}>
+        {needsApproval(block) ? (
+          <FilePreview
+            preview={preview ?? stubFilePreview(block.tool?.kind, label)}
+            status={state}
+            cwd={cwd}
+            onOpenFile={onOpenDiff ?? onOpenFile}
+          />
+        ) : (
+          <div className="flex min-w-0 items-center gap-2 py-1">
+            <ToolCallIcon state={state} />
+            <ToolCallSummary
+              label={label}
+              preview={preview}
+              cwd={cwd}
+              failed={state === "rejected"}
+              status={state}
+              onOpenFile={onOpenFile}
+              onOpenDiff={onOpenDiff}
+            />
+          </div>
+        )}
+        <ApprovalControls block={block} onApproval={onApproval} />
+      </div>
+    );
+  }
+
+  if (isIncompleteTool(block, label, state)) return null;
+
+  return (
+    <div className={frame}>
+      {expandable ? (
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-label={t("{state} tool call: {label}", {
+            state: stateLabel,
+            label,
+          })}
+          onClick={() => setOpen((value) => !value)}
+          className="flex w-full min-w-0 items-center gap-2 rounded-lg py-1.5 text-left"
+        >
+          <ToolCallIcon state={state} />
+          <ToolCallSummary
+            label={label}
+            preview={preview}
+            cwd={cwd}
+            failed={state === "rejected"}
+            onOpenFile={onOpenFile}
+          />
+          <ChevronRight
+            className={`size-3.5 shrink-0 text-content/35 transition-transform ${open ? "rotate-90" : ""}`}
+            strokeWidth={1.75}
+          />
+        </button>
+      ) : (
+        <div
+          aria-label={t("{state} tool call: {label}", {
+            state: stateLabel,
+            label,
+          })}
+          className="flex w-full min-w-0 items-center gap-2"
+        >
+          <ToolCallIcon state={state} />
+          <ToolCallSummary
+            label={label}
+            preview={preview}
+            cwd={cwd}
+            failed={state === "rejected"}
+            onOpenFile={onOpenFile}
+          />
+        </div>
+      )}
+      {open && expandable ? (
+        <pre className="mt-1.5 min-w-0 whitespace-pre-wrap break-words px-2.5 font-mono text-[12px] leading-5 text-content/55">
+          {expanded}
+        </pre>
+      ) : null}
+      <ApprovalControls block={block} onApproval={onApproval} />
+    </div>
+  );
+}
+
+function ToolCallSummary({
+  label,
+  preview,
+  cwd,
+  onOpenFile,
+  onOpenDiff,
+  interactive = true,
+  chip = false,
+  failed = false,
+  status = "accepted",
+}: {
+  label: string;
+  preview?: ToolPreview;
+  cwd?: string;
+  onOpenFile?: (path: string) => void;
+  onOpenDiff?: (path: string) => void;
+  interactive?: boolean;
+  /** Sets the file off in a chip, for rows that lean on a rail for structure. */
+  chip?: boolean;
+  failed?: boolean;
+  status?: ToolCallState;
+}) {
+  const parts = label.match(/^(Read|Find|Skill|List|Edit|Write)\s+(.+)$/);
+  // A write preview carries the path itself, so edits get the same verb + file
+  // chip as reads rather than falling through to a raw label.
+  const writeTarget =
+    preview?.kind === "write"
+      ? preview.path
+        ? displayPath(preview.path, cwd)
+        : preview.fileName
+      : undefined;
+  const action =
+    parts?.[1] ??
+    (writeTarget ? editVerb(label) : undefined) ??
+    (/^read$/i.test(label.trim()) && (preview?.path || preview?.fileName)
+      ? "Read"
+      : /^find$/i.test(label.trim()) && preview?.query
+        ? "Find"
+        : /^list$/i.test(label.trim()) && (preview?.path || preview?.fileName)
+          ? "List"
+          : /^skill$/i.test(label.trim())
+            ? "Skill"
+            : undefined);
+  const target =
+    parts?.[2] ??
+    writeTarget ??
+    (action === "Read" ||
+    action === "List" ||
+    action === "Edit" ||
+    action === "Write"
+      ? preview?.path
+        ? displayPath(preview.path, cwd)
+        : preview?.fileName
+      : action === "Find"
+        ? preview?.query
+        : undefined);
+  if (!action || !target) {
+    return (
+      <span
+        className={`min-w-0 flex-1 truncate font-mono text-sm ${
+          failed ? "text-red-400" : chip ? "text-content/65" : "text-content/80"
+        }`}
+      >
+        {label}
+      </span>
+    );
+  }
+  const isFile = action !== "Find" && action !== "Skill";
+  const fileName =
+    preview?.fileName ||
+    target
+      .replace(/[/\\]+$/, "")
+      .split(/[/\\]/)
+      .filter(Boolean)
+      .pop() ||
+    "file";
+  const filePath = resolveWorkspacePath(preview?.path || target, cwd);
+  const openFile =
+    action === "Edit" || action === "Write"
+      ? (onOpenDiff ?? onOpenFile)
+      : onOpenFile;
+  const canOpen = interactive && !!openFile && !!filePath;
+  const canPreview =
+    interactive &&
+    preview?.kind === "write" &&
+    (preview.contentOnly ||
+      preview.lines?.some((line) => line.kind !== "context"));
+  const actionTone = failed ? "text-red-400" : "text-content/50";
+  const targetTone = failed
+    ? "text-red-400"
+    : chip
+      ? "text-content/70"
+      : "text-content/85";
+
+  return (
+    <span className="flex min-w-0 flex-1 items-center gap-1.5 font-mono text-sm">
+      <span className={`shrink-0 font-sans text-sm ${actionTone}`}>
+        {action}
+      </span>
+      {isFile ? (
+        canPreview ? (
+          <ToolDiffPreview
+            preview={preview}
+            label={target}
+            status={status}
+            cwd={cwd}
+            onOpen={openFile && filePath ? () => openFile(filePath) : undefined}
+            onOpenFile={onOpenFile}
+            className={`-my-0.5 flex min-w-0 cursor-pointer items-center gap-1 rounded px-1 py-0.5 text-left hover:text-sky-300 ${
+              chip
+                ? `max-w-full bg-content/6 hover:bg-content/10 ${targetTone}`
+                : `flex-1 hover:bg-content/6 ${targetTone}`
+            }`}
+          >
+            <FileTypeIcon name={fileName} isDir={false} />
+            <span className="min-w-0 truncate">{target}</span>
+          </ToolDiffPreview>
+        ) : canOpen ? (
+          <button
+            type="button"
+            data-no-tooltip
+            className={`-my-0.5 flex min-w-0 cursor-pointer items-center gap-1 rounded px-1 py-0.5 text-left hover:text-sky-300 ${
+              chip
+                ? `max-w-full bg-content/6 hover:bg-content/10 ${targetTone}`
+                : `flex-1 hover:underline ${targetTone}`
+            }`}
+            onClick={(event) => {
+              event.stopPropagation();
+              openFile?.(filePath);
+            }}
+          >
+            <FileTypeIcon name={fileName} isDir={action === "List"} />
+            <span className="min-w-0 truncate">{target}</span>
+          </button>
+        ) : (
+          <span
+            className={`flex min-w-0 items-center gap-1 rounded px-1 ${
+              chip
+                ? `max-w-full bg-content/6 ${targetTone}`
+                : `flex-1 ${targetTone}`
+            }`}
+          >
+            <FileTypeIcon name={fileName} isDir={action === "List"} />
+            <span className="min-w-0 truncate">{target}</span>
+          </span>
+        )
+      ) : (
+        <span
+          className={`flex min-w-0 flex-1 items-center gap-1.5 pl-1 ${targetTone}`}
+        >
+          <span className="min-w-0 truncate">{target}</span>
+        </span>
+      )}
+    </span>
+  );
+}
+
+function ToolCallIcon({ state }: { state: ToolCallState }) {
+  if (state === "rejected") {
+    return <X className="size-3.5 shrink-0 text-red-400" strokeWidth={2} />;
+  }
+  if (state === "pending") {
+    return (
+      <CircleDashed
+        className="size-3.5 shrink-0 text-content/40"
+        strokeWidth={1.75}
+      />
+    );
+  }
+  return null;
+}
+
+function ApprovalControls({
+  block,
+  onApproval,
+}: {
+  block: Block;
+  onApproval?: (requestId: number, decision: ApprovalDecision) => void;
+}) {
+  const approval = block.approval;
+  if (!approval || approval.decided || !onApproval) return null;
+  return (
+    <div className="mt-1.5 flex gap-2">
+      <button
+        type="button"
+        className="rounded-md bg-content px-2.5 py-0.5 text-sm font-medium hover:bg-content/80     text-background-base"
+        onClick={() => onApproval?.(approval.requestId, "allow")}
+      >
+        {t("Allow")}
+      </button>
+      <button
+        type="button"
+        className="rounded-md bg-content/10 px-2.5 py-0.5 text-sm font-medium text-content/70 hover:bg-content/20"
+        onClick={() => onApproval?.(approval.requestId, "deny")}
+      >
+        {t("Deny")}
+      </button>
+    </div>
+  );
+}
+
+function HandoffDivider({ block }: { block: Block }) {
+  const meta = block.handoff;
+  if (!meta) return null;
+
+  const preparing = meta.status === "preparing";
+  const label = preparing
+    ? t("Preparing a handoff")
+    : HARNESS_TITLE[meta.to];
+
+  return (
+    <div className="px-4 py-5">
+      <div className="flex items-center gap-3">
+        <div className="h-px min-w-4 flex-1 bg-content/12" />
+        <div
+          role="separator"
+          aria-label={
+            preparing
+              ? t("Preparing a handoff to {name}", {
+                  name: HARNESS_TITLE[meta.to],
+                })
+              : t("Continued with {label}", { label })
+          }
+          className="flex max-w-[min(100%,20rem)] items-center gap-1.5 px-1.5 font-sans text-[12px] text-content/55"
+        >
+          {preparing ? (
+            <>
+              <TerminalSpinner className="inline-block w-3.5 shrink-0 select-none text-center text-xs leading-none text-content/45" />
+              <Shimmer duration={1.4}>{label}</Shimmer>
+            </>
+          ) : (
+            <>
+              <HarnessIcon harness={meta.to} className="size-3.5 shrink-0" />
+            </>
+          )}
+        </div>
+        <div className="h-px min-w-4 flex-1 bg-content/12" />
+      </div>
+    </div>
+  );
+}
+
+/** The label and severity chrome an interjection wears, wherever it sits. */
+function interjectionChrome(meta: InterjectionMeta): {
+  label: string;
+  severityText?: string;
+  severityClass: string;
+} {
+  const label =
+    meta.customType === "advisor"
+      ? "Advisor"
+      : meta.customType === "custom"
+        ? "Notice"
+        : meta.customType;
+  const severityText =
+    meta.severity === "blocker"
+      ? "Blocker"
+      : meta.severity === "concern"
+        ? "Concern"
+        : meta.severity === "nit"
+          ? "Nit"
+          : undefined;
+  const severityClass =
+    meta.severity === "blocker"
+      ? "text-red-400"
+      : meta.severity === "concern"
+        ? "text-amber-400"
+        : "text-content/55";
+  return { label, severityText, severityClass };
+}
+
+/** The advisory body under an interjection, wherever the note is surfaced. */
+const INTERJECTION_BODY =
+  "min-w-0 whitespace-pre-wrap break-words font-sans text-xs leading-5 text-content/70";
+
+/** A mid-turn interjection, e.g. OMP advisor notes: a labeled boundary with
+ * a collapsible advisory body below it. */
+function InterjectionDivider({ block }: { block: Block }) {
+  const [expanded, setExpanded] = useState(false);
+  const [overflows, setOverflows] = useState(false);
+  const textRef = useRef<HTMLPreElement>(null);
+
+  useLayoutEffect(() => {
+    const el = textRef.current;
+    if (!el || !block.text) {
+      setOverflows(false);
+      return;
+    }
+    const measure = () => {
+      if (!expanded) {
+        setOverflows(el.scrollHeight > el.clientHeight + 1);
+      }
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [block.text, expanded]);
+
+  const meta = block.interjection;
+  if (!meta) return null;
+  const { label, severityText, severityClass } = interjectionChrome(meta);
+  return (
+    <div className="px-4 py-4">
+      <div className="flex items-center gap-3">
+        <div className="h-px min-w-4 flex-1 bg-content/12" />
+        <div
+          role="separator"
+          aria-label={`Interjection: ${label}`}
+          className="flex items-center gap-2 px-1.5 font-sans text-[12px] text-content/55"
+        >
+          <span>{label}</span>
+          {severityText ? (
+            <span className={`text-xs ${severityClass}`}>
+              {severityText}
+            </span>
+          ) : null}
+        </div>
+        <div className="h-px min-w-4 flex-1 bg-content/12" />
+      </div>
+      {block.text ? (
+        <div className="mt-2 px-2">
+          <pre
+            ref={textRef}
+            className={`${INTERJECTION_BODY} ${expanded ? "" : "line-clamp-2"}`}
+          >
+            {block.text}
+          </pre>
+          {overflows ? (
+            <button
+              type="button"
+              aria-expanded={expanded}
+              onClick={() => setExpanded((value) => !value)}
+              className="mt-1 py-1 font-sans text-xs text-content/55 hover:text-content"
+            >
+              {expanded ? "Show less" : "Show more"}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function lastUserBlockId(blocks: Block[], managed = false): string | undefined {
+  return turnUserBlock(blocks, managed)?.id;
+}
+
+function turnUserBlock(blocks: Block[], managed = false): Block | undefined {
+  for (let i = blocks.length - 1; i >= 0; i--) {
+    const block = blocks[i];
+    if (block.role === "user" && (managed || !block.internal)) return block;
+  }
+  return undefined;
+}
+
+function isNearBottom(el: HTMLElement): boolean {
+  return el.scrollHeight - el.scrollTop - el.clientHeight <= NEAR_BOTTOM_PX;
+}
+
+function pinToBottom(el: HTMLElement | null) {
+  if (!el) return;
+  el.scrollTop = el.scrollHeight;
+}
+
+/** Keep the live turn's min-height in lockstep with the visible transcript. */
+function syncTranscriptViewport(el: HTMLElement | null) {
+  if (!el || el.clientHeight <= 0) return;
+  const inner = el.firstElementChild as HTMLElement | null;
+  const pad = inner
+    ? Number.parseFloat(getComputedStyle(inner).paddingBottom) || 0
+    : 0;
+  const next = `${Math.max(0, el.clientHeight - pad)}px`;
+  if (el.style.getPropertyValue("--transcript-viewport") === next) return;
+  el.style.setProperty("--transcript-viewport", next);
+}

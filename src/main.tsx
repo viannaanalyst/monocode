@@ -3,19 +3,19 @@ import ReactDOM from "react-dom/client";
 import { listen } from "@tauri-apps/api/event";
 import { LocaleRoot } from "./i18n";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
-import App from "./App";
-import { activateWindowAppearance, initAppearance } from "./lib/appearance";
-import { initFonts } from "./lib/fonts";
-import { initSounds } from "./lib/sounds";
+import App from "./app/App";
+import { activateWindowAppearance, initAppearance } from "./features/settings/model/appearance";
+import { initFonts } from "./features/sessions/model/fonts";
+import { initSounds } from "./features/settings/model/sounds";
 import {
   abortQuit,
   askQuitConfirmation,
   commitQuit,
   loadBootWorkspace,
   reportQuitPoll,
-} from "./lib/appLifecycle";
-import { consumeInstalledUpdate } from "./lib/updateNotice";
-import "./index.css";
+} from "./app/model/appLifecycle";
+import { consumeInstalledUpdate } from "./app/model/updateNotice";
+import "./styles/index.css";
 
 initAppearance();
 initFonts();

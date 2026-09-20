@@ -11,9 +11,9 @@ const BANNED_ICON = ["size-2.5"];
 /** `size-2` stays on project mascots, RailAction's status dot, and the color-swatch glyph. */
 const BANNED_SIZE_2 = /\bsize-2(?![\d.])/;
 const SIZE_2_FILES = new Set([
-  "chrome/ProjectRail.tsx",
-  "chrome/RailAction.tsx",
-  "chrome/ColorPickerPopover.tsx",
+  "app/shell/ProjectRail.tsx",
+  "app/shell/RailAction.tsx",
+  "shared/ui/ColorPickerPopover.tsx",
 ]);
 
 function sourceFiles(dir: string): string[] {

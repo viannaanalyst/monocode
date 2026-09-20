@@ -1,0 +1,320 @@
+import { invoke } from "@tauri-apps/api/core";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ExplorerMenu, type ExplorerMenuItem } from "../../features/files/ui/ExplorerMenu";
+import { ALT, MOD, SHIFT } from "../../platform/tauri/platform";
+import { runUpdateFlow } from "../model/updater";
+import { t } from "../../i18n";
+
+
+type MenuKey = "file" | "view" | "terminal";
+
+type Props = {
+  onNew: () => void;
+  onNewTerminal?: () => void;
+  onToggleTerminal?: () => void;
+  onGoToFile?: () => void;
+  onToggleSidebar: () => void;
+  onShowSourceControl?: () => void;
+  onCloseCurrentTab?: () => void;
+  onCloseOtherTabs?: () => void;
+  onCloseAllTabs?: () => void;
+  onPickProject?: () => void;
+  onFindInProject?: () => void;
+  onSearch?: () => void;
+  onOpenInbox?: () => void;
+  onOpenKanban?: () => void;
+  onOpenAutomations?: () => void;
+  onOpenNotes?: () => void;
+  onZoomIn?: () => void;
+  onZoomOut?: () => void;
+  onZoomReset?: () => void;
+};
+
+export function MenuBar({
+  onNew,
+  onNewTerminal,
+  onToggleTerminal,
+  onGoToFile,
+  onToggleSidebar,
+  onShowSourceControl,
+  onCloseCurrentTab,
+  onCloseOtherTabs,
+  onCloseAllTabs,
+  onPickProject,
+  onFindInProject,
+  onSearch,
+  onOpenInbox,
+  onOpenKanban,
+  onOpenAutomations,
+  onOpenNotes,
+  onZoomIn,
+  onZoomOut,
+  onZoomReset,
+}: Props) {
+  const [open, setOpen] = useState(false);
+  const [activeMenu, setActiveMenu] = useState<MenuKey | null>(null);
+  const [menuAnchor, setMenuAnchor] = useState<{ x: number; y: number } | null>(null);
+  const barRef = useRef<HTMLDivElement>(null);
+
+  // Toggle with standalone Alt key tap
+  useEffect(() => {
+    let altPressedAlone = false;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Alt") {
+        altPressedAlone = true;
+      } else if (altPressedAlone) {
+        altPressedAlone = false;
+      }
+    };
+
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.key === "Alt" && altPressedAlone) {
+        setOpen((prev) => {
+          if (prev) {
+            setActiveMenu(null);
+            setMenuAnchor(null);
+            return false;
+          }
+          return true;
+        });
+        altPressedAlone = false;
+      }
+    };
+
+    const onBlur = () => {
+      altPressedAlone = false;
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", onBlur);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", onBlur);
+    };
+  }, []);
+
+  const openDropdown = useCallback((key: MenuKey, target: HTMLElement) => {
+    const rect = target.getBoundingClientRect();
+    setActiveMenu(key);
+    setMenuAnchor({ x: rect.left, y: rect.bottom + 2 });
+  }, []);
+
+  const closeMenu = useCallback(() => {
+    setActiveMenu(null);
+    setMenuAnchor(null);
+  }, []);
+
+  const handlePick = useCallback(
+    (id: string) => {
+      closeMenu();
+      setOpen(false);
+
+      switch (id) {
+        case "new_tab":
+          onNew();
+          break;
+        case "new_terminal":
+          onNewTerminal?.();
+          break;
+        case "toggle_terminal":
+          onToggleTerminal?.();
+          break;
+        case "new_window":
+          void invoke("open_new_window").catch(() => {});
+          break;
+        case "open_project":
+          onPickProject?.();
+          break;
+        case "open_search":
+          onSearch?.();
+          break;
+        case "open_inbox":
+          onOpenInbox?.();
+          break;
+        case "open_notes":
+          onOpenNotes?.();
+          break;
+        case "open_kanban":
+          onOpenKanban?.();
+          break;
+        case "open_automations":
+          onOpenAutomations?.();
+          break;
+        case "go_to_file":
+          onGoToFile?.();
+          break;
+        case "find_in_project":
+          onFindInProject?.();
+          break;
+        case "close_tab":
+          onCloseCurrentTab?.();
+          break;
+        case "close_other_tabs":
+          onCloseOtherTabs?.();
+          break;
+        case "close_all_tabs":
+          onCloseAllTabs?.();
+          break;
+        case "toggle_sidebar":
+          onToggleSidebar();
+          break;
+        case "open_model_picker":
+          window.dispatchEvent(new Event("open_model_picker"));
+          break;
+        case "toggle_diff":
+          onShowSourceControl?.();
+          break;
+        case "check_for_updates":
+          void runUpdateFlow(true);
+          break;
+        case "zoom_in":
+          onZoomIn?.();
+          break;
+        case "zoom_out":
+          onZoomOut?.();
+          break;
+        case "zoom_reset":
+          onZoomReset?.();
+          break;
+      }
+    },
+    [
+      closeMenu,
+      onCloseCurrentTab,
+      onCloseOtherTabs,
+      onCloseAllTabs,
+      onFindInProject,
+      onGoToFile,
+      onNew,
+      onNewTerminal,
+      onToggleTerminal,
+      onPickProject,
+      onSearch,
+      onOpenInbox,
+      onOpenKanban,
+      onOpenAutomations,
+      onOpenNotes,
+      onShowSourceControl,
+      onToggleSidebar,
+      onZoomIn,
+      onZoomOut,
+      onZoomReset,
+    ],
+  );
+
+  const getMenuItems = (key: MenuKey): ExplorerMenuItem[] => {
+    switch (key) {
+      case "file":
+        return [
+          { kind: "item", id: "new_tab", label: t("New Tab"), shortcut: `${MOD}T` },
+          { kind: "item", id: "new_terminal", label: t("New Terminal"), shortcut: `${MOD}\`` },
+          { kind: "item", id: "new_window", label: t("New Window"), shortcut: `${MOD}${SHIFT}N` },
+          { kind: "sep" },
+          { kind: "item", id: "open_project", label: t("Open Project…"), shortcut: `${MOD}O` },
+          { kind: "item", id: "open_search", label: t("Search…"), shortcut: `${MOD}K` },
+          { kind: "item", id: "go_to_file", label: t("Go to File…"), shortcut: `${MOD}P` },
+          { kind: "item", id: "find_in_project", label: t("Find in Files…"), shortcut: `${MOD}${SHIFT}F` },
+          { kind: "sep" },
+          { kind: "item", id: "close_tab", label: t("Close Pane"), shortcut: `${MOD}W` },
+          {
+            kind: "item",
+            id: "close_other_tabs",
+            label: t("Close Other Tabs"),
+            shortcut: `${MOD}${ALT}T`,
+          },
+          {
+            kind: "item",
+            id: "close_all_tabs",
+            label: t("Close All Tabs"),
+            shortcut: `${MOD}${SHIFT}W`,
+          },
+          { kind: "sep" },
+          { kind: "item", id: "check_for_updates", label: t("Check for Updates…") },
+        ];
+      case "view":
+        return [
+          { kind: "item", id: "toggle_sidebar", label: t("Toggle Sidebar"), shortcut: `${MOD}B` },
+          { kind: "item", id: "open_inbox", label: t("Inbox") },
+          ...(onOpenNotes
+            ? [{ kind: "item" as const, id: "open_notes", label: t("Notes") }]
+            : []),
+          { kind: "item", id: "open_kanban", label: t("Kanban") },
+          { kind: "item", id: "open_automations", label: t("Automations") },
+          { kind: "item", id: "toggle_terminal", label: t("Toggle Terminal"), shortcut: `${MOD}J` },
+          { kind: "item", id: "open_model_picker", label: t("Switch Model…"), shortcut: `${MOD}.` },
+          { kind: "item", id: "toggle_diff", label: t("Toggle Changes") },
+          { kind: "sep" },
+          { kind: "item", id: "zoom_in", label: t("Zoom In"), shortcut: `${MOD}+` },
+          { kind: "item", id: "zoom_out", label: t("Zoom Out"), shortcut: `${MOD}-` },
+          { kind: "item", id: "zoom_reset", label: t("Reset Zoom"), shortcut: `${MOD}0` },
+        ];
+      case "terminal":
+        return [
+          { kind: "item", id: "new_terminal", label: t("New Terminal"), shortcut: `${MOD}\`` },
+          { kind: "item", id: "toggle_terminal", label: t("Toggle Terminal"), shortcut: `${MOD}J` },
+        ];
+    }
+  };
+
+  if (!open && !activeMenu) {
+    return null;
+  }
+
+  const MENUS: { key: MenuKey; label: string }[] = [
+    { key: "file", label: t("File") },
+    { key: "view", label: t("View") },
+    { key: "terminal", label: t("Terminal") },
+  ];
+
+  return (
+    <div
+      ref={barRef}
+      className="flex h-7 shrink-0 items-center gap-0.5 border-b border-stroke bg-content/5 px-2 text-[12px]"
+      data-tauri-drag-region="false"
+    >
+      {MENUS.map(({ key, label }) => {
+        const isActive = activeMenu === key;
+        return (
+          <button
+            key={key}
+            type="button"
+            data-tauri-drag-region="false"
+            onClick={(e) => {
+              if (isActive) {
+                closeMenu();
+              } else {
+                openDropdown(key, e.currentTarget);
+              }
+            }}
+            onMouseEnter={(e) => {
+              if (activeMenu && activeMenu !== key) {
+                openDropdown(key, e.currentTarget);
+              }
+            }}
+            className={`rounded px-2 py-0.5 transition-colors ${
+              isActive
+                ? "bg-selection-hover text-content"
+                : "text-content/70 hover:bg-content/10 hover:text-content"
+            }`}
+          >
+            {label}
+          </button>
+        );
+      })}
+
+      {activeMenu && menuAnchor ? (
+        <ExplorerMenu
+          x={menuAnchor.x}
+          y={menuAnchor.y}
+          items={getMenuItems(activeMenu)}
+          ariaLabel={t("{name} menu", { name: activeMenu })}
+          onPick={handlePick}
+          onClose={closeMenu}
+        />
+      ) : null}
+    </div>
+  );
+}
