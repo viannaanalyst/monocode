@@ -106,6 +106,7 @@ describe("AgentTranscript collapsed work", () => {
     expect(markup).not.toContain("text-ellipsis");
   });
 
+
   it("keeps surrounding prose and previews its first URL", () => {
     const markup = render([
       {
@@ -120,6 +121,7 @@ describe("AgentTranscript collapsed work", () => {
     expect(markup).toContain("Open example.com");
     expect(markup).not.toContain("Please check https://example.com/docs");
   });
+
 
   it("keeps each completed turn's recorded model label", () => {
     const blocks: Block[] = [

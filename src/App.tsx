@@ -62,7 +62,6 @@ import { ImportSessionDialog } from "./chrome/ImportSessionDialog";
 import { useProjectBranches } from "./hooks/useProjectBranches";
 import { useGitFileStatuses } from "./hooks/useGitFileStatuses";
 import { useInboxActivity } from "./hooks/useInboxUnseen";
-import { useAutomations } from "./hooks/useAutomations";
 import { useDragResize } from "./hooks/useDragResize";
 import {
   defaultRightPanelWidth,
@@ -259,6 +258,7 @@ import {
 import {
   displayPath,
   isEqualOrInside,
+  pathKey,
   projectName,
   rebasePath,
   resolveWorkspacePath,
@@ -314,10 +314,13 @@ import {
   queuedMessageForSubmit,
 } from "./lib/messageQueue";
 import {
-  setAutomationSession,
-  upsertAutomation,
+  claimDueAutomations,
+  recoverAutomationRuns,
+  updateAutomationRun,
   type Automation,
-} from "./lib/automationStore";
+  type AutomationRun,
+} from "./lib/automations";
+import { claimInboxAutomationRuns } from "./lib/automationEvents";
 import { dropContextWindow } from "./lib/contextUsage";
 import {
   deleteSession,
@@ -489,17 +492,6 @@ import {
   setQuitWorkspace,
   type ResumedWorkspace,
 } from "./lib/appLifecycle";
-
-const AUTOMATION_RUN_TIMEOUT_MS = 30 * 60_000;
-
-function parseModelSettings(raw: string): Record<string, string> {
-  try {
-    const parsed = JSON.parse(raw) as Record<string, string>;
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch {
-    return {};
-  }
-}
 
 function withPlanStatus(
   session: Session,
@@ -883,7 +875,6 @@ export default function App({
   const [notesViewOpen, setNotesViewOpen] = useState(false);
   const [kanbanViewOpen, setKanbanViewOpen] = useState(false);
   const [automationsViewOpen, setAutomationsViewOpen] = useState(false);
-  const [newAutomationId, setNewAutomationId] = useState<string | null>(null);
   const [inspectedWorkerId, setInspectedWorkerId] = useState<string | null>(
     null,
   );
@@ -6233,6 +6224,12 @@ export default function App({
           (session) => session.id === run.leadId,
         );
         if (!lead) throw new Error("Lead session is unavailable");
+        const workspace = {
+          id: `${run.leadId}:shared`,
+          projectCwd: run.cwd,
+          checkoutCwd: run.cwd,
+          kind: "main" as const,
+        };
         if (existing) {
           if (
             existing.harness !== task.harness ||
@@ -6253,7 +6250,7 @@ export default function App({
             sessionsRef.current = next;
             setSessions(next);
           }
-          return;
+          return { workspace };
         }
         const restored = await getSession(task.sessionId);
         if (
@@ -6295,7 +6292,10 @@ export default function App({
         sessionsRef.current = next;
         setSessions(next);
         // Workers belong to the lead's agent panel; no workspace tab is created.
+        return { workspace };
       },
+      integrateWorker: async () => ({ files: [], alreadyApplied: 0 }),
+      cleanupWorker: async () => true,
       submit: (id, text, done) => {
         // Commit the new turn before the scheduler or confirmation updates
         // another session snapshot in the same event loop.
@@ -6621,11 +6621,230 @@ export default function App({
     () => allProjectsHistoryWithLiveSessions(history, sessions),
     [history, sessions],
   );
+  const automationSessionReservations = useRef(new Set<string>());
+  const automationRecoveryRef = useRef<Promise<void> | null>(null);
+  const automationRecoveryCutoffRef = useRef(Date.now());
+
+  const launchAutomation = useCallback(
+    async (
+      automation: Automation,
+      run: AutomationRun,
+      reveal = false,
+      prompt = run.prompt ?? automation.prompt,
+    ) => {
+      let reservationId: string | undefined;
+      let releaseAfterSettle = false;
+      const releaseReservation = () => {
+        if (!reservationId) return;
+        automationSessionReservations.current.delete(reservationId);
+      };
+      try {
+        let session =
+          automation.reuseSession && automation.lastSessionId
+            ? sessionsRef.current.find(
+                (entry) =>
+                  entry.id === automation.lastSessionId &&
+                  entry.harness === automation.harness &&
+                  !entry.busy &&
+                  !entry.worktreeRemoved &&
+                  !automationSessionReservations.current.has(entry.id) &&
+                  (automation.workspaceMode === "current"
+                    ? entry.workspaceMode !== "worktree" &&
+                      !entry.worktreeCwd &&
+                      pathKey(entry.cwd) === pathKey(automation.cwd)
+                    : automation.workspaceMode === "existing"
+                      ? pathKey(sessionWorkCwd(entry)) ===
+                        pathKey(automation.worktreeCwd ?? "")
+                      : false),
+              )
+            : undefined;
+
+        if (!session) {
+          session = {
+            ...newSession(
+              automation.harness,
+              automation.cwd,
+              automation.model,
+              automation.runtimeMode,
+              automation.modelSettings,
+            ),
+            title: formatSessionTitle(automation.harness, automation.name),
+            automationId: automation.id,
+            ...(automation.workspaceMode === "worktree"
+              ? { workspaceMode: "worktree" as const, worktreeBase: "HEAD" }
+              : automation.workspaceMode === "existing" &&
+                  automation.worktreeCwd
+                ? { worktreeCwd: automation.worktreeCwd }
+                : {}),
+          };
+          const nextSessions = [...sessionsRef.current, session];
+          sessionsRef.current = nextSessions;
+          setSessions(nextSessions);
+          const tab = newTab(session.id);
+          appendTab(tab, automation.cwd);
+          if (reveal) {
+            setActiveTabId(tab.id);
+            setComposerFocused(false);
+          }
+        } else {
+          const stamped = {
+            ...session,
+            automationId: automation.id,
+            model: automation.model,
+            modelSettings: automation.modelSettings ?? {},
+            runtimeMode: automation.runtimeMode,
+          };
+          session = stamped;
+          const nextSessions = sessionsRef.current.map((entry) =>
+            entry.id === stamped.id ? stamped : entry,
+          );
+          sessionsRef.current = nextSessions;
+          setSessions(nextSessions);
+          if (reveal) {
+            focusOpenSession(session.id);
+          }
+        }
+
+        reservationId = session.id;
+        automationSessionReservations.current.add(session.id);
+
+        if (automation.sessionFolderId && looksLikeProject(automation.cwd)) {
+          saveSessionFolders(
+            automation.cwd,
+            placeSessionInFolder(
+              loadSessionFolders(automation.cwd),
+              session.id,
+              { kind: "existing", folderId: automation.sessionFolderId },
+            ),
+          );
+        }
+
+        if (reveal) {
+          setSearchViewOpen(false);
+          setInboxViewOpen(false);
+          setNotesViewOpen(false);
+          setAutomationsViewOpen(false);
+          setSidebarTab("sessions");
+        }
+
+        await updateAutomationRun(run.id, "running", {
+          sessionId: session.id,
+        });
+        onSubmit(session.id, prompt, [], {
+          onSettled: (outcome) => {
+            const status =
+              outcome.status === "completed"
+                ? "succeeded"
+                : outcome.status === "cancelled"
+                  ? "cancelled"
+                  : "failed";
+            void updateAutomationRun(run.id, status, {
+              sessionId: session.id,
+              ...(outcome.error ? { error: outcome.error } : {}),
+            })
+              .catch(() => undefined)
+              .finally(releaseReservation);
+          },
+        });
+        releaseAfterSettle = true;
+      } catch (reason: unknown) {
+        await updateAutomationRun(run.id, "failed", {
+          error: reason instanceof Error ? reason.message : String(reason),
+        }).catch(() => undefined);
+        throw reason;
+      } finally {
+        if (!releaseAfterSettle) releaseReservation();
+      }
+    },
+    [appendTab, focusOpenSession, onSubmit],
+  );
+
+  const ensureAutomationRecovery = useCallback(() => {
+    if (!automationRecoveryRef.current) {
+      const recovery = (async () => {
+        const pending = await recoverAutomationRuns(
+          automationRecoveryCutoffRef.current,
+        );
+        for (const item of pending) {
+          await launchAutomation(
+            item.automation,
+            item.run,
+            false,
+            item.run.prompt ?? item.automation.prompt,
+          ).catch(() => undefined);
+        }
+      })();
+      automationRecoveryRef.current = recovery.catch((error: unknown) => {
+        automationRecoveryRef.current = null;
+        throw error;
+      });
+    }
+    return automationRecoveryRef.current;
+  }, [launchAutomation]);
+
+  useEffect(() => {
+    let disposed = false;
+    let evaluating = false;
+    const evaluate = async () => {
+      if (disposed || evaluating) return;
+      evaluating = true;
+      try {
+        await ensureAutomationRecovery();
+        const due = await claimDueAutomations();
+        for (const item of due) {
+          if (disposed) break;
+          void launchAutomation(item.automation, item.run).catch(
+            () => undefined,
+          );
+        }
+      } catch {
+        // Scheduling retries on the next tick; individual claimed runs record
+        // launch failures in launchAutomation.
+      } finally {
+        evaluating = false;
+      }
+    };
+    void evaluate();
+    const timer = window.setInterval(() => void evaluate(), 30_000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void evaluate();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [ensureAutomationRecovery, launchAutomation]);
+
+  const onInboxAppeared = useCallback(
+    (items: Parameters<typeof claimInboxAutomationRuns>[0]) => {
+      void ensureAutomationRecovery()
+        .then(() => claimInboxAutomationRuns(items))
+        .then((due) => {
+          for (const item of due) {
+            void launchAutomation(
+              item.automation,
+              item.run,
+              false,
+              item.prompt,
+            ).catch(() => undefined);
+          }
+        })
+        .catch(() => undefined);
+    },
+    [ensureAutomationRecovery, launchAutomation],
+  );
+
+
+
   const {
     unseen: inboxUnseen,
     linkedSessionUpdateIds,
     linkedSessionUpdates,
-  } = useInboxActivity(recents, sidebarCwd, sidebarHistory);
+  } = useInboxActivity(recents, sidebarCwd, sidebarHistory, {
+    onAppeared: onInboxAppeared,
+  });
   linkedSessionUpdatesRef.current = linkedSessionUpdates;
   const inboxRelatedSessions = useMemo(() => {
     const byId = new Map<string, SessionSummary>();
@@ -6821,75 +7040,6 @@ export default function App({
     [onSelectHistorySession],
   );
 
-  const reportAutomationError = useCallback((error: unknown) => {
-    void message(
-      t("Could not update this automation.\n\n{detail}", {
-        detail: String(error),
-      }),
-      { title: t("MonoCode"), kind: "error" },
-    );
-  }, []);
-
-  const dispatchAutomationRun = useCallback(
-    async (
-      automation: Automation,
-    ): Promise<"completed" | "failed" | "cancelled" | "skipped" | "timed_out"> => {
-      let session = automation.sessionId
-        ? sessionsRef.current.find((entry) => entry.id === automation.sessionId)
-        : undefined;
-      if (!session && automation.sessionId) {
-        const known = historyRef.current.find(
-          (entry) => entry.id === automation.sessionId,
-        );
-        if (known?.archived) {
-          await onArchiveHistorySession(automation.sessionId, false);
-        }
-        session = (await ensureOpenSession(automation.sessionId)) ?? undefined;
-      }
-      if (!session) {
-        const fresh = newSession(
-          automation.harness as HarnessId,
-          automation.cwd,
-          automation.model,
-          automation.runtimeMode as RuntimeMode,
-          parseModelSettings(automation.modelSettings),
-        );
-        setSessions((current) => [...current, fresh]);
-        sessionsRef.current = [...sessionsRef.current, fresh];
-        await setAutomationSession(automation.id, fresh.id);
-        session = fresh;
-      }
-      const current =
-        sessionsRef.current.find((entry) => entry.id === session?.id) ?? session;
-      if (!current) return "skipped";
-      if (
-        current.busy ||
-        (current.queuedMessages?.length ?? 0) > 0 ||
-        isPreparingHandoff(current) ||
-        current.pendingSwitch
-      ) {
-        return "skipped";
-      }
-      return new Promise((resolve) => {
-        // `onSubmit` can return early without settling (orchestration guard,
-        // removal race). The timeout keeps the automation from stalling
-        // forever in `activeRuns`.
-        const timer = window.setTimeout(
-          () => resolve("timed_out"),
-          AUTOMATION_RUN_TIMEOUT_MS,
-        );
-        onSubmit(current.id, automation.prompt, [], {
-          onSettled: (outcome) => {
-            window.clearTimeout(timer);
-            resolve(outcome.status);
-          },
-        });
-      });
-    },
-    [ensureOpenSession, onArchiveHistorySession, onSubmit],
-  );
-
-  const automations = useAutomations({ dispatch: dispatchAutomationRun });
 
   const openSettings = useCallback(
     (section?: SettingsSectionId, anchor?: SettingsAnchor) => {
@@ -7533,10 +7683,6 @@ export default function App({
             inboxActive={inboxViewOpen}
             kanbanActive={kanbanViewOpen}
             automationsActive={automationsViewOpen}
-            automationsPaused={automations.automations.some(
-              (automation) =>
-                !automation.enabled && automation.pausedReason === "failures",
-            )}
             notesActive={notesViewOpen}
             notesEnabled={notesEnabled}
             projectRailOpen={projectRailOpen}
@@ -7983,30 +8129,14 @@ export default function App({
             ) : null}
             {automationsViewOpen ? (
               <AutomationsView
-                automations={automations.automations}
-                runs={automations.runs}
-                now={Date.now()}
-                cwd={sidebarCwd}
                 besideRail={projectRailOpen}
-                busyId={automations.busyId}
+                cwd={projectCwd}
+                recents={recents}
                 onClose={onLeaveAutomations}
                 onToggleSidebar={onToggleSidebar}
-                onCreate={() => setNewAutomationId(crypto.randomUUID())}
-                creatingId={newAutomationId}
-                onCancelCreate={() => setNewAutomationId(null)}
-                onSave={(input) =>
-                  void upsertAutomation(input).catch(reportAutomationError)
+                onLaunch={(automation, run) =>
+                  launchAutomation(automation, run, true)
                 }
-                onRunNow={(automation) =>
-                  void automations.runNow(automation).catch(reportAutomationError)
-                }
-                onToggle={(automation) =>
-                  void automations.toggle(automation).catch(reportAutomationError)
-                }
-                onDelete={(automation) =>
-                  void automations.remove(automation).catch(reportAutomationError)
-                }
-                onLoadRuns={(id) => void automations.loadRuns(id)}
                 onOpenSession={onOpenAutomationSession}
               />
             ) : null}

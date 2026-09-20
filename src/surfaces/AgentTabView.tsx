@@ -1,7 +1,15 @@
+import { useCallback, useSyncExternalStore } from "react";
 import { AgentTranscript } from "./AgentTranscript";
 import { HarnessIcon } from "../chrome/HarnessIcon";
 import { findModel } from "../lib/models";
-import { HARNESS_TITLE, sessionWorkCwd, type Session } from "../lib/session";
+import {
+  HARNESS_TITLE,
+  sessionDisplayTitle,
+  sessionWorkCwd,
+  type Session,
+} from "../lib/session";
+import { createNote, noteTitle } from "../lib/notes";
+import { loadNotesEnabled, subscribeNotesEnabled } from "../lib/settings";
 
 /**
  * One orchestration worker, watched from its lead's workspace.
@@ -22,6 +30,27 @@ export function AgentTabView({
   visible: boolean;
   onOpenFile?: (path: string) => void;
 }) {
+  const notesEnabled = useSyncExternalStore(
+    subscribeNotesEnabled,
+    loadNotesEnabled,
+    () => true,
+  );
+  const saveNote = useCallback(
+    async (text: string) => {
+      if (!session) return;
+      const sessionTitle = sessionDisplayTitle(session.title, session.harness);
+      await createNote({
+        title:
+          sessionTitle && sessionTitle !== "New session"
+            ? sessionTitle
+            : noteTitle(text),
+        body: text,
+        sourceSessionId: session.id,
+        sourceCwd: session.cwd,
+      });
+    },
+    [session?.cwd, session?.harness, session?.id, session?.title],
+  );
   if (!session) {
     return (
       <div className="grid h-full place-items-center px-6 text-center">
@@ -44,6 +73,7 @@ export function AgentTabView({
           model={session.model}
           visible={visible}
           onOpenFile={onOpenFile}
+          onSaveNote={notesEnabled ? saveNote : undefined}
           managed
         />
       </div>

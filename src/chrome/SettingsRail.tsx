@@ -4,6 +4,7 @@ import {
   Bot,
   File,
   Inbox,
+  FolderTree,
   Keyboard,
   Mic,
   Palette,
@@ -29,6 +30,7 @@ const SECTION_ICONS: Record<SettingsSectionId, IconComponent> = {
   voice: Mic,
   inbox: Inbox,
   skills: Sparkles,
+  worktrees: FolderTree,
   archive: Archive,
 };
 

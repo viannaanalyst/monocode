@@ -30,7 +30,11 @@ export function EmptySession({ cwd, composer, hasChatBackground }: Props) {
   );
   const getProjectLabel = () =>
     looksLikeProject(cwd)
-      ? resolveTabGroupLabel(projectKey(cwd), loadTabGroupLabels(), basename(cwd))
+      ? resolveTabGroupLabel(
+          projectKey(cwd),
+          loadTabGroupLabels(),
+          basename(cwd),
+        )
       : null;
   const project = useSyncExternalStore(
     subscribeTabGroupLabels,

@@ -15,6 +15,7 @@ export type SettingsSectionId =
   | "project"
   | "voice"
   | "skills"
+  | "worktrees"
   | "archive";
 
 /** Rail buckets. Sections list in order under their group label. */
@@ -62,7 +63,8 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     group: "agents",
     label: "Agent providers",
     description: "CLIs and the default model for new sessions.",
-    keywords: "model harness claude codex gemini cli default hooks",
+    keywords:
+      "account sign in login model harness claude codex gemini cli default hooks",
   },
   {
     id: "skills",
@@ -99,6 +101,13 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     description: "Archived projects and conversations.",
     keywords: "archived restore delete hidden",
   },
+  {
+    id: "worktrees",
+    group: "workspace",
+    label: "Worktrees",
+    description: "Manage additional worktrees for each project.",
+    keywords: "git branch worktree working copy project create delete",
+  },
 ];
 
 export function settingsSectionsByGroup(): {
@@ -124,6 +133,12 @@ export type SettingsEntry = {
 };
 
 export const SETTINGS_INDEX: SettingsEntry[] = [
+  {
+    id: "project-worktrees",
+    section: "worktrees",
+    label: "Project worktrees",
+    keywords: "git branch working copy create delete manage",
+  },
   {
     id: "update",
     section: "general",
@@ -236,7 +251,8 @@ export const SETTINGS_INDEX: SettingsEntry[] = [
     id: "effort-control",
     section: "general",
     label: "Effort control",
-    keywords: "thinking reasoning model picker composer",
+    keywords:
+      "thinking reasoning fast service tier model controls picker composer",
   },
   {
     id: "composer-mascot",
@@ -255,6 +271,12 @@ export const SETTINGS_INDEX: SettingsEntry[] = [
     section: "general",
     label: "Empty session games",
     keywords: "pacman snake arcade grid fun",
+  },
+  {
+    id: "provider-accounts",
+    section: "providers",
+    label: "Provider accounts",
+    keywords: "account sign in login rename remove delete credentials profile",
   },
   {
     id: "claude-hooks",
@@ -421,6 +443,8 @@ const FOLLOW_UP_BEHAVIOR_KEY = "monocode.followUpBehavior";
 
 const COMPOSER_EFFORT_VISIBLE_KEY = "monocode.composerEffortVisible";
 
+const MODEL_CONTROLS_KEY = "monocode.modelControls";
+
 export type FollowUpBehavior = "steer" | "queue";
 
 export const FOLLOW_UP_BEHAVIOR_DEFAULT: FollowUpBehavior = "steer";
@@ -444,44 +468,47 @@ export function saveFollowUpBehavior(value: FollowUpBehavior) {
   }
 }
 
-export const COMPOSER_EFFORT_VISIBLE_DEFAULT = false;
+export type ModelControls = "menu" | "beside";
 
-/** Fired on `window` when the standalone composer effort control setting flips. */
-export const COMPOSER_EFFORT_VISIBLE_CHANGE_EVENT =
-  "monocode:composer-effort-visible-change";
+export const MODEL_CONTROLS_DEFAULT: ModelControls = "menu";
 
-export function loadComposerEffortVisible(): boolean {
+/** Fired on `window` when the composer model controls setting flips. */
+export const MODEL_CONTROLS_CHANGE_EVENT = "monocode:model-controls-change";
+
+export function loadModelControls(): ModelControls {
   try {
-    const raw = localStorage.getItem(COMPOSER_EFFORT_VISIBLE_KEY);
-    if (raw == null) return COMPOSER_EFFORT_VISIBLE_DEFAULT;
-    return raw === "1" || raw === "true";
+    const raw = localStorage.getItem(MODEL_CONTROLS_KEY);
+    if (raw === "menu" || raw === "beside") return raw;
+    if (raw == null) {
+      // Migrate the previous effort-control toggle: on means beside the picker.
+      const legacy = localStorage.getItem(COMPOSER_EFFORT_VISIBLE_KEY);
+      if (legacy === "1" || legacy === "true") return "beside";
+    }
   } catch {
-    return COMPOSER_EFFORT_VISIBLE_DEFAULT;
+    // private mode / quota
   }
+  return MODEL_CONTROLS_DEFAULT;
 }
 
-export function saveComposerEffortVisible(value: boolean) {
+export function saveModelControls(value: ModelControls) {
   try {
-    localStorage.setItem(COMPOSER_EFFORT_VISIBLE_KEY, value ? "1" : "0");
+    localStorage.setItem(MODEL_CONTROLS_KEY, value);
   } catch {
     // private mode / quota
   }
   if (typeof window === "undefined") return;
   window.dispatchEvent(
-    new CustomEvent<boolean>(COMPOSER_EFFORT_VISIBLE_CHANGE_EVENT, {
+    new CustomEvent<ModelControls>(MODEL_CONTROLS_CHANGE_EVENT, {
       detail: value,
     }),
   );
 }
 
-export function subscribeComposerEffortVisible(onStoreChange: () => void) {
+export function subscribeModelControls(onStoreChange: () => void) {
   if (typeof window === "undefined") return () => {};
-  window.addEventListener(COMPOSER_EFFORT_VISIBLE_CHANGE_EVENT, onStoreChange);
+  window.addEventListener(MODEL_CONTROLS_CHANGE_EVENT, onStoreChange);
   return () =>
-    window.removeEventListener(
-      COMPOSER_EFFORT_VISIBLE_CHANGE_EVENT,
-      onStoreChange,
-    );
+    window.removeEventListener(MODEL_CONTROLS_CHANGE_EVENT, onStoreChange);
 }
 
 export const COMPOSER_RUNNER_DEFAULT = true;
@@ -804,16 +831,24 @@ export type KeybindingRow = {
 
 /**
  * Mirrors the bindings we actually handle: the native menu accelerators in
- * `src-tauri/src/menu.rs`, `tabCommand`, and the window key handler in App.
+ * `src-tauri/src/menu.rs`, `tabCommand`, the window key handler in App, and
+ * focused surface handlers such as the draft composer workspace toggle.
  */
 export const KEYBINDINGS: KeybindingRow[] = [
   { command: "App: Search", keys: `${MOD}K`, when: "Always" },
   { command: "App: Go to File", keys: `${MOD}P`, when: "Always" },
+  { command: "App: Command Palette", keys: `${MOD}${SHIFT}P`, when: "Always" },
   { command: "App: Find in Files", keys: `${MOD}${SHIFT}F`, when: "Always" },
   { command: "App: Open Project", keys: `${MOD}O`, when: "Always" },
   { command: "App: New Window", keys: `${MOD}${SHIFT}N`, when: "Always" },
   { command: "App: Toggle Sidebar", keys: `${MOD}B`, when: "Always" },
   { command: "App: Switch Model", keys: `${MOD}.`, when: "Always" },
+  {
+    command: "Composer: Toggle Workspace",
+    keys: `${MOD}${SHIFT}G`,
+    when: "Draft session composer",
+  },
+  { command: "View: Reload", keys: `${MOD}${SHIFT}R`, when: "Always" },
   { command: "View: Zoom In", keys: `${MOD}+`, when: "Always" },
   { command: "View: Zoom Out", keys: `${MOD}-`, when: "Always" },
   { command: "View: Reset Zoom", keys: `${MOD}0`, when: "Always" },

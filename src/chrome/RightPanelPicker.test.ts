@@ -17,7 +17,7 @@ afterEach(() => {
 });
 
 describe("RightPanelPicker", () => {
-  it("lists Terminal, Browser and Explorer", () => {
+  it("lists Terminal and Explorer", () => {
     const onPick = vi.fn();
     const host = document.createElement("div");
     document.body.append(host);
@@ -29,7 +29,7 @@ describe("RightPanelPicker", () => {
     const labels = [...host.querySelectorAll("button")].map(
       (button) => button.textContent,
     );
-    expect(labels).toEqual(["Terminal", "Browser", "Explorer"]);
+    expect(labels).toEqual(["Terminal", "Explorer"]);
     act(() => host.querySelector("button")?.click());
     expect(onPick).toHaveBeenCalledWith("terminal");
   });

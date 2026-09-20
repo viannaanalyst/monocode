@@ -1,5 +1,6 @@
 import { nativeModelId } from "../models";
 import { customModelSlug } from "../customModels";
+import { sameProviderAccountId } from "../providerAccounts";
 import type { RuntimeMode } from "../session";
 import { loadClaudeHooks } from "../settings";
 import {
@@ -359,11 +360,11 @@ async function ensureLive(input: HarnessSessionInput): Promise<Live> {
   const canResume =
     resume != null &&
     resume.cwd === input.cwd &&
-    resume.providerAccountId === input.providerAccountId;
+    sameProviderAccountId(resume.providerAccountId, input.providerAccountId);
   if (
     resume &&
     (resume.cwd !== input.cwd ||
-      resume.providerAccountId !== input.providerAccountId)
+      !sameProviderAccountId(resume.providerAccountId, input.providerAccountId))
   ) {
     resumeByThread.delete(input.sessionId);
   }

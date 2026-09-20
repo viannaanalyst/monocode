@@ -31,7 +31,7 @@ fn provider_supports_accounts(provider: &str) -> bool {
     matches!(provider, "claude" | "codex" | "opencode")
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct HarnessAccount {
     provider: String,
@@ -81,8 +81,10 @@ pub struct CursorBinary {
 }
 
 struct LiveChild {
+    cwd: PathBuf,
     stdin: Mutex<ChildStdin>,
     pid: u32,
+    account: Option<HarnessAccount>,
 }
 
 struct LiveSse {
@@ -102,6 +104,13 @@ pub struct HarnessHost {
 }
 
 impl HarnessHost {
+    pub(crate) fn has_working_dir(&self, path: &Path) -> bool {
+        self.lock_inner()
+            .children
+            .values()
+            .any(|child| crate::worktrees::contains_working_dir(path, &child.cwd))
+    }
+
     pub fn new() -> Self {
         Self {
             inner: Mutex::new(HarnessInner {
@@ -172,6 +181,37 @@ impl HarnessHost {
             return None;
         }
         inner.children.remove(session_id)
+    }
+
+    fn kill_account(&self, provider: &str, account_id: &str) {
+        let children: Vec<(String, Arc<LiveChild>)> = {
+            let mut inner = self.lock_inner();
+            let session_ids: Vec<String> = inner
+                .children
+                .iter()
+                .filter_map(|(session_id, live)| {
+                    let account = live.account.as_ref()?;
+                    (account.provider == provider && account.id == account_id)
+                        .then(|| session_id.clone())
+                })
+                .collect();
+            session_ids
+                .into_iter()
+                .filter_map(|session_id| {
+                    *inner.epochs.entry(session_id.clone()).or_insert(0) += 1;
+                    inner
+                        .children
+                        .remove(&session_id)
+                        .map(|child| (session_id, child))
+                })
+                .collect()
+        };
+        for (session_id, _) in &children {
+            self.stop_sse(session_id);
+        }
+        let pids: Vec<u32> = children.iter().map(|(_, child)| child.pid).collect();
+        drop(children);
+        terminate_all(&pids);
     }
 
     pub(crate) fn kill_all(&self) {
@@ -440,12 +480,13 @@ pub fn harness_spawn(
     cwd: String,
     account: Option<HarnessAccount>,
 ) -> Result<u32, String> {
+    let workdir = expand_home(&cwd);
+    let _reservation = crate::worktree_lifecycle::reserve_spawn(&workdir)?;
     let (epoch, kill_all, prev) = host.begin_spawn(&session_id);
     if let Some(prev) = prev {
         terminate(prev.pid);
     }
 
-    let workdir = expand_home(&cwd);
     if !workdir.is_dir() {
         return Err(format!(
             "Working directory does not exist: {}",
@@ -482,8 +523,10 @@ pub fn harness_spawn(
         .ok_or_else(|| "Failed to open harness stderr".to_string())?;
 
     let live = Arc::new(LiveChild {
+        cwd: workdir.clone(),
         stdin: Mutex::new(stdin),
         pid,
+        account,
     });
     if let Some(rejected) = host.install_spawn(session_id.clone(), epoch, kill_all, live) {
         // A kill, or a newer spawn, won the race while this one was forking.
@@ -558,10 +601,26 @@ pub(crate) fn provider_account_dir(
     let Some(account_id) = account_id.filter(|id| *id != DEFAULT_PROVIDER_ACCOUNT_ID) else {
         return Ok(None);
     };
+    let dir = provider_account_path(app, provider, account_id)?;
+    std::fs::create_dir_all(&dir).map_err(|error| {
+        format!(
+            "Could not create the {provider} account directory {}: {error}",
+            dir.display()
+        )
+    })?;
+    Ok(Some(dir))
+}
+
+fn provider_account_path(
+    app: &AppHandle,
+    provider: &str,
+    account_id: &str,
+) -> Result<PathBuf, String> {
     if !provider_supports_accounts(provider) {
-        return Err(
-            "Provider account profiles are only supported for Claude, Codex, and OpenCode".into(),
-        );
+        return Err("Provider account profiles are not supported for this provider".into());
+    }
+    if account_id == DEFAULT_PROVIDER_ACCOUNT_ID {
+        return Err("The default provider account cannot be removed".into());
     }
     if account_id.is_empty()
         || account_id.len() > 80
@@ -571,20 +630,51 @@ pub(crate) fn provider_account_dir(
     {
         return Err("Invalid provider account id".into());
     }
-    let dir = app
+    Ok(app
         .path()
         .app_data_dir()
         .map_err(|error| error.to_string())?
         .join("provider-accounts")
         .join(provider)
-        .join(account_id);
-    std::fs::create_dir_all(&dir).map_err(|error| {
+        .join(account_id))
+}
+
+#[tauri::command(async)]
+pub fn provider_account_remove(
+    app: AppHandle,
+    host: State<'_, HarnessHost>,
+    provider: String,
+    account_id: String,
+) -> Result<(), String> {
+    let dir = provider_account_path(&app, &provider, &account_id)?;
+    host.kill_account(&provider, &account_id);
+
+    #[cfg(target_os = "macos")]
+    if provider == "claude" {
+        crate::rate_limits::delete_claude_keychain_credentials(&dir)?;
+    }
+
+    let metadata = match std::fs::symlink_metadata(&dir) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => {
+            return Err(format!(
+                "Could not inspect the {provider} account directory {}: {error}",
+                dir.display()
+            ));
+        }
+    };
+    if metadata.file_type().is_symlink() || metadata.is_file() {
+        std::fs::remove_file(&dir)
+    } else {
+        std::fs::remove_dir_all(&dir)
+    }
+    .map_err(|error| {
         format!(
-            "Could not create the {provider} account directory {}: {error}",
+            "Could not remove the {provider} account directory {}: {error}",
             dir.display()
         )
-    })?;
-    Ok(Some(dir))
+    })
 }
 
 fn apply_provider_account(
@@ -2272,8 +2362,10 @@ mod tests {
         let stdin = child.stdin.take().expect("test child stdin");
         (
             Arc::new(LiveChild {
+                cwd: PathBuf::from("/test"),
                 stdin: Mutex::new(stdin),
                 pid,
+                account: None,
             }),
             child,
         )
@@ -2401,8 +2493,10 @@ mod tests {
         let stdin = child.stdin.take().expect("grouped child stdin");
         (
             Arc::new(LiveChild {
+                cwd: PathBuf::from("/test"),
                 stdin: Mutex::new(stdin),
                 pid,
+                account: None,
             }),
             child,
         )

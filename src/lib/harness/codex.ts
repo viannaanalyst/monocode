@@ -1,4 +1,5 @@
 import { nativeModelId } from "../models";
+import { sameProviderAccountId } from "../providerAccounts";
 import type { RuntimeMode } from "../session";
 import { questionPromptTitle, type UserQuestionReply } from "../userQuestion";
 import {
@@ -328,7 +329,7 @@ async function ensureLive(input: HarnessSessionInput): Promise<Live> {
   if (
     existing &&
     existing.cwd === input.cwd &&
-    existing.providerAccountId === input.providerAccountId
+    sameProviderAccountId(existing.providerAccountId, input.providerAccountId)
   ) {
     existing.onEvent = input.onEvent;
     return existing;
@@ -342,11 +343,11 @@ async function ensureLive(input: HarnessSessionInput): Promise<Live> {
   const canResume =
     resume != null &&
     resume.cwd === input.cwd &&
-    resume.providerAccountId === input.providerAccountId;
+    sameProviderAccountId(resume.providerAccountId, input.providerAccountId);
   if (
     resume &&
     (resume.cwd !== input.cwd ||
-      resume.providerAccountId !== input.providerAccountId)
+      !sameProviderAccountId(resume.providerAccountId, input.providerAccountId))
   ) {
     resumeByThread.delete(input.sessionId);
   }

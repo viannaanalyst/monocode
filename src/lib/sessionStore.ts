@@ -39,6 +39,8 @@ export type SessionSummary = {
   title: string;
   providerSessionId?: string;
   branch?: string;
+  worktreeCwd?: string;
+  worktreeRemoved?: boolean;
   repo?: string;
   additions?: number;
   deletions?: number;
@@ -46,7 +48,9 @@ export type SessionSummary = {
   updatedAt: number;
   archived?: boolean;
   pinned?: boolean;
+  draft?: boolean;
   linkedWorkItem?: LinkedWorkItem;
+  automationId?: string;
 };
 
 type SessionRecord = {
@@ -65,8 +69,10 @@ type SessionRecord = {
   contextWindow?: number | null;
   branch?: string | null;
   worktreeCwd?: string | null;
+  worktreeRemoved?: boolean;
   linkedWorkItem?: LinkedWorkItem | null;
   goal?: SessionGoal | null;
+  automationId?: string | null;
   createdAt: number;
   updatedAt: number;
 };
@@ -86,8 +92,10 @@ type SessionUpsertPayload = {
   contextWindow?: number;
   branch?: string;
   worktreeCwd?: string;
+  worktreeRemoved?: boolean;
   linkedWorkItem?: LinkedWorkItem;
   goal?: SessionGoal;
+  automationId?: string;
 };
 
 /** Only real chats belong in project history — blank tabs stay ephemeral. */
@@ -129,8 +137,12 @@ function persistableMeta(
       : {}),
     ...(session.branch ? { branch: session.branch } : {}),
     ...(session.worktreeCwd ? { worktreeCwd: session.worktreeCwd } : {}),
+    ...(session.worktreeRemoved ? { worktreeRemoved: true } : {}),
     ...(linkedWorkItem ? { linkedWorkItem } : {}),
     ...(goal ? { goal } : {}),
+    ...(session.automationId && isPersistableId(session.automationId)
+      ? { automationId: session.automationId }
+      : {}),
   };
 }
 
@@ -370,6 +382,11 @@ export async function setSessionPinned(
   await invoke<void>("session_set_pinned", { sessionId, pinned });
 }
 
+/** Drain pending saves before a worktree removal changes stored session context. */
+export async function flushSessionWrites(): Promise<void> {
+  await Promise.all([...sessionWriteQueues.values()]);
+}
+
 /**
  * `session_set_in_flight` runs off the main thread, so two replaces could
  * otherwise land in either order and restore a stale busy snapshot.
@@ -448,6 +465,7 @@ export function sanitizeBlock(block: Block): Block | null {
   if (block.role === "user" && block.checkpointTurnId) {
     next.checkpointTurnId = block.checkpointTurnId;
   }
+  if (block.role === "user" && block.draft) next.draft = true;
   if (
     block.role === "user" &&
     typeof block.orchestrationLeadId === "string" &&
@@ -702,7 +720,12 @@ function normalizeSummary(summary: SessionSummary): SessionSummary {
     deletions: summary.deletions ?? 0,
     archived: summary.archived || undefined,
     pinned: summary.pinned || undefined,
+    draft: summary.draft || undefined,
     linkedWorkItem,
+    ...(typeof summary.automationId === "string" &&
+    isPersistableId(summary.automationId)
+      ? { automationId: summary.automationId }
+      : {}),
   };
 }
 
@@ -727,10 +750,12 @@ function recordToSession(record: SessionRecord): Session {
     title: record.title,
     blocks,
     busy: false,
-    orchestrationLeadId: record.orchestrationLeadId ?? blocks.find(
-      (block) =>
-        block.orchestrationLeadId && block.orchestrationLeadId !== record.id,
-    )?.orchestrationLeadId,
+    orchestrationLeadId:
+      record.orchestrationLeadId ??
+      blocks.find(
+        (block) =>
+          block.orchestrationLeadId && block.orchestrationLeadId !== record.id,
+      )?.orchestrationLeadId,
     ...(record.providerSessionId
       ? { providerSessionId: record.providerSessionId }
       : {}),
@@ -739,8 +764,12 @@ function recordToSession(record: SessionRecord): Session {
       : {}),
     ...(record.branch ? { branch: record.branch } : {}),
     ...(record.worktreeCwd ? { worktreeCwd: record.worktreeCwd } : {}),
+    ...(record.worktreeRemoved ? { worktreeRemoved: true } : {}),
     ...(linkedWorkItem ? { linkedWorkItem } : {}),
     ...(goal ? { goal } : {}),
+    ...(record.automationId && isPersistableId(record.automationId)
+      ? { automationId: record.automationId }
+      : {}),
     ...(contextFromRecord(record) ?? {}),
   };
 }
