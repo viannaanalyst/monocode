@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { t } from "../../../i18n";
 import { listen } from "@tauri-apps/api/event";
 import type { HarnessId, RuntimeMode } from "../../sessions/model/session";
 
@@ -288,7 +289,7 @@ export function nextRunPreview(at: number): string {
       .formatToParts(date)
       .find((part) => part.type === "timeZoneName")?.value ??
     gmtOffsetLabel(date);
-  return `Next run ${day}, ${time} ${zone}`;
+  return t("Next run {day}, {time} {zone}", { day, time, zone });
 }
 
 export function nextAutomationRunAt(
@@ -340,11 +341,20 @@ export function automationScheduleLabel(
 ): string {
   const time = formatClock(automation.time);
   if (automation.scheduleKind === "hourly") {
-    return `Hourly at :${String(automation.minute).padStart(2, "0")}`;
+    return t("Hourly at :{minute}", {
+      minute: String(automation.minute).padStart(2, "0"),
+    });
   }
-  if (automation.scheduleKind === "daily") return `Daily at ${time}`;
-  if (automation.scheduleKind === "weekdays") return `Weekdays at ${time}`;
-  return `${AUTOMATION_WEEKDAYS[automation.dayOfWeek] ?? "Weekly"} at ${time}`;
+  if (automation.scheduleKind === "daily") {
+    return t("Daily at {time}", { time });
+  }
+  if (automation.scheduleKind === "weekdays") {
+    return t("Weekdays at {time}", { time });
+  }
+  return t("{weekday} at {time}", {
+    weekday: t(AUTOMATION_WEEKDAYS[automation.dayOfWeek] ?? "Weekly"),
+    time,
+  });
 }
 
 export function newAutomationDraft(
