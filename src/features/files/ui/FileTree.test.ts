@@ -99,7 +99,7 @@ function render(tick = 0, hidden = false) {
 }
 
 function row(name: string): HTMLButtonElement {
-  return container.querySelector(`[role="treeitem"][title="${cwd}/${name}"]`)!;
+  return container.querySelector(`[role="treeitem"][aria-label="${name}"]`)!;
 }
 
 beforeEach(async () => {
@@ -130,7 +130,7 @@ describe("FileTree render isolation", () => {
     await act(async () => render());
 
     const rootButton = container.querySelector<HTMLButtonElement>(
-      `button[title="${cwd}"]`,
+      `button[aria-label="${cwd}"]`,
     )!;
     expect(rootButton.textContent).toContain("mc/update-readme-tests");
     expect(rootButton.lastElementChild?.className).toContain("uppercase");

@@ -107,7 +107,7 @@ export function BinaryFileView({ path, cwd }: Props) {
       <FileCard
         path={path}
         cwd={cwd}
-        title={t("Couldn’t open {name}", { name: basename(path) })}
+        title={basename(path)}
         detail={state.message}
         icon={<AlertCircle className="mx-auto mb-3 size-5 text-red-400" />}
         onRetry={reload}

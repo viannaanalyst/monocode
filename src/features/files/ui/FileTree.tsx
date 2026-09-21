@@ -771,7 +771,7 @@ export const FileTree = memo(function FileTree({
       const point = dragPointToClient(x, y);
       const el = document.elementFromPoint(point.x, point.y);
       if (!el || !root.contains(el)) return null;
-      return el.closest<HTMLElement>("[role='treeitem']")?.title ?? cwd;
+      return el.closest<HTMLElement>("[role='treeitem']")?.dataset.path ?? cwd;
     };
 
     let cancelled = false;
@@ -913,8 +913,8 @@ export const FileTree = memo(function FileTree({
         <div className="flex h-8 shrink-0 items-center">
           <button
             type="button"
+            aria-label={cwd}
             aria-expanded={rootOpen}
-            title={cwd}
             onClick={() => {
               onSelect(cwd);
               toggle(cwd);
@@ -997,7 +997,6 @@ function HeaderIcon({
   return (
     <button
       type="button"
-      title={label}
       aria-label={label}
       aria-pressed={active || undefined}
       onMouseDown={(e) => e.preventDefault()}
@@ -1044,7 +1043,6 @@ function FileTreeDiffButton({
   return (
     <button
       type="button"
-      title={label}
       aria-label={label}
       aria-pressed={active}
       onMouseDown={(event) => event.preventDefault()}
@@ -1209,7 +1207,8 @@ function TreeNode({ entry, depth }: { entry: FsEntry; depth: number }) {
         <button
           type="button"
           role="treeitem"
-          title={entry.path}
+          aria-label={entry.name}
+          data-path={entry.path}
           aria-expanded={entry.isDir ? open : undefined}
           onClick={onClick}
           onPointerDown={(event) => {

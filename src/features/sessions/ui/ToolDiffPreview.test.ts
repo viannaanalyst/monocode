@@ -155,7 +155,7 @@ describe("tool diff popovers", () => {
     pointer(trigger, "pointerover");
     advance(300);
     const fileButton = dialog()!.querySelector<HTMLButtonElement>(
-      'button[title="/Users/me/Documents/notes.md"]',
+      'button[aria-label="/Users/me/Documents/notes.md"]',
     )!;
     act(() => fileButton.click());
     expect(onOpenFile).toHaveBeenCalledWith("/Users/me/Documents/notes.md");

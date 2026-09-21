@@ -43,9 +43,9 @@ function render() {
 }
 
 function openSecondMenu() {
-  const tab = container.querySelector<HTMLButtonElement>(
-    '[role="tab"][title="/repo/src/app.ts"]',
-  )!;
+  const tab = [
+    ...container.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
+  ].find((entry) => entry.textContent?.includes("app.ts"))!;
   act(() => {
     tab.parentElement!.dispatchEvent(
       new MouseEvent("contextmenu", {
@@ -148,9 +148,9 @@ describe("file tab context menu", () => {
   it("disables Close Others when the selected tab is the only tab", () => {
     props = { ...props, files: [files[0]], activeFileId: "first" };
     render();
-    const tab = container.querySelector<HTMLButtonElement>(
-      '[role="tab"][title="/repo/README.md"]',
-    )!;
+    const tab = [
+      ...container.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
+    ].find((entry) => entry.textContent?.includes("README"))!;
     act(() => {
       tab.parentElement!.dispatchEvent(
         new MouseEvent("contextmenu", { bubbles: true, cancelable: true }),

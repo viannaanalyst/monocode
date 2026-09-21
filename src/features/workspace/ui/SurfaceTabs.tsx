@@ -306,7 +306,7 @@ export function SurfaceTabs({
         const review = isReviewTab(file) && !changes;
         const terminal = isTerminalTab(file);
         const agent = isAgentTab(file) ? file.agent : null;
-        const { label, iconName, tooltip } = surfaceTabPresentation(file);
+        const { label, iconName } = surfaceTabPresentation(file);
         const tabDraggable = canDrag;
         return (
           <div
@@ -364,7 +364,6 @@ export function SurfaceTabs({
               type="button"
               role="tab"
               aria-selected={active}
-              title={pills ? undefined : appendProblems(tooltip, errors)}
               onClick={() => {
                 if (sortable.consumeClick()) return;
                 onSelectFile(file.id);
@@ -438,7 +437,6 @@ export function SurfaceTabs({
             ) : (
             <button
               type="button"
-              title={t("Close {name}", { name: label })}
               aria-label={t("Close {name}", { name: label })}
               data-no-drag
               onPointerDown={(event) => event.stopPropagation()}

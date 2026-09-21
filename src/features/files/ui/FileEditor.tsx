@@ -451,7 +451,7 @@ export function FileEditor({
         />
       )}
       <footer className="flex h-6 shrink-0 items-center border-t border-content/10 px-2.5 font-mono text-xs text-content/40">
-        <span className="min-w-0 flex-1 truncate" title={path}>
+        <span className="min-w-0 flex-1 truncate">
           {relativePath}
         </span>
         {saveState.status === "saving" ? (

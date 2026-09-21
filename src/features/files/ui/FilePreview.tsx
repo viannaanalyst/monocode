@@ -101,8 +101,8 @@ export function FilePreview({
         {filePath && onOpenFile ? (
           <button
             type="button"
+            aria-label={filePath}
             className="min-w-0 flex-1 truncate text-left font-mono text-[12px] font-medium text-content/85 hover:text-sky-300 hover:underline"
-            title={path}
             onClick={() => onOpenFile(filePath)}
           >
             {label}
@@ -110,7 +110,6 @@ export function FilePreview({
         ) : (
           <span
             className="min-w-0 flex-1 truncate font-mono text-[12px] font-medium text-content/85"
-            title={path}
           >
             {label}
           </span>
