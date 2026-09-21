@@ -7,6 +7,7 @@ import {
 } from "./githubTasks";
 import { normalizeProjectPath } from "../../projects/model/recents";
 import { timeFilterStart, type SessionTimeFilter } from "../../sessions/model/sessionFilters";
+import { t } from "../../../i18n";
 
 export type InboxTimeFilter = SessionTimeFilter;
 
@@ -316,7 +317,7 @@ export function linearProjectOptions(
   const options = [...byId]
     .map(([id, name]) => ({ id, name }))
     .sort((a, b) => a.name.localeCompare(b.name));
-  if (unassigned) options.push({ id: LINEAR_NO_PROJECT, name: "No project" });
+  if (unassigned) options.push({ id: LINEAR_NO_PROJECT, name: t("No project") });
   return options;
 }
 

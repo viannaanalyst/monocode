@@ -27,6 +27,7 @@ import { Check, ChevronDown, Plus, Search } from "../../../shared/ui/icons";
 import { Popover } from "../../../shared/ui/Popover";
 import { ProjectLogoIcon } from "./ProjectLogoIcon";
 import { ProjectMascot } from "./ProjectMascot";
+import { t } from "../../../i18n";
 
 type Props = {
   cwd: string;
@@ -220,14 +221,14 @@ export function SearchableProjectPicker({
           width={286}
           maxHeight={380}
           role="dialog"
-          aria-label="Project picker"
+          aria-label={t("Project picker")}
           onDismiss={() => closePicker()}
           onKeyDown={onPickerKeyDown}
           className="flex flex-col overflow-hidden"
         >
           <label className="flex h-11 shrink-0 items-center gap-2.5 border-b border-stroke px-3 text-content/45 focus-within:text-content/70">
             <Search className="size-4 shrink-0" strokeWidth={1.75} />
-            <span className="sr-only">Search projects</span>
+            <span className="sr-only">{t("Search projects")}</span>
             <input
               ref={searchRef}
               value={query}
@@ -314,7 +315,7 @@ export function SearchableProjectPicker({
                 className="flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-sm text-content/75 hover:bg-content/8 hover:text-content"
               >
                 <Plus className="size-4 shrink-0" strokeWidth={1.75} />
-                <span>New project</span>
+                <span>{t("New project")}</span>
               </button>
             </div>
           ) : null}

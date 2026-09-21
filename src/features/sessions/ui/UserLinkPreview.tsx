@@ -28,6 +28,7 @@ import {
   type GithubWorkItem,
   type GithubWorkItemDetails,
 } from "../../inbox/model/githubTasks";
+import { t } from "../../../i18n";
 import {
   fetchLinkPreviewMetadata,
   type GithubWorkItemLink,
@@ -454,7 +455,7 @@ function GithubWorkItemCard({
 
 function GithubWorkItemCardSkeleton() {
   return (
-    <div aria-label="Loading GitHub details" className="mt-2.5 space-y-2">
+    <div aria-label={t("Loading GitHub details")} className="mt-2.5 space-y-2">
       <div className="h-3 w-4/5 rounded bg-content/10 motion-safe:animate-pulse" />
       <div className="h-2 w-full rounded bg-content/[0.07] motion-safe:animate-pulse" />
       <div className="h-2 w-2/3 rounded bg-content/[0.07] motion-safe:animate-pulse" />
@@ -533,27 +534,27 @@ function workItemStatus(
   if (item?.draft) {
     return {
       Icon: GitPullRequestDraft,
-      label: "Draft",
+      label: t("Draft"),
       className: "text-content/50",
     };
   }
   if (item?.state === "merged") {
     return {
       Icon: GitMerge,
-      label: "Merged",
+      label: t("Merged"),
       className: "text-violet-400/90",
     };
   }
   if (item?.state === "closed") {
     return {
       Icon: kind === "pr" ? GitPullRequestClosed : CircleX,
-      label: "Closed",
+      label: t("Closed"),
       className: "text-rose-400/90",
     };
   }
   return {
     Icon: kind === "pr" ? GitPullRequest : CircleDot,
-    label: "Open",
+    label: t("Open"),
     className: "text-emerald-400/90",
   };
 }

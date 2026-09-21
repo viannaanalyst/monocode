@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { loginHarness } from "../../../integrations/harness/core/auth";
 import { HARNESS_TITLE, type HarnessId } from "../model/session";
 import { Modal } from "../../../shared/ui/Modal";
+import { t } from "../../../i18n";
 import {
   ProviderSignInPanel,
   type ProviderSignInState,
@@ -40,7 +41,7 @@ export function ProviderSignInDialog({ harness, onClose }: Props) {
   return (
     <Modal
       onClose={onClose}
-      title="Authentication required"
+      title={t("Authentication required")}
       description={`Sign in to continue using ${HARNESS_TITLE[harness]}.`}
       size="sm"
       minimalHeader

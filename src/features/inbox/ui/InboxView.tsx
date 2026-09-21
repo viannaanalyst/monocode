@@ -2320,12 +2320,12 @@ export function InboxDetail({
                 className="flex items-stretch gap-4"
               >
                 <InboxDetailTab
-                  label="Summary"
+                  label={t("Summary")}
                   selected={tab === "summary"}
                   onSelect={() => setTab("summary")}
                 />
                 <InboxDetailTab
-                  label="Code"
+                  label={t("Code")}
                   selected={tab === "code"}
                   onSelect={() => setTab("code")}
                 />
@@ -2333,7 +2333,7 @@ export function InboxDetail({
               {tab === "code" && inboxShowsFullFileDiff(item) ? (
                 <div
                   role="group"
-                  aria-label="Diff context"
+                  aria-label={t("Diff context")}
                   className="ml-auto flex items-center self-center rounded-md border border-content/10 bg-content/[0.03] p-0.5"
                 >
                   <button

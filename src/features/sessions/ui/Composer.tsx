@@ -1715,7 +1715,7 @@ export function Composer({
                       <Share className="mt-0.5 size-3.5 shrink-0 text-fuchsia-300/65" />
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-1.5">
-                          <span className="text-sm">Orchestrator</span>
+                          <span className="text-sm">{t("Orchestrator")}</span>
                           <span className="rounded-full bg-fuchsia-300/10 px-1.5 py-0.5 text-2xs font-medium leading-none tracking-wide text-fuchsia-200/55 mb-px">
                             v1
                           </span>
@@ -1756,8 +1756,8 @@ export function Composer({
             {orchestrationSelected && (
               <button
                 type="button"
-                title="Turn off Orchestrator mode"
-                aria-label="Turn off Orchestrator mode"
+                title={t("Turn off Orchestrator mode")}
+                aria-label={t("Turn off Orchestrator mode")}
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => {
                   setOrchestrationSelected(false);

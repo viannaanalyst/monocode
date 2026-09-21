@@ -1,4 +1,5 @@
 import type { HarnessEvent } from "../../core/types";
+import { t } from "../../../../i18n";
 import {
   asRecord,
   previewFromTool,
@@ -32,7 +33,7 @@ export function piSubagentEvents(
       type: "tool.updated",
       callId,
       kind: "other",
-      title: "Delegate subagents",
+      title: t("Delegate subagents"),
     });
   }
   entries.forEach((entry, index) => {

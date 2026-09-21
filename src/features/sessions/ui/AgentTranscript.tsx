@@ -1153,7 +1153,7 @@ function TurnMetricsBadge({
         role="img"
         tabIndex={0}
         aria-label={`Turn metrics: ${label}`}
-        title="Turn metrics"
+        title={t("Turn metrics")}
         className="grid rounded-sm p-1 outline-none hover:text-content focus-visible:ring-1 focus-visible:ring-accent"
       >
         <ChartBreakoutSquare className="size-3.5" strokeWidth={1.6} />

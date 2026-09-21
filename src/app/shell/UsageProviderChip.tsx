@@ -187,7 +187,7 @@ export function UsageProviderChip({
         {loading ? (
           <span className="animate-pulse text-content/35">···</span>
         ) : disconnected ? (
-          <span className="text-content/35">not connected</span>
+          <span className="text-content/35">{t("not connected")}</span>
         ) : chipWindows.length === 0 ? (
           <span className="text-content/35">{emptyUsageLabel(limits)}</span>
         ) : (
@@ -443,7 +443,7 @@ function BankedResets({
       <div className="relative min-h-[78px] overflow-hidden rounded-lg bg-content/[0.04] px-3 py-3 pr-[84px] ring-1 ring-inset ring-content/[0.06]">
         <div className="relative z-10 min-w-0">
           <div className="flex items-center gap-1.5">
-            <h3 className="text-xs font-medium">Banked resets</h3>
+            <h3 className="text-xs font-medium">{t("Banked resets")}</h3>
             {count != null ? (
               <span className="rounded-full bg-content/[0.07] px-1.5 py-px text-[10px] font-medium tabular-nums text-content/65 ring-1 ring-inset ring-content/[0.07]">
                 {count}
@@ -469,7 +469,7 @@ function BankedResets({
       {count != null && count > 0 ? (
         <div
           className="mt-2 max-h-56 overflow-y-auto overscroll-contain"
-          aria-label="Available banked resets"
+          aria-label={t("Available banked resets")}
         >
           <div className="flex flex-col gap-1.5">
             {rows.map((credit, index) => {

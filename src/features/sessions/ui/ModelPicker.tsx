@@ -153,7 +153,7 @@ function orderedSettingOptions(setting: ModelSetting): ModelSettingChoice[] {
 }
 
 function settingLabel(setting: ModelSetting): string {
-  return isEffortSetting(setting) ? t("Effort") : setting.label;
+  return isEffortSetting(setting) ? t("Effort") : t(setting.label);
 }
 
 function settingValue(
@@ -1229,7 +1229,7 @@ export function ModelPicker({
                     }`}
                   >
                     <span className="min-w-0 flex-1 truncate">
-                      {option.label}
+                      {t(option.label)}
                     </span>
                     {selected ? (
                       <Check

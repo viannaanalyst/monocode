@@ -5034,7 +5034,7 @@ export default function App({
             },
             settings: { choices: [], maxWorkers: 2 },
             status: "planning",
-            title: "Orchestration plan",
+            title: t("Orchestration plan"),
             summary: "",
             tasks: [],
           }

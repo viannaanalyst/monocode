@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { prettyCwd } from "../../../shared/lib/paths";
 import { Modal } from "../../../shared/ui/Modal";
+import { t } from "../../../i18n";
 
 export type SessionDeleteChoice = {
   confirmed: boolean;
@@ -19,7 +20,7 @@ export function DeleteSessionDialog({
   const [deleteWorktree, setDeleteWorktree] = useState(false);
   return (
     <Modal
-      title="Delete session?"
+      title={t("Delete session?")}
       size="sm"
       onClose={() => onClose({ confirmed: false, deleteWorktree: false })}
     >

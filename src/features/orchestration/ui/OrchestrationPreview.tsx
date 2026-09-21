@@ -25,6 +25,7 @@ import { LAYER } from "../../../shared/lib/layers";
 import { OrchestrationActions } from "./OrchestrationActions";
 import { HarnessIcon } from "../../sessions/ui/HarnessIcon";
 import { Popover } from "../../../shared/ui/Popover";
+import { t } from "../../../i18n";
 import {
   Check,
   ChevronDown,
@@ -231,8 +232,8 @@ function AssignmentModel({
             <input
               ref={search}
               type="text"
-              aria-label="Search assignment models"
-              placeholder="Search models or harnesses…"
+              aria-label={t("Search assignment models")}
+              placeholder={t("Search models or harnesses…")}
               spellCheck={false}
               autoComplete="off"
               value={query}
@@ -248,7 +249,7 @@ function AssignmentModel({
           <div
             ref={listOverscroll}
             role="listbox"
-            aria-label="Assignment models"
+            aria-label={t("Assignment models")}
             className="min-h-0 flex-1 overflow-y-auto overscroll-none p-1"
           >
             {matches.map((choice, index) => (
@@ -375,7 +376,7 @@ function WorkerHelp() {
       <button
         type="button"
         ref={anchor}
-        aria-label="What parallel workers means"
+        aria-label={t("What parallel workers means")}
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
         onMouseEnter={() => setHovered(true)}
@@ -505,7 +506,7 @@ export function OrchestrationPreview({
   return (
     <div
       className="mb-2 overflow-hidden rounded-xl border border-content/10 bg-content/3 font-sans"
-      aria-label="Orchestration proposal"
+      aria-label={t("Orchestration proposal")}
       data-orchestration-review
     >
       <div className="flex min-w-0 flex-wrap items-center gap-2.5 px-3 py-2.5">
@@ -732,10 +733,10 @@ export function OrchestrationPreview({
           <div className="flex items-center gap-1.5">
             {editable ? (
               <>
-                <span>Parallel workers</span>
+                <span>{t("Parallel workers")}</span>
                 <div
                   role="radiogroup"
-                  aria-label="Parallel workers"
+                  aria-label={t("Parallel workers")}
                   className="flex items-center gap-0.5 rounded-md bg-content/5 p-0.5"
                 >
                   {[1, 2, 3, 4].map((number) => (

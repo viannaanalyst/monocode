@@ -15,6 +15,7 @@ import { Check, ChevronDown, ChevronUp, CircleAlert } from "../../../shared/ui/i
 import { HarnessIcon } from "./HarnessIcon";
 import { ProjectMascot } from "../../projects/ui/ProjectMascot";
 import { TerminalSpinner } from "./TerminalSpinner";
+import { t } from "../../../i18n";
 
 const LIVE_AGENT_MIN = 2;
 const LIVE_AGENT_CAP = 4;
@@ -67,7 +68,7 @@ export function LiveAgentsPreview({
 
   return (
     <section
-      aria-label="Working agents"
+      aria-label={t("Working agents")}
       className="shrink-0 px-2"
       data-live-agents-preview="full"
     >

@@ -2555,7 +2555,7 @@ function SessionCard({
   const linkedUpdateDot = linkedUpdate ? (
     <span
       title={`Linked ${linkedWorkItem?.kind === "pr" ? "PR" : "issue"} updated since this session`}
-      aria-label="Linked work item updated"
+      aria-label={t("Linked work item updated")}
       className="size-1.5 shrink-0 rounded-full bg-accent"
     />
   ) : null;

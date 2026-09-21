@@ -83,9 +83,9 @@ export function PrMetadataEditor({
   };
 
   const fields: { field: Field; label: string; values: string[] }[] = [
-    { field: "labels", label: "Edit labels", values: currentValues(details, "labels") },
-    { field: "assignees", label: "Edit assignees", values: currentValues(details, "assignees") },
-    { field: "reviewers", label: "Edit reviewers", values: currentValues(details, "reviewers") },
+    { field: "labels", label: t("Edit labels"), values: currentValues(details, "labels") },
+    { field: "assignees", label: t("Edit assignees"), values: currentValues(details, "assignees") },
+    { field: "reviewers", label: t("Edit reviewers"), values: currentValues(details, "reviewers") },
   ];
 
   return (

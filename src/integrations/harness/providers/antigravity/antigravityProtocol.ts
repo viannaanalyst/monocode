@@ -11,6 +11,7 @@ import {
   extractToolPreview,
 } from "../../core/preview";
 import { acpAgentInfo } from "../../core/acpSubagents";
+import { t } from "../../../../i18n";
 
 export type AntigravityModeId = "default" | "auto_edit" | "yolo";
 
@@ -258,7 +259,7 @@ export function modelsFromSessionNew(raw: unknown): AgentModel[] {
     const current = String(option.currentValue ?? "");
     settings.push({
       id: "effort",
-      label: "Effort",
+      label: t("Effort"),
       kind: "select",
       value: values.some((choice) => choice.value === current)
         ? current : values[0].value,

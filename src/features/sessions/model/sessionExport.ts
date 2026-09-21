@@ -11,6 +11,7 @@ import {
 } from "./session";
 import { sanitizeSessionGoal } from "./goal";
 import { sanitizeBlock, sanitizeLinkedWorkItem } from "../data/sessionStore";
+import { t } from "../../../i18n";
 
 /**
  * Portable session export. Markdown is for reading and sharing; the JSON
@@ -142,7 +143,7 @@ function blockToMarkdown(block: Block, session: Session): string[] {
     case "reasoning":
       return [
         "<details>",
-        "<summary>Reasoning</summary>",
+        `<summary>${t("Reasoning")}</summary>`,
         "",
         block.text.trim(),
         "",

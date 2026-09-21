@@ -188,7 +188,7 @@ function SkillList({
             </span>
             {!compact && skill.description ? (
               <span className="line-clamp-2 text-xs leading-4 text-content/50">
-                {skill.description}
+                {t(skill.description)}
               </span>
             ) : null}
             {!compact &&

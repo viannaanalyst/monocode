@@ -6,6 +6,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import { ChevronLeft, ChevronRight, Clock } from "./icons";
+import { t } from "../../i18n";
 
 export function toLocalDateTime(date: Date): string {
   const pad = (part: number) => String(part).padStart(2, "0");
@@ -162,7 +163,7 @@ export function DateTimePicker({
         <div className="flex gap-0.5">
           <button
             type="button"
-            aria-label="Previous month"
+            aria-label={t("Previous month")}
             disabled={previousDisabled}
             onClick={() => navigate(shiftMonth(focusedDate, -1), false)}
             className="grid size-7 place-items-center rounded text-content/55 hover:bg-content/5 hover:text-content focus-visible:outline-2 focus-visible:outline-accent disabled:pointer-events-none disabled:opacity-30"
@@ -171,7 +172,7 @@ export function DateTimePicker({
           </button>
           <button
             type="button"
-            aria-label="Next month"
+            aria-label={t("Next month")}
             onClick={() => navigate(shiftMonth(focusedDate, 1), false)}
             className="grid size-7 place-items-center rounded text-content/55 hover:bg-content/5 hover:text-content focus-visible:outline-2 focus-visible:outline-accent"
           >

@@ -79,9 +79,6 @@ export function NotificationMuteControl({ projectIds, onChanged }: Props) {
         )}
         aria-haspopup={open === "custom" ? "dialog" : "menu"}
         aria-expanded={open !== null}
-        title={t(
-          "Mute pauses all project notifications without changing your category choices.",
-        )}
         disabled={!projectIds.length}
         onClick={() => setOpen(open ? null : "menu")}
       >

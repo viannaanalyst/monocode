@@ -287,10 +287,7 @@ export function ProjectNotificationSettings({
                             )}
                           </span>
                           <div className="min-w-0 flex-1">
-                            <p
-                              className="truncate text-sm font-medium text-content group-hover:text-content/75"
-                              title={`${project.name} (${project.detail})`}
-                            >
+                            <p className="truncate text-sm font-medium text-content group-hover:text-content/75">
                               {project.name}
                             </p>
                             <p className="mt-1 text-[12px] leading-relaxed text-content/45">

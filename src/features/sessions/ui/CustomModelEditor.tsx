@@ -220,7 +220,7 @@ export function CustomModelEditor({
                 <input
                   aria-label={`Option ${index + 1} label`}
                   value={setting.label}
-                  placeholder="Label"
+                  placeholder={t("Label")}
                   className={`${inputClass} w-28 flex-1`}
                   onChange={(event) =>
                     updateSetting(setting.key, { label: event.target.value })
@@ -294,7 +294,7 @@ export function CustomModelEditor({
                       <input
                         aria-label={`Option ${index + 1} choice ${choiceIndex + 1} label`}
                         value={choice.label}
-                        placeholder="Label"
+                        placeholder={t("Label")}
                         className={`${inputClass} w-28 flex-1`}
                         onChange={(event) =>
                           updateChoice(setting.key, choice.key, {
