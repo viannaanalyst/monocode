@@ -34,6 +34,7 @@ import {
   type PlanBuildTarget,
   type RuntimeMode,
   type Session,
+  type WorkspaceMode,
   type ComposerTurnOptions,
 } from "../model/session";
 import { sessionTurnStats } from "../model/turnStats";
@@ -67,6 +68,7 @@ import {
 } from "../../settings/model/appearance";
 import type { SessionFolderTarget } from "../model/sessionFolders";
 import type { SessionGoal } from "../model/goal";
+import type { Worktree } from "../../source-control/model/worktrees";
 import type { OpenFileFn } from "../../search/model/search";
 import { markLinkedSessionUpdateSeen } from "../../inbox/model/linkedSessionSeen";
 
@@ -91,6 +93,14 @@ type Props = {
     settings: Record<string, string>,
   ) => void;
   onRuntimeModeChange: (sessionId: string, mode: RuntimeMode) => void;
+  onWorkspaceModeChange?: (
+    sessionId: string,
+    mode: WorkspaceMode,
+    base?: string,
+  ) => void;
+  onWorktreeBaseChange?: (sessionId: string, base: string) => void;
+  onWorktreeChange?: (sessionId: string, tree: Worktree) => Promise<void>;
+  onManageWorktrees?: () => void;
   onGoalChange?: (sessionId: string, goal: SessionGoal | null) => void;
   onGoalResolve?: (sessionId: string, action: "complete" | "keep") => void;
   onSubmit: (
@@ -98,7 +108,7 @@ type Props = {
     text: string,
     attachments: Attachment[],
     options?: ComposerTurnOptions,
-  ) => boolean | void;
+  ) => boolean | void | Promise<boolean | void>;
   onStop: (sessionId: string) => void;
   onCompactContext: (sessionId: string) => boolean;
   onPlaceSessionInFolder: (
@@ -171,6 +181,10 @@ export const SessionPane = memo(function SessionPane({
   onModelChange,
   onModelSettingsChange,
   onRuntimeModeChange,
+  onWorkspaceModeChange,
+  onWorktreeBaseChange,
+  onWorktreeChange,
+  onManageWorktrees,
   onGoalChange,
   onGoalResolve,
   onSubmit,
@@ -395,6 +409,20 @@ export const SessionPane = memo(function SessionPane({
         onModelSettingsChange(session.id, settings)
       }
       onRuntimeModeChange={(mode) => onRuntimeModeChange(session.id, mode)}
+      workspaceMode={session.workspaceMode}
+      worktreeBase={session.worktreeBase}
+      worktreeRemoved={session.worktreeRemoved}
+      draftWorkspace={isEmpty && !session.worktreeCwd && !session.busy}
+      onWorkspaceModeChange={(mode, base) =>
+        onWorkspaceModeChange?.(session.id, mode, base)
+      }
+      onWorktreeBaseChange={(base) =>
+        onWorktreeBaseChange?.(session.id, base)
+      }
+      onWorktreeChange={async (tree) => {
+        await onWorktreeChange?.(session.id, tree);
+      }}
+      onManageWorktrees={onManageWorktrees}
       onGoalChange={(goal) => onGoalChange?.(session.id, goal)}
       onGoalResolve={(action) => onGoalResolve?.(session.id, action)}
       onSubmit={(text, attachments, options) =>

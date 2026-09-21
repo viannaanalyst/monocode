@@ -91,7 +91,6 @@ import {
   basename,
   notifyGitChanged,
   pickFolder,
-  restoreSessionCheckout,
   type GitFileDiffKind,
   type GitHistoryCommit,
 } from "../platform/tauri/fs";
@@ -285,9 +284,19 @@ import {
 } from "../features/workspace/model/workspaceTabGroups";
 import { runSessionRemoval } from "../features/sessions/model/sessionRemoval";
 import {
+  checkWorktreeRemoval,
+  createWorktree,
+  detachSessionWorktree,
+  removeWorktree,
+  sessionInWorktree,
+  temporaryWorktreeBranchName,
+  type Worktree,
+} from "../features/source-control/model/worktrees";
+import {
   HARNESS_LABEL,
   HARNESS_TITLE,
   type ModelTarget,
+  type WorkspaceMode,
   canReplaceSessionTitle,
   formatSessionTitle,
   sessionNeedsInput,
@@ -3339,7 +3348,7 @@ export default function App({
           ) {
             return null;
           }
-          const restored = restoreSessionCheckout(loaded);
+          const restored = loaded;
           return restored;
         })
         .catch(() => null);
@@ -3873,7 +3882,7 @@ export default function App({
         };
         const saved = await upsertSession(updated).catch(() => null);
         if (saved) {
-          const cached = restoreSessionCheckout(updated);
+          const cached = updated;
           rememberLoadedSession(loadedSessionCache.current, cached);
           lastPersisted.current.set(sessionId, persistFingerprint(updated));
         }
@@ -4201,6 +4210,101 @@ export default function App({
       }
     },
     [onRemoveHistorySession],
+  );
+
+  const onWorkspaceModeChange = useCallback(
+    (sessionId: string, mode: WorkspaceMode, base?: string) => {
+      setSessions((prev) =>
+        prev.map((session) => {
+          if (
+            session.id !== sessionId ||
+            (!isBlankSession(session) &&
+              !(session.workspaceMode && !session.worktreeCwd && !session.busy))
+          ) {
+            return session;
+          }
+          return mode === "worktree"
+            ? base || session.worktreeBase
+              ? {
+                  ...session,
+                  workspaceMode: "worktree",
+                  worktreeBase: base || session.worktreeBase,
+                }
+              : session
+            : {
+                ...session,
+                workspaceMode: undefined,
+                worktreeBase: undefined,
+              };
+        }),
+      );
+    },
+    [],
+  );
+
+  const onWorktreeBaseChange = useCallback(
+    (sessionId: string, base: string) => {
+      setSessions((prev) =>
+        prev.map((session) =>
+          session.id === sessionId &&
+          (isBlankSession(session) ||
+            (!!session.workspaceMode &&
+              !session.worktreeCwd &&
+              !session.busy)) &&
+          session.workspaceMode === "worktree"
+            ? { ...session, worktreeBase: base }
+            : session,
+        ),
+      );
+    },
+    [],
+  );
+
+  const onWorktreeChange = useCallback(
+    async (sessionId: string, tree: Worktree) => {
+      const current = sessionsRef.current.find((s) => s.id === sessionId);
+      if (!current || current.busy || switchingWorktrees.current.has(sessionId)) {
+        throw new Error(
+          t("Wait for this session to finish before changing working copies."),
+        );
+      }
+      if (
+        !current.worktreeRemoved &&
+        pathKey(sessionWorkCwd(current)) === pathKey(tree.path)
+      ) {
+        return;
+      }
+      if (
+        [...removingWorktreePaths.current].some((path) =>
+          isEqualOrInside(tree.path, path),
+        )
+      ) {
+        throw new Error(
+          t("This worktree is being deleted. Select another working copy."),
+        );
+      }
+      if (!current.worktreeRemoved && current.queuedMessages?.length) {
+        throw new Error(
+          t("Clear queued messages before changing working copies."),
+        );
+      }
+      switchingWorktrees.current.set(sessionId, tree.path);
+      try {
+        const next = sessionInWorktree(
+          { ...current, worktreeRemoved: false },
+          tree,
+        );
+        sessionsRef.current = sessionsRef.current.map((s) =>
+          s.id === sessionId ? next : s,
+        );
+        setSessions(sessionsRef.current);
+        if (shouldPersistSession(next)) await upsertSession(next);
+        notifyGitChanged();
+      } finally {
+        switchingWorktrees.current.delete(sessionId);
+      }
+    },
+    [],
   );
 
   const onFocusDir = useCallback(
@@ -4797,7 +4901,7 @@ export default function App({
   );
 
   const onSubmit = useCallback(
-    (
+    async (
       sessionId: string,
       text: string,
       attachments: Attachment[] = [],
@@ -4897,7 +5001,41 @@ export default function App({
         isPreparingHandoff(current) &&
         handoffPrepInFlight.current.has(sessionId);
       saveRecentModelChoice(current.harness, current.model);
-      const workCwd = sessionWorkCwd(current);
+      let workCwd = sessionWorkCwd(current);
+      const createDraftWorktree =
+        !current.worktreeCwd &&
+        current.workspaceMode === "worktree" &&
+        !current.busy;
+      if (createDraftWorktree) {
+        try {
+          const tree = await createWorktree(
+            current.cwd,
+            temporaryWorktreeBranchName(),
+            current.worktreeBase || "HEAD",
+            false,
+          );
+          workCwd = tree.path;
+          const next = {
+            ...current,
+            worktreeCwd: tree.path,
+            branch: tree.branch ?? undefined,
+            workspaceMode: undefined,
+            worktreeBase: undefined,
+          };
+          sessionsRef.current = sessionsRef.current.map((session) =>
+            session.id === sessionId ? next : session,
+          );
+          setSessions(sessionsRef.current);
+          if (shouldPersistSession(next)) await upsertSession(next);
+        } catch (error) {
+          enqueueHarnessEvent(sessionId, {
+            type: "session.error",
+            message: String(error),
+          });
+          flushHarnessEvents();
+          return;
+        }
+      }
       // One checkpoint turn per user message, so the transcript can rewind the
       // code back to just before any prompt.
       const checkpointTurnId = `turn-${crypto.randomUUID()}`;
@@ -6622,6 +6760,8 @@ export default function App({
     [history, sessions],
   );
   const automationSessionReservations = useRef(new Set<string>());
+  const switchingWorktrees = useRef(new Map<string, string>());
+  const removingWorktreePaths = useRef(new Set<string>());
   const automationRecoveryRef = useRef<Promise<void> | null>(null);
   const automationRecoveryCutoffRef = useRef(Date.now());
 
@@ -7058,6 +7198,62 @@ export default function App({
     },
     [],
   );
+
+  const onCheckWorktreeRemoval = useCallback(
+    (cwd: string, path: string, force: boolean) =>
+      checkWorktreeRemoval(cwd, path, force),
+    [],
+  );
+
+  const onRemoveWorktree = useCallback(
+    async (
+      cwd: string,
+      path: string,
+      force: boolean,
+      keepSessions = true,
+    ) => {
+      const removed = await removeWorktree(cwd, path, force, keepSessions);
+      const affected = new Set(removed.sessionIds);
+      for (const id of affected) {
+        loadedSessionCache.current.delete(id);
+        pendingPersist.current.delete(id);
+        lastPersisted.current.delete(id);
+      }
+      sessionsRef.current = sessionsRef.current.map((session) =>
+        affected.has(session.id)
+          ? detachSessionWorktree(session, removed.projectCwd, path)
+          : session,
+      );
+      setSessions(sessionsRef.current);
+      const patchSummary = (entry: SessionSummary) =>
+        affected.has(entry.id)
+          ? detachSessionWorktree(entry, removed.projectCwd, path)
+          : entry;
+      setHistory((current) => current.map(patchSummary));
+      setStoredLinkedSessions((current) => current.map(patchSummary));
+      if (isEqualOrInside(projectCwdRef.current, path)) {
+        setProjectCwd(removed.projectCwd);
+        setRecents(rememberProject(removed.projectCwd));
+      }
+    },
+    [],
+  );
+
+  const onDeleteWorktreeSessions = useCallback(
+    async (sessionIds: readonly string[]): Promise<boolean> => {
+      for (const sessionId of sessionIds) {
+        if (!(await onRemoveHistorySession(sessionId, "delete", true))) {
+          return false;
+        }
+      }
+      return true;
+    },
+    [onRemoveHistorySession],
+  );
+
+  const onManageWorktrees = useCallback(() => {
+    openSettings("worktrees");
+  }, [openSettings]);
 
   const onOpenSettings = useCallback(() => openSettings(), [openSettings]);
 
@@ -7560,6 +7756,10 @@ export default function App({
     onModelChange,
     onModelSettingsChange,
     onRuntimeModeChange,
+    onWorkspaceModeChange,
+    onWorktreeBaseChange,
+    onWorktreeChange,
+    onManageWorktrees,
     onSubmit,
     onGoalChange,
     onGoalResolve,
@@ -8155,6 +8355,11 @@ export default function App({
                 anchor={settingsAnchor}
                 cwd={sidebarCwd}
                 sessions={sidebarHistory}
+                liveSessions={sessions}
+                recents={recents}
+                onRemoveWorktree={onRemoveWorktree}
+                onCheckWorktreeRemoval={onCheckWorktreeRemoval}
+                onDeleteWorktreeSessions={onDeleteWorktreeSessions}
                 besideRail
                 notificationProjectPath={notificationSettingsProject}
                 notificationSettingsRequest={notificationSettingsRequest}

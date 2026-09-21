@@ -59,6 +59,7 @@ import { FolderTree, GitBranch } from "../../../shared/ui/icons";
 import { DeleteWorktreeDialog } from "./DeleteWorktreeDialog";
 import { DeleteSessionDialog } from "../../sessions/ui/DeleteSessionDialog";
 import { WorktreesPage } from "./WorktreesPage";
+import { prettyCwd } from "../../../shared/lib/paths";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -168,10 +169,9 @@ it("selects a draft workspace without opening the creation dialog", async () => 
   expect(onModeChange).toHaveBeenCalledWith("worktree", "main");
   expect(document.querySelector('[aria-label="Create worktree"]')).toBeNull();
   expect(
-    container
-      .querySelector('[aria-label="Workspace Current checkout"]')
-      ?.getAttribute("title"),
-  ).toContain(WORKSPACE_MODE_SHORTCUT);
+    container.querySelector('[aria-label="Workspace Current checkout"]')
+      ?.textContent,
+  ).toContain("Current checkout");
 
   await act(async () =>
     container
@@ -185,7 +185,7 @@ it("selects a draft workspace without opening the creation dialog", async () => 
   )!;
   expect(settings.textContent).toContain("Worktree settings");
   expect(settings.parentElement?.className).toContain("border-t");
-  expect(settings.parentElement?.className).toContain("h-9");
+  expect(settings.parentElement?.className).toContain("h-8");
   expect(settings.className).toContain("h-full");
   expect(settings.parentElement?.className).not.toContain("mt-1");
   expect(settings.parentElement?.className).not.toContain("pt-1");
@@ -266,10 +266,8 @@ it("keeps the settings rows mounted through focus refreshes and failures", async
   await act(async () => request.reject(new Error("Git unavailable")));
   expect(container.querySelector('[aria-label="Reveal feature"]')).toBe(reveal);
   expect(
-    container
-      .querySelector('[aria-label="Refresh worktrees"]')
-      ?.getAttribute("title"),
-  ).toContain("Git unavailable");
+    container.querySelector('[aria-label="Refresh worktrees"]')?.className,
+  ).toContain("text-red-400");
   vi.mocked(listWorktrees).mockResolvedValue(result("updated"));
   await act(async () => window.dispatchEvent(new Event("focus")));
   expect(
@@ -320,7 +318,9 @@ it.each(["/repo", tree.path])(
     const other = document.querySelector<HTMLElement>(
       '[role="option"][aria-selected="false"]',
     )!;
-    expect(selected.title).toBe(executionCwd);
+    expect(selected.textContent).toContain(
+      executionCwd === "/repo" ? "Project folder" : prettyCwd(executionCwd),
+    );
     expect(selected.classList.contains("bg-selection")).toBe(true);
     expect(other.classList.contains("bg-selection")).toBe(false);
     await act(async () =>
@@ -387,20 +387,16 @@ it("highlights the current worktree after a cold load and keeps navigation throu
     ),
   );
   expect(
-    document
-      .querySelector('.bg-selection[role="option"]')
-      ?.getAttribute("title"),
-  ).toBe(main.path);
+    document.querySelector('.bg-selection[role="option"]')?.textContent,
+  ).toContain("Project folder");
   vi.mocked(listWorktrees).mockResolvedValue({
     ...result(),
     worktrees: [tree, main],
   });
   await act(async () => notifyGitChanged());
   expect(
-    document
-      .querySelector('.bg-selection[role="option"]')
-      ?.getAttribute("title"),
-  ).toBe(main.path);
+    document.querySelector('.bg-selection[role="option"]')?.textContent,
+  ).toContain("Project folder");
 });
 
 it("highlights search results and restores the current worktree when search is cleared", async () => {
@@ -421,10 +417,8 @@ it("highlights search results and restores the current worktree when search is c
   )!;
   await act(async () => type(search, "main"));
   expect(
-    document
-      .querySelector('.bg-selection[role="option"]')
-      ?.getAttribute("title"),
-  ).toBe("/repo");
+    document.querySelector('.bg-selection[role="option"]')?.textContent,
+  ).toContain("Project folder");
   await act(async () => type(search, "no matches"));
   expect(document.querySelector('.bg-selection[role="option"]')).toBeNull();
   await act(async () => type(search, ""));

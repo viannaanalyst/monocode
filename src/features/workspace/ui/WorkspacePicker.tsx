@@ -4,6 +4,7 @@ import { MOD, SHIFT } from "../../../platform/tauri/platform";
 import type { WorkspaceMode } from "../../sessions/model/session";
 import {
   Check,
+  ChevronDown,
   Folder,
   FolderTree,
   GitBranch,
@@ -12,6 +13,7 @@ import {
 } from "../../../shared/ui/icons";
 import { GitPickerTrigger } from "../../source-control/ui/GitPickerTrigger";
 import { Popover } from "../../../shared/ui/Popover";
+import { t } from "../../../i18n";
 
 export const WORKSPACE_MODE_SHORTCUT = `${MOD}${SHIFT}G`;
 
@@ -84,14 +86,13 @@ export function WorkspacePicker({
 /** A started conversation owns its working copy; only its branch stays mutable. */
 export function WorkspaceIdentity({ worktree }: { worktree: boolean }) {
   const Icon = worktree ? FolderTree : Folder;
-  const label = worktree ? "Worktree" : "Current checkout";
+  const label = worktree ? t("Worktree") : t("Current checkout");
   return (
     <div
-      title={`Workspace: ${label}`}
-      aria-label={`Workspace ${label}`}
-      className="-ml-1.5 flex h-6 min-w-0 shrink-0 items-center gap-1.5 px-1.5 text-xs text-content/45"
+      aria-label={t("Workspace {label}", { label })}
+      className="flex h-6 min-w-0 shrink-0 items-center gap-1.5 px-1.5 text-sm text-content/45"
     >
-      <Icon className="size-3.5 shrink-0" />
+      <Icon className="size-3.5 shrink-0" strokeWidth={1.5} />
       <span className="truncate">{label}</span>
     </div>
   );
@@ -121,25 +122,29 @@ function WorkspaceModePicker({
     setOpen(false);
     onClose?.();
   };
-  const label = mode === "worktree" ? "New worktree" : "Current checkout";
+  const label = mode === "worktree" ? t("New worktree") : t("Current checkout");
   const Icon = mode === "worktree" ? FolderTree : Folder;
 
   return (
     <div ref={anchor} className="relative flex min-w-0 shrink-0">
       <button
         type="button"
+        data-no-tooltip
         disabled={!enabled}
-        title={`Workspace: ${label} (${WORKSPACE_MODE_SHORTCUT})`}
-        aria-label={`Workspace ${label}`}
+        aria-label={t("Workspace {label}", { label })}
         aria-keyshortcuts="Meta+Shift+G Control+Shift+G"
         aria-haspopup="dialog"
         aria-expanded={open}
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => setOpen((value) => !value)}
-        className="-ml-1.5 flex h-6 min-w-0 max-w-48 items-center gap-1.5 rounded-md px-1.5 text-xs text-content/55 hover:bg-content/8 hover:text-content aria-expanded:bg-content/8 aria-expanded:text-content disabled:opacity-40 disabled:hover:bg-transparent active:scale-[0.97]"
+        className="flex h-6 min-w-0 max-w-48 items-center gap-1.5 rounded-full px-1.5 text-content/60 hover:bg-content/10 hover:text-content aria-expanded:bg-content/10 aria-expanded:text-content disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-content/50"
       >
-        <Icon className="size-3.5 shrink-0" />
-        <span className="truncate">{label}</span>
+        <Icon className="size-3.5 shrink-0" strokeWidth={1.5} />
+        <span className="truncate text-sm">{label}</span>
+        <ChevronDown
+          className="size-3.5 shrink-0 text-content/50"
+          strokeWidth={1.75}
+        />
       </button>
       {open ? (
         <Popover
@@ -149,19 +154,19 @@ function WorkspaceModePicker({
           constrainHeight={false}
           onDismiss={dismiss}
           role="dialog"
-          aria-label="Workspace"
+          aria-label={t("Workspace")}
           className="overflow-hidden p-1.5"
         >
           <div className="flex items-center justify-between gap-3 px-2 py-1 text-2xs font-medium text-content/45">
-            <span>Workspace</span>
+            <span>{t("Workspace")}</span>
             <kbd className="font-sans text-2xs font-normal text-content/35">
               {WORKSPACE_MODE_SHORTCUT}
             </kbd>
           </div>
           {(
             [
-              ["current", "Current checkout", Folder],
-              ["worktree", "New worktree", FolderTree],
+              ["current", t("Current checkout"), Folder],
+              ["worktree", t("New worktree"), FolderTree],
             ] as const
           ).map(([value, text, RowIcon]) => (
             <button
@@ -173,7 +178,7 @@ function WorkspaceModePicker({
                 onChange(value);
                 dismiss();
               }}
-              className={`flex h-9 w-full items-center gap-2 rounded-lg px-2 text-left text-xs hover:bg-content/8 ${
+              className={`flex h-8 w-full items-center gap-2 rounded-lg px-2 text-left text-sm hover:bg-content/10 ${
                 mode === value ? "bg-selection text-content" : "text-content/80"
               }`}
             >
@@ -183,23 +188,22 @@ function WorkspaceModePicker({
             </button>
           ))}
           {onOpenSettings ? (
-            <div className="h-9 border-t border-stroke">
+            <div className="h-8 border-t border-content/10">
               <button
                 type="button"
-                title="Open worktree settings"
-                aria-label="Open worktree settings"
+                aria-label={t("Open worktree settings")}
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => {
                   setOpen(false);
                   onOpenSettings();
                 }}
-                className="flex h-full w-full items-center gap-2 rounded-lg px-2 text-left text-xs text-content/65 hover:bg-content/8 hover:text-content active:scale-[0.98]"
+                className="flex h-full w-full items-center gap-2 rounded-lg px-2 text-left text-sm text-content/65 hover:bg-content/10 hover:text-content"
               >
                 <Settings
                   className="size-4 shrink-0 text-content/45"
                   strokeWidth={1.75}
                 />
-                <span className="flex-1">Worktree settings</span>
+                <span className="flex-1">{t("Worktree settings")}</span>
               </button>
             </div>
           ) : null}
@@ -265,14 +269,14 @@ function WorktreeBasePicker({
   return (
     <div ref={anchor} className="relative flex min-w-0 shrink-0">
       <GitPickerTrigger
+        data-no-tooltip
         disabled={!enabled}
-        title={`Create from ${selected}`}
-        aria-label={`Create worktree from ${selected}`}
+        aria-label={t("Create worktree from {base}", { base: selected })}
         aria-haspopup="dialog"
         aria-expanded={open}
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => setOpen((value) => !value)}
-        label={`From ${selected}`}
+        label={t("From {base}", { base: selected })}
         loading={loading}
       />
       {open ? (
@@ -284,16 +288,16 @@ function WorktreeBasePicker({
           maxHeight={280}
           onDismiss={dismiss}
           role="dialog"
-          aria-label="Worktree base branch"
+          aria-label={t("Worktree base branch")}
           className="flex flex-col overflow-hidden"
         >
-          <label className="flex shrink-0 items-center gap-2 border-b border-stroke px-2 py-2.5 text-content/50">
+          <label className="flex shrink-0 items-center gap-2 border-b border-content/10 px-2 py-2.5 text-content/50">
             <Search className="size-3.5 shrink-0" />
             <input
               ref={search}
               value={query}
-              placeholder="Search base branches…"
-              aria-label="Search base branches"
+              placeholder={t("Search base branches…")}
+              aria-label={t("Search base branches")}
               spellCheck={false}
               onChange={(event) => {
                 setQuery(event.target.value);
@@ -318,12 +322,12 @@ function WorktreeBasePicker({
                   dismiss();
                 }
               }}
-              className="min-w-0 flex-1 bg-transparent text-xs text-content outline-none placeholder:text-content/40"
+              className="min-w-0 flex-1 bg-transparent text-sm text-content outline-none placeholder:text-content/40"
             />
           </label>
           <div
             role="listbox"
-            aria-label="Base branches"
+            aria-label={t("Base branches")}
             className="min-h-0 flex-1 overflow-y-auto p-1.5"
           >
             {rows.map((branch, index) => {
@@ -342,7 +346,7 @@ function WorktreeBasePicker({
                     onChange(ref);
                     dismiss();
                   }}
-                  className={`flex h-8 w-full items-center gap-2 rounded-lg px-2 text-left text-xs hover:bg-content/8 ${
+                  className={`flex h-8 w-full items-center gap-2 rounded-lg px-2 text-left text-sm hover:bg-content/10 ${
                     highlighted || selectedRow
                       ? "bg-selection text-content"
                       : "text-content/80"
@@ -354,7 +358,7 @@ function WorktreeBasePicker({
                     <GitBranch className="size-3.5 shrink-0 text-content/45" />
                   )}
                   <span
-                    className={`min-w-0 flex-1 truncate ${selectedRow ? "font-medium" : ""}`}
+                    className={`min-w-0 flex-1 truncate font-mono ${selectedRow ? "font-medium" : ""}`}
                   >
                     {ref}
                   </span>
@@ -363,7 +367,7 @@ function WorktreeBasePicker({
             })}
             {rows.length === 0 ? (
               <p className="px-2 py-3 text-xs text-content/45">
-                No matching branches
+                {t("No matching branches")}
               </p>
             ) : null}
           </div>

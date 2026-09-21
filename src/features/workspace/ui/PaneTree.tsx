@@ -43,6 +43,8 @@ import {
 import { FilePane } from "../../files/ui/FilePane";
 import { SessionPane } from "../../sessions/ui/SessionPane";
 import type { SessionFolderTarget } from "../../sessions/model/sessionFolders";
+import type { WorkspaceMode } from "../../sessions/model/session";
+import type { Worktree } from "../../source-control/model/worktrees";
 import type { SessionGoal } from "../../sessions/model/goal";
 
 type Shared = {
@@ -74,6 +76,14 @@ type Shared = {
     settings: Record<string, string>,
   ) => void;
   onRuntimeModeChange: (sessionId: string, mode: RuntimeMode) => void;
+  onWorkspaceModeChange?: (
+    sessionId: string,
+    mode: WorkspaceMode,
+    base?: string,
+  ) => void;
+  onWorktreeBaseChange?: (sessionId: string, base: string) => void;
+  onWorktreeChange?: (sessionId: string, tree: Worktree) => Promise<void>;
+  onManageWorktrees?: () => void;
   onGoalChange?: (sessionId: string, goal: SessionGoal | null) => void;
   onGoalResolve?: (sessionId: string, action: "complete" | "keep") => void;
   onSubmit: (
@@ -81,7 +91,7 @@ type Shared = {
     text: string,
     attachments: Attachment[],
     options?: ComposerTurnOptions,
-  ) => boolean | void;
+  ) => boolean | void | Promise<boolean | void>;
   onStop: (sessionId: string) => void;
   onCompactContext: (sessionId: string) => boolean;
   onPlaceSessionInFolder: (
@@ -181,6 +191,10 @@ function PaneTreeComponent({
   onModelChange,
   onModelSettingsChange,
   onRuntimeModeChange,
+  onWorkspaceModeChange,
+  onWorktreeBaseChange,
+  onWorktreeChange,
+  onManageWorktrees,
   onGoalChange,
   onGoalResolve,
   onSubmit,
@@ -422,6 +436,10 @@ function PaneTreeComponent({
                 onModelChange={onModelChange}
                 onModelSettingsChange={onModelSettingsChange}
                 onRuntimeModeChange={onRuntimeModeChange}
+                onWorkspaceModeChange={onWorkspaceModeChange}
+                onWorktreeBaseChange={onWorktreeBaseChange}
+                onWorktreeChange={onWorktreeChange}
+                onManageWorktrees={onManageWorktrees}
                 onGoalChange={onGoalChange}
                 onGoalResolve={onGoalResolve}
                 onSubmit={onSubmit}

@@ -328,7 +328,11 @@ import {
   type UpdaterSnapshot,
 } from "../../../app/model/updater";
 
+import type { Session } from "../../sessions/model/session";
 import { SkillsPage } from "../../skills/ui/SkillsPage";
+import { WorktreesPage } from "../../source-control/ui/WorktreesPage";
+import type { RemoveWorktree } from "../../source-control/model/worktrees";
+import type { RecentProject } from "../../projects/model/recents";
 import { ProjectNotificationSettings } from "../../notifications/ui/ProjectNotificationSettings";
 
 export type SettingsAnchor =
@@ -358,6 +362,11 @@ type Props = {
   anchor?: SettingsAnchor | null;
   cwd: string;
   sessions: SessionSummary[];
+  liveSessions?: Session[];
+  recents?: RecentProject[];
+  onRemoveWorktree?: RemoveWorktree;
+  onCheckWorktreeRemoval?: RemoveWorktree;
+  onDeleteWorktreeSessions?: (sessionIds: readonly string[]) => Promise<boolean>;
   besideRail?: boolean;
   notificationProjectPath?: string | null;
   notificationSettingsRequest?: number;
@@ -375,6 +384,11 @@ export function SettingsView({
   anchor = null,
   cwd,
   sessions,
+  liveSessions = [],
+  recents = [],
+  onRemoveWorktree,
+  onCheckWorktreeRemoval,
+  onDeleteWorktreeSessions,
   besideRail = false,
   notificationProjectPath = null,
   notificationSettingsRequest = 0,
@@ -487,6 +501,16 @@ export function SettingsView({
                 cwd={cwd}
                 notificationProjectPath={notificationProjectPath}
                 notificationSettingsRequest={notificationSettingsRequest}
+              />
+            ) : null}
+            {section === "worktrees" && onRemoveWorktree ? (
+              <WorktreesPage
+                cwd={cwd}
+                recents={recents}
+                liveSessions={liveSessions}
+                onRemove={onRemoveWorktree}
+                onCheckRemove={onCheckWorktreeRemoval}
+                onDeleteSessions={onDeleteWorktreeSessions}
               />
             ) : null}
             {section === "archive" ? (
