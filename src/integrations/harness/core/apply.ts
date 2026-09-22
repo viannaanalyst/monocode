@@ -21,6 +21,7 @@ import { taskListText } from "../../../features/sessions/model/taskList";
 import { isReviewablePlan } from "../../../features/sessions/model/plan";
 import { resolveModel } from "../../../features/sessions/model/models";
 import type { HarnessEvent } from "./types";
+import { isKnownAuthRefreshMessage } from "../providers/codex/codexProtocol";
 
 export function applyHarnessEvent(
   session: Session,
@@ -112,13 +113,43 @@ export function applyHarnessEvent(
       return upsertTaskList(session, event);
     case "plan":
       return upsertPlan(session, event);
-    case "session.error":
-      return appendBlock(failStreaming(session), {
+    case "session.error": {
+      let failed = failStreaming(session);
+      // Codex can stream the known auth failure as assistant text before
+      // reporting it as a completed failure. The error row below already
+      // carries the original first line plus recovery steps, so drop the raw
+      // streamed block instead of showing both.
+      const streamed = [...failed.blocks]
+        .reverse()
+        .find((block) => block.role === "assistant");
+      if (streamed && isKnownAuthRefreshMessage(streamed.text)) {
+        failed = {
+          ...failed,
+          blocks: failed.blocks.filter((block) => block.id !== streamed.id),
+        };
+      }
+      // Codex can report the same failure twice for one turn: once as a
+      // completed agent message and again as the turn error. Stacking both
+      // reads as two separate problems, so keep one row per message. Only
+      // collapse against a previous error notice, never against plain status
+      // rows that happen to carry the same text.
+      const last = [...failed.blocks]
+        .reverse()
+        .find((block) => block.role !== "reasoning");
+      if (
+        last?.role === "system" &&
+        last.notice === "error" &&
+        last.text === event.message
+      ) {
+        return failed;
+      }
+      return appendBlock(failed, {
         id: crypto.randomUUID(),
         role: "system",
         text: event.message,
         notice: "error",
       });
+    }
     case "session.providerBound":
       return { ...session, providerSessionId: event.providerSessionId };
     case "turn.started": {
