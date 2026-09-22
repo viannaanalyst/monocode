@@ -70,9 +70,16 @@ export type TaskListMeta = {
 
 /** One-shot behavior selected in the composer for the next harness turn. */
 export type TurnIntent = "default" | "plan" | "build" | "orchestrate";
+export type EditedResendRejection = {
+  /** The provider removed the old turn, so retry as a normal unsent prompt. */
+  providerRewound: boolean;
+};
 export type ComposerTurnOptions = {
   intent?: TurnIntent;
   debug?: boolean;
+  resendEdited?: boolean;
+  /** Restore an edited prompt when the resend rejects asynchronously. */
+  onResendRejected?: (recovery: EditedResendRejection) => void;
   /** Promote an existing unsent transcript block instead of appending a turn. */
   draftBlockId?: string;
 };
@@ -251,6 +258,8 @@ export type Block = {
   turnModel?: TurnModel;
   /** Checkpoint turn id, so this prompt can rewind the code to before it. */
   checkpointTurnId?: string;
+  /** Provider turn boundary used to replace this user message, when known. */
+  providerTurnId?: string;
   /** User turn saved to the session but not submitted to the harness yet. */
   draft?: boolean;
   /** Provider-reported token metrics for this user turn, when available. */
@@ -477,6 +486,17 @@ export function newDefaultSession(
 ): Session {
   const choice = defaultSessionChoice();
   return newSession(choice.harness, cwd, choice.model, runtimeMode);
+}
+
+/** New conversation carrying another session's harness, model and settings. */
+export function newSessionLike(seed: Session | undefined, cwd: string): Session {
+  return newSession(
+    seed?.harness ?? "claude",
+    cwd,
+    seed?.model,
+    seed?.runtimeMode,
+    seed?.modelSettings,
+  );
 }
 
 /** First line of a prompt, truncated for the tab strip. */

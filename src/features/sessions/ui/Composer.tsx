@@ -1952,6 +1952,7 @@ export function Composer({
                   enabled={enabled && !busy}
                   onModeChange={onWorkspaceModeChange}
                   onBaseChange={onWorktreeBaseChange}
+                  onSelectWorktree={onWorktreeChange}
                   onOpenSettings={onManageWorktrees}
                   onClose={() => ref.current?.focus()}
                 />

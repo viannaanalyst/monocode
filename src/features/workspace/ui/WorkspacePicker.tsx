@@ -1,13 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useProjectBranchesState } from "../../source-control/hooks/useProjectBranches";
+import { useProjectWorktrees } from "../../source-control/hooks/useProjectWorktrees";
+import type { Worktree } from "../../source-control/model/worktrees";
+import { prettyCwd } from "../../../shared/lib/paths";
+import { LAYER } from "../../../shared/lib/layers";
 import { MOD, SHIFT } from "../../../platform/tauri/platform";
 import type { WorkspaceMode } from "../../sessions/model/session";
 import {
   Check,
   ChevronDown,
+  ChevronRight,
   Folder,
   FolderTree,
   GitBranch,
+  Loader,
   Search,
   Settings,
 } from "../../../shared/ui/icons";
@@ -16,6 +22,11 @@ import { Popover } from "../../../shared/ui/Popover";
 import { t } from "../../../i18n";
 
 export const WORKSPACE_MODE_SHORTCUT = `${MOD}${SHIFT}G`;
+
+const WORKSPACE_SURFACES =
+  "[data-workspace-picker],[data-existing-worktrees-submenu]";
+const SUBMENU_GAP = 4;
+const HOVER_CLOSE_MS = 100;
 
 export function isWorkspaceModeShortcut(event: {
   key: string;
@@ -39,6 +50,7 @@ export function WorkspacePicker({
   enabled = true,
   onModeChange,
   onBaseChange,
+  onSelectWorktree,
   onOpenSettings,
   onClose,
 }: {
@@ -48,6 +60,7 @@ export function WorkspacePicker({
   enabled?: boolean;
   onModeChange: (mode: WorkspaceMode, base?: string) => void;
   onBaseChange: (base: string) => void;
+  onSelectWorktree?: (tree: Worktree) => Promise<void>;
   onOpenSettings?: () => void;
   onClose?: () => void;
 }) {
@@ -61,11 +74,13 @@ export function WorkspacePicker({
   return (
     <>
       <WorkspaceModePicker
+        cwd={cwd}
         mode={mode}
         enabled={enabled && !!resolvedBase}
         onChange={(next) =>
           onModeChange(next, next === "worktree" ? effectiveBase : undefined)
         }
+        onSelectWorktree={onSelectWorktree}
         onOpenSettings={onOpenSettings}
         onClose={onClose}
       />
@@ -99,28 +114,99 @@ export function WorkspaceIdentity({ worktree }: { worktree: boolean }) {
 }
 
 function WorkspaceModePicker({
+  cwd,
   mode,
   enabled,
   onChange,
+  onSelectWorktree,
   onOpenSettings,
   onClose,
 }: {
+  cwd: string;
   mode: WorkspaceMode;
   enabled: boolean;
   onChange: (mode: WorkspaceMode) => void;
+  onSelectWorktree?: (tree: Worktree) => Promise<void>;
   onOpenSettings?: () => void;
   onClose?: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [worktreeMenu, setWorktreeMenu] = useState(false);
+  const [busyPath, setBusyPath] = useState<string>();
+  const [pickError, setPickError] = useState<string>();
   const anchor = useRef<HTMLDivElement>(null);
+  const worktreeAnchor = useRef<HTMLButtonElement>(null);
+  const closeWorktreeTimer = useRef<number | null>(null);
+  const { data, error: loadError } = useProjectWorktrees(
+    cwd,
+    enabled && open && worktreeMenu && !!onSelectWorktree,
+  );
+  const worktrees =
+    data?.worktrees.filter((tree) => !tree.isMain && !tree.missing) ?? [];
 
   useEffect(() => {
-    if (!enabled) setOpen(false);
+    if (enabled) return;
+    setOpen(false);
+    setWorktreeMenu(false);
+    setBusyPath(undefined);
+    setPickError(undefined);
   }, [enabled]);
+  useEffect(
+    () => () => {
+      if (closeWorktreeTimer.current != null) {
+        window.clearTimeout(closeWorktreeTimer.current);
+      }
+    },
+    [],
+  );
 
   const dismiss = () => {
+    if (closeWorktreeTimer.current != null) {
+      window.clearTimeout(closeWorktreeTimer.current);
+      closeWorktreeTimer.current = null;
+    }
     setOpen(false);
+    setWorktreeMenu(false);
+    setBusyPath(undefined);
+    setPickError(undefined);
     onClose?.();
+  };
+  const selectWorktree = async (tree: Worktree) => {
+    if (!onSelectWorktree || busyPath) return;
+    setBusyPath(tree.path);
+    setPickError(undefined);
+    try {
+      await onSelectWorktree(tree);
+      dismiss();
+    } catch (error) {
+      setPickError(String(error));
+      setBusyPath(undefined);
+    }
+  };
+  const openWorktreeMenu = () => {
+    if (closeWorktreeTimer.current != null) {
+      window.clearTimeout(closeWorktreeTimer.current);
+      closeWorktreeTimer.current = null;
+    }
+    setWorktreeMenu(true);
+  };
+  const closeWorktreeMenu = () => {
+    if (closeWorktreeTimer.current != null) {
+      window.clearTimeout(closeWorktreeTimer.current);
+      closeWorktreeTimer.current = null;
+    }
+    setWorktreeMenu(false);
+    setPickError(undefined);
+  };
+  const scheduleCloseWorktreeMenu = () => {
+    if (closeWorktreeTimer.current != null) {
+      window.clearTimeout(closeWorktreeTimer.current);
+    }
+    closeWorktreeTimer.current = window.setTimeout(() => {
+      closeWorktreeTimer.current = null;
+      setWorktreeMenu(false);
+      setPickError(undefined);
+    }, HOVER_CLOSE_MS);
   };
   const label = mode === "worktree" ? t("New worktree") : t("Current checkout");
   const Icon = mode === "worktree" ? FolderTree : Folder;
@@ -136,7 +222,13 @@ function WorkspaceModePicker({
         aria-haspopup="dialog"
         aria-expanded={open}
         onMouseDown={(event) => event.preventDefault()}
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => {
+          if (open) {
+            dismiss();
+            return;
+          }
+          setOpen(true);
+        }}
         className="flex h-6 min-w-0 max-w-48 items-center gap-1.5 rounded-full px-1.5 text-content/60 hover:bg-content/10 hover:text-content aria-expanded:bg-content/10 aria-expanded:text-content disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-content/50"
       >
         <Icon className="size-3.5 shrink-0" strokeWidth={1.5} />
@@ -150,11 +242,13 @@ function WorkspaceModePicker({
         <Popover
           anchor={anchor}
           side="top"
-          width={220}
+          width={240}
           constrainHeight={false}
           onDismiss={dismiss}
+          ignore={WORKSPACE_SURFACES}
           role="dialog"
           aria-label={t("Workspace")}
+          data-workspace-picker
           className="overflow-hidden p-1.5"
         >
           <div className="flex items-center justify-between gap-3 px-2 py-1 text-2xs font-medium text-content/45">
@@ -174,6 +268,7 @@ function WorkspaceModePicker({
               type="button"
               aria-pressed={mode === value}
               onMouseDown={(event) => event.preventDefault()}
+              onMouseEnter={closeWorktreeMenu}
               onClick={() => {
                 onChange(value);
                 dismiss();
@@ -187,12 +282,43 @@ function WorkspaceModePicker({
               {mode === value ? <Check className="size-3.5" /> : null}
             </button>
           ))}
+          {onSelectWorktree ? (
+            <button
+              ref={worktreeAnchor}
+              type="button"
+              aria-haspopup="menu"
+              aria-expanded={worktreeMenu}
+              onMouseDown={(event) => event.preventDefault()}
+              onMouseEnter={openWorktreeMenu}
+              onMouseLeave={scheduleCloseWorktreeMenu}
+              onFocus={openWorktreeMenu}
+              onClick={openWorktreeMenu}
+              onKeyDown={(event) => {
+                if (event.key === "ArrowRight") {
+                  event.preventDefault();
+                  openWorktreeMenu();
+                }
+                if (event.key === "ArrowLeft" && worktreeMenu) {
+                  event.preventDefault();
+                  closeWorktreeMenu();
+                }
+              }}
+              className={`flex h-8 w-full items-center gap-2 rounded-lg px-2 text-left text-sm text-content/80 hover:bg-content/10 hover:text-content ${
+                worktreeMenu ? "bg-selection text-content" : ""
+              }`}
+            >
+              <FolderTree className="size-4 shrink-0 text-content/55" />
+              <span className="flex-1">{t("Existing worktree…")}</span>
+              <ChevronRight className="size-3.5 shrink-0 text-content/45" />
+            </button>
+          ) : null}
           {onOpenSettings ? (
             <div className="h-8 border-t border-content/10">
               <button
                 type="button"
                 aria-label={t("Open worktree settings")}
                 onMouseDown={(event) => event.preventDefault()}
+                onMouseEnter={closeWorktreeMenu}
                 onClick={() => {
                   setOpen(false);
                   onOpenSettings();
@@ -209,9 +335,82 @@ function WorkspaceModePicker({
           ) : null}
         </Popover>
       ) : null}
+      {open && worktreeMenu ? (
+        <Popover
+          anchor={worktreeAnchor}
+          side="right"
+          gap={SUBMENU_GAP}
+          width={300}
+          maxHeight={320}
+          layer={LAYER.submenu}
+          role="menu"
+          aria-label={t("Existing worktrees")}
+          data-existing-worktrees-submenu
+          className="flex flex-col overflow-hidden p-1.5"
+          onMouseEnter={openWorktreeMenu}
+          onMouseLeave={scheduleCloseWorktreeMenu}
+          onKeyDown={(event) => {
+            if (event.key === "ArrowLeft") {
+              event.preventDefault();
+              closeWorktreeMenu();
+              worktreeAnchor.current?.focus();
+            }
+          }}
+        >
+          {!data && !loadError ? (
+            <p className="flex items-center gap-2 px-2 py-3 text-sm text-content/50">
+              <Loader className="size-3.5 animate-spin" />
+              {t("Loading worktrees…")}
+            </p>
+          ) : null}
+          <div className="min-h-0 overflow-y-auto">
+            {worktrees.map((tree) => (
+              <button
+                key={tree.path}
+                type="button"
+                role="menuitem"
+                disabled={!!busyPath}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => void selectWorktree(tree)}
+                className="flex min-h-11 w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-content/80 hover:bg-content/10 hover:text-content disabled:opacity-40"
+              >
+                {busyPath === tree.path ? (
+                  <Loader className="size-4 shrink-0 animate-spin text-content/55" />
+                ) : (
+                  <FolderTree className="size-4 shrink-0 text-content/55" />
+                )}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-mono text-sm">
+                    {tree.branch ??
+                      t("Detached {sha}", { sha: tree.head.slice(0, 7) })}
+                  </span>
+                  <span className="block truncate text-2xs text-content/40">
+                    {prettyCwd(tree.path)}
+                  </span>
+                </span>
+              </button>
+            ))}
+            {data && worktrees.length === 0 ? (
+              <p className="px-2 py-3 text-sm text-content/50">
+                {t("No existing worktrees")}
+              </p>
+            ) : null}
+          </div>
+          {pickError || loadError ? (
+            <p
+              role="alert"
+              className="border-t border-content/10 px-2 py-2 text-xs text-red-400"
+            >
+              {pickError || loadError}
+            </p>
+          ) : null}
+        </Popover>
+      ) : null}
     </div>
   );
 }
+
+
 
 type BaseBranch = { name: string; remote: string | null };
 

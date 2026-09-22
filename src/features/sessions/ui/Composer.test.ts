@@ -22,6 +22,7 @@ vi.mock("../../source-control/hooks/useProjectBranches", () => ({
 }));
 
 import { Composer, ComposerAction } from "./Composer";
+import type { ComposerTurnOptions, Attachment } from "../model/session";
 import type { UserQuestionPrompt } from "../model/userQuestion";
 
 function renderAction(busy: boolean, hasValue: boolean) {
@@ -120,6 +121,8 @@ describe("Composer question focus", () => {
     expect(textarea.selectionStart).toBe(initialDraft.length);
     expect(textarea.selectionEnd).toBe(initialDraft.length);
   });
+
+
 
   it("returns focus to the composer textarea once a question is answered", async () => {
     const onQuestionReply = vi.fn();

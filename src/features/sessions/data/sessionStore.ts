@@ -277,6 +277,16 @@ export async function listSessionsByProject(
   return rows.map(normalizeSummary);
 }
 
+export function rebaseProjectSessions(
+  fromCwd: string,
+  toCwd: string,
+): Promise<void> {
+  return invoke<void>("session_rebase_project", {
+    fromCwd: normalizeProjectPath(fromCwd),
+    toCwd: normalizeProjectPath(toCwd),
+  });
+}
+
 export async function listLinkedSessions(): Promise<SessionSummary[]> {
   const rows = await invoke<SessionSummary[]>("session_list_linked");
   return rows.map(normalizeSummary);
@@ -382,6 +392,19 @@ export async function setSessionPinned(
   await invoke<void>("session_set_pinned", { sessionId, pinned });
 }
 
+export async function setSessionLinkedWorkItem(
+  sessionId: string,
+  value: LinkedWorkItem | undefined,
+): Promise<void> {
+  const linkedWorkItem = sanitizeLinkedWorkItem(value);
+  await enqueueSessionWrite(sessionId, () =>
+    invoke<void>("session_set_linked_work_item", {
+      sessionId,
+      linkedWorkItem: linkedWorkItem ?? null,
+    }),
+  );
+}
+
 /** Drain pending saves before a worktree removal changes stored session context. */
 export async function flushSessionWrites(): Promise<void> {
   await Promise.all([...sessionWriteQueues.values()]);
@@ -466,6 +489,12 @@ export function sanitizeBlock(block: Block): Block | null {
     next.checkpointTurnId = block.checkpointTurnId;
   }
   if (block.role === "user" && block.draft) next.draft = true;
+  if (
+    block.role === "user" &&
+    typeof block.providerTurnId === "string" &&
+    isPersistableId(block.providerTurnId)
+  )
+    next.providerTurnId = block.providerTurnId;
   if (
     block.role === "user" &&
     typeof block.orchestrationLeadId === "string" &&

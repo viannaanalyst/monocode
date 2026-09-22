@@ -32,6 +32,7 @@ import {
   ChevronUp,
   RotateCcw,
 } from "../../../shared/ui/icons";
+import { formatInteger } from "../../../shared/lib/numbers";
 import { minimalSetup } from "codemirror";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -54,7 +55,7 @@ import {
 import { syncWatchedMtime, watchFile } from "../model/fileWatch";
 import { displayPath } from "../../../shared/lib/paths";
 import type { EditorNavigation } from "../../search/model/search";
-import { MarkdownPreview } from "../../sessions/ui/AgentMarkdown";
+import { MarkdownDocumentPreview } from "../../sessions/ui/MarkdownDocumentPreview";
 import {
   DiffCommentComposer,
   type DiffCommentComposerTarget,
@@ -62,7 +63,11 @@ import {
 import { editorAutocomplete } from "../editor/editorAutocomplete";
 import { languageForPath, schemeExtensions } from "../editor/editorChrome";
 import { preserveEditorViewport, replaceEditorDoc } from "../editor/editorDoc";
-import { editorMatching, editorTyping, tryExpandEmmet } from "../editor/editorEditing";
+import {
+  editorMatching,
+  editorTyping,
+  tryExpandEmmet,
+} from "../editor/editorEditing";
 import {
   EditorSelectionMenu,
   type EditorSelectionTarget,
@@ -80,6 +85,7 @@ import { editorLint } from "../editor/editorLint";
 import { editorSearch } from "../editor/editorSearch";
 import { t } from "../../../i18n";
 import { editorScrollbar } from "../editor/editorScrollbar";
+import { FilePreviewSearch } from "./FilePreviewSearch";
 
 type EditorNavigationRequest = EditorNavigation & { token: number };
 
@@ -409,7 +415,17 @@ export function FileEditor({
           onModeChange={setMode}
           preview={
             markdown ? (
-              <MarkdownPreview text={draft} cwd={cwd} onOpenFile={onOpenFile} />
+              <FilePreviewSearch
+                active={active && mode === "preview"}
+                contentVersion={draft}
+              >
+                <MarkdownDocumentPreview
+                  text={draft}
+                  metadataLabel={t("Properties")}
+                  cwd={cwd}
+                  onOpenFile={onOpenFile}
+                />
+              </FilePreviewSearch>
             ) : (
               <SvgPreview source={draft} />
             )
@@ -1010,10 +1026,10 @@ function DiffChunkStat({
   return (
     <span className="flex min-w-0 shrink-0 items-center gap-1.5 font-mono text-2xs font-medium tabular-nums">
       {additions > 0 ? (
-        <span className="text-emerald-400">+{additions}</span>
+        <span className="text-emerald-400">+{formatInteger(additions)}</span>
       ) : null}
       {deletions > 0 ? (
-        <span className="text-red-400">-{deletions}</span>
+        <span className="text-red-400">-{formatInteger(deletions)}</span>
       ) : null}
     </span>
   );

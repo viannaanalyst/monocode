@@ -27,6 +27,7 @@ import {
   type NameIssue,
 } from "../model/fileName";
 import { useLockOverscroll } from "../../../shared/hooks/useLockOverscroll";
+import { formatInteger } from "../../../shared/lib/numbers";
 import {
   loadShowExcludedFiles,
   subscribeShowExcludedFiles,
@@ -1033,8 +1034,8 @@ function FileTreeDiffButton({
       : "Show changes"
     : [
         `${files} ${files === 1 ? "file" : "files"} changed`,
-        additions > 0 ? `+${additions}` : "",
-        deletions > 0 ? `-${deletions}` : "",
+        additions > 0 ? `+${formatInteger(additions)}` : "",
+        deletions > 0 ? `-${formatInteger(deletions)}` : "",
       ]
         .filter(Boolean)
         .join(" ");
