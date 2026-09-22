@@ -76,6 +76,7 @@ import {
   loadThemeSaturation,
   loadTranscriptLayout,
   loadTranscriptAnchor,
+  loadTranscriptCompact,
   saveBodyGlass,
   saveAccentColor,
   saveChatBackgroundEmptyOpacity,
@@ -90,6 +91,7 @@ import {
   saveThemeSaturation,
   saveTranscriptLayout,
   saveTranscriptAnchor,
+  saveTranscriptCompact,
   loadShowExcludedFiles,
   saveShowExcludedFiles,
   SHOW_EXCLUDED_FILES_DEFAULT,
@@ -540,6 +542,8 @@ function GeneralPage({
     useState<TranscriptLayout>(loadTranscriptLayout);
   const [transcriptAnchor, setTranscriptAnchor] =
     useState(loadTranscriptAnchor);
+  const [transcriptCompact, setTranscriptCompact] =
+    useState(loadTranscriptCompact);
   const [diffViewer, setDiffViewer] = useState<DiffViewer>(loadDiffViewer);
   const [followUpBehavior, setFollowUpBehavior] =
     useState<FollowUpBehavior>(loadFollowUpBehavior);
@@ -598,6 +602,10 @@ function GeneralPage({
   const onTranscriptAnchor = (next: boolean) => {
     saveTranscriptAnchor(next);
     setTranscriptAnchor(next);
+  };
+  const onTranscriptCompact = (next: boolean) => {
+    saveTranscriptCompact(next);
+    setTranscriptCompact(next);
   };
 
   const onDiffViewer = (next: DiffViewer) => {
@@ -755,6 +763,16 @@ function GeneralPage({
           label={t("Anchor prompts to top")}
           on={transcriptAnchor}
           onChange={onTranscriptAnchor}
+        />
+      </Row>
+      <Row
+        label={t("Compact transcript")}
+        description={t("Keep the work the agent is doing folded behind its own summary line instead of opening it while it runs. Click the line to read the steps; anything waiting on your approval still opens itself.")}
+      >
+        <Toggle
+          label={t("Compact transcript")}
+          on={transcriptCompact}
+          onChange={onTranscriptCompact}
         />
       </Row>
       <Row

@@ -19,6 +19,7 @@ const PROJECT_RAIL_WIDTH_KEY = "monocode.projectRailWidth";
 const RIGHT_PANEL_WIDTH_KEY = "monocode.rightPanelWidth";
 const TRANSCRIPT_LAYOUT_KEY = "monocode.transcriptLayout";
 const TRANSCRIPT_ANCHOR_KEY = "monocode.transcriptAnchor";
+const TRANSCRIPT_COMPACT_KEY = "monocode.transcriptCompact";
 const CHAT_BACKGROUND_PATH_KEY = "monocode.chatBackgroundPath";
 const CHAT_BACKGROUND_OPACITY_KEY = "monocode.chatBackgroundOpacity";
 const CHAT_BACKGROUND_EMPTY_OPACITY_KEY = "monocode.chatBackgroundEmptyOpacity";
@@ -51,6 +52,12 @@ export const TRANSCRIPT_LAYOUT_DEFAULT: TranscriptLayout = "full";
 export const CHANGES_VIEW_DEFAULT: ChangesView = "list";
 
 export const TRANSCRIPT_ANCHOR_DEFAULT = true;
+
+export const TRANSCRIPT_COMPACT_DEFAULT = false;
+
+/** Fired on `window` whenever compact transcript flips (detail: boolean). */
+export const TRANSCRIPT_COMPACT_CHANGE_EVENT =
+  "monocode:transcriptcompactchange";
 
 /** Fired on `window` whenever prompt-to-top anchoring flips (detail: boolean). */
 export const TRANSCRIPT_ANCHOR_CHANGE_EVENT = "monocode:transcriptanchorchange";
@@ -592,6 +599,20 @@ export function loadSidebarOpen(): boolean {
 
 export function saveSidebarOpen(value: boolean) {
   writeFlag(SIDEBAR_OPEN_KEY, value)
+}
+
+export function loadTranscriptCompact(): boolean {
+  return readFlag(TRANSCRIPT_COMPACT_KEY) ?? TRANSCRIPT_COMPACT_DEFAULT;
+}
+
+export function saveTranscriptCompact(value: boolean) {
+  writeFlag(TRANSCRIPT_COMPACT_KEY, value);
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent<boolean>(TRANSCRIPT_COMPACT_CHANGE_EVENT, {
+      detail: value,
+    }),
+  );
 }
 
 export function loadProjectRailOpen(): boolean {

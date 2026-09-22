@@ -1592,6 +1592,9 @@ export const PT_BR: Record<string, string> = {
   Pull: "Pull",
   "Pulling…": "Fazendo pull…",
   "Pull complete": "Pull concluído",
+  "Compact transcript": "Transcrição compacta",
+  "Keep the work the agent is doing folded behind its own summary line instead of opening it while it runs. Click the line to read the steps; anything waiting on your approval still opens itself.":
+    "Mantém o trabalho do agente dobrado atrás da própria linha de resumo, em vez de abrir enquanto roda. Clique na linha para ler os passos; algo aguardando sua aprovação ainda abre sozinho.",
   "{count} session in this worktree": "{count} sessão neste worktree",
   "{count} sessions in this worktree": "{count} sessões neste worktree",
   "{count} unpublished commit": "{count} commit não publicado",

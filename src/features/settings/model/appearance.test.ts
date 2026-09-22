@@ -15,8 +15,11 @@ import {
   saveTranscriptLayout,
   TRANSCRIPT_LAYOUT_DEFAULT,
   loadTranscriptAnchor,
+  loadTranscriptCompact,
   saveTranscriptAnchor,
+  saveTranscriptCompact,
   TRANSCRIPT_ANCHOR_DEFAULT,
+  TRANSCRIPT_COMPACT_DEFAULT,
   loadShowExcludedFiles,
   saveShowExcludedFiles,
   SHOW_EXCLUDED_FILES_DEFAULT,
@@ -259,5 +262,25 @@ describe("dark theme lightness setting", () => {
     expect(loadThemeDarkLightness()).toBe(0);
     saveThemeDarkLightness(100);
     expect(loadThemeDarkLightness()).toBe(30);
+  });
+});
+
+const COMPACT_KEY = "monocode.transcriptCompact";
+describe("compact transcript setting", () => {
+  beforeEach(mockLocalStorage);
+  afterEach(() => {
+    localStorage.removeItem(COMPACT_KEY);
+  });
+
+  it("defaults to off", () => {
+    expect(TRANSCRIPT_COMPACT_DEFAULT).toBe(false);
+    expect(loadTranscriptCompact()).toBe(false);
+  });
+
+  it("persists across loads", () => {
+    saveTranscriptCompact(true);
+    expect(loadTranscriptCompact()).toBe(true);
+    saveTranscriptCompact(false);
+    expect(loadTranscriptCompact()).toBe(false);
   });
 });

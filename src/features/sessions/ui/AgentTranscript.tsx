@@ -99,6 +99,7 @@ import { ModelBrandMark } from "./ModelBrandIcon";
 import { useLockOverscroll } from "../../../shared/hooks/useLockOverscroll";
 import { useTranscriptLayout } from "../hooks/useTranscriptLayout";
 import { useTranscriptAnchor } from "../hooks/useTranscriptAnchor";
+import { useTranscriptCompact } from "../hooks/useTranscriptCompact";
 import { useTranscriptSelection } from "../hooks/useTranscriptSelection";
 import type { TranscriptLayout } from "../../settings/model/appearance";
 import { AgentMarkdown } from "./AgentMarkdown";
@@ -1899,7 +1900,11 @@ function ActivityPhaseGroup({
   const failed = !!subagentFailureSummary(phase.steps);
   // With auto-expand off, a group stays behind its header until clicked (a
   // pending approval or a failed subagent still forces it open).
-  const open = waiting || (override ?? (active || failed || autoExpand));
+  // Compact drops the auto-open: the group stays the one line that already
+  // titles it. A click, or a step waiting on you, still opens it.
+  const compact = useTranscriptCompact();
+  const open =
+    waiting || (override ?? (active && !compact)) || failed || autoExpand;
   const [liveScroller, setLiveScroller] = useState<HTMLDivElement | null>(null);
   useLivePhaseScroll(liveScroller, active && open, phase.steps);
   const title = activityPhaseTitle(phase, active);
