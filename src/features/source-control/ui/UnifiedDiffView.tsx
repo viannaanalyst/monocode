@@ -383,19 +383,17 @@ const FileSection = memo(function FileSection({
       ref={setSection}
       data-diff-file={file.path}
       className={`${
-        fileLayout === "cards"
-          ? "overflow-hidden rounded-md border border-content/10"
-          : ""
+        fileLayout === "cards" ? "rounded-md border border-content/10" : ""
       } ${focused ? "bg-content/[0.03]" : ""}`}
     >
       <header
-        className={`${
-          fileLayout === "stacked" ? "sticky top-0 z-30 backdrop-blur-xl" : ""
-        } flex items-center gap-2 bg-content/2 px-3 py-1.5 ${
-          fileLayout === "stacked" || expanded
-            ? "border-b border-stroke"
+        className={`sticky top-0 z-30 flex items-center gap-2 bg-content/2 px-3 py-1.5 backdrop-blur-xl ${
+          fileLayout === "cards"
+            ? expanded
+              ? "rounded-t-md"
+              : "rounded-md"
             : ""
-        }`}
+        } ${fileLayout === "stacked" || expanded ? "border-b border-stroke" : ""}`}
       >
         <button
           type="button"
@@ -408,10 +406,7 @@ const FileSection = memo(function FileSection({
             strokeWidth={1.75}
           />
           <FileTypeIcon name={name} isDir={false} size={16} />
-          <span
-            className="min-w-0 flex-1 truncate font-mono text-sm font-medium text-content/85"
-            title={file.label}
-          >
+          <span className="min-w-0 flex-1 truncate font-mono text-sm font-medium text-content/85">
             {file.label}
           </span>
           <DiffCounts additions={file.additions} deletions={file.deletions} />

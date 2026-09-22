@@ -2063,7 +2063,7 @@ export function InboxDetail({
         className="relative z-10 shrink-0 border-b border-content/10"
       >
         <div
-          className={`mx-auto flex w-full max-w-5xl flex-col gap-2.5 px-8 pt-5 ${
+          className={`mx-auto flex w-full max-w-[1600px] flex-col gap-2.5 px-8 pt-5 ${
             isPr ? "" : "pb-5"
           }`}
         >
@@ -2372,7 +2372,7 @@ export function InboxDetail({
         className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-none"
       >
         <div
-          className={`mx-auto flex w-full flex-col gap-5 px-8 py-5 ${tracker ? "max-w-3xl" : "max-w-5xl"}`}
+          className={`mx-auto flex w-full flex-col gap-5 px-8 py-5 ${tracker ? "max-w-3xl" : "max-w-[1600px]"}`}
         >
           {!tracker && item.labels.length > 0 ? (
             <div className="flex flex-wrap gap-1">
