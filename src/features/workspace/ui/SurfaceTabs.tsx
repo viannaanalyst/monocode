@@ -311,6 +311,7 @@ export function SurfaceTabs({
         return (
           <div
             key={file.id}
+            data-no-tooltip
             ref={(el) => {
               sortable.setItemRef(file.id, el);
               if (el && file.id === activeFileId) activeTabRef.current = el;

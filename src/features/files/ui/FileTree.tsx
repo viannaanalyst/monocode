@@ -914,6 +914,7 @@ export const FileTree = memo(function FileTree({
         <div className="flex h-8 shrink-0 items-center">
           <button
             type="button"
+            data-no-tooltip
             aria-label={cwd}
             aria-expanded={rootOpen}
             onClick={() => {
@@ -1208,6 +1209,7 @@ function TreeNode({ entry, depth }: { entry: FsEntry; depth: number }) {
         <button
           type="button"
           role="treeitem"
+          data-no-tooltip
           aria-label={entry.name}
           data-path={entry.path}
           aria-expanded={entry.isDir ? open : undefined}
