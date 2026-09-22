@@ -15,11 +15,21 @@ import {
   reportQuitPoll,
 } from "./app/model/appLifecycle";
 import { consumeInstalledUpdate } from "./app/model/updateNotice";
+import { homeDir } from "./platform/tauri/fs";
+import { setHomeDir } from "./shared/lib/paths";
 import "./styles/index.css";
 
 initAppearance();
 initFonts();
 initSounds();
+
+// Prime the real home directory once so `~/` file references resolve exactly
+// rather than only being inferred from a session's cwd. Best-effort: a
+// project outside a recognisable home still falls back to that inference if
+// this IPC call is ever unavailable or slow.
+void homeDir()
+  .then(setHomeDir)
+  .catch(() => {});
 
 function dismissBootSplash() {
   const splash = document.getElementById("boot-splash");

@@ -89,6 +89,42 @@ export function joinPath(parent: string, relative: string): string {
   return out;
 }
 
+/**
+ * The real OS home directory, primed once at startup from `fs.homeDir()`
+ * (see `setHomeDir`). This module has no direct OS access of its own, so
+ * until it is primed - or in a context that never primes it, like a test -
+ * a `~/` reference falls back to `homeDirFromCwd`, which only works when the
+ * project's own cwd happens to sit under a recognisable home.
+ */
+let cachedHomeDir: string | undefined;
+
+/**
+ * Record the OS's actual home directory so `~/` references resolve exactly,
+ * instead of only being inferred from `cwd`. Pass `undefined` to clear it,
+ * e.g. between tests.
+ */
+export function setHomeDir(path: string | undefined): void {
+  cachedHomeDir = path ? trimSlash(slash(path)) : undefined;
+}
+
+/** Home directory recognised from a project path, like `prettyCwd` does. */
+function homeDirFromCwd(cwd: string): string | undefined {
+  const trimmed = trimSlash(cwd);
+  if (trimmed === "~") return undefined;
+  const parts = trimmed.split("/").filter(Boolean);
+  if (parts.length >= 2 && (parts[0] === "Users" || parts[0] === "home")) {
+    return `/${parts[0]}/${parts[1]}`;
+  }
+  if (
+    parts.length >= 3 &&
+    /^[A-Za-z]:$/.test(parts[0]) &&
+    parts[1] === "Users"
+  ) {
+    return `${parts[0]}/${parts[1]}/${parts[2]}`;
+  }
+  return undefined;
+}
+
 /** Absolute path for a workspace file href, or `undefined` if it is not a local file. */
 export function resolveWorkspacePath(
   href: string,
@@ -142,6 +178,18 @@ function parseWorkspaceFileReference(
   }
 
   value = slash(value);
+  // A provider-relative `~/` reference means the user's home directory, not a
+  // path relative to the project's cwd. Expand it to an absolute path up
+  // front when a home directory can be recognised, so it flows through the
+  // same absolute-path handling below instead of being joined onto cwd.
+  if (value === "~" || value.startsWith("~/")) {
+    const home = cachedHomeDir ?? (cwd ? homeDirFromCwd(cwd) : undefined);
+    // Without a recognisable home, joining "~/..." onto cwd like an ordinary
+    // relative path would silently produce a nonsense location instead of
+    // the file the reference actually means.
+    if (!home) return undefined;
+    value = value === "~" ? home : joinPath(home, value.slice(2));
+  }
   // File URLs can also decode to UNC paths. Windows accepts mixed separators.
   if ((decodeUrl || fileUrl) && /^[\\/]{2}/.test(value)) return undefined;
   // A bare filename's :line[:column] suffix must be removed before this check.
@@ -167,7 +215,7 @@ export function isExtensionlessFileName(value: string): boolean {
   return /^(dockerfile|makefile|gemfile|license)$/i.test(value);
 }
 
-function looksLikeFilePath(value: string): boolean {
+export function looksLikeFilePath(value: string): boolean {
   if (value.startsWith("/") || /^[A-Za-z]:\//.test(value)) return true;
   if (value.includes("/")) return true;
   return isExtensionlessFileName(value) ||
